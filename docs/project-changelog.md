@@ -5,6 +5,9 @@ All notable changes to CafeKit are documented here, following
 
 ## [Unreleased]
 
+### Added
+- **CI test workflow** (`.github/workflows/test.yml`): runs the `@haposoft/cafekit` self-test suite (137 tests, Node 20 + pnpm 10 + Python 3.12) on every push to `dev`/`main` and on pull requests. Filtered install keeps the `cafekit-web` tree out of CI. Release publishing stays manual.
+
 ## [0.13.2] - 2026-06-21
 
 ### Added — Enforce scaffold on task creation
