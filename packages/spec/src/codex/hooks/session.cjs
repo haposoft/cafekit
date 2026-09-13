@@ -91,11 +91,16 @@ try {
   clearState(projectRoot);
   clearCompletionState(projectRoot, payload.session_id);
 
+  // Orca (onorca.dev) sets ORCA_PANE_KEY in every pane; it is a presence marker, not a
+  // secret. ORCA_AGENT_HOOK_TOKEN and ORCA_AGENT_LAUNCH_TOKEN live in the same
+  // environment and must never be read or printed here.
+  const insideOrcaPane = typeof process.env.ORCA_PANE_KEY === 'string' && process.env.ORCA_PANE_KEY !== '';
   const parts = [
     projectType && `Type: ${projectType}`,
     packageManager && `PM: ${packageManager}`,
     framework && `Framework: ${framework}`,
-    branch && `Branch: ${branch}`
+    branch && `Branch: ${branch}`,
+    insideOrcaPane && 'Orca: pane'
   ].filter(Boolean);
   process.stdout.write(
     `Session ${payload.source || 'unknown'}. ${parts.join(' | ') || 'No project info detected.'}\n`

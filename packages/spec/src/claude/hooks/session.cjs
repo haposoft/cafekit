@@ -254,6 +254,12 @@ try {
   if (packageManager) parts.push(`PM: ${packageManager}`);
   if (framework)      parts.push(`Framework: ${framework}`);
   if (gitBranch)      parts.push(`Branch: ${gitBranch}`);
+  // Orca (onorca.dev) sets this in every pane; it is a presence marker, not a secret.
+  // ORCA_AGENT_HOOK_TOKEN and ORCA_AGENT_LAUNCH_TOKEN live in the same environment and
+  // must never be read or printed here.
+  if (typeof process.env.ORCA_PANE_KEY === 'string' && process.env.ORCA_PANE_KEY !== '') {
+    parts.push('Orca: pane');
+  }
 
   console.log(`Session ${source}. ${parts.length ? parts.join(' | ') : 'No project info detected.'}${updateNotice}`);
 
