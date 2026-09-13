@@ -4896,6 +4896,21 @@ async function runStaticSemanticTests() {
         content.includes("Turning off `[compat.claude] hooks` is not supported"),
     },
     {
+      label: "installer architecture documents orca awareness",
+      file: "../../docs/installer-architecture.md",
+      assert: (content) =>
+        content.includes("## Orca (onorca.dev)") &&
+        content.includes("reads `orca skills get") &&
+        content.includes("ORCA_PANE_KEY") &&
+        content.includes("ORCA_AGENT_HOOK_TOKEN") &&
+        content.includes("ORCA_AGENT_LAUNCH_TOKEN") &&
+        content.includes("never read, write, or print either one") &&
+        content.includes("ORCA_WORKTREE_ID") &&
+        content.includes("Orca is not Herdr") &&
+        content.includes("beside a Claude or Codex install") &&
+        content.includes("no session line"),
+    },
+    {
       label: "installer architecture documents hook portability",
       file: "../../docs/installer-architecture.md",
       assert: (content) =>

@@ -5,6 +5,12 @@ All notable changes to @haposoft/cafekit will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Orca (onorca.dev) runtime awareness** (2026-09-13): a `cf:orca` skill now ships with the install itself, instead of living in a per-machine setup a user tried and then removed because it followed the machine rather than the project. The skill detects `ORCA_PANE_KEY`, routes phrases such as "pane Orca" or "spawn codex vào worktree" to Orca's own `orca skills get orca-cli`/`orchestration` guides read live rather than vendored (the guide's wording changes between CLI versions), and defaults any `terminal send`, `terminal close`, or worker stop to the current `ORCA_WORKTREE_ID` — its core safety property — asking the user first, naming the pane, before reaching outside it. `session.cjs` for Claude Code and Codex ends its SessionStart line with `Orca: pane` when the variable is set and never prints `ORCA_AGENT_HOOK_TOKEN` or `ORCA_AGENT_LAUNCH_TOKEN`, the two credentials Orca sets in the same environment. omp receives the skill only beside a Claude or Codex install in the same project and no session line, since its bridge discards `session_start` stdout; Grok receives the skill through its Claude-compatibility layer but likewise no session line, since Grok never feeds that hook's stdout to the model.
+
 ## [0.16.1] - 2026-09-09
 
 ### Added

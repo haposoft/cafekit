@@ -1,6 +1,6 @@
 # Task 03 — Documentation records the delivery matrix and the limits
 
-Status: pending
+Status: in_progress
 
 ## Outcome
 The installer architecture document has an Orca section that says what a CafeKit install brings for Orca, which host receives which piece, where it stops, and why the skill reads Orca's guide live instead of carrying a copy; `packages/spec/README.md` lists `/cf:orca` beside the other core skills; both changelogs carry an `Added` entry; a static probe keeps the section honest.
@@ -37,3 +37,17 @@ The installer architecture document has an Orca section that says what a CafeKit
 - Artifacts: none.
 
 ## Receipt
+
+Not written — the task is not `done`. This is a progress note, not canonical proof.
+
+All five owned files are edited: the `## Orca (onorca.dev)` section in `docs/installer-architecture.md`, the `/cf:orca` bullet in `packages/spec/README.md`, one `[Unreleased] > Added` entry in each of `packages/spec/CHANGELOG.md` and `docs/project-changelog.md`, and the new static case `installer architecture documents orca awareness` in `packages/spec/scripts/run-skill-self-tests.mjs`.
+
+`node scripts/run-skill-self-tests.mjs --static-only` passes with the new case included:
+```text
+✔ installer architecture documents orca awareness
+[skill-test] PASS: 541 focused static tests executed
+```
+Both required counterexamples were run against the tracked `docs/installer-architecture.md` itself (backed up first, restored byte-identical after each, confirmed with `diff`): deleting the whole Orca section, and deleting only the omp row of the delivery matrix, each independently made the script exit 1 at `[FAIL] installer architecture documents orca awareness` before any later check ran.
+
+The task's exact Verification Plan command, the full `node scripts/run-skill-self-tests.mjs` (not `--static-only`), has not passed. A first attempt was killed by the operating system for low memory partway through its "package Node tests" step, which runs every file in `bin/__tests__/` as one `node --test` invocation. Rechecking memory immediately after showed swap climbing from 8.7 GB to 9.6 GB used with about 65 MB of physical memory free — a machine-wide condition this task's own edits do not cause, and one a second attempt is unlikely to survive. Per the project's own guidance against blind-retrying a blocked environment, it was not retried again; this task stays `in_progress` rather than `done` until that command completes.
+

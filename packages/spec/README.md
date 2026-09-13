@@ -165,6 +165,7 @@ CafeKit ships many skills, but the main release surface is:
 - `/cf:research <decision>`: choose proportional depth and return traceable evidence for an uncertain technical decision
 - `/cf:route <material-request>`: classify ambiguous, multi-step, multi-domain, or elevated-risk work and compose the shortest valid installed chain
 - `/cf:loop <bounded-experiment>`: run explicit-only numeric optimization in an isolated worktree and return a base-bound patch handoff
+- `/cf:orca <orca-request>`: inside an Orca (onorca.dev) pane, route a request to read, wait on, or send to another agent pane, or spawn one into a worktree
 - `/cf:specs <feature-description>`: create or resume a structured spec workflow
 - `/cf:develop <feature-name>`: implement from approved spec artifacts
 - `/cf:debug <issue>`: run adaptive-depth, diagnostic-only root-cause analysis with elimination and prevention-aware handoff

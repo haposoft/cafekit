@@ -3,6 +3,10 @@
 All notable changes to CafeKit are documented here, following
 [Keep a Changelog](https://keepachangelog.com/).
 
+## [Unreleased]
+### Added
+- **Orca (onorca.dev) runtime awareness** (2026-09-13): a `cf:orca` skill ships with the install itself instead of a per-machine setup, tried and then removed for following the machine rather than the project. It detects `ORCA_PANE_KEY`, routes the user's phrases to Orca's own `orca skills get orca-cli`/`orchestration` guides read live rather than vendored, and defaults `terminal send`/`close`/worker-stop to the current `ORCA_WORKTREE_ID` — its safety property — asking first, by name, before reaching outside it. `session.cjs` (Claude Code and Codex) ends its SessionStart line with `Orca: pane` when the variable is set and never prints the two token variables in the same environment. omp gets the skill only beside a Claude or Codex install and no session line; Grok gets the skill via its Claude compatibility layer but no session line either.
+
 ## [0.16.1] - 2026-09-09
 ### Added
 - **Oh My Pi (omp) platform** (2026-09-08): `--platform omp` provisions the Claude gate scripts with a one-file omp overlay under `.omp/hooks/`, `.omp/runtime.json` with its schema, and a bridge extension omp auto-loads from `.omp/extensions/`, giving omp CafeKit's gates on every event it emits. Skills are not copied, since omp discovers `.claude/skills` and `.agents/skills` itself. Subagent hooks are not carried because omp has no subagent events.

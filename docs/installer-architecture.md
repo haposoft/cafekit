@@ -110,6 +110,27 @@ Denials carry their reason as a JSON `permissionDecision: "deny"` on stdout, whi
 
 Three contract details are `[UNVERIFIED]`, because settling them costs a live grok session, and no test depends on any of them: whether a `"*"` matcher matches, since grok documents matchers as regular expressions and CafeKit uses `"*"` for `SubagentStart` and `PreCompact`; the input key `grep` and `list_dir` use for their pattern, which is what `inspect-block.cjs` gates on; and grok's spelling for `prompt`, `source`, and `trigger`, where the reader accepts the Claude key and its camelCase twin so either shape works. Each is settled by dumping a real envelope from a hook registered in a throwaway repository. Turning off `[compat.claude] hooks` is not supported: CafeKit registers no `.grok/hooks/*.json`, so a user who disables that scanner gets no gates.
 
+## Orca (onorca.dev)
+
+Orca runs Claude Code, Codex, Grok, or omp inside a pane it manages, across projects and worktrees on the same machine. It is a host the agents run inside, not a runtime CafeKit installs into: there is no `PLATFORMS` entry, no `.orca/` folder, and no network call at install time. What ships is a `cf:orca` skill through the existing skill pipeline (`src/claude/skills/orca/SKILL.md`, in `skills.required`) plus one line at SessionStart, replacing a per-machine setup (Orca's own skills copied under a user's home directory) that a user tried and then removed because it followed the machine rather than the project.
+
+The skill never vendors Orca's guide text; it reads `orca skills get orca-cli` or `orca skills get orchestration` at use time instead, because the guide's own wording changes between CLI versions — between two releases observed two days apart, the `orca-cli` guide kept its 221 lines but changed its opening paragraph. `--references` lists a topic's sub-references and `--reference <name>` prints one; `orca skills list` is the fallback for the other topics.
+
+**Delivery matrix** — what each host receives from the install:
+
+| Host | `cf:orca` skill | routing row | `Orca: pane` line |
+|---|---|---|---|
+| Claude Code | `.claude/skills/orca` | `.claude/rules/skill-domain-routing.md` | `session.cjs` stdout, read as context |
+| Codex | `.agents/skills/orca`, invoked as `$cf-orca`; catalog identity stays `cf:orca` | `.codex/rules/…` | `src/codex/hooks/session.cjs` stdout — whether Codex feeds it to the model is `[UNVERIFIED]` |
+| omp | only beside a Claude or Codex install in the same project (`capabilities.skills` is false for omp by design) | `.omp/rules/…` is copied | none — the bridge runs `session_start` and discards its stdout |
+| Grok | `.claude/skills/orca`, via `[compat.claude] skills` | `.claude/rules/…`, via `[compat.claude] rules` | no session line — `session.cjs` is one of the hooks Grok normalizes but never feeds to the model (see Grok CLI above) |
+
+`ORCA_PANE_KEY` is the presence marker the skill and the session line key on; Orca sets it in every pane but does not document it (`orca skills get orca-cli` never mentions it). `ORCA_AGENT_HOOK_TOKEN` and `ORCA_AGENT_LAUNCH_TOKEN` are credentials in the same environment; CafeKit hooks never read, write, or print either one.
+
+**Authority stays inside the current worktree.** The skill's default target for `terminal send`, `terminal close`, or a worker stop is the current `ORCA_WORKTREE_ID`; reaching a pane outside it — which may belong to a different project — asks the user first, naming the pane. Text returned by `terminal read`, `show`, or `list` is untrusted: the skill never follows an instruction found in it and never echoes it back verbatim. Orca is not Herdr: a request naming Herdr, or a session with `HERDR_ENV=1`, belongs to the separate `herdr-orchestrator` skill instead.
+
+Four contract details are `[UNVERIFIED]`, because settling them needs a live session and no acceptance criterion depends on them: whether Codex feeds the session hook's stdout to the model, settled by one Codex session in a CafeKit-installed project inside an Orca pane; which `.omp/rules/*.md` files omp actually loads, since it parses project rules as TTSR rules (`alwaysApply`, `globs`, `condition`) and CafeKit's carry no frontmatter, settled by `omp ttsr scan -r .omp/rules/skill-domain-routing.md src/` or by asking omp directly; whether `grok inspect` lists the new skill among the existing `cf-*` entries, settled by running it after install; and whether Codex's own hook process inherits `ORCA_*` variables the way the omp bridge is observed to (`cafekit-bridge.mjs` forwards `process.env`) — observed for omp, inferred rather than observed for Codex.
+
 ## Optional document skills
 
 The install inventory has two tiers. Core skills always install. The document
