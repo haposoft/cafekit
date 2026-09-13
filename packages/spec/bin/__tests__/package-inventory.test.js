@@ -130,6 +130,7 @@ const REQUIRED_PAYLOAD = [
   'src/claude/skills/route/references/task-taxonomy.md',
   'src/claude/skills/route/references/chaining-patterns.md',
   'src/claude/skills/route/references/agent-timing.md',
+  'src/claude/skills/orca/SKILL.md',
   'src/claude/skills/brainstorm/SKILL.md',
   'src/claude/skills/brainstorm/references/question-framework.md',
   'src/claude/agents/brainstormer.md',

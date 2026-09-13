@@ -60,7 +60,7 @@ The user runs Claude Code, Codex, Grok, and omp inside Orca panes across many pr
 ## Tasks
 | # | Task | Criteria | Primary ownership | Dependencies | Status |
 |---|---|---|---|---|---|
-| 01 | The `cf:orca` skill and its routing row ship to every host that takes skills | AC-01 | `src/claude/skills/orca/SKILL.md`, `src/claude/migration-manifest.json`, `src/claude/rules/skill-domain-routing.md`, `bin/__tests__/orca-skill.test.js`, `bin/__tests__/package-inventory.test.js` (one `REQUIRED_PAYLOAD` line) | - | pending |
+| 01 | The `cf:orca` skill and its routing row ship to every host that takes skills | AC-01 | `src/claude/skills/orca/SKILL.md`, `src/claude/migration-manifest.json`, `src/claude/rules/skill-domain-routing.md`, `bin/__tests__/orca-skill.test.js`, `bin/__tests__/package-inventory.test.js` (one `REQUIRED_PAYLOAD` line) | - | done |
 | 02 | SessionStart names the Orca pane and never a token | AC-02 | `src/claude/hooks/session.cjs`, `src/codex/hooks/session.cjs`, `bin/__tests__/orca-session.test.js` | - | pending |
 | 03 | Documentation records the delivery matrix and the limits | AC-03 | `docs/installer-architecture.md`, `packages/spec/README.md`, `packages/spec/CHANGELOG.md`, `docs/project-changelog.md`, `packages/spec/scripts/run-skill-self-tests.mjs` | task-01-orca-skill.md, task-02-session-line.md | pending |
 

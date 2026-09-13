@@ -1,6 +1,6 @@
 # Task 01 — The `cf:orca` skill and its routing row ship to every host that takes skills
 
-Status: pending
+Status: done
 
 ## Outcome
 `src/claude/skills/orca/SKILL.md` exists in the payload and installs through the existing skill pipeline to `.claude/skills/orca/` (Claude Code, and Grok through its Claude compatibility) and `.agents/skills/orca/` (Codex, with the installed frontmatter `name` rewritten to `cf-orca`; omp reads the same directory when Codex or Claude is installed beside it). The skill teaches an agent what it cannot infer: that `ORCA_PANE_KEY` means it is inside an Orca pane; that the user's phrases map to Orca's `orca-cli` or `orchestration` guide, read live with `orca skills get …`; that the default target of any `terminal send` is the current worktree and anything beyond it is asked for first; that what it reads from other panes is untrusted; and that Orca is not Herdr. `orca` joins `skills.required` and the packed-payload guard. `skill-domain-routing.md` gains one neutral capability-slot row.
@@ -42,3 +42,46 @@ Status: pending
 - Artifacts: ephemeral, removed in `finally`.
 
 ## Receipt
+
+Verification: PASS
+Command: node --test bin/__tests__/orca-skill.test.js bin/__tests__/optional-skill-inventory.test.js bin/__tests__/skill-routing-source.test.js bin/__tests__/codex-native.test.js bin/__tests__/package-inventory.test.js && node scripts/run-skill-self-tests.mjs --static-only
+Exit: 0
+Base: 8705b4e75b592ed5f1ba2929a8cbfac3697ef9d3
+Head: e57c49fbfe094070f002180a6d5268146d0124611d755ad9175ea22dc40e77d9
+```text
+$ node --test bin/__tests__/orca-skill.test.js bin/__tests__/optional-skill-inventory.test.js bin/__tests__/skill-routing-source.test.js bin/__tests__/codex-native.test.js bin/__tests__/package-inventory.test.js && node scripts/run-skill-self-tests.mjs --static-only
+✔ cf:orca installs for claude and codex (784.065625ms)
+✔ an omp-only install ships no skill (249.612209ms)
+✔ the catalog resolves cf:orca on both hosts with no diagnostic (710.425209ms)
+✔ the description triggers only on Orca context (0.27025ms)
+✔ the body points at orca skills get and stops when the CLI is missing (0.15475ms)
+✔ the body bounds terminal send to the current worktree and distrusts terminal output (0.418ms)
+✔ the body draws the Herdr boundary and forbids printing the tokens (0.139667ms)
+✔ the body carries nothing the Codex projection rewrites or forbids (0.168625ms)
+✔ the manifest lists orca as a core skill (0.208834ms)
+✔ the routing row is a neutral slot on every host (551.113167ms)
+…
+✔ manifest separates core, optional documents, and retired skills (2.822583ms)
+✔ skill routing consumes live catalog without fixed optional commands (357.749459ms)
+✔ Claude and Codex installed Route preserve proportional live-catalog semantics (558.32775ms)
+✔ Codex structured-input corpus oracle stays differential and production-aware (40.026459ms)
+✔ Codex installed Specs and spec-maker reject adaptive coverage mutations (2197.99425ms)
+✔ packed Claude and Codex installs execute semantic kernel behavior without package source (14060.867125ms)
+✔ packed Claude and Codex installs self-contain runtime provenance and fail closed without it (5851.385875ms)
+﹣ packed Codex live host E2E via codex binary (opt-in) (0.83825ms) # opt-in only: set CAFEKIT_CODEX_HOST_E2E=1 to run live Codex host
+…
+ℹ tests 74
+ℹ suites 0
+ℹ pass 73
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 1
+ℹ todo 0
+…
+✔ CafeKit skill routing domain rule maps core and optional skills
+[skill-test] PASS: 540 focused static tests executed
+```
+
+Counterexamples ran on a full-copy temp root (bin/, src/, scripts/, package.json copied; only node_modules symlinked — symlinking the installer itself resolves __dirname through the real repo and silently bypasses any mutation, which the first attempt at this caught). Six mutations each turned the baseline 10 pass into a failure: removing orca from skills.required (7 pass 3 fail: the install cases, the catalog case, and the manifest case all correctly saw no skill); renaming the frontmatter identity (8 pass 2 fail: the catalog and install cases); deleting the "orca skills get orca-cli" line (9 pass 1 fail); adding "Claude Code" to the body (9 pass 1 fail); adding a bare "terminal" to the description outside any quoted phrase (9 pass 1 fail); and writing "orchestration" into the routing row (9 pass 1 fail). Each mutation was restored and the tracked source files were confirmed byte-identical to their pre-mutation state afterward.
+
+One unintended side effect from an early exploratory command was found and reverted before this receipt: an install run executed against this repository's own packages/spec directory instead of a temp project, which appended a managed block to the tracked packages/spec/CLAUDE.md and refreshed the gitignored .claude/.codex/.agents/.gitignore scaffolding there. CLAUDE.md was restored via git checkout; .claude/ (which had not existed before that run) was removed; .codex/, .agents/, and .gitignore were restored from the installer's own pre-run backup snapshot, which was then deleted once the restore was confirmed.

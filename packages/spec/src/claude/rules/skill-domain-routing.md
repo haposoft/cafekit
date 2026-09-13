@@ -18,6 +18,7 @@ and `keywords`; examples below are intent hints, not a copied installed inventor
 | diagnosis | bug, failure, CI, incident, regression, or unexpected behavior |
 | verification or review | test execution, independent correctness/security review |
 | browser evidence | page interaction, snapshots, network, performance, or accessibility |
+| terminal/pane control in the surrounding agent host | reading, waiting on, or sending to another agent pane, or spawning an agent into a host-managed worktree |
 | repository delivery | explicitly authorized commit, push, or branch operation |
 | document/artifact work | use only a matching installed optional capability |
 
