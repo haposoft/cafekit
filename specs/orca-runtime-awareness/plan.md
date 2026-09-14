@@ -62,7 +62,18 @@ The user runs Claude Code, Codex, Grok, and omp inside Orca panes across many pr
 |---|---|---|---|---|---|
 | 01 | The `cf:orca` skill and its routing row ship to every host that takes skills | AC-01 | `src/claude/skills/orca/SKILL.md`, `src/claude/migration-manifest.json`, `src/claude/rules/skill-domain-routing.md`, `bin/__tests__/orca-skill.test.js`, `bin/__tests__/package-inventory.test.js` (one `REQUIRED_PAYLOAD` line) | - | done |
 | 02 | SessionStart names the Orca pane and never a token | AC-02 | `src/claude/hooks/session.cjs`, `src/codex/hooks/session.cjs`, `bin/__tests__/orca-session.test.js` | - | done |
-| 03 | Documentation records the delivery matrix and the limits | AC-03 | `docs/installer-architecture.md`, `packages/spec/README.md`, `packages/spec/CHANGELOG.md`, `docs/project-changelog.md`, `packages/spec/scripts/run-skill-self-tests.mjs` | task-01-orca-skill.md, task-02-session-line.md | in_progress |
+| 03 | Documentation records the delivery matrix and the limits | AC-03 | `docs/installer-architecture.md`, `packages/spec/README.md`, `packages/spec/CHANGELOG.md`, `docs/project-changelog.md`, `packages/spec/scripts/run-skill-self-tests.mjs` | task-01-orca-skill.md, task-02-session-line.md | done |
+
+## Feature-level integration check (2026-09-14)
+
+Each task proved its own piece against the source tree; this check proves the three compose from a real install. `node bin/install.js --platform claude,codex --yes` was run from inside an empty temp git repository, and against that installed project:
+
+- `.claude/skills/orca/SKILL.md` and `.agents/skills/orca/SKILL.md` both exist, with installed `name:` reading `cf:orca` and `cf-orca` respectively, and no `cf:` literal anywhere in the Codex-projected copy.
+- The routing row appears exactly once in each of `.claude/rules/skill-domain-routing.md` and `.codex/rules/skill-domain-routing.md`.
+- The installed `.claude/hooks/session.cjs` and `.codex/hooks/session.cjs` each print `Session startup. Type: app | Branch: main` with every ambient `ORCA_*` variable unset, and `Session startup. Type: app | Branch: main | Orca: pane` with `ORCA_PANE_KEY` set — the marker last, the rest byte-identical, exit 0 in all four runs.
+- With `ORCA_AGENT_HOOK_TOKEN` and `ORCA_AGENT_LAUNCH_TOKEN` set to sentinels, neither value appears in stdout, stderr, or the Claude env file, and that file still carries exactly its previous thirteen keys, no `ORCA_*` among them.
+
+One caution for anyone repeating this: `bin/install.js` has no `--cwd` flag and ignores unknown flags, so it always installs into the current working directory. The run must `cd` into the throwaway project first.
 
 ## Review log
 - Round 1 (2026-09-13): three fresh-context reviewers (fact-checker plus security adversary; flow tracer plus failure-mode analyst; contract verifier plus scope critic), all three CONCERNS. 37 raw findings deduplicated by root cause to 15; all 15 accepted, one of them as a user decision. Two reviewer claims were checked and found wrong before applying: `--reference references/browser.md` is accepted by the CLI (only the plan's example name `terminals.md` did not exist), and the root `README.md` carries no `cf:loop`, so excluding it stays consistent with precedent.
