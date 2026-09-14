@@ -2035,10 +2035,13 @@ test('Codex Windows hook launchers stay project-bound without Git from nested cw
   });
 });
 
-// Run an installed POSIX launcher with no PATH at all, so neither `git` nor a `node` on
-// PATH can rescue it. The launcher must already carry everything it needs.
-function runPosixLauncher(command, cwd) {
-  return spawnSync(command.replace(/^node /, `"${process.execPath}" `), {
+// Run an installed POSIX launcher verbatim under the environment a macOS GUI host hands
+// its children: no `git`, and no `node` on PATH. Nothing here rewrites the command, so a
+// launcher that cannot find its own interpreter fails the way it fails in the wild.
+const GUI_PATH = '/usr/bin:/bin:/usr/sbin:/sbin';
+
+function runPosixLauncher(command, cwd, pathValue = GUI_PATH) {
+  return spawnSync(command, {
     cwd,
     encoding: 'utf8',
     input: JSON.stringify({
@@ -2047,7 +2050,7 @@ function runPosixLauncher(command, cwd) {
       hook_event_name: 'SessionStart',
       source: 'startup'
     }),
-    env: { ...process.env, PATH: '' },
+    env: { PATH: pathValue, HOME: os.homedir() },
     shell: true
   });
 }
@@ -2076,13 +2079,13 @@ test('Codex POSIX hook launchers run without Git and outside the repository root
     for (const projectRoot of [plain, nested]) {
       const { config, command } = sessionLauncher(projectRoot);
       for (const { handler } of allHookLaunchers(config)) {
-        // `node '<single-quoted absolute path>'` and nothing else. Inside single quotes
-        // the shell expands nothing, so a project path may safely contain $, a backtick,
-        // or the word git — this fixture's own path contains it.
+        // A PATH floor, then `node`, then one single-quoted absolute path. Inside single
+        // quotes the shell expands nothing, so a project path may safely contain $, a
+        // backtick, or the word git — this fixture's own path contains it.
         assert.match(
           handler.command,
-          /^node '(?:[^']|'\\'')+'$/,
-          `launcher must be a plain quoted path: ${handler.command}`
+          /^PATH="\$PATH"(?::'(?:[^']|'\\'')+')+ node '(?:[^']|'\\'')+'$/,
+          `launcher must carry a PATH floor and a quoted path: ${handler.command}`
         );
         assert.doesNotMatch(handler.command, /rev-parse/, `launcher must not consult Git: ${handler.command}`);
         assert.ok(
@@ -2097,38 +2100,49 @@ test('Codex POSIX hook launchers run without Git and outside the repository root
   });
 });
 
-test('a reinstall repairs Codex launchers that resolved their path through Git', () => {
-  inTempProject((root) => {
-    assert.equal(install(root).status, 0);
-    const configPath = path.join(root, '.codex', 'hooks.json');
+// A reinstall treats an already-registered script as the user's placement, so a launcher
+// an older installer wrote would otherwise keep its broken command forever.
+for (const [label, legacyCommand] of [
+  ['resolved their path through Git', (script) => `node "$(git rev-parse --show-toplevel)/.codex/hooks/${script}"`],
+  ['looked for node on PATH', (script, root) => `node '${path.join(fs.realpathSync(root), '.codex', 'hooks', script)}'`],
+]) {
+  test(`a reinstall rebinds Codex launchers that ${label}`, () => {
+    inTempProject((root) => {
+      assert.equal(install(root).status, 0);
+      const configPath = path.join(root, '.codex', 'hooks.json');
 
-    // Exactly what an installer before 0.16.2 wrote.
-    const downgraded = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-    for (const { handler } of allHookLaunchers(downgraded)) {
-      const script = path.basename(handler.command.replace(/'$/, ''));
-      handler.command = `node "$(git rev-parse --show-toplevel)/.codex/hooks/${script}"`;
-    }
-    const foreign = { type: 'command', command: 'node "$(git rev-parse --show-toplevel)/tools/mine.cjs"' };
-    downgraded.hooks.SessionStart[0].hooks.push(foreign);
-    fs.writeFileSync(configPath, `${JSON.stringify(downgraded, null, 2)}\n`);
+      const downgraded = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+      for (const { handler } of allHookLaunchers(downgraded)) {
+        handler.command = legacyCommand(path.basename(handler.command.replace(/'$/, '')), root);
+      }
+      // A hook the user wrote, in the same shape CafeKit used to emit, must never be
+      // rewritten: it points somewhere else entirely.
+      const foreign = { type: 'command', command: 'node "$(git rev-parse --show-toplevel)/tools/mine.cjs"' };
+      downgraded.hooks.SessionStart[0].hooks.push(foreign);
+      fs.writeFileSync(configPath, `${JSON.stringify(downgraded, null, 2)}\n`);
 
-    const again = install(root);
-    assert.equal(again.status, 0, again.stderr);
-    assert.match(again.stdout, /repaired \d+ launcher/, 'the repair must be reported, not silent');
+      const again = install(root);
+      assert.equal(again.status, 0, again.stderr);
+      assert.match(again.stdout, /rebound \d+ launcher/, 'the rebind must be reported, not silent');
 
-    const { config, command } = sessionLauncher(root);
-    const commands = allHookLaunchers(config).map(({ handler }) => handler.command);
-    assert.equal(
-      commands.filter((entry) => /rev-parse/.test(entry)).length,
-      1,
-      'only the hook CafeKit did not author may keep its own command'
-    );
-    assert.ok(commands.includes(foreign.command), 'a foreign hook must survive untouched');
-    const launched = runPosixLauncher(command, root);
-    assert.equal(launched.status, 0, launched.stderr);
-    assert.match(launched.stdout, /Session startup\./);
+      const { config, command } = sessionLauncher(root);
+      const commands = allHookLaunchers(config).map(({ handler }) => handler.command);
+      assert.ok(commands.includes(foreign.command), 'a foreign hook must survive untouched');
+      assert.equal(
+        commands.filter((entry) => !entry.startsWith('PATH=')).length,
+        1,
+        'every CafeKit launcher must be rebound, leaving only the foreign one'
+      );
+      const launched = runPosixLauncher(command, root);
+      assert.equal(launched.status, 0, launched.stderr);
+      assert.match(launched.stdout, /Session startup\./);
+
+      // Running the installer again must change nothing.
+      const third = install(root);
+      assert.doesNotMatch(third.stdout, /rebound \d+ launcher/, 'rebinding must be idempotent');
+    });
   });
-});
+}
 
 test('Codex installed Specs and spec-maker reject adaptive coverage mutations', () => {
   inTempProject((root) => {

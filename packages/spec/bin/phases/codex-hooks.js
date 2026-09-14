@@ -17,8 +17,22 @@ const { PLATFORMS } = require('../lib/context');
 
 const CODEX_SRC = path.join(__dirname, '../../src/codex');
 const HOOK_COMMAND_TEMPLATE = /^node "\.codex\/hooks\/([a-z0-9-]+\.cjs)"$/;
-// What an installer before 0.16.2 wrote for POSIX. Kept only to recognize and repair it.
-const LEGACY_GIT_COMMAND = /^node "\$\(git rev-parse --show-toplevel\)\/\.codex\/hooks\/([a-z0-9-]+\.cjs)"$/;
+// Exact shapes earlier installers wrote, kept only to recognize and upgrade them. Before
+// 0.16.2 the path came from Git; 0.16.2 fixed the path but still resolved `node` through
+// PATH. Matching the whole command keeps a hook the user wrote from ever being rewritten.
+const LEGACY_POSIX_COMMANDS = [
+  /^node "\$\(git rev-parse --show-toplevel\)\/\.codex\/hooks\/([a-z0-9-]+\.cjs)"$/,
+  /^node '(?:[^']|'\\'')*[/\\]hooks[/\\]([a-z0-9-]+\.cjs)'$/,
+];
+
+function legacyPosixScript(command) {
+  if (typeof command !== 'string') return null;
+  for (const pattern of LEGACY_POSIX_COMMANDS) {
+    const match = command.match(pattern);
+    if (match) return match[1];
+  }
+  return null;
+}
 
 /** The hook script a command runs, which is stable across installs and platforms. */
 function hookScript(command) {
@@ -46,8 +60,26 @@ function hookPathFor(script, projectRoot) {
  * directly. The literal `/hooks/<script>.cjs` segment must survive, because hookScript()
  * reads it as the identity that lets a reinstall recognize CafeKit's own entries.
  */
+/**
+ * Directories to fall back on when PATH carries no `node`.
+ *
+ * `process.execPath` is realpath-resolved, so under Homebrew or a version manager it names
+ * a versioned directory that disappears on the next node upgrade. The stable aliases are
+ * listed after it, and a directory that does not exist costs nothing in PATH.
+ */
+function nodeFallbackDirectories() {
+  const candidates = [path.dirname(process.execPath), '/usr/local/bin', '/opt/homebrew/bin'];
+  return [...new Set(candidates.filter(Boolean))];
+}
+
 function posixHookCommand(script, projectRoot) {
-  return `node ${shellQuote(hookPathFor(script, projectRoot))}`;
+  // `node` is resolved through PATH, and a host launched from the macOS GUI hands its
+  // children the minimal `/usr/bin:/bin:/usr/sbin:/sbin`. Node installed by Homebrew, nvm,
+  // fnm, or Volta is not on that list, so the shell answered 127 and the hook never
+  // started. The fallbacks are appended, never prepended, so a version manager's current
+  // node still wins in a normal terminal and these act only as the floor.
+  const fallbacks = nodeFallbackDirectories().map((dir) => `:${shellQuote(dir)}`).join('');
+  return `PATH="$PATH"${fallbacks} node ${shellQuote(hookPathFor(script, projectRoot))}`;
 }
 
 /**
@@ -88,12 +120,12 @@ function repairLegacyCodexLaunchers(config, projectRoot) {
       return {
         ...group,
         hooks: group.hooks.map((handler) => {
-          const legacy = typeof handler?.command === 'string' && handler.command.match(LEGACY_GIT_COMMAND);
+          const legacy = legacyPosixScript(handler?.command);
           const template = typeof handler?.commandWindows === 'string'
             && handler.commandWindows.match(HOOK_COMMAND_TEMPLATE);
           if (!legacy && !template) return handler;
           const next = { ...handler };
-          if (legacy) next.command = posixHookCommand(legacy[1], projectRoot);
+          if (legacy) next.command = posixHookCommand(legacy, projectRoot);
           if (template) next.commandWindows = windowsHookCommand(template[1], projectRoot);
           repaired += 1;
           return next;
@@ -166,7 +198,7 @@ function mergeCodexHooks(ctx, platformKey, projectRoot = process.cwd()) {
 
   const { config: base, repaired } = repairLegacyCodexLaunchers(pruned, projectRoot);
   if (repaired > 0) {
-    ctx.ui.detail(`  ↻ ${ctx.dryRun ? '[dry-run] ' : ''}Codex hooks: repaired ${repaired} launcher(s) that resolved their path through Git`);
+    ctx.ui.detail(`  ↻ ${ctx.dryRun ? '[dry-run] ' : ''}Codex hooks: rebound ${repaired} launcher(s) written by an older installer`);
     ctx.results.updated++;
   }
 
