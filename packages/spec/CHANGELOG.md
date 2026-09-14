@@ -5,6 +5,14 @@ All notable changes to @haposoft/cafekit will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.16.3] - 2026-09-14
+
+### Fixed
+
+- **Codex hooks exited 127 when the host was launched from the macOS GUI** (2026-09-14): the launcher ran `node` by name, and `node` is resolved through PATH. A host started from the Finder or from an app such as Orca hands its children the minimal `/usr/bin:/bin:/usr/sbin:/sbin`, which holds no Homebrew, nvm, fnm, or Volta install, so the shell answered `command not found` and the hook never started — exit 127, distinct from the exit 1 that 0.16.2 fixed. Each launcher now carries a PATH floor: the directory of the Node.js that ran the install, then `/usr/local/bin` and `/opt/homebrew/bin`. The floor is appended rather than prepended, so a version manager's current Node still wins in a normal terminal and these are consulted only when PATH offers no Node at all; a directory that does not exist costs nothing. A reinstall rebinds launchers written by 0.16.2 as well as the pre-0.16.2 Git form, since the merge would otherwise treat them as the user's placement and keep them forever. A hook the user wrote is never rewritten, even when it uses the same shape.
+
+  Claude Code carries the same pattern in `.claude/settings.json` and is **not** fixed here. Its merge keys on the whole command string rather than on the script name, so changing the format would append a second copy of every hook in existing projects instead of replacing them. It has not been observed failing, because Claude Code is normally started from a terminal that already has Node on PATH.
+
 ## [0.16.2] - 2026-09-14
 
 ### Added

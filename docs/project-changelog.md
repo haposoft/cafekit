@@ -3,6 +3,12 @@
 All notable changes to CafeKit are documented here, following
 [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.16.3] - 2026-09-14
+### Fixed
+- **Hook Codex trả 127 khi host khởi động từ giao diện đồ hoạ macOS** (2026-09-14): lệnh launcher gọi `node` bằng tên trần, mà `node` được tìm qua PATH. Ứng dụng khởi động từ Finder hoặc từ app như Orca chỉ truyền cho tiến trình con PATH tối thiểu `/usr/bin:/bin:/usr/sbin:/sbin`, không chứa bản node của Homebrew, nvm, fnm hay Volta, nên shell trả `command not found` và hook chưa bao giờ khởi động — mã 127, khác với mã 1 mà 0.16.2 đã sửa. Mỗi launcher giờ mang theo một lưới đỡ PATH: thư mục của Node.js đã chạy bản cài, rồi `/usr/local/bin` và `/opt/homebrew/bin`. Lưới đỡ được nối vào **cuối** chứ không phải đầu, nên node hiện tại của trình quản lý phiên bản vẫn được ưu tiên trong terminal bình thường, còn các mục này chỉ dùng tới khi PATH không có node nào; thư mục không tồn tại thì cũng vô hại. Cài lại sẽ gắn lại cả launcher do 0.16.2 ghi lẫn dạng git trước 0.16.2, vì nếu không thì logic merge coi đó là chỗ người dùng tự đặt và giữ mãi. Hook do người dùng tự viết không bao giờ bị ghi lại, kể cả khi trùng dạng.
+
+  Claude Code mang đúng khuôn mẫu này trong `.claude/settings.json` và **chưa** được sửa ở đây. Phần merge của nó khử trùng lặp theo nguyên văn chuỗi lệnh chứ không theo tên script, nên đổi định dạng sẽ thêm bản sao thứ hai của mọi hook ở các dự án đã cài thay vì thay thế. Chưa quan sát thấy nó hỏng, vì Claude Code thường khởi động từ terminal vốn đã có node trong PATH.
+
 ## [0.16.2] - 2026-09-14
 ### Added
 - **Orca (onorca.dev) runtime awareness** (2026-09-13): a `cf:orca` skill ships with the install itself instead of a per-machine setup, tried and then removed for following the machine rather than the project. It detects `ORCA_PANE_KEY`, routes the user's phrases to Orca's own `orca skills get orca-cli`/`orchestration` guides read live rather than vendored, and defaults `terminal send`/`close`/worker-stop to the current `ORCA_WORKTREE_ID` — its safety property — asking first, by name, before reaching outside it. `session.cjs` (Claude Code and Codex) ends its SessionStart line with `Orca: pane` when the variable is set and never prints the two token variables in the same environment. omp gets the skill only beside a Claude or Codex install and no session line; Grok gets the skill via its Claude compatibility layer but no session line either.
