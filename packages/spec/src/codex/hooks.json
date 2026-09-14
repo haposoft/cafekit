@@ -7,17 +7,17 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$(git rev-parse --show-toplevel)/.codex/hooks/session.cjs\"",
+            "command": "node \".codex/hooks/session.cjs\"",
             "commandWindows": "node \".codex/hooks/session.cjs\""
           },
           {
             "type": "command",
-            "command": "node \"$(git rev-parse --show-toplevel)/.codex/hooks/docs-sync.cjs\"",
+            "command": "node \".codex/hooks/docs-sync.cjs\"",
             "commandWindows": "node \".codex/hooks/docs-sync.cjs\""
           },
           {
             "type": "command",
-            "command": "node \"$(git rev-parse --show-toplevel)/.codex/hooks/state.cjs\"",
+            "command": "node \".codex/hooks/state.cjs\"",
             "commandWindows": "node \".codex/hooks/state.cjs\""
           }
         ]
@@ -29,7 +29,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$(git rev-parse --show-toplevel)/.codex/hooks/agent.cjs\"",
+            "command": "node \".codex/hooks/agent.cjs\"",
             "commandWindows": "node \".codex/hooks/agent.cjs\""
           }
         ]
@@ -40,27 +40,27 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$(git rev-parse --show-toplevel)/.codex/hooks/secret-output-guardrail.cjs\"",
+            "command": "node \".codex/hooks/secret-output-guardrail.cjs\"",
             "commandWindows": "node \".codex/hooks/secret-output-guardrail.cjs\""
           },
           {
             "type": "command",
-            "command": "node \"$(git rev-parse --show-toplevel)/.codex/hooks/privacy-approval.cjs\"",
+            "command": "node \".codex/hooks/privacy-approval.cjs\"",
             "commandWindows": "node \".codex/hooks/privacy-approval.cjs\""
           },
           {
             "type": "command",
-            "command": "node \"$(git rev-parse --show-toplevel)/.codex/hooks/completion-authority.cjs\"",
+            "command": "node \".codex/hooks/completion-authority.cjs\"",
             "commandWindows": "node \".codex/hooks/completion-authority.cjs\""
           },
           {
             "type": "command",
-            "command": "node \"$(git rev-parse --show-toplevel)/.codex/hooks/rules.cjs\"",
+            "command": "node \".codex/hooks/rules.cjs\"",
             "commandWindows": "node \".codex/hooks/rules.cjs\""
           },
           {
             "type": "command",
-            "command": "node \"$(git rev-parse --show-toplevel)/.codex/hooks/spec-state.cjs\"",
+            "command": "node \".codex/hooks/spec-state.cjs\"",
             "commandWindows": "node \".codex/hooks/spec-state.cjs\""
           }
         ]
@@ -72,17 +72,17 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$(git rev-parse --show-toplevel)/.codex/hooks/privacy-block.cjs\"",
+            "command": "node \".codex/hooks/privacy-block.cjs\"",
             "commandWindows": "node \".codex/hooks/privacy-block.cjs\""
           },
           {
             "type": "command",
-            "command": "node \"$(git rev-parse --show-toplevel)/.codex/hooks/inspect-block.cjs\"",
+            "command": "node \".codex/hooks/inspect-block.cjs\"",
             "commandWindows": "node \".codex/hooks/inspect-block.cjs\""
           },
           {
             "type": "command",
-            "command": "node \"$(git rev-parse --show-toplevel)/.codex/hooks/task-scaffold-guard.cjs\"",
+            "command": "node \".codex/hooks/task-scaffold-guard.cjs\"",
             "commandWindows": "node \".codex/hooks/task-scaffold-guard.cjs\""
           }
         ]
@@ -94,7 +94,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$(git rev-parse --show-toplevel)/.codex/hooks/state.cjs\"",
+            "command": "node \".codex/hooks/state.cjs\"",
             "commandWindows": "node \".codex/hooks/state.cjs\""
           }
         ]
@@ -105,17 +105,17 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$(git rev-parse --show-toplevel)/.codex/hooks/spec-gate.cjs\"",
+            "command": "node \".codex/hooks/spec-gate.cjs\"",
             "commandWindows": "node \".codex/hooks/spec-gate.cjs\""
           },
           {
             "type": "command",
-            "command": "node \"$(git rev-parse --show-toplevel)/.codex/hooks/completion-authority.cjs\"",
+            "command": "node \".codex/hooks/completion-authority.cjs\"",
             "commandWindows": "node \".codex/hooks/completion-authority.cjs\""
           },
           {
             "type": "command",
-            "command": "node \"$(git rev-parse --show-toplevel)/.codex/hooks/state.cjs\"",
+            "command": "node \".codex/hooks/state.cjs\"",
             "commandWindows": "node \".codex/hooks/state.cjs\""
           }
         ]
@@ -127,12 +127,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$(git rev-parse --show-toplevel)/.codex/hooks/semantic-review-authority.cjs\"",
+            "command": "node \".codex/hooks/semantic-review-authority.cjs\"",
             "commandWindows": "node \".codex/hooks/semantic-review-authority.cjs\""
           },
           {
             "type": "command",
-            "command": "node \"$(git rev-parse --show-toplevel)/.codex/hooks/state.cjs\"",
+            "command": "node \".codex/hooks/state.cjs\"",
             "commandWindows": "node \".codex/hooks/state.cjs\""
           }
         ]

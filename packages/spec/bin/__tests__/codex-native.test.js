@@ -2035,6 +2035,101 @@ test('Codex Windows hook launchers stay project-bound without Git from nested cw
   });
 });
 
+// Run an installed POSIX launcher with no PATH at all, so neither `git` nor a `node` on
+// PATH can rescue it. The launcher must already carry everything it needs.
+function runPosixLauncher(command, cwd) {
+  return spawnSync(command.replace(/^node /, `"${process.execPath}" `), {
+    cwd,
+    encoding: 'utf8',
+    input: JSON.stringify({
+      session_id: 'posix-launcher-test',
+      cwd,
+      hook_event_name: 'SessionStart',
+      source: 'startup'
+    }),
+    env: { ...process.env, PATH: '' },
+    shell: true
+  });
+}
+
+function sessionLauncher(projectRoot) {
+  const config = JSON.parse(
+    fs.readFileSync(path.join(projectRoot, '.codex', 'hooks.json'), 'utf8')
+  );
+  return { config, command: config.hooks.SessionStart[0].hooks[0].command };
+}
+
+test('Codex POSIX hook launchers run without Git and outside the repository root', () => {
+  inTempProject((root) => {
+    // A launcher that asks Git for its root gets nothing here and the outer root one
+    // directory down, and in both cases points at a path that does not exist.
+    const plain = path.join(root, 'no-git-project');
+    fs.mkdirSync(plain, { recursive: true });
+    assert.equal(install(plain).status, 0);
+
+    const repoRoot = path.join(root, 'repo');
+    const nested = path.join(repoRoot, 'packages', 'inner');
+    fs.mkdirSync(nested, { recursive: true });
+    spawnSync('git', ['init', '-q'], { cwd: repoRoot });
+    assert.equal(install(nested).status, 0);
+
+    for (const projectRoot of [plain, nested]) {
+      const { config, command } = sessionLauncher(projectRoot);
+      for (const { handler } of allHookLaunchers(config)) {
+        // `node '<single-quoted absolute path>'` and nothing else. Inside single quotes
+        // the shell expands nothing, so a project path may safely contain $, a backtick,
+        // or the word git — this fixture's own path contains it.
+        assert.match(
+          handler.command,
+          /^node '(?:[^']|'\\'')+'$/,
+          `launcher must be a plain quoted path: ${handler.command}`
+        );
+        assert.doesNotMatch(handler.command, /rev-parse/, `launcher must not consult Git: ${handler.command}`);
+        assert.ok(
+          handler.command.includes(path.join(projectRoot, '.codex', 'hooks')),
+          `launcher must name this project's hooks directory: ${handler.command}`
+        );
+      }
+      const launched = runPosixLauncher(command, projectRoot);
+      assert.equal(launched.status, 0, launched.stderr);
+      assert.match(launched.stdout, /Session startup\./);
+    }
+  });
+});
+
+test('a reinstall repairs Codex launchers that resolved their path through Git', () => {
+  inTempProject((root) => {
+    assert.equal(install(root).status, 0);
+    const configPath = path.join(root, '.codex', 'hooks.json');
+
+    // Exactly what an installer before 0.16.2 wrote.
+    const downgraded = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    for (const { handler } of allHookLaunchers(downgraded)) {
+      const script = path.basename(handler.command.replace(/'$/, ''));
+      handler.command = `node "$(git rev-parse --show-toplevel)/.codex/hooks/${script}"`;
+    }
+    const foreign = { type: 'command', command: 'node "$(git rev-parse --show-toplevel)/tools/mine.cjs"' };
+    downgraded.hooks.SessionStart[0].hooks.push(foreign);
+    fs.writeFileSync(configPath, `${JSON.stringify(downgraded, null, 2)}\n`);
+
+    const again = install(root);
+    assert.equal(again.status, 0, again.stderr);
+    assert.match(again.stdout, /repaired \d+ launcher/, 'the repair must be reported, not silent');
+
+    const { config, command } = sessionLauncher(root);
+    const commands = allHookLaunchers(config).map(({ handler }) => handler.command);
+    assert.equal(
+      commands.filter((entry) => /rev-parse/.test(entry)).length,
+      1,
+      'only the hook CafeKit did not author may keep its own command'
+    );
+    assert.ok(commands.includes(foreign.command), 'a foreign hook must survive untouched');
+    const launched = runPosixLauncher(command, root);
+    assert.equal(launched.status, 0, launched.stderr);
+    assert.match(launched.stdout, /Session startup\./);
+  });
+});
+
 test('Codex installed Specs and spec-maker reject adaptive coverage mutations', () => {
   inTempProject((root) => {
     const userInstructions = '# User rules\n\nKeep this exact.\n';
