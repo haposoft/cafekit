@@ -5,11 +5,15 @@ All notable changes to @haposoft/cafekit will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.16.2] - 2026-09-14
 
 ### Added
 
 - **Orca (onorca.dev) runtime awareness** (2026-09-13): a `cf:orca` skill now ships with the install itself, instead of living in a per-machine setup a user tried and then removed because it followed the machine rather than the project. The skill detects `ORCA_PANE_KEY`, routes phrases such as "pane Orca" or "spawn codex vào worktree" to Orca's own `orca skills get orca-cli`/`orchestration` guides read live rather than vendored (the guide's wording changes between CLI versions), and defaults any `terminal send`, `terminal close`, or worker stop to the current `ORCA_WORKTREE_ID` — its core safety property — asking the user first, naming the pane, before reaching outside it. `session.cjs` for Claude Code and Codex ends its SessionStart line with `Orca: pane` when the variable is set and never prints `ORCA_AGENT_HOOK_TOKEN` or `ORCA_AGENT_LAUNCH_TOKEN`, the two credentials Orca sets in the same environment. omp receives the skill only beside a Claude or Codex install in the same project and no session line, since its bridge discards `session_start` stdout; Grok receives the skill through its Claude-compatibility layer but likewise no session line, since Grok never feeds that hook's stdout to the model.
+
+### Fixed
+
+- **Codex hooks never ran outside a Git repository, or in a project nested inside one** (2026-09-14): every launcher in `.codex/hooks.json` resolved its own root with `$(git rev-parse --show-toplevel)`. Outside a repository that command prints nothing, so the launcher became `node "/.codex/hooks/<script>.cjs"`; for a project inside a larger repository it returned the *outer* root, so the launcher pointed at another directory's `.codex`. Both cases pointed at a path that does not exist, so Codex started every hook, every hook died, and the privacy, secret-output, scaffold, and completion gates were silently absent while the install looked healthy. The installed path is known at install time and is now written into the command directly, single-quoted so a project path may contain `$`, a backtick, or a space. A reinstall also repairs launchers an older installer wrote, because the merge treats an already-registered script as the user's placement and would otherwise keep the broken command forever; only the exact byte pattern CafeKit itself emitted is rewritten, and a hook the user added is left alone. Windows launchers already carried the absolute path and are unchanged. Claude Code was never affected: it uses `$CLAUDE_PROJECT_DIR`, which the host sets. Renaming or moving the project directory now requires a reinstall for the same reason Windows always has, which a reinstall reports and repairs.
 
 ## [0.16.1] - 2026-09-09
 

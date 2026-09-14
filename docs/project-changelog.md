@@ -3,9 +3,12 @@
 All notable changes to CafeKit are documented here, following
 [Keep a Changelog](https://keepachangelog.com/).
 
-## [Unreleased]
+## [0.16.2] - 2026-09-14
 ### Added
 - **Orca (onorca.dev) runtime awareness** (2026-09-13): a `cf:orca` skill ships with the install itself instead of a per-machine setup, tried and then removed for following the machine rather than the project. It detects `ORCA_PANE_KEY`, routes the user's phrases to Orca's own `orca skills get orca-cli`/`orchestration` guides read live rather than vendored, and defaults `terminal send`/`close`/worker-stop to the current `ORCA_WORKTREE_ID` — its safety property — asking first, by name, before reaching outside it. `session.cjs` (Claude Code and Codex) ends its SessionStart line with `Orca: pane` when the variable is set and never prints the two token variables in the same environment. omp gets the skill only beside a Claude or Codex install and no session line; Grok gets the skill via its Claude compatibility layer but no session line either.
+
+### Fixed
+- **Hook Codex không chạy khi dự án chưa có git, hoặc nằm trong một repo lớn hơn** (2026-09-14): mọi launcher trong `.codex/hooks.json` tự tìm gốc dự án bằng `$(git rev-parse --show-toplevel)`. Ngoài repo thì lệnh đó không in gì nên đường dẫn co lại thành `/.codex/hooks/<script>.cjs`; còn dự án nằm trong repo lớn hơn thì nó trả về gốc **ngoài cùng** nên launcher trỏ sang `.codex` của thư mục khác. Cả hai đều trỏ vào đường dẫn không tồn tại, nên Codex khởi chạy đủ hook, hook nào cũng chết, và các cổng riêng tư, chặn rò rỉ bí mật, chặn scaffold, chặn hoàn thành đều vắng mặt trong im lặng dù bản cài trông vẫn bình thường. Đường dẫn đã biết ngay lúc cài nên giờ được ghi thẳng vào lệnh, bọc nháy đơn để đường dẫn chứa `$`, dấu huyền hay khoảng trắng vẫn an toàn. Cài lại còn sửa luôn launcher do bản installer cũ ghi, vì logic merge coi script đã đăng ký là chỗ người dùng tự đặt và nếu không có bước này thì lệnh hỏng sẽ nằm lại vĩnh viễn; chỉ đúng mẫu byte mà CafeKit từng phát ra mới bị ghi lại, hook người dùng thêm vào được giữ nguyên. Launcher Windows vốn đã mang đường dẫn tuyệt đối nên không đổi. Claude Code chưa bao giờ dính lỗi này vì nó dùng `$CLAUDE_PROJECT_DIR` do host đặt sẵn. Đổi tên hoặc di chuyển thư mục dự án giờ cần cài lại, cùng lý do mà Windows vốn đã như vậy; chạy lại installer sẽ báo và sửa.
 
 ## [0.16.1] - 2026-09-09
 ### Added
