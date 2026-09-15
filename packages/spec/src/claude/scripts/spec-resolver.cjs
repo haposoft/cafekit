@@ -289,6 +289,12 @@ function inspectWorkflowFeature(specsDir, canonicalSpecs, requestedName) {
   };
 }
 
+// Legacy registries written before the current vocabulary use `completed`, which today's
+// validator rejects but which exists in upgraded repositories. Reading it as finished is
+// what lets those packets stop competing for the gate's attention; `spec-final-state.cjs`
+// already reads spec status the same way. Process-first packets keep the strict set.
+const LEGACY_TASK_DONE = new Set(['done', 'completed', 'complete']);
+
 function normalizeLegacyWorkflowCandidate(candidate) {
   const registry = candidate.spec?.task_registry || {};
   const tasks = Object.entries(registry).map(([taskPath, task]) => ({
@@ -302,7 +308,7 @@ function normalizeLegacyWorkflowCandidate(candidate) {
     phase: candidate.spec?.current_phase || candidate.spec?.phase || 'unknown',
     taskRegistry: registry,
     tasks,
-    allTasksDone: tasks.length > 0 && tasks.every((task) => task.status === 'done'),
+    allTasksDone: tasks.length > 0 && tasks.every((task) => LEGACY_TASK_DONE.has(task.status)),
   };
 }
 

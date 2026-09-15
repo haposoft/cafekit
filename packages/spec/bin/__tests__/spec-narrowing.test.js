@@ -75,6 +75,33 @@ test('a legacy repository resolves its one unfinished packet', () => {
   });
 });
 
+test('a legacy registry written with the older vocabulary counts as finished', () => {
+  // Issue #79's repository was upgraded from an older release whose task_registry used
+  // `completed`. Today's validator allows only pending/in_progress/blocked/done, so
+  // narrowing read those packets as unfinished and the block survived the fix that was
+  // supposed to clear it. Measured on the reported shape before this: 18 candidates.
+  for (const status of ['done', 'completed', 'complete']) {
+    withProject((root) => {
+      for (let index = 1; index <= 3; index += 1) {
+        legacyPacket(root, `history-${index}`, { taskStatus: status });
+      }
+      legacyPacket(root, 'active-now', { status: 'in_progress', phase: 'execution', taskStatus: 'pending' });
+      assert.equal(gateResolution(root).featureName, 'active-now', `task status ${status} must read as finished`);
+    });
+  }
+});
+
+test('a process-first packet keeps the strict task vocabulary', () => {
+  // The widened set is legacy-only. A process-first task saying `completed` is malformed,
+  // not finished, and must not be silently read as done.
+  withProject((root) => {
+    workflowPacket(root, 'done-1', 'done');
+    workflowPacket(root, 'odd', 'completed');
+    const resolved = gateResolution(root);
+    assert.notEqual(resolved.layoutKind, 'process-v3-completed-set', 'an invalid status is not done');
+  });
+});
+
 test('a legacy candidate never reaches the bulk branch', () => {
   // The bulk branch exits before the semantic-digest, FLASH_UNVERIFIED, feature-receipt
   // and completion-policy layers, so a legacy packet reaching it would turn a block into
