@@ -56,6 +56,9 @@ A working prototype was built and run before this plan was written, because two 
 
 All commands run from `packages/spec`; paths beginning `docs/` are repository-root relative and are reached from a static probe as `../../docs/...`.
 
+## Completion decision (C3 — 2026-09-15)
+User accepted completion from the three current receipts. Carried forward as stated, not resolved: receipts in packets the gate did not resolve are still unaudited and need the `receiptBindingMode` packet; two packets genuinely claiming closeout still block until the target file names one; and whoever can write repository files can influence which packet the gate inspects, as was already true before this work.
+
 ## Review log
 - Round 1 (2026-09-15): three fresh-context reviewers, all CONCERNS, 37 raw findings deduplicated to 15. The first plan was withdrawn, not patched. Three of its stated facts were wrong — a legacy task-status vocabulary that does not exist (`validate-spec-output.cjs:39` allows only `pending`, `in_progress`, `blocked`, `done`), a Codex `spec-receipt.cjs` "fork" that is a 120-line delegating shim, and a count of two resolution paths where there are three. Its design routed legacy packets into the bulk branch, which exits before four closeout layers.
 - Round 2 (2026-09-15): two reviewers on the rewrite, both CONCERNS. The rewrite still failed: its narrowing predicate excluded `isDurableCloseout` packets to protect pending approvals, but a normally-closed legacy packet always satisfies `isDurableCloseout`, so nothing narrowed and the reported bug remained. Verified by direct probe of all four legacy closing shapes.
