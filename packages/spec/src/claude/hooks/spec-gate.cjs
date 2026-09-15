@@ -119,9 +119,14 @@ try {
   } catch { /* gate stays on */ }
   // Active-spec discovery via shared resolver — explicit target if present, else fail on ambiguity.
   const baseDir   = cwd;
-  const target = typeof RESOLVER.extractExplicitTarget === 'function'
+  const target = (typeof RESOLVER.extractExplicitTarget === 'function'
     ? RESOLVER.extractExplicitTarget(payload)
-    : null;
+    : null)
+    // Only when the host named nothing. The recorded target is what makes "Provide
+    // explicit feature target" an instruction a user can actually follow.
+    || (typeof RESOLVER.readActiveFeatureTarget === 'function'
+      ? RESOLVER.readActiveFeatureTarget({ projectRoot: baseDir, runtime })
+      : null);
   let resolved = typeof RESOLVER.resolveWorkflowCandidate === 'function'
     ? RESOLVER.resolveWorkflowCandidate({ projectRoot: baseDir, runtime, target, includeCompleted: true })
     : FINAL_STATE.resolveCandidate({ resolver: RESOLVER, projectRoot: baseDir, runtime, payload });

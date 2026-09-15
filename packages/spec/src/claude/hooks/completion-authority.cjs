@@ -131,7 +131,10 @@ function stop(payload) {
   const consumed = STATE.consumeGrant(root, result.binding);
   if (consumed.ok) return;
   const pending = STATE.createPending(root, result.binding);
-  emitBlock(`Completion authority: technical proofs pass, but user closeout approval is required. Enter exactly "${STATE.PREFIX}${pending.nonce}" as your next user prompt. This approval is one-time and expires in five minutes.`);
+  // Name the feature: a recorded target can influence which packet resolves, so an
+  // approval the user cannot identify is an approval they cannot withhold.
+  const feature = result.candidate?.featureName;
+  emitBlock(`Completion authority: technical proofs pass, but user closeout approval is required for ${feature ? `"${feature}"` : 'the resolved feature'}. Enter exactly "${STATE.PREFIX}${pending.nonce}" as your next user prompt. This approval is one-time and expires in five minutes.`);
 }
 
 let mode = process.argv[2] || null;

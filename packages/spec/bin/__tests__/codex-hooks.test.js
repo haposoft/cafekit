@@ -782,6 +782,41 @@ test('Codex process-v3 Receipt command must match the exact Verification Plan co
   });
 });
 
+test('Codex recorded active feature turns the identity block into receipt validation', () => {
+  // Issue #79 end to end on this runtime. Two legacy packets both claiming closeout make
+  // the gate answer a missing-receipt violation with an identity complaint whose stated
+  // remedy nothing wrote. Naming the feature resolves it and the violation surfaces.
+  inHookFixture((root, hooks) => {
+    for (const name of ['alpha', 'beta']) {
+      const feature = path.join(root, 'specs', name);
+      fs.mkdirSync(path.join(feature, 'tasks'), { recursive: true });
+      fs.writeFileSync(path.join(feature, 'spec.json'), `${JSON.stringify({
+        feature_name: name,
+        status: 'done',
+        current_phase: 'closeout',
+        task_registry: { 'tasks/task-R0-01-x.md': { status: 'done', completed_at: '2026-01-01T00:00:00.000Z' } },
+      }, null, 2)}\n`);
+      fs.writeFileSync(path.join(feature, 'tasks', 'task-R0-01-x.md'), '# Task\n\nStatus: done\n');
+    }
+    const payload = { cwd: root, session_id: 'session-a', hook_event_name: 'Stop', stop_hook_active: false };
+
+    const blocked = runHook(path.join(hooks, 'spec-gate.cjs'), root, payload);
+    assert.equal(blocked.status, 0, blocked.stderr);
+    assert.match(JSON.parse(blocked.stdout).reason, /multiple active specs detected/);
+
+    const shared = path.join(root, 'specs', '_shared');
+    fs.mkdirSync(shared, { recursive: true });
+    fs.writeFileSync(path.join(shared, 'active-feature.json'), '{"featureName": "beta"}\n');
+
+    const resolved = runHook(path.join(hooks, 'spec-gate.cjs'), root, payload);
+    assert.equal(resolved.status, 0, resolved.stderr);
+    const reason = JSON.parse(resolved.stdout).reason;
+    assert.doesNotMatch(reason, /multiple active specs/, 'the recorded feature must resolve it');
+    assert.match(reason, /lack a verification receipt/, 'the gate must now reach receipt validation');
+    assert.match(reason, /specs\/beta\//, 'and validate the named feature, not a sibling');
+  });
+});
+
 test('Codex process-v3 Stop ignores a completed packet when one packet remains active', () => {
   inHookFixture((root, hooks) => {
     const completed = path.join(root, 'specs', 'auth');

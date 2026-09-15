@@ -49,8 +49,12 @@ try {
     throw new Error('shared workflow policy lacks completion authority functions');
   }
   const resolver = require('./lib/spec-utils.cjs');
+  // The payload is still the authority. The recorded target only answers the ambiguity
+  // the payload leaves, which is what made the block unescapable on this runtime too.
+  const target = resolver.extractExplicitTarget(payload)
+    || resolver.readActiveFeatureTarget({ projectRoot, runtime });
   let resolved = typeof resolver.resolveWorkflowCandidate === 'function'
-    ? resolver.resolveWorkflowCandidate({ projectRoot, runtime, target: payload, includeCompleted: true })
+    ? resolver.resolveWorkflowCandidate({ projectRoot, runtime, target, includeCompleted: true })
     : FINAL_STATE.resolveCandidate({ resolver, projectRoot, runtime, payload });
   if (typeof resolver.refineWorkflowGateResolution === 'function') {
     resolved = resolver.refineWorkflowGateResolution(resolved);

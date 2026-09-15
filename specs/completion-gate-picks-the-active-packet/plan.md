@@ -51,7 +51,7 @@ A working prototype was built and run before this plan was written, because two 
 | # | Task | Criteria | Primary ownership | Dependencies | Status |
 |---|---|---|---|---|---|
 | 01 | Each Stop hook narrows by the question it actually asks | AC-01, AC-02, AC-04 | `src/claude/scripts/spec-resolver.cjs`, `src/codex/hooks/completion-authority-check.cjs`, `src/codex/hooks/lib/spec-utils.cjs`, `bin/__tests__/spec-narrowing.test.js`, `src/claude/hooks/__tests__/completion-authority.test.js` | - | done |
-| 02 | A recorded active feature answers a genuine ambiguity | AC-03 | `src/claude/scripts/spec-resolver.cjs`, `src/claude/hooks/spec-gate.cjs`, `src/claude/hooks/completion-authority-check.cjs`, `src/claude/hooks/completion-authority.cjs` | task-01-narrow-by-the-right-question.md | pending |
+| 02 | A recorded active feature answers a genuine ambiguity | AC-03 | `src/claude/scripts/spec-resolver.cjs`, `src/claude/hooks/spec-gate.cjs`, `src/claude/hooks/completion-authority-check.cjs`, `src/claude/hooks/completion-authority.cjs` | task-01-narrow-by-the-right-question.md | done |
 | 03 | Documentation records the rules and the limits | AC-05 | `docs/installer-architecture.md`, `packages/spec/CHANGELOG.md`, `docs/project-changelog.md`, `packages/spec/scripts/run-skill-self-tests.mjs` | task-02-record-the-active-feature.md | pending |
 
 All commands run from `packages/spec`; paths beginning `docs/` are repository-root relative and are reached from a static probe as `../../docs/...`.

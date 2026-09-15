@@ -492,6 +492,47 @@ function explicitTargetValue(value) {
 }
 
 /**
+ * Read the feature a project has recorded as the one being worked on. This answers a
+ * genuine ambiguity that no host payload resolves, so it is deliberately not a source
+ * inside `extractExplicitTarget`: that function recurses and is shared with consumers
+ * that are not the Stop hooks. Anything other than a non-empty single-line
+ * `featureName` string is invisible rather than an error, because an error here would
+ * block every turn in a project that merely has a stray file. The value is then treated
+ * exactly like a host-supplied feature name and still faces containment, existence, and
+ * JSON checks.
+ */
+function readActiveFeatureTarget({ projectRoot, runtime } = {}) {
+  if (!projectRoot) return null;
+  let specsDir;
+  try {
+    specsDir = specsDirectory(projectRoot, runtime || {});
+  } catch {
+    return null;
+  }
+  let raw;
+  try {
+    const file = path.join(specsDir, '_shared', 'active-feature.json');
+    // A symlink here could name a file outside the project, so only a regular file counts.
+    const info = lstatOptional(file);
+    if (!info.exists || info.isSymlink || !info.stat.isFile()) return null;
+    raw = fs.readFileSync(file, 'utf8');
+  } catch {
+    return null;
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
+  const value = parsed.featureName;
+  if (typeof value !== 'string' || /[\r\n]/.test(value)) return null;
+  const trimmed = value.trim();
+  return trimmed ? { explicitFeature: trimmed } : null;
+}
+
+/**
  * Normalize host-provided feature targets without making runtime adapters
  * guess from the first active directory. The resolver remains the authority
  * for containment, existence, JSON, and ambiguity checks.
@@ -708,6 +749,10 @@ function resolvePersistedSpec({ projectRoot, runtime, explicitFeature, explicitP
     }
     return resolveActiveSpec({ projectRoot, runtime, ...normalized });
   }
+  // Only now, with the caller having named nothing: a recorded target must never
+  // redirect a hook that already knows which feature its turn is about.
+  const recorded = readActiveFeatureTarget({ projectRoot, runtime });
+  if (recorded) return resolveActiveSpec({ projectRoot, runtime, ...recorded });
   try {
     const candidates = findAllSpecCandidates(projectRoot, runtime);
     if (candidates.length === 0) return null;
@@ -937,6 +982,7 @@ module.exports = {
   findAllSpecCandidates,
   extractExplicitTarget,
   resolveActiveSpec,
+  readActiveFeatureTarget,
   resolvePersistedSpec,
   resolveWorkflowCandidate,
   refineWorkflowGateResolution,

@@ -140,6 +140,18 @@ function taskStatusMap(spec) {
   );
 }
 
+function extractExplicitTarget(...sources) {
+  const resolver = sharedResolver();
+  if (typeof resolver.extractExplicitTarget !== 'function') return null;
+  return resolver.extractExplicitTarget(...sources);
+}
+
+function readActiveFeatureTarget(options) {
+  const resolver = sharedResolver();
+  if (typeof resolver.readActiveFeatureTarget !== 'function') return null;
+  return resolver.readActiveFeatureTarget(options);
+}
+
 function resolvePersistedSpec(options) {
   const resolver = sharedResolver();
   if (typeof resolver.resolvePersistedSpec !== 'function') return null;
@@ -148,6 +160,8 @@ function resolvePersistedSpec(options) {
 
 module.exports = {
   findActiveSpec,
+  extractExplicitTarget,
+  readActiveFeatureTarget,
   resolvePersistedSpec,
   findAllActiveSpecs,
   findAllSpecCandidates,
