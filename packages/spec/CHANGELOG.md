@@ -5,6 +5,18 @@ All notable changes to @haposoft/cafekit will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.16.4] - 2026-09-15
+
+### Fixed
+
+- **Both Stop hooks blocked every turn in a project with several Specs packets, and the completion gate never checked a single receipt** ([#79](https://github.com/haposoft/cafekit/issues/79)): each hook decided "which feature is this turn about?" by raw candidate count, so a repository that had simply accumulated finished features was permanently ambiguous, and the only advice offered — provide an explicit feature target — named something nothing in the product wrote. The more serious half is that identity is decided first: with several packets, a genuinely missing verification receipt was answered with `multiple active specs detected` instead, so the gate's receipt revalidation never ran at all. Reproduced both halves before fixing, and measured after: the same project now reports the receipt violation, against the named feature.
+
+  Each hook now narrows by the question it actually asks. The Stop gate resolves the packet that still has unfinished work, whatever layout it uses, so a repository of legacy `spec.json` packets narrows exactly the way a process-first one already did; the bulk-audit branch keeps its own process-first guard, because it exits before the semantic-digest, `FLASH_UNVERIFIED`, feature-receipt, and completion-policy layers. Closeout approval counts only packets actually claiming closeout. **A project with exactly one packet resolves it whatever its status, unchanged** — that also holds for a lone packet still mid-execution, which the closeout rule alone would have dropped. Codex reaches the same answers through the shared resolver instead of its own candidate count.
+
+  When more than one packet is genuinely in play, `specs/_shared/active-feature.json` (`{"featureName": "..."}`) names the one being worked on, and both Stop hooks on both runtimes resolve it. A target supplied by the host always wins, so the file can never redirect a hook that already knows its feature; an absent, blank, malformed, or symlinked file is ignored rather than turned into an error that blocks. Both approval prompts now name the feature being approved. **Two packets genuinely claiming closeout still block until the file names one.**
+
+  Receipts in packets the gate did not resolve are still not revalidated, and that is a known gap rather than a design choice: `receiptBindingMode` rebinds every receipt in the repository whenever the tree outside the specs root is dirty, so auditing historical packets produces a `provenance` failure for each of them the moment one unrelated file is uncommitted. Changing what receipt binding means is left to its own packet.
+
 ## [0.16.3] - 2026-09-14
 
 ### Fixed

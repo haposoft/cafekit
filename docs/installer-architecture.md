@@ -235,6 +235,66 @@ map Claude paths, skill syntax, tools, and agent examples to native Codex
 equivalents. Executable source files receive path/label rewrites only, preventing
 keywords such as Python `prompt=` or `description=` from being corrupted.
 
+## Completion gate identity
+
+Two Stop hooks ask about the project's Specs packets, and each first has to answer
+"which feature is this turn about?". They ask different questions, so they narrow an
+ambiguous scan differently.
+
+- **The Stop gate asks which packet still has unfinished work.** Any layout qualifies:
+  a repository of legacy `spec.json` packets narrows exactly the way a process-first one
+  does. If more than one packet still has work, the ambiguity stands. If every packet is
+  finished and every one of them is process-first, the gate audits the whole set instead;
+  a legacy packet never reaches that branch, because it exits before the semantic-digest,
+  `FLASH_UNVERIFIED`, feature-receipt, and completion-policy layers.
+- **Closeout approval asks which packet is claiming closeout.** A packet is claiming
+  closeout when `isDurableCloseout` is true for it. One such packet resolves; none means
+  nothing is in flight and the hook stays silent; several keep the ambiguity and name
+  only those. A repository holding exactly one packet resolves it whatever its status,
+  because approval is claimed against a finished spec and a lone packet still
+  mid-execution must remain visible to the hook.
+
+Before this, both hooks decided identity by raw candidate count. A project that had
+simply accumulated finished features was blocked on every turn, and because identity is
+decided first, the gate never reached receipt validation at all: a genuinely missing
+receipt was answered with an identity complaint instead.
+
+### Naming the feature
+
+When more than one packet is genuinely in play, record the one being worked on:
+
+```json
+// specs/_shared/active-feature.json
+{ "featureName": "user-auth" }
+```
+
+Both Stop hooks read it on both runtimes. **A target supplied by the host always wins**:
+the file is consulted only where a host payload named no feature, so it can never
+redirect a hook that already knows its feature. An absent, blank, malformed, or
+symlinked file is ignored rather than treated as a malformed target, so a project holding
+a stray file is never blocked by the escape hatch itself. The value is otherwise treated
+exactly like a host-supplied feature name and still faces the resolver's containment,
+existence, and JSON checks. `specs/_shared/` is already in the generated ignore rules.
+The approval prompt names the feature it is asking approval for, so a closeout cannot be
+approved without the user seeing which one it is.
+
+Nothing writes this file automatically; writing it belongs to whatever starts a task, not
+to a hook.
+
+### What this deliberately does not do
+
+- **Receipts in packets the gate did not resolve are not revalidated.** Auditing them is
+  not viable today: `receiptBindingMode` rebinds every receipt in the repository whenever
+  the tree outside the specs root is dirty, so four finished packets with valid committed
+  receipts produce four `provenance` failures the moment one unrelated file is
+  uncommitted. This is a known gap with its own future packet, not a design virtue.
+- **Whoever can write files in the repository can influence which packet the gate
+  inspects.** That was already true by editing a `Status:` line, renaming a directory, or
+  adding a packet; the file makes it explicit and leaves a trace in the working tree
+  instead of being invisible. An environment variable was rejected for the same reason
+  the gate refuses a worker-writable runtime flag as an authorization.
+- **Two packets genuinely claiming closeout still block** until the file names one.
+
 ## Safety properties
 
 - **Rollback** — destructive steps (obsolete removal, settings prune) are covered by the

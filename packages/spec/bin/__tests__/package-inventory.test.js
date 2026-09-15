@@ -2162,6 +2162,10 @@ process.stdout.write(JSON.stringify({ ok: result.ok, active: result.active, reas
   });
 }
 
+// `assertInstalledCompletion` leaves this fixture claiming closeout, which is what makes
+// it the one packet closeout approval resolves among the scaffolded siblings.
+const CLOSING_FIXTURE = 'compact-installed';
+
 function assertInstalledResolution(paths, root, platform, explicitFeature) {
   const code = `
 const checker = require(process.argv[1]); const resolver = require(process.argv[2]);
@@ -2170,13 +2174,45 @@ const base = { projectRoot: root, runtime: {}, payload: {} };
 if (platform === 'claude') base.resolver = resolver;
 const explicit = checker.resolveCandidate({ ...base, payload: { featureName: feature } });
 const ambiguous = checker.resolveCandidate(base);
-process.stdout.write(JSON.stringify({ explicit: explicit && explicit.featureName, error: ambiguous && ambiguous.error, candidates: ambiguous && ambiguous.candidates }));`;
-  const result = spawnSync(process.execPath, ['-e', code, paths.completion, paths.resolver, root, platform, explicitFeature], { cwd: root, encoding: 'utf8' });
-  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
-  const resolution = JSON.parse(result.stdout);
-  assert.equal(resolution.explicit, explicitFeature);
-  assert.equal(resolution.error, 'multiple_persisted');
-  assert.ok(resolution.candidates.length >= 2);
+process.stdout.write(JSON.stringify({ explicit: explicit && explicit.featureName, isNull: ambiguous === null, name: ambiguous && ambiguous.featureName, error: ambiguous && ambiguous.error, candidates: ambiguous && ambiguous.candidates }));`;
+  const run = () => {
+    const result = spawnSync(process.execPath, ['-e', code, paths.completion, paths.resolver, root, platform, explicitFeature], { cwd: root, encoding: 'utf8' });
+    assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+    return JSON.parse(result.stdout);
+  };
+
+  // Contract change: closeout approval counts only packets actually claiming closeout.
+  // This used to assert `multiple_persisted` from these fixtures, which pinned the
+  // over-strict behaviour issue #79 reports. `assertInstalledCompletion` above drove
+  // `compact-installed` to closeout, so exactly one of the three is claiming it; the
+  // scaffolded siblings are not rivals and must not block the approval.
+  const narrowed = run();
+  assert.equal(narrowed.explicit, explicitFeature);
+  assert.equal(narrowed.name, CLOSING_FIXTURE, `the one packet claiming closeout must resolve: ${JSON.stringify(narrowed)}`);
+  assert.equal(narrowed.error, undefined);
+
+  // Genuine ambiguity still blocks, and the installed copy must prove it rather than
+  // being assumed from the source tree this test deliberately deleted.
+  const closing = ['closing-a-installed', 'closing-b-installed'];
+  for (const name of closing) {
+    const dir = path.join(root, 'specs', name);
+    fs.mkdirSync(path.join(dir, 'tasks'), { recursive: true });
+    fs.writeFileSync(path.join(dir, 'spec.json'), `${JSON.stringify({
+      feature_name: name,
+      status: 'done',
+      current_phase: 'closeout',
+      task_registry: { 'tasks/task-R0-01-x.md': { status: 'done', completed_at: '2026-01-01T00:00:00.000Z' } },
+    }, null, 2)}\n`);
+    fs.writeFileSync(path.join(dir, 'tasks', 'task-R0-01-x.md'), '# Task\n\nStatus: done\n');
+  }
+  try {
+    const ambiguous = run();
+    assert.equal(ambiguous.explicit, explicitFeature, 'an explicit target still wins');
+    assert.equal(ambiguous.error, 'multiple_persisted');
+    assert.deepEqual([...ambiguous.candidates].sort(), [...closing, CLOSING_FIXTURE].sort(), 'only claiming packets are named');
+  } finally {
+    for (const name of closing) fs.rmSync(path.join(root, 'specs', name), { recursive: true, force: true });
+  }
 }
 
 function assertStrictSimulatedHandlerGuardrail(paths, root, fixture) {

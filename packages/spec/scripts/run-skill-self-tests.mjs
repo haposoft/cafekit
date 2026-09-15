@@ -4896,6 +4896,19 @@ async function runStaticSemanticTests() {
         content.includes("Turning off `[compat.claude] hooks` is not supported"),
     },
     {
+      label: "installer architecture documents completion gate identity",
+      file: "../../docs/installer-architecture.md",
+      assert: (content) =>
+        content.includes("## Completion gate identity") &&
+        content.includes("which packet still has unfinished work") &&
+        content.includes("which packet is claiming closeout") &&
+        content.includes("specs/_shared/active-feature.json") &&
+        content.includes("A target supplied by the host always wins") &&
+        content.includes("are not revalidated") &&
+        content.includes("known gap with its own future packet") &&
+        content.includes("still block"),
+    },
+    {
       label: "installer architecture documents orca awareness",
       file: "../../docs/installer-architecture.md",
       assert: (content) =>
