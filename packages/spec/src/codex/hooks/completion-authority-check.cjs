@@ -37,6 +37,10 @@ function explicitTarget(payload) {
 function resolveCandidate({ projectRoot, runtime, payload }) {
   const target = explicitTarget(payload);
   if (target) return RESOLVER.resolveActiveSpec({ projectRoot, runtime, ...target });
+  // Delegate so both runtimes answer the same question; the count below stays only as a
+  // fallback for an installed resolver older than this wrapper.
+  const shared = RESOLVER.resolvePersistedSpec({ projectRoot, runtime });
+  if (shared !== null) return shared;
   const candidates = RESOLVER.findAllSpecCandidates(projectRoot, runtime);
   if (candidates.length > 1) return { error: 'multiple_persisted', candidates: candidates.map((candidate) => candidate.featureName) };
   return candidates[0] || null;

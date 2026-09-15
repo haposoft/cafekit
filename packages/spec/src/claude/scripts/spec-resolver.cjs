@@ -711,11 +711,20 @@ function resolvePersistedSpec({ projectRoot, runtime, explicitFeature, explicitP
   try {
     const candidates = findAllSpecCandidates(projectRoot, runtime);
     if (candidates.length === 0) return null;
+    // One packet resolves on its own terms. Closeout approval is claimed against a
+    // finished spec, so status must never decide identity here.
     if (candidates.length === 1) return candidates[0];
+    // This path serves closeout approval, so only a packet actually claiming closeout is
+    // a real rival. Counting finished history as ambiguity is what made the gate
+    // unsatisfiable in a repository that had simply accumulated features.
+    const { isDurableCloseout } = require('./spec-final-state.cjs');
+    const claiming = candidates.filter((candidate) => isDurableCloseout(candidate.spec));
+    if (claiming.length === 1) return claiming[0];
+    if (claiming.length === 0) return null;
     return {
       error: 'multiple_persisted',
-      candidates: candidates.map((candidate) => candidate.featureName),
-      reason: `Multiple persisted specs found: ${candidates.map((candidate) => candidate.featureName).join(', ')}. Provide explicit feature.`,
+      candidates: claiming.map((candidate) => candidate.featureName),
+      reason: `Multiple persisted specs found: ${claiming.map((candidate) => candidate.featureName).join(', ')}. Provide explicit feature.`,
     };
   } catch (error) {
     return {
@@ -893,10 +902,11 @@ function refineWorkflowGateResolution(resolved) {
     return resolved;
   }
   const candidates = resolved.active;
-  if (candidates.length === 0 || candidates.some((candidate) => candidate.layoutKind !== 'process-v3')) {
-    return resolved;
-  }
+  if (candidates.length === 0) return resolved;
 
+  // Which packet still has work decides this, not which layout it uses: a repository of
+  // legacy packets was permanently ambiguous only because the check below used to sit
+  // here and reject the whole set on sight.
   const unfinished = candidates.filter((candidate) => !candidate.allTasksDone);
   if (unfinished.length === 1) return unfinished[0];
   if (unfinished.length > 1) {
@@ -908,6 +918,10 @@ function refineWorkflowGateResolution(resolved) {
       reason: `Multiple active workflows found: ${unfinished.map((candidate) => candidate.featureName).join(', ')}. Provide explicit feature.`,
     };
   }
+  // The bulk-audit branch exits before the semantic-digest, FLASH_UNVERIFIED,
+  // feature-receipt, and completion-policy layers that the single-candidate path runs, so
+  // only process-first packets may reach it. Anything else keeps the existing ambiguity.
+  if (candidates.some((candidate) => candidate.layoutKind !== 'process-v3')) return resolved;
   return {
     layoutKind: 'process-v3-completed-set',
     candidates,

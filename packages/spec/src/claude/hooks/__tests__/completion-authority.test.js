@@ -700,7 +700,14 @@ for (const kind of ['claude', 'codex']) {
       assert.match(block(stop(runtime, { featureName: 'other-feature' })).reason, /explicit/i);
       prepare(root, { feature: 'other-feature', phase: 'implementation' });
       assert.ok(nonceFrom(stop(runtime, { featureName: FEATURE })).nonce);
-      assert.match(block(stop(runtime)).reason, /multiple_persisted|multiple/i);
+      // Contract change: a sibling that is not claiming closeout is no longer a rival.
+      // This used to assert ambiguity, which is the over-strict behaviour issue #79
+      // reports: a repository that had merely accumulated features could never name its
+      // current one again. Only FEATURE is at closeout here, so it resolves and its
+      // approval is demanded. Two packets both claiming closeout still block, which
+      // `several packets claiming closeout stay ambiguous and name only those` covers in
+      // bin/__tests__/spec-narrowing.test.js.
+      assert.ok(nonceFrom(stop(runtime)).nonce, 'the one packet claiming closeout resolves');
       for (const malformed of [
         { featureName: '' },
         { featureName: 42 },

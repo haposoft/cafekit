@@ -140,8 +140,15 @@ function taskStatusMap(spec) {
   );
 }
 
+function resolvePersistedSpec(options) {
+  const resolver = sharedResolver();
+  if (typeof resolver.resolvePersistedSpec !== 'function') return null;
+  return resolver.resolvePersistedSpec(options);
+}
+
 module.exports = {
   findActiveSpec,
+  resolvePersistedSpec,
   findAllActiveSpecs,
   findAllSpecCandidates,
   resolveActiveSpec,
