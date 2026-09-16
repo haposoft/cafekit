@@ -4844,8 +4844,9 @@ async function runStaticSemanticTests() {
       label: "completion policy states both receipt modes and the invention limit",
       file: "src/claude/rules/state-sync.md",
       assert: (content) =>
-        content.includes("validated on structure alone once that file is committed and unchanged") &&
-        content.includes("Work\nelsewhere in the tree does not reopen it") &&
+        content.includes("bound to live Base and Head only while its own task file has a copy in") &&
+        content.includes("committing a packet is the user's choice") &&
+        content.includes("Every structural check runs in all cases") &&
         content.includes("The gate detects drift, not invention") &&
         !content.includes("revalidates every task currently marked done"),
     },
@@ -4853,8 +4854,9 @@ async function runStaticSemanticTests() {
       label: "Codex carries the same completion policy, since it does not auto-load Claude rules",
       file: "src/codex/rules/state-sync.md",
       assert: (content) =>
-        content.includes("validated on structure alone once that file is committed and unchanged") &&
-        content.includes("Work\nelsewhere in the tree does not reopen it") &&
+        content.includes("bound to live Base and Head only while its own task file has a copy in") &&
+        content.includes("committing a packet is the user's choice") &&
+        content.includes("Every structural check runs in all cases") &&
         content.includes("The gate detects drift, not invention") &&
         !content.includes("revalidates every task currently marked done"),
     },
@@ -4906,8 +4908,9 @@ async function runStaticSemanticTests() {
         content.includes("which packet is claiming closeout") &&
         content.includes("specs/_shared/active-feature.json") &&
         content.includes("A target supplied by the host always wins") &&
-        content.includes("committed and\n  unchanged") &&
-        content.includes("Work elsewhere in the tree no longer reopens them") &&
+        content.includes("only while its own task file has a copy in") &&
+        content.includes("work elsewhere in the tree never reopens a receipt") &&
+        content.includes("a project\n  gitignoring its specs root cannot meet") &&
         content.includes("detects drift between a receipt and the\n  tree, not invention") &&
         content.includes("still block"),
     },

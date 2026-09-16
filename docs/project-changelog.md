@@ -3,11 +3,17 @@
 All notable changes to CafeKit are documented here, following
 [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.16.6] - 2026-09-16
+### Fixed
+- **Việc commit `specs/` là một yêu cầu chưa từng được nói ra, và dự án nào `gitignore` nó thì không thể đáp ứng**: file task chưa commit vẫn bị ràng buộc `Base`/`Head` sống, nên những dự án đó hỏng toàn bộ receipt vĩnh viễn ngay sau lần sửa code đầu tiên. Được báo từ một dự án bị chặn ngay ở tin nhắn đầu phiên, chưa thay đổi gì, và vẫn còn bị chặn sau 0.16.5.
+
+  Receipt giờ chỉ ràng buộc `Base`/`Head` sống khi chính file task của nó **có bản trong `HEAD`** mà bytes hiện tại không còn khớp. Đã commit-không-đổi và chưa-từng-commit đều kiểm trên cấu trúc: cái đầu vẫn khớp mốc của nó, cái sau không có mốc nào để lệch. Sửa file task đã commit thì vẫn bị bắt. Mọi kiểm tra cấu trúc — trạng thái, `Verification: PASS`, `Exit: 0`, lệnh khớp Verification Plan, output không rỗng, không placeholder — vẫn chạy trong mọi trường hợp, nên packet chưa commit **vẫn được kiểm**, chỉ là không đối chiếu `Base`/`Head`.
+
+  Tiếp nối 0.16.5, vốn gỡ điều kiện cả-cây vì cùng lý do: mỗi phép kiểm đều báo động trên mọi receipt hợp lệ nên không mang tín hiệu nào. Bốn ca ghim hợp đồng cũ nữa được viết lại kèm lý do chứ không nới lỏng, và thêm ca `50` để chứng minh các kiểm tra cấu trúc không bị gỡ theo.
+
 ## [0.16.5] - 2026-09-16
 ### Fixed
 - **Một file chưa commit là chặn mọi lượt, ở bất kỳ dự án nào có packet Specs đã xong**: `receiptBindingMode` mở lại **mọi** receipt done trong repo mỗi khi có thứ gì ngoài thư mục specs chưa commit, và receipt bị mở lại thì phải khớp `Base`/`Head` sống. `Base` là commit cuối cùng chạm vào file ngoài thư mục specs, nên receipt viết trước bất kỳ commit sau đó đều mang `Base` cũ **theo định nghĩa** — đo được 52/52 receipt done trên repo này. Vì vậy điều kiện đó làm hỏng tất cả cùng lúc, mọi lần, và không phân biệt nổi receipt bị sửa tay với receipt nguyên vẹn. Được báo từ một dự án mà người dùng bị chặn ngay ở tin nhắn đầu tiên của phiên, chưa thay đổi gì cả.
-
-  Receipt giờ chỉ ràng buộc `Base`/`Head` sống khi chính file task của nó khác bytes đã commit, và kiểm trên cấu trúc một khi file đó đã commit và không đổi. Việc làm ở nơi khác trong cây không mở lại nó nữa. Sửa file task sau khi commit thì vẫn bị bắt, và đánh done rồi sửa code cũng vẫn bị bắt, vì làm vậy thì file task đang ở trạng thái chưa commit.
 
   Điều này **đảo** quyết định C1 đã ghi ở `specs/receipt-freshness-policy/plan.md` (giữ điều kiện cả cây). Bằng chứng mới chính là số đo trên: một phép kiểm báo động trên 100% dữ liệu hợp lệ thì không mang tín hiệu nào. Hai ca ghim hợp đồng cũ được cập nhật kèm lý do chứ không nới lỏng.
 

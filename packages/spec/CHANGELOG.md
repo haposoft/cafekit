@@ -5,13 +5,21 @@ All notable changes to @haposoft/cafekit will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.16.6] - 2026-09-16
+
+### Fixed
+
+- **Committing `specs/` was an unstated requirement, and impossible for a project that gitignores it**: an uncommitted task file was kept bound to live `Base`/`Head`, so such a project had every receipt fail permanently after its first source edit. Reported from a project blocked on its first message of a session with nothing changed, still blocked after 0.16.5.
+
+  A receipt is now bound to live `Base`/`Head` only while its own task file has a copy in `HEAD` that its current bytes no longer match. Committed-and-unchanged and never-committed both validate on structure alone: the first still matches its baseline, the second has none to drift from. Editing a committed task file is still caught. Every structural check — status, `Verification: PASS`, `Exit: 0`, a command matching the Verification Plan, non-empty output, no placeholders — runs in all cases, so an uncommitted packet is still checked, just not against `Base`/`Head`.
+
+  This continues 0.16.5, which removed the whole-tree condition for the same reason: each check fired on every valid receipt and so carried no signal. Four more cases that pinned the old contract were rewritten with that reasoning rather than relaxed — `32`, `38`, `39` in `spec-gate.test.js` and the Codex receipt-state case — and `50. an uncommitted task file is still checked, only not against Base and Head` was added to prove the structural checks did not go with it.
+
 ## [0.16.5] - 2026-09-16
 
 ### Fixed
 
 - **One uncommitted file blocked every turn, in any project holding finished Specs packets**: `receiptBindingMode` reopened *every* done receipt in the repository whenever anything outside the specs root was uncommitted, and a reopened receipt is compared against live `Base`/`Head`. `Base` is the last commit touching anything outside the specs root, so a receipt written before any later commit records an older `Base` **by construction** — measured at 52 of 52 done receipts on this repository. The condition therefore failed all of them at once, every time, and could not tell a tampered receipt from an untouched one. Reported from a project where the user was blocked on their first message of a session, having changed nothing.
-
-  A receipt now binds to live `Base`/`Head` while its own task file differs from its committed bytes, and validates on structure alone once that file is committed and unchanged. Work elsewhere in the tree does not reopen it. Editing a task file after it is committed is still caught, and so is marking a task done and then changing the code, because that leaves the task file uncommitted.
 
   This reverses the C1 decision recorded in `specs/receipt-freshness-policy/plan.md`, which kept the whole-tree condition. The measurement above is the new evidence: a check that fires on 100% of valid data carries no signal. Two cases that pinned the old contract were updated with that reasoning rather than relaxed — `47. completed-set branch accepts committed receipts and blocks an edited one` in `spec-gate.test.js`, and step 4 of the Codex receipt-mode case in `codex-hooks.test.js`.
 

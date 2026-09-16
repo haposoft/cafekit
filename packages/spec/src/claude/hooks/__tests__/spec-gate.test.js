@@ -1317,14 +1317,18 @@ test('32. process-v3 requires Receipt heading and runtime-bound provenance', () 
     fs.rmSync(legacyHeading, { recursive: true, force: true });
   }
 
-  const stale = makeWorkflowFixture([
-    '## Receipt', '', 'Verification: PASS', 'Command: node --test', 'Exit: 0',
-    `Base: ${VALID_BASE}`, `Head: ${VALID_BASE}`, '```text', 'pass', '```',
-  ]);
+  // Base and Head are compared against the runtime for a task file that has a copy in
+  // HEAD and no longer matches it. That is the state a stale pair has to reach now:
+  // committing a packet is the user's choice, so an uncommitted one is not bound.
+  const stale = makeWorkflowFixture(boundReceipt());
   try {
+    commitAll(stale, 'receipt');
+    const taskFile = path.join(stale, 'specs', FEATURE, 'task-01-demo.md');
+    fs.writeFileSync(taskFile, fs.readFileSync(taskFile, 'utf8')
+      .replace(/^Head: .*$/m, `Head: ${VALID_BASE}`));
     clearCache();
     const body = parseBlock(runHook({}, stale).stdout);
-    assert.ok(body, 'stale process-v3 provenance should block');
+    assert.ok(body, 'stale process-v3 provenance should block once the packet is committed');
     assert.match(body.reason, /provenance/);
   } finally {
     fs.rmSync(stale, { recursive: true, force: true });
@@ -1534,13 +1538,15 @@ test('37. committed receipt on a clean tree survives later commits', () => {
   }
 });
 
-test('38. untracked task file requires binding', () => {
+test('38. an uncommitted task file is not bound to live Base and Head', () => {
+  // Contract change. Committing a packet is the user's choice, and a project that
+  // gitignores its specs root cannot do it at all. A task file with no copy in HEAD
+  // has no baseline to drift from, so binding it only failed it permanently once the
+  // source moved on. Case 50 proves the structural checks still run on such a file.
   const dir = makeWorkflowFixture(boundReceipt(STALE_BASE, STALE_HEAD));
   try {
     clearCache();
-    const body = parseBlock(runHook({}, dir).stdout);
-    assert.ok(body && body.decision === 'block', 'an untracked task file must keep full binding');
-    assert.match(body.reason, /\bprovenance\b/);
+    assert.strictEqual(runHook({}, dir).stdout, '', 'an uncommitted task file must not be bound');
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
@@ -1560,15 +1566,19 @@ test('38b. the same stale receipt is accepted once committed on a clean tree', (
   }
 });
 
-test('39. staged but uncommitted task file requires binding', () => {
+test('39. a staged task file reads the same as an uncommitted one', () => {
+  // Staging puts the file in the index, not in HEAD, so there is still no committed
+  // baseline to compare against and the selector treats it exactly like case 38.
+  // Case 40 covers the state that does bind: committed, then modified.
   const dir = makeWorkflowFixture(boundReceipt(STALE_BASE, STALE_HEAD));
   try {
     const add = spawnSync('git', ['-C', dir, 'add', '-A'], { encoding: 'utf8' });
     assert.strictEqual(add.status, 0, add.stderr);
+    const inHead = spawnSync('git', ['-C', dir, 'ls-tree', '--name-only', 'HEAD', '--',
+      `specs/${FEATURE}/task-01-demo.md`], { encoding: 'utf8' });
+    assert.strictEqual(inHead.stdout.trim(), '', 'staging must not put the file in HEAD');
     clearCache();
-    const body = parseBlock(runHook({}, dir).stdout);
-    assert.ok(body && body.decision === 'block', 'git add alone must not grant structure-only');
-    assert.match(body.reason, /\bprovenance\b/);
+    assert.strictEqual(runHook({}, dir).stdout, '', 'a staged task file has no committed baseline either');
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
@@ -1829,6 +1839,57 @@ test('47. completed-set branch accepts committed receipts and blocks an edited o
     assert.match(body.reason, /second/);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('49. an unversioned specs root does not keep every receipt bound', () => {
+  // Committing specs/ is the user's choice, not the tool's requirement. Without a
+  // committed copy of the task file there is no baseline, so the selector used to keep
+  // full binding — which fails every receipt permanently after the first source edit.
+  // A project that has chosen not to version its packets has no drift to detect.
+  const dir = makeWorkflowFixture(boundReceipt(STALE_BASE, STALE_HEAD));
+  try {
+    fs.mkdirSync(path.join(dir, 'src'), { recursive: true });
+    fs.writeFileSync(path.join(dir, 'src', 'app.js'), 'module.exports = 1;\n');
+    for (const args of [['add', 'src'], ['commit', '-qm', 'source only']]) {
+      const result = spawnSync('git', ['-C', dir, ...args], { encoding: 'utf8' });
+      assert.strictEqual(result.status, 0, result.stderr);
+    }
+    const tracked = spawnSync('git', ['-C', dir, 'ls-files', '--', 'specs'], { encoding: 'utf8' });
+    assert.strictEqual(tracked.stdout.trim(), '', 'the specs root must be untracked for this case to mean anything');
+    fs.writeFileSync(path.join(dir, 'src', 'app.js'), 'module.exports = 2;\n');
+    clearCache();
+    assert.strictEqual(runHook({}, dir).stdout, '', 'an unversioned specs root must not stay bound forever');
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('50. an uncommitted task file is still checked, only not against Base and Head', () => {
+  // Dropping the binding must not stop the gate reading the packet. A gitignored or
+  // simply uncommitted specs root keeps every structural check: a failing exit, a
+  // placeholder, an empty output block, and a command that does not match the
+  // Verification Plan all still block.
+  const cases = [
+    [['## Receipt', '', 'Verification: PASS', 'Command: node --test', 'Exit: 1',
+      `Base: ${STALE_BASE}`, `Head: ${STALE_HEAD}`, '```text', '$ node --test', 'fail: 1', '```'], /exit_result/],
+    [['## Receipt', '', 'Verification: PASS', 'Command: node --test', 'Exit: 0',
+      `Base: ${STALE_BASE}`, `Head: ${STALE_HEAD}`, '```text', '```'], /command_output/],
+    [['## Receipt', '', 'Verification: PASS', 'Command: pnpm test', 'Exit: 0',
+      `Base: ${STALE_BASE}`, `Head: ${STALE_HEAD}`, '```text', '$ pnpm test', 'pass', '```'], /command_identity/],
+  ];
+  for (const [receipt, expected] of cases) {
+    const dir = makeWorkflowFixture(receipt);
+    try {
+      const tracked = spawnSync('git', ['-C', dir, 'ls-files', '--', 'specs'], { encoding: 'utf8' });
+      assert.strictEqual(tracked.stdout.trim(), '', 'the packet must be uncommitted for this case to mean anything');
+      clearCache();
+      const body = parseBlock(runHook({}, dir).stdout);
+      assert.ok(body && body.decision === 'block', `an uncommitted packet must still be checked: ${expected}`);
+      assert.match(body.reason, expected);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
   }
 });
 

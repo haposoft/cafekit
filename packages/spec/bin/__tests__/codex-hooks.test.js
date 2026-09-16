@@ -1782,7 +1782,7 @@ test('Claude and Codex fail closed consistently for malformed cwd payloads', () 
   });
 });
 
-test('Codex emits the required decision for all six receipt states', () => {
+test('Codex emits the required decision for every receipt state', () => {
   // Codex owns no checker of its own: both wrappers in .codex/hooks/lib forward to
   // the shared module, so the two receipt modes arrive by inheritance. This case is
   // the regression lock on that inheritance. Each state asserts the decision Codex
@@ -1847,12 +1847,19 @@ test('Codex emits the required decision for all six receipt states', () => {
       return failures.length === 0 ? 'accept' : 'block';
     };
 
-    // 1. untracked task file — never committed, so the binding stays.
-    assert.equal(decide(), 'block', 'an untracked task file must keep full binding');
+    // 1. untracked task file — no copy in HEAD, so there is no baseline to drift
+    //    from. Committing a packet is the user's choice and a project that
+    //    gitignores its specs root cannot do it at all, so binding here only failed
+    //    the receipt permanently once the source moved on. The structural checks
+    //    still run; state 6 below is the state that binds.
+    assert.equal(decide(), 'accept', 'an uncommitted task file must not be bound');
+    assert.equal(sharedDecides(), 'accept', 'the shared checker must agree');
 
-    // 2. staged but not committed — `git add` alone must not read as committed.
+    // 2. staged but not committed — `git add` puts the file in the index, not in
+    //    HEAD, so it reads exactly like state 1.
     git('add', '-A');
-    assert.equal(decide(), 'block', 'a staged-only task file must keep full binding');
+    assert.equal(decide(), 'accept', 'staging does not create a committed baseline');
+    assert.equal(sharedDecides(), 'accept', 'the shared checker must agree');
 
     // 3. committed on a clean tree — the one accepting state.
     git('commit', '-qm', 'receipt and source');

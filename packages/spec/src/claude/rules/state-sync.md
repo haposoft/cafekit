@@ -32,11 +32,14 @@ Set `Status: done` only after the inline Receipt passes the
 `Verification: PASS`, runtime-derived Base and Head values, and a non-empty
 fenced block of current command output.
 
-A done task keeps that binding while its file differs from its committed bytes,
-and is validated on structure alone once that file is committed and unchanged. Work
-elsewhere in the tree does not reopen it: Base is the last commit touching anything
-outside the specs root, so every finished receipt records an older Base by
-construction and reopening on a dirty tree failed all of them at once.
+A done task is bound to live Base and Head only while its own task file has a copy in
+`HEAD` that its current bytes no longer match. A file that is committed and unchanged,
+and a file that was never committed at all, are both validated on structure alone: the
+first has a baseline it still matches, the second has no baseline to drift from, and
+committing a packet is the user's choice that a gitignored specs root removes entirely.
+Work elsewhere in the tree never reopens a receipt, because Base is the last commit
+touching anything outside the specs root, so every finished receipt records an older
+Base by construction. Every structural check runs in all cases.
 The gate detects drift, not invention: a valid
 Base and Head pair costs one command and no verification run, so neither mode proves
 that the command was executed. Missing, stale, contradictory,

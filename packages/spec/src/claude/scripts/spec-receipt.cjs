@@ -208,6 +208,14 @@ function receiptBindingMode(featureDir, taskPath, taskBytes, runtimeContext) {
   const specsRelative = toPosix(path.relative(root, specsRoot));
   const escapes = (value) => !value || value === '..' || value.startsWith('../') || path.isAbsolute(value);
   if (escapes(taskRelative) || escapes(specsRelative)) return 'binding';
+  // Whether the packet is committed at all is the user's choice, and for a project
+  // that gitignores its specs root it is not even available. A task file with no copy
+  // in HEAD therefore has no baseline to drift from, and binding it to live Base/Head
+  // only fails it permanently once the source moves on. Its structural checks still
+  // run in full. A git failure is not the same thing and stays fail-safe.
+  const inHead = tryGitBytes(root, ['ls-tree', '-z', '--name-only', 'HEAD', '--', taskRelative]);
+  if (inHead === null) return 'binding';
+  if (inHead.length === 0) return 'structure';
   // `--filters` applies the same smudge/eol conversion the worktree copy has,
   // so a checkout that converts line endings can still reach structure mode.
   const committed = tryGitBytes(root, ['cat-file', '--filters', `HEAD:${taskRelative}`]);

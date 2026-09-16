@@ -286,14 +286,18 @@ to a hook.
 - **A receipt is not proof that its command ran.** Base and Head cost one command to
   produce and no verification run, so the gate detects drift between a receipt and the
   tree, not invention. C3 is where a human weighs the evidence.
-- **Receipts are re-checked on structure once their task file is committed and
-  unchanged.** Work elsewhere in the tree no longer reopens them. It used to: any
-  uncommitted file outside the specs root rebound every receipt in the repository. That
-  condition carried no information, because `Base` is the last commit touching anything
-  outside the specs root — so every finished receipt records an older `Base` by
-  construction. Measured here at 52 of 52 done receipts, which meant one untracked file
-  failed all of them at once and a tampered receipt was indistinguishable from an
-  untouched one. Editing a task file after it is committed is still caught.
+- **A receipt is bound to live `Base`/`Head` only while its own task file has a copy in
+  `HEAD` that it no longer matches.** Committed-and-unchanged and never-committed both
+  validate on structure alone, and work elsewhere in the tree never reopens a receipt.
+  Two conditions were removed for the same reason — each fired on every valid receipt.
+  Reopening on a dirty tree carried no information, because `Base` is the last commit
+  touching anything outside the specs root, so every finished receipt records an older
+  `Base` by construction: measured here at 52 of 52. Binding an uncommitted task file
+  made committing `specs/` a requirement the tool never stated and that a project
+  gitignoring its specs root cannot meet, and it failed such a project's receipts
+  permanently after its first source edit. Editing a committed task file is still
+  caught, and every structural check — status, `PASS`, `Exit: 0`, a command matching the
+  Verification Plan, non-empty output — runs in all cases.
 - **Whoever can write files in the repository can influence which packet the gate
   inspects.** That was already true by editing a `Status:` line, renaming a directory, or
   adding a packet; the file makes it explicit and leaves a trace in the working tree
