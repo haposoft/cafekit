@@ -116,3 +116,4 @@ plans/*
 .agents
 .codex
 .opencode/
+.omp/
