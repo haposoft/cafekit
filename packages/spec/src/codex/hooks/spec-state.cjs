@@ -156,7 +156,7 @@ try {
     }
     lines.push(
       '- Sync each flat task `Status:` only after verified work; task proof belongs in that task\'s inline `## Receipt`.',
-      `- Workflow source: \`specs/${active.featureName}/plan.md\`; Stop re-checks every done receipt, binding Base/Head to the runtime until the task file is committed, unchanged, and the tree outside the specs root is clean.`,
+      `- Workflow source: \`specs/${active.featureName}/plan.md\`; Stop re-checks every done receipt, binding Base/Head to the runtime until the task file is committed and unchanged.`,
       '- Hooks revalidate receipt bytes but never grant approval.'
     );
   } else {

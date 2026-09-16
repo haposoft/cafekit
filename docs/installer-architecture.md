@@ -283,11 +283,17 @@ to a hook.
 
 ### What this deliberately does not do
 
-- **Receipts in packets the gate did not resolve are not revalidated.** Auditing them is
-  not viable today: `receiptBindingMode` rebinds every receipt in the repository whenever
-  the tree outside the specs root is dirty, so four finished packets with valid committed
-  receipts produce four `provenance` failures the moment one unrelated file is
-  uncommitted. This is a known gap with its own future packet, not a design virtue.
+- **A receipt is not proof that its command ran.** Base and Head cost one command to
+  produce and no verification run, so the gate detects drift between a receipt and the
+  tree, not invention. C3 is where a human weighs the evidence.
+- **Receipts are re-checked on structure once their task file is committed and
+  unchanged.** Work elsewhere in the tree no longer reopens them. It used to: any
+  uncommitted file outside the specs root rebound every receipt in the repository. That
+  condition carried no information, because `Base` is the last commit touching anything
+  outside the specs root — so every finished receipt records an older `Base` by
+  construction. Measured here at 52 of 52 done receipts, which meant one untracked file
+  failed all of them at once and a tampered receipt was indistinguishable from an
+  untouched one. Editing a task file after it is committed is still caught.
 - **Whoever can write files in the repository can influence which packet the gate
   inspects.** That was already true by editing a `Status:` line, renaming a directory, or
   adding a packet; the file makes it explicit and leaves a trace in the working tree

@@ -2,7 +2,7 @@
 
 > Native spec-driven workflow and runtime bundle for Claude Code and Codex CLI.
 
-[![Version](https://img.shields.io/badge/version-0.16.4-blue.svg)](https://github.com/haposoft/cafekit)
+[![Version](https://img.shields.io/badge/version-0.16.5-blue.svg)](https://github.com/haposoft/cafekit)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Claude%20Code](https://img.shields.io/badge/Claude%20Code-Native-orange.svg)](https://claude.ai/code)
 [![Codex%20CLI](https://img.shields.io/badge/Codex%20CLI-Native-111111.svg)](https://developers.openai.com/codex)

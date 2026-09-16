@@ -3,6 +3,14 @@
 All notable changes to CafeKit are documented here, following
 [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.16.5] - 2026-09-16
+### Fixed
+- **Một file chưa commit là chặn mọi lượt, ở bất kỳ dự án nào có packet Specs đã xong**: `receiptBindingMode` mở lại **mọi** receipt done trong repo mỗi khi có thứ gì ngoài thư mục specs chưa commit, và receipt bị mở lại thì phải khớp `Base`/`Head` sống. `Base` là commit cuối cùng chạm vào file ngoài thư mục specs, nên receipt viết trước bất kỳ commit sau đó đều mang `Base` cũ **theo định nghĩa** — đo được 52/52 receipt done trên repo này. Vì vậy điều kiện đó làm hỏng tất cả cùng lúc, mọi lần, và không phân biệt nổi receipt bị sửa tay với receipt nguyên vẹn. Được báo từ một dự án mà người dùng bị chặn ngay ở tin nhắn đầu tiên của phiên, chưa thay đổi gì cả.
+
+  Receipt giờ chỉ ràng buộc `Base`/`Head` sống khi chính file task của nó khác bytes đã commit, và kiểm trên cấu trúc một khi file đó đã commit và không đổi. Việc làm ở nơi khác trong cây không mở lại nó nữa. Sửa file task sau khi commit thì vẫn bị bắt, và đánh done rồi sửa code cũng vẫn bị bắt, vì làm vậy thì file task đang ở trạng thái chưa commit.
+
+  Điều này **đảo** quyết định C1 đã ghi ở `specs/receipt-freshness-policy/plan.md` (giữ điều kiện cả cây). Bằng chứng mới chính là số đo trên: một phép kiểm báo động trên 100% dữ liệu hợp lệ thì không mang tín hiệu nào. Hai ca ghim hợp đồng cũ được cập nhật kèm lý do chứ không nới lỏng.
+
 ## [0.16.4] - 2026-09-15
 ### Fixed
 - **Cả hai hook Stop chặn mọi lượt ở dự án có nhiều packet Specs, và cổng hoàn thành chưa từng kiểm một receipt nào** ([#79](https://github.com/haposoft/cafekit/issues/79)): mỗi hook xác định "lượt này thuộc feature nào?" bằng cách đếm số ứng viên thô, nên một repo chỉ đơn giản là tích luỹ nhiều feature đã xong sẽ mơ hồ vĩnh viễn, còn lời khuyên duy nhất — cung cấp feature target tường minh — lại trỏ tới thứ không có gì trong sản phẩm ghi ra. Nửa nghiêm trọng hơn là danh tính được quyết trước: khi có nhiều packet, một receipt thật sự thiếu lại bị trả lời bằng `multiple active specs detected`, nên phần rà receipt của cổng chưa bao giờ chạy. Đã tái hiện cả hai nửa trước khi sửa, và đo lại sau: cùng dự án đó giờ báo đúng lỗi thiếu receipt, trên đúng feature được chỉ định.

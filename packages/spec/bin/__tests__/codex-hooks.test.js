@@ -1866,13 +1866,19 @@ test('Codex emits the required decision for all six receipt states', () => {
     assert.equal(decide(), 'accept', 'a committed, unchanged receipt on a clean tree must be accepted');
     assert.equal(sharedDecides(), 'accept', 'the shared checker must agree');
 
-    // 4. dirty tree outside the specs root, hook run from a nested directory with
-    //    the change outside that directory's subtree.
+    // 4. Contract change: an uncommitted file outside the specs root no longer
+    //    rebinds a committed receipt. Base is the last commit touching anything
+    //    outside the specs root, so every receipt written before a later commit
+    //    records an older Base by construction — measured at 52 of 52 on the
+    //    CafeKit repository. The condition therefore failed every historical
+    //    receipt at once whenever any unrelated file was dirty, and could not
+    //    tell a tampered receipt from an untouched one. Case 6 below still
+    //    catches the receipt that actually changed.
     fs.writeFileSync(outsideDirt, 'uncommitted\n');
     assert.ok(!path.relative(nested, outsideDirt).startsWith('..') === false,
       'the dirt must lie outside the working directory used for the run');
-    assert.equal(decide(), 'block', 'an uncommitted change outside the specs root must rebind');
-    assert.equal(sharedDecides(), 'block', 'the shared checker must agree');
+    assert.equal(decide(), 'accept', 'unrelated dirt must not reopen a committed receipt');
+    assert.equal(sharedDecides(), 'accept', 'the shared checker must agree');
     git('checkout', '--', 'src/outside.txt');
 
     // 5. work confined to the specs root does not reopen a committed receipt.

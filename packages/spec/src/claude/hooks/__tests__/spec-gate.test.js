@@ -1621,43 +1621,61 @@ test('41. unborn HEAD fails closed before any receipt check', () => {
   }
 });
 
-test('42. dirty tree outside specs requires binding, regardless of working directory', () => {
-  const dir = makeWorkflowFixture(boundReceipt());
+test('42. a dirty tree outside specs does not reopen a committed receipt', () => {
+  // Contract change. This used to require a block. `Base` is the last commit
+  // touching anything outside the specs root, so a receipt written before any
+  // later commit records an older `Base` by construction — 52 of 52 done
+  // receipts on the CafeKit repository. Reopening on a dirty tree therefore
+  // failed every historical receipt at once, every time, which blocked projects
+  // on their first turn of a session with nothing changed. What still blocks is
+  // the task file that actually differs from its committed bytes, asserted
+  // below from both working directories, since the git call must pin the
+  // project root rather than the working directory.
+  const dir = makeWorkflowFixture(boundReceipt(STALE_BASE, STALE_HEAD));
   try {
     commitAll(dir, 'receipt');
     fs.mkdirSync(path.join(dir, 'src'), { recursive: true });
     fs.writeFileSync(path.join(dir, 'src', 'dirty.txt'), 'uncommitted\n');
     clearCache();
-    const fromRoot = parseBlock(runHook({}, dir).stdout);
-    assert.ok(fromRoot && fromRoot.decision === 'block', 'an uncommitted change outside specs must rebind');
-    assert.match(fromRoot.reason, /\bprovenance\b/);
+    assert.strictEqual(runHook({}, dir).stdout, '', 'unrelated dirt must not reopen a committed receipt');
     clearCache();
-    const fromSpecs = parseBlock(runHookFrom(dir, path.join(dir, 'specs', FEATURE)).stdout);
-    assert.ok(fromSpecs && fromSpecs.decision === 'block', 'the status check must pin the project root, not the working directory');
-    assert.match(fromSpecs.reason, /\bprovenance\b/);
+    assert.strictEqual(runHookFrom(dir, path.join(dir, 'specs', FEATURE)).stdout, '',
+      'and must not reopen it when the hook runs from inside the specs root either');
+
+    const taskFile = path.join(dir, 'specs', FEATURE, 'task-01-demo.md');
+    fs.writeFileSync(taskFile, fs.readFileSync(taskFile, 'utf8').replace(STALE_HEAD, 'd'.repeat(64)));
+    for (const [label, run] of [['project root', () => runHook({}, dir)],
+      ['specs root', () => runHookFrom(dir, path.join(dir, 'specs', FEATURE))]]) {
+      clearCache();
+      const body = parseBlock(run().stdout);
+      assert.ok(body && body.decision === 'block', `an edited task file must rebind, run from the ${label}`);
+      assert.match(body.reason, /\bprovenance\b/);
+    }
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
 
-test('42b. a change hidden by skip-worktree or assume-unchanged requires binding', () => {
-  // `git status` honors both index flags, so a tracked file outside the specs
-  // root can differ from HEAD while the tree reports clean. Structure mode must
-  // not be granted from a report that git itself is suppressing.
+test('42b. skip-worktree and assume-unchanged cannot hide an edited task file', () => {
+  // Both index flags make `git status` report a modified file as clean. The mode
+  // selector no longer consults status at all, but it must not become hideable
+  // some other way: the committed-bytes check reads the file from disk and asks
+  // git for `HEAD:<path>`, and neither consults the index. Marking the task file
+  // with either flag must therefore change nothing.
   for (const flag of ['--skip-worktree', '--assume-unchanged']) {
     const dir = makeWorkflowFixture(boundReceipt(STALE_BASE, STALE_HEAD));
     try {
-      fs.mkdirSync(path.join(dir, 'src'), { recursive: true });
-      fs.writeFileSync(path.join(dir, 'src', 'hidden.txt'), 'committed\n');
-      commitAll(dir, 'receipt and source');
-      const marked = spawnSync('git', ['-C', dir, 'update-index', flag, 'src/hidden.txt'], { encoding: 'utf8' });
+      commitAll(dir, 'receipt');
+      const taskRelative = `specs/${FEATURE}/task-01-demo.md`;
+      const marked = spawnSync('git', ['-C', dir, 'update-index', flag, taskRelative], { encoding: 'utf8' });
       assert.strictEqual(marked.status, 0, marked.stderr);
-      fs.writeFileSync(path.join(dir, 'src', 'hidden.txt'), 'tampered\n');
+      const taskFile = path.join(dir, taskRelative);
+      fs.writeFileSync(taskFile, fs.readFileSync(taskFile, 'utf8').replace(STALE_HEAD, 'd'.repeat(64)));
       const status = spawnSync('git', ['-C', dir, 'status', '--porcelain'], { encoding: 'utf8' });
       assert.strictEqual(status.stdout.trim(), '', `${flag} must make the tree look clean for this case to mean anything`);
       clearCache();
       const body = parseBlock(runHook({}, dir).stdout);
-      assert.ok(body && body.decision === 'block', `${flag} must not grant structure-only`);
+      assert.ok(body && body.decision === 'block', `${flag} must not hide an edited task file`);
       assert.match(body.reason, /\bprovenance\b/);
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
@@ -1771,10 +1789,10 @@ test('46. a dirty file inside the specs root does not force binding', () => {
   }
 });
 
-test('47. completed-set branch accepts committed receipts and blocks a tampered one', () => {
+test('47. completed-set branch accepts committed receipts and blocks an edited one', () => {
   // Two finished packets resolve to the completed-set branch, which is the path
-  // that revalidated every done receipt on every Stop. Prove the new mode works
-  // there, then prove it still blocks.
+  // that revalidated every done receipt on every Stop. Prove committed receipts
+  // survive both a clean and a dirty tree, then prove an edited one still blocks.
   const dir = makeWorkflowFixture(boundReceipt(STALE_BASE, STALE_HEAD));
   try {
     const secondDir = path.join(dir, 'specs', 'second');
@@ -1788,13 +1806,27 @@ test('47. completed-set branch accepts committed receipts and blocks a tampered 
     clearCache();
     const accepted = runHook({}, dir);
     assert.strictEqual(accepted.stdout, '', 'the completed-set branch must accept committed receipts on a clean tree');
+    // Contract change: unrelated dirt no longer reopens committed receipts. This
+    // used to assert a block, which is what made the gate unusable in a project
+    // holding several finished packets — one untracked file failed every receipt
+    // in the repository at once. Base is the last commit touching anything
+    // outside the specs root, so a historical receipt records an older Base by
+    // construction and the check fired on all of them, always.
     fs.mkdirSync(path.join(dir, 'src'), { recursive: true });
     fs.writeFileSync(path.join(dir, 'src', 'dirty.txt'), 'uncommitted\n');
     clearCache();
+    assert.strictEqual(runHook({}, dir).stdout, '', 'unrelated dirt must not reopen committed receipts');
+
+    // What still blocks: the receipt that actually changed after being committed.
+    fs.writeFileSync(
+      path.join(secondDir, 'task-01-second.md'),
+      fs.readFileSync(path.join(secondDir, 'task-01-second.md'), 'utf8').replace(STALE_HEAD, 'd'.repeat(64)),
+    );
+    clearCache();
     const body = parseBlock(runHook({}, dir).stdout);
-    assert.ok(body && body.decision === 'block', 'the completed-set branch must rebind on a dirty tree');
+    assert.ok(body && body.decision === 'block', 'a receipt edited after commit must still be rebound');
     assert.match(body.reason, /\bprovenance\b/);
-    assert.match(body.reason, /second|demo/);
+    assert.match(body.reason, /second/);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }

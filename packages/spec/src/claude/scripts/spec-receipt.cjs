@@ -5,7 +5,6 @@ const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const { annotatedMarkdownLines } = require('./spec-resolver.cjs');
-const { RUNTIME_STATE_ROOTS } = require('./provenance.cjs');
 
 const EVIDENCE_HEADINGS = new Set([
   'Evidence',
@@ -185,14 +184,19 @@ function tryGitBytes(root, args) {
   return result.stdout;
 }
 
-// A receipt is bound to live Base/Head while it is being written or altered.
-// Once its task file matches the committed bytes and nothing outside the specs
-// root is uncommitted, later commits must not reopen it: rebinding every done
-// receipt on every Stop made each unrelated commit a refresh of all of them.
-// Every state that cannot be read as committed-and-clean keeps the binding,
-// including an unborn HEAD, a staged-only file, and any git failure. The git
-// calls pin the project root; a working-directory-relative status query run
-// from inside the specs root reports a dirty tree as clean.
+// A receipt is bound to live Base/Head while its own task file is being written
+// or altered, and validates on structure alone once that file matches its
+// committed bytes. The binding used to require the whole tree outside the specs
+// root to be clean as well. That condition was removed because it carried no
+// information: Base is the last commit touching anything outside the specs root,
+// so every receipt written before a later commit records an older Base by
+// construction. Measured on this repository, 52 of 52 done receipts differed
+// from the live Base, so one uncommitted unrelated file failed all of them at
+// once and a tampered receipt was indistinguishable from an untouched one. The
+// signal it was meant to carry — marking a task done and then editing the code —
+// is still caught, because doing that leaves the task file uncommitted. Every
+// state that cannot be read as committed-and-unchanged keeps the binding,
+// including an unborn HEAD, a staged-only file, and any git failure.
 function receiptBindingMode(featureDir, taskPath, taskBytes, runtimeContext) {
   const root = runtimeContext && typeof runtimeContext.project_root === 'string' ? runtimeContext.project_root : null;
   const specsRoot = runtimeContext && typeof runtimeContext.specs_root === 'string' ? runtimeContext.specs_root : null;
@@ -208,24 +212,6 @@ function receiptBindingMode(featureDir, taskPath, taskBytes, runtimeContext) {
   // so a checkout that converts line endings can still reach structure mode.
   const committed = tryGitBytes(root, ['cat-file', '--filters', `HEAD:${taskRelative}`]);
   if (committed === null || !committed.equals(taskBytes)) return 'binding';
-  // The same roots the provenance manifest calls generated runtime state rather
-  // than source evidence. Without them the gate defeats itself: writing its own
-  // cache dirties the tree, so a project that tracks its runtime directory could
-  // never reach structure mode.
-  const outsideSpecs = ['--', '.', `:(exclude,literal)${specsRelative}`,
-    ...RUNTIME_STATE_ROOTS.map((entry) => `:(exclude,literal)${entry}`)];
-  const status = tryGitBytes(root, ['status', '--porcelain', '--untracked-files=all', ...outsideSpecs]);
-  if (status === null || status.length !== 0) return 'binding';
-  // `git status` obeys skip-worktree and assume-unchanged, so a tracked file can
-  // be modified while the tree reports clean. Require every index entry outside
-  // the specs root to carry the plain cached tag `H`; any other tag, including
-  // `S` and the lowercase assume-unchanged tags, keeps the binding.
-  const indexTags = tryGitBytes(root, ['ls-files', '-v', ...outsideSpecs]);
-  if (indexTags === null) return 'binding';
-  const hidden = indexTags.toString('utf8').split('\n')
-    .filter((line) => line.trim() !== '')
-    .some((line) => line[0] !== 'H');
-  if (hidden) return 'binding';
   return 'structure';
 }
 

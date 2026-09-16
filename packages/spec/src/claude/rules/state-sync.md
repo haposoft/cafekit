@@ -33,8 +33,11 @@ Set `Status: done` only after the inline Receipt passes the
 fenced block of current command output.
 
 A done task keeps that binding while its file differs from its committed bytes,
-and is validated on structure alone once the file is committed, unchanged, and the
-tree outside the specs root is clean. The gate detects drift, not invention: a valid
+and is validated on structure alone once that file is committed and unchanged. Work
+elsewhere in the tree does not reopen it: Base is the last commit touching anything
+outside the specs root, so every finished receipt records an older Base by
+construction and reopening on a dirty tree failed all of them at once.
+The gate detects drift, not invention: a valid
 Base and Head pair costs one command and no verification run, so neither mode proves
 that the command was executed. Missing, stale, contradictory,
 placeholder, copied, failure, or zero-test evidence leaves the task unfinished.

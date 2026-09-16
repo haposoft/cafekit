@@ -4844,7 +4844,8 @@ async function runStaticSemanticTests() {
       label: "completion policy states both receipt modes and the invention limit",
       file: "src/claude/rules/state-sync.md",
       assert: (content) =>
-        content.includes("validated on structure alone once the file is committed, unchanged, and the") &&
+        content.includes("validated on structure alone once that file is committed and unchanged") &&
+        content.includes("Work\nelsewhere in the tree does not reopen it") &&
         content.includes("The gate detects drift, not invention") &&
         !content.includes("revalidates every task currently marked done"),
     },
@@ -4852,7 +4853,8 @@ async function runStaticSemanticTests() {
       label: "Codex carries the same completion policy, since it does not auto-load Claude rules",
       file: "src/codex/rules/state-sync.md",
       assert: (content) =>
-        content.includes("validated on structure alone once the file is committed, unchanged, and the") &&
+        content.includes("validated on structure alone once that file is committed and unchanged") &&
+        content.includes("Work\nelsewhere in the tree does not reopen it") &&
         content.includes("The gate detects drift, not invention") &&
         !content.includes("revalidates every task currently marked done"),
     },
@@ -4904,8 +4906,9 @@ async function runStaticSemanticTests() {
         content.includes("which packet is claiming closeout") &&
         content.includes("specs/_shared/active-feature.json") &&
         content.includes("A target supplied by the host always wins") &&
-        content.includes("are not revalidated") &&
-        content.includes("known gap with its own future packet") &&
+        content.includes("committed and\n  unchanged") &&
+        content.includes("Work elsewhere in the tree no longer reopens them") &&
+        content.includes("detects drift between a receipt and the\n  tree, not invention") &&
         content.includes("still block"),
     },
     {

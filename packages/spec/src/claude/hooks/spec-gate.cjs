@@ -240,10 +240,10 @@ try {
   // task currently marked done, so a cached PASS cannot hide later mutations
   // (deletion, placeholder, changed Verification/Command/Exit, missing
   // output, edited artifact bytes). Base/Head are compared against the live
-  // runtime only while the task file differs from its committed bytes or the
-  // tree outside the specs root is dirty; a committed, unchanged receipt on a
-  // clean tree is checked on structure alone. Cache is an optimization, not
-  // truth.
+  // runtime only while the task file differs from its committed bytes; once it
+  // is committed and unchanged the receipt is checked on structure alone, and
+  // work elsewhere in the tree no longer reopens it. Cache is an optimization,
+  // not truth.
   const featureCache = cacheExists ? (cache[featureName] || {}) : {};
   const allDoneTasks = Object.keys(taskRegistry).filter((tp) =>
     (taskRegistry[tp]?.status || 'pending') === 'done'

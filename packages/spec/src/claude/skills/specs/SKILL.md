@@ -128,7 +128,7 @@ The shared workflow resolver recognizes only a regular `plan.md` plus one or mor
 regular flat `task-*.md` files in one direct feature directory, and projects exact
 `Status:` values without inferring blockers from prose. The Stop gate re-reads every
 done Receipt, binding Base and Head to the live runtime until the task file is
-committed, unchanged, and the tree outside the specs root is clean. It detects drift
+committed and unchanged; work elsewhere in the tree does not reopen it. It detects drift
 between a receipt and the tree, not invention: a valid pair costs one command and no
 verification run, so a receipt for a command that never ran satisfies it in either
 mode. C3 is where a human weighs the evidence. These checks are a final safety net,

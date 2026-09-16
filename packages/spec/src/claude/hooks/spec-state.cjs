@@ -226,7 +226,7 @@ try {
       lines.push('- Migration required: add `Specs-Contract: process-first-ready-v1` after the plan title before tasks can enter Next.');
     }
     lines.push('- Sync each flat task `Status:` only after verified work; task proof belongs in that task\'s inline `## Receipt`.');
-    lines.push(`- Workflow source: \`specs/${featureName}/plan.md\`; Stop re-checks every done receipt, binding Base/Head to the runtime until the task file is committed, unchanged, and the tree outside the specs root is clean.`);
+    lines.push(`- Workflow source: \`specs/${featureName}/plan.md\`; Stop re-checks every done receipt, binding Base/Head to the runtime until the task file is committed and unchanged.`);
   } else {
     lines.push('- Sync `spec.json` + task Markdown status after verified work; task proof belongs in `receipts/<task-basename>.md`.');
     lines.push(`- Create \`feature-receipt.md\` once after final integration proof${featureReceiptPresent ? ' (present)' : ' (not required before closeout)'}.`);
