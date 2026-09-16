@@ -113,7 +113,10 @@ function hasNonEmptyFencedBlock(body) {
 
 function fieldValues(body, name) {
   const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const matcher = new RegExp(`^\\s*${escaped}\\s*:\\s*(.*?)\\s*$`, 'i');
+  // A leading list marker is accepted: every neighbouring section of a task file writes
+  // its fields as list items, so continuing that style inside the Receipt is the
+  // natural mistake rather than a malformed receipt.
+  const matcher = new RegExp(`^\\s*(?:[-*+]\\s+)?${escaped}\\s*:\\s*(.*?)\\s*$`, 'i');
   return String(body || '').split('\n').map((line) => line.match(matcher)).filter(Boolean).map((match) => match[1]);
 }
 
@@ -335,6 +338,31 @@ function checkWorkflowTaskReceipt(featureDir, taskPath, runtimeContext, policy) 
   };
 }
 
+// The gate used to answer every receipt failure with the same sentence — write a
+// runtime-bound Receipt — which is the wrong instruction whenever the Receipt is
+// present and one field simply could not be read. Name what to change instead.
+const RECEIPT_FIX_HINTS = Object.freeze([
+  ['missing_receipt', 'add exactly one `## Receipt` section at the end of the file'],
+  ['task_status', 'the file needs exactly one `Status: done` line outside any fence'],
+  ['verification_state', 'add a `Verification: PASS` line'],
+  ['command', 'add a `Command:` line holding the exact command that was run'],
+  ['command_identity', 'the `Command:` line must match the Verification Plan command exactly'],
+  ['exit_result', 'add `Exit: 0`; a non-zero exit or a failure marker does not close a task'],
+  ['command_output', 'add a non-empty fenced block holding the real command output'],
+  ['placeholder', 'replace the placeholder values with real ones'],
+  ['provenance', 'add runtime-derived `Base:` and `Head:` lines matching the current runtime'],
+]);
+
+/**
+ * Turn receipt check codes into one instruction naming what to change.
+ */
+function receiptFixHint(failures) {
+  const codes = new Set(Array.isArray(failures) ? failures : []);
+  const hints = RECEIPT_FIX_HINTS.filter(([code]) => codes.has(code)).map(([, hint]) => hint);
+  if (hints.length === 0) return null;
+  return hints.length === 1 ? hints[0] : `${hints.slice(0, -1).join('; ')}; and ${hints[hints.length - 1]}`;
+}
+
 function workflowProofSignature(taskPath, proof) {
   const hash = crypto.createHash('sha256');
   hash.update('cafekit-workflow-proof-v1\0');
@@ -404,6 +432,7 @@ module.exports = {
   checkTaskReceipt,
   checkWorkflowReceiptSet,
   checkWorkflowTaskReceipt,
+  receiptFixHint,
   evidenceBody,
   readTaskProof,
   safeRead,

@@ -5,6 +5,14 @@ All notable changes to @haposoft/cafekit will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.16.7] - 2026-09-16
+
+### Fixed
+
+- **A Receipt whose fields were written as list items failed four checks at once**: every other section of a task file writes its fields that way — the Verification Plan's own `- Command:` sits a few lines above the Receipt — so continuing that house style inside the Receipt was the natural mistake, and the only section that forbade it was the Receipt. The field matchers now accept an optional leading `-`, `*`, or `+`. The receipt body is cut to its own `## Receipt` section, so this cannot pick up the Verification Plan's fields.
+
+- **Every receipt failure was answered with the same sentence**: "write a runtime-bound `## Receipt`" is the wrong instruction whenever the Receipt is present and one field simply could not be read, which is exactly what the case above produced. The block now names what to change — a missing `Verification: PASS` line, a `Command:` that does not match the Verification Plan, a non-zero exit, an empty output fence, absent `Base:`/`Head:` — on both runtimes, from one shared mapping.
+
 ## [0.16.6] - 2026-09-16
 
 ### Fixed

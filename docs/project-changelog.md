@@ -3,6 +3,12 @@
 All notable changes to CafeKit are documented here, following
 [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.16.7] - 2026-09-16
+### Fixed
+- **Receipt viết trường theo kiểu gạch đầu dòng bị trượt bốn check cùng lúc**: mọi mục khác trong file task đều viết trường theo kiểu đó — `- Command:` của Verification Plan nằm ngay trên Receipt vài dòng — nên viết tiếp theo phong cách ấy là sai lầm tự nhiên, mà mục duy nhất cấm nó lại chính là Receipt. Phần khớp trường giờ chấp nhận dấu `-`, `*` hoặc `+` ở đầu. Thân Receipt được cắt riêng theo mục `## Receipt` nên không đụng tới trường của Verification Plan.
+
+- **Mọi lỗi Receipt đều được trả lời bằng cùng một câu**: "write a runtime-bound `## Receipt`" là hướng dẫn sai khi Receipt vẫn ở đó mà chỉ một trường không đọc được — đúng cảnh mà lỗi trên tạo ra. Thông báo giờ nêu thẳng cần sửa gì: thiếu dòng `Verification: PASS`, `Command:` không khớp Verification Plan, exit khác 0, khối output rỗng, thiếu `Base:`/`Head:` — trên cả hai runtime, từ một bảng ánh xạ dùng chung.
+
 ## [0.16.6] - 2026-09-16
 ### Fixed
 - **Việc commit `specs/` là một yêu cầu chưa từng được nói ra, và dự án nào `gitignore` nó thì không thể đáp ứng**: file task chưa commit vẫn bị ràng buộc `Base`/`Head` sống, nên những dự án đó hỏng toàn bộ receipt vĩnh viễn ngay sau lần sửa code đầu tiên. Được báo từ một dự án bị chặn ngay ở tin nhắn đầu phiên, chưa thay đổi gì, và vẫn còn bị chặn sau 0.16.5.

@@ -99,6 +99,10 @@ function checkFeatureReceipt(featureDir, runtimeContext) {
   if (!policy) return { failures: ['shared_validator'], status: 'missing' };
   return receiptHelper().checkFeatureReceipt(featureDir, runtimeContext, policy);
 }
+function receiptFixHint(failures) {
+  const helper = receiptHelper();
+  return typeof helper.receiptFixHint === 'function' ? helper.receiptFixHint(failures) : null;
+}
 function readTaskProof(featureDir, taskPath) {
   return receiptHelper().readTaskProof(featureDir, taskPath, getSharedPolicy() || {});
 }
@@ -115,6 +119,7 @@ module.exports = {
   loadSharedPolicy,
   loadSharedReceipt,
   readTaskProof,
+  receiptFixHint,
   safeTaskFile,
   validateCanonicalReceipt,
 };

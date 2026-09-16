@@ -1842,6 +1842,44 @@ test('47. completed-set branch accepts committed receipts and blocks an edited o
   }
 });
 
+test('51. Receipt fields written as list items are accepted', () => {
+  // Every neighbouring section writes its fields as list items — the Verification Plan's
+  // own `- Command:` sits a few lines above — so continuing that house style inside the
+  // Receipt is the natural mistake. It used to fail verification_state, command,
+  // exit_result and command_identity at once, with a message telling the user to rewrite
+  // a Receipt whose content was already correct.
+  const bulleted = boundReceipt().map((line) => (
+    /^(Verification|Command|Exit|Base|Head):/.test(line) ? `- ${line}` : line
+  ));
+  assert.ok(bulleted.some((line) => line.startsWith('- Verification:')), 'the fixture must be bulleted');
+  const dir = makeWorkflowFixture(bulleted);
+  try {
+    clearCache();
+    assert.strictEqual(runHook({}, dir).stdout, '', 'a bulleted Receipt must be read, not rejected');
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('52. the block names what to change, not just which check failed', () => {
+  // The same sentence used to answer every receipt failure, including the ones where
+  // the Receipt was present and one field simply could not be read.
+  const dir = makeWorkflowFixture([
+    '## Receipt', '', 'Command: node --test', 'Exit: 0',
+    `Base: ${VALID_BASE}`, `Head: ${VALID_HEAD}`, '```text', '$ node --test', 'pass: 1', '```',
+  ]);
+  try {
+    clearCache();
+    const body = parseBlock(runHook({}, dir).stdout);
+    assert.ok(body && body.decision === 'block');
+    assert.match(body.reason, /add a `Verification: PASS` line/, 'the fix must name the missing field');
+    assert.doesNotMatch(body.reason, /write a runtime-bound `## Receipt` with command output/,
+      'the generic instruction must not stand in for a specific one');
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('49. an unversioned specs root does not keep every receipt bound', () => {
   // Committing specs/ is the user's choice, not the tool's requirement. Without a
   // committed copy of the task file there is no baseline, so the selector used to keep

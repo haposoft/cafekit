@@ -1884,6 +1884,18 @@ function flashState(taskRegistry = {}) {
     .map(([taskPath]) => taskPath);
 }
 
+// Every other section of a task file writes its fields as list items — the Verification
+// Plan's own `- Command:` sits a few lines above the Receipt — so continuing that house
+// style inside the Receipt is the natural mistake, and it used to fail five checks at
+// once with a message that pointed at the content instead of the dash. Accept either
+// form. The receipt body is cut to its own `## Receipt` section, so this cannot pick up
+// the Verification Plan's fields.
+const RECEIPT_FIELD_PREFIX = '\\s*(?:[-*+]\\s+)?';
+
+function receiptFieldPattern(name, tail = '\\s*:', flags = '') {
+  return new RegExp(`^${RECEIPT_FIELD_PREFIX}${name}${tail}`, flags);
+}
+
 function validateCanonicalReceipt(body, options = {}) {
   if (typeof body !== 'string') return ['verification_state'];
   const failures = [];
@@ -1900,15 +1912,15 @@ function validateCanonicalReceipt(body, options = {}) {
     addFailure('verification_state');
   }
   // Unambiguous verification state: must be Verification: PASS exactly
-  if (!/^\s*Verification:\s*PASS\s*$/m.test(body)) {
+  if (!receiptFieldPattern('Verification', '\\s*:\\s*PASS\\s*$', 'm').test(body)) {
     addFailure('verification_state');
   }
   // Command must be present with non-empty concrete value on same line, not placeholder
-  const cmdLine = body.split('\n').find((l) => /^\s*Command(?:\(s\))?\s*:/m.test(l)) || null;
-  if (!cmdLine || !/^\s*Command(?:\(s\))?\s*:[ \t]*\S/m.test(cmdLine)) {
+  const cmdLine = body.split('\n').find((l) => receiptFieldPattern('Command(?:\\(s\\))?', '\\s*:', 'm').test(l)) || null;
+  if (!cmdLine || !receiptFieldPattern('Command(?:\\(s\\))?', '\\s*:[ \\t]*\\S', 'm').test(cmdLine)) {
     addFailure('command');
   } else {
-    const m = cmdLine.match(/^\s*Command(?:\(s\))?\s*:[ \t]*(.*)$/m);
+    const m = cmdLine.match(receiptFieldPattern('Command(?:\\(s\\))?', '\\s*:[ \\t]*(.*)$', 'm'));
     const val = m ? m[1].trim() : '';
     if (isPlaceholderToken(val)) {
       addFailure('command');
@@ -1921,15 +1933,15 @@ function validateCanonicalReceipt(body, options = {}) {
   const exitValues = [];
   const resultValues = [];
   for (const line of lines) {
-    if (/^\s*Exit\s*:/i.test(line)) {
-      const m = line.match(/^\s*Exit\s*:\s*(.*)$/i);
+    if (receiptFieldPattern('Exit', '\\s*:', 'i').test(line)) {
+      const m = line.match(receiptFieldPattern('Exit', '\\s*:\\s*(.*)$', 'i'));
       exitValues.push(m ? m[1].trim() : '');
     } else if (/exit\s+code\s*[:=]/i.test(line)) {
       const m = line.match(/exit\s+code\s*[:=]\s*(.*)$/i);
       if (m) exitValues.push(m[1].trim());
     }
-    if (/^\s*Result\s*:/i.test(line)) {
-      const m = line.match(/^\s*Result\s*:\s*(.+?)\s*$/i);
+    if (receiptFieldPattern('Result', '\\s*:', 'i').test(line)) {
+      const m = line.match(receiptFieldPattern('Result', '\\s*:\\s*(.+?)\\s*$', 'i'));
       resultValues.push(m ? m[1].trim() : '');
     }
   }
@@ -1954,8 +1966,8 @@ function validateCanonicalReceipt(body, options = {}) {
   // Without expected values this validates schema only; it does not claim identity binding.
   const receiptLines = body.split('\n');
   const readField = (name) => receiptLines
-    .filter((line) => new RegExp(`^\\s*${name}\\s*:`, 'i').test(line))
-    .map((line) => line.replace(new RegExp(`^\\s*${name}\\s*:\\s*`, 'i'), '').trim());
+    .filter((line) => receiptFieldPattern(name, '\\s*:', 'i').test(line))
+    .map((line) => line.replace(receiptFieldPattern(name, '\\s*:\\s*', 'i'), '').trim());
   const baseValues = readField('Base');
   const headValues = readField('Head');
   const baseShaValues = readField('base_sha');

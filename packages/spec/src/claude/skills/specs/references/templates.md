@@ -131,9 +131,10 @@ Tests: 3 passed, 3 total
 ```
 ````
 
-The receipt is invalid when it has a placeholder, missing output fence, zero
-executed tests where tests are required, a failure marker, nonzero exit, stale
-Base/Head, or a bare PASS claim without the command output.
+Each field is its own line; a leading `- ` reads identically. The receipt is
+invalid when it has a placeholder, missing output fence, zero executed tests
+where tests are required, a failure marker, nonzero exit, stale Base/Head, or a
+bare PASS claim without the command output.
 
 ## EARS sentence patterns
 

@@ -150,7 +150,8 @@ try {
     const lines = [`⚠️ Completion gate: ${checked.failures.length} done task(s) lack a verification receipt.`];
     for (const failure of checked.failures) {
       lines.push(`- \`${failure.featureName}/${failure.taskPath}\`: failed check(s) ${failure.failures.join(', ')}`);
-      lines.push(`  Fix: write a runtime-bound \`## Receipt\` with the planned command in \`specs/${failure.featureName}/${failure.taskPath}\`.`);
+      const hint = typeof RECEIPT.receiptFixHint === 'function' ? RECEIPT.receiptFixHint(failure.failures) : null;
+      lines.push(`  Fix in \`specs/${failure.featureName}/${failure.taskPath}\`: ${hint || 'write a runtime-bound `## Receipt` with the planned command'}.`);
     }
     emitBlock(lines.slice(0, 8).join('\n'));
     process.exit(0);
@@ -302,7 +303,7 @@ try {
     lines.push(taskPath === 'feature-receipt.md'
       ? `  Fix: run final integration proof, then write \`specs/${featureName}/feature-receipt.md\`.`
       : processWorkflow
-        ? `  Fix: write a runtime-bound \`## Receipt\` with command output in \`specs/${featureName}/${path.posix.basename(taskPath)}\`.`
+        ? `  Fix in \`specs/${featureName}/${path.posix.basename(taskPath)}\`: ${(typeof RECEIPT.receiptFixHint === 'function' && RECEIPT.receiptFixHint(fails)) || 'write a runtime-bound `## Receipt` with command output'}.`
         : `  Fix: write canonical proof to \`specs/${featureName}/receipts/${path.posix.basename(taskPath)}\`; legacy \`## Evidence\` remains read-compatible.`);
   }
   if (completionBlocked) {

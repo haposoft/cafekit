@@ -16,6 +16,7 @@ const {
   checkWorkflowReceiptDetails,
   checkWorkflowReceiptSet,
   loadSharedPolicy,
+  receiptFixHint,
 } = require('./lib/spec-receipt.cjs');
 const { taskStatusMap } = require('./lib/spec-utils.cjs');
 const FINAL_STATE = require('./completion-authority-check.cjs');
@@ -75,7 +76,7 @@ try {
     const lines = [`Completion gate: ${checked.failures.length} done task(s) lack a verification receipt.`];
     for (const failure of checked.failures) {
       lines.push(`- \`${failure.featureName}/${failure.taskPath}\`: failed check(s) ${failure.failures.join(', ')}`);
-      lines.push(`  Write a runtime-bound \`## Receipt\` with the planned command in \`specs/${failure.featureName}/${failure.taskPath}\`.`);
+      lines.push(`  In \`specs/${failure.featureName}/${failure.taskPath}\`: ${receiptFixHint(failure.failures) || 'write a runtime-bound `## Receipt` with the planned command'}.`);
     }
     emitBlock(lines.slice(0, 8).join('\n'));
     process.exit(0);
@@ -228,7 +229,7 @@ try {
     lines.push(result.taskPath === 'feature-receipt.md'
       ? `  Run final integration proof, then write \`specs/${active.featureName}/feature-receipt.md\`.`
       : processWorkflow
-        ? `  Write a runtime-bound \`## Receipt\` with command output in \`specs/${active.featureName}/${path.posix.basename(result.taskPath)}\`.`
+        ? `  In \`specs/${active.featureName}/${path.posix.basename(result.taskPath)}\`: ${receiptFixHint(result.failures) || 'write a runtime-bound `## Receipt` with command output'}.`
         : `  Write canonical proof to \`specs/${active.featureName}/receipts/${path.posix.basename(result.taskPath)}\`; legacy \`## Evidence\` remains read-compatible.`);
   }
   if (completionBlocked) {
