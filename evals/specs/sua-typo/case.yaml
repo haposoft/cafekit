@@ -1,0 +1,10 @@
+schema_version: "1.0"
+name: sua-typo
+context:
+  scaffold_script: scaffold.sh
+execution:
+  prompt: "Trong README.md có chữ 'nôi bộ' bị sai chính tả, phải là 'nội bộ'. Chỉ cho tôi dòng đó và cách sửa."
+  max_turns: 5
+  timeout_seconds: 180
+  runs: 3
+  allowed_tools: [Read, Glob, Grep, Skill]

@@ -1,0 +1,12 @@
+const express = require('express');
+const session = require('cookie-session');
+const auth = require('./auth');
+const customers = require('./customers');
+const app = express();
+app.use(express.json());
+app.use(session({ name: 'sid', keys: [process.env.SESSION_KEY || 'dev-only'] }));
+app.post('/login', auth.login);
+app.post('/logout', auth.logout);
+app.use('/customers', auth.requireUser, customers.router);
+if (require.main === module) app.listen(3000);
+module.exports = app;

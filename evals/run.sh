@@ -4,6 +4,7 @@
 #   evals/run.sh <skill> [claude plugin eval options...]
 #   evals/run.sh specs                       # full suite, ablation with-without
 #   evals/run.sh specs --case dung-o-c1 --runs 1 --ablation none --model opus
+#   evals/run.sh specs --validate         # load every case and print the plan, $0
 #
 # Why a script: the harness treats the plugin root as the tree it enumerates, and it
 # passes one Read/Glob/Grep grant per path to the child as a single --allowed-tools
@@ -34,6 +35,13 @@ cat > "$work/.claude-plugin/plugin.json" <<JSON
   "description": "temporary eval root for the CafeKit $skill skill",
   "skills": ["./skills/$skill"], "experimental": { "evals": "evals" } }
 JSON
+# Validate only: load every case, print the plan, spend nothing. The harness checks the
+# cost ceiling before each run launches, so a ceiling of 0 stops it right after loading.
+if [ "${1:-}" = "--validate" ]; then
+  ( cd "$work" && claude plugin eval . --no-publish --trust-plugin --max-cost-usd 0 "${@:2}" ) \
+    | grep -vE '^Note:|^Ablation: defaulting'
+  exit 0
+fi
 stamp="$(date -u +%Y%m%dT%H%M%SZ)"
 out="$root/evals/results/$skill/$stamp"; mkdir -p "$out"
 set +e

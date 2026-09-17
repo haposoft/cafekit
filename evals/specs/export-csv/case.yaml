@@ -1,0 +1,10 @@
+schema_version: "1.0"
+name: export-csv
+context:
+  scaffold_script: scaffold.sh
+execution:
+  prompt: "Cho đội bán hàng export danh sách khách hàng ra file CSV, có lọc theo ngày tạo. Bắt tay vào làm nhé."
+  max_turns: 14
+  timeout_seconds: 420
+  runs: 3
+  allowed_tools: [Read, Glob, Grep, Skill]
