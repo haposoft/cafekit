@@ -1,6 +1,6 @@
 ---
 name: cf:specs
-description: "Turn a substantial or risk-elevated feature idea into a bounded, reviewed plan and executable flat task files, with human decisions at scope, findings, and completion. Use when work needs durable coordination or is not eligible for direct work; skip only when a change is clear, isolated, reversible, routine, and likely limited to one or two files."
+description: "Plan a feature before anyone implements it. Use the moment a user asks to add, build, implement, or change a capability — a payment flow, an integration with an external service, a schema change, anything that will touch more than one or two files or carry auth, data, or money risk. Being in a hurry is not a reason to skip this: a scope question takes one turn and prevents a wrong build. It produces a bounded plan and flat task files with human decisions at scope, findings, and completion; it never writes code. Use when work needs durable coordination or is not eligible for direct work; skip only when a change is clear, isolated, reversible, routine, and likely limited to one or two files."
 user-invocable: true
 argument-hint: "<feature-description>"
 metadata:
