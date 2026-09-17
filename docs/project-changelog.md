@@ -3,6 +3,12 @@
 All notable changes to CafeKit are documented here, following
 [Keep a Changelog](https://keepachangelog.com/).
 
+## [Unreleased]
+### Changed
+- **`cf:specs` giờ được mô tả bằng đúng yêu cầu cần mở nó.** Đo bằng bộ `evals/` mới (`claude plugin eval`, có/không skill, 3 run mỗi nhánh): skill hiện rõ trong danh mục nhưng sonnet không gọi 3/3, opus 0/1 khi được yêu cầu thêm đăng nhập Google "làm luôn đi" — cả hai đi thẳng vào code, opus còn tự chốt kiến trúc thay người dùng, đúng thứ cửa C1 sinh ra để ngăn. Mô tả mới mở bằng lời người dùng (thêm/xây/triển khai/đổi một chức năng), có ví dụ, nói thẳng "vội không phải lý do bỏ bước hỏi phạm vi", và "không bao giờ viết code"; mệnh đề skip giữ nguyên văn. Sau: gọi skill 10/12 run dương trên hai model (trước 0/4), dừng C1 theo trọng tài 7/12 (trước 0/7), 0/24 nhảy nhầm ở ca âm. Giới hạn đo được: opus vẫn coi "export CSV khách hàng" là việc thường và bỏ qua skill 2/3; sonnet thì không.
+### Fixed
+- **Receipt gõ tay cặp Base/Head được bảo "thêm dòng" dù đã có.** Cổng giờ nói rõ hai dòng có mặt nhưng không phải cặp runtime dẫn xuất, kèm hình dạng mong đợi, để việc cần làm là dẫn xuất lại.
+
 ## [0.16.7] - 2026-09-16
 ### Fixed
 - **Receipt viết trường theo kiểu gạch đầu dòng bị trượt bốn check cùng lúc**: mọi mục khác trong file task đều viết trường theo kiểu đó — `- Command:` của Verification Plan nằm ngay trên Receipt vài dòng — nên viết tiếp theo phong cách ấy là sai lầm tự nhiên, mà mục duy nhất cấm nó lại chính là Receipt. Phần khớp trường giờ chấp nhận dấu `-`, `*` hoặc `+` ở đầu. Thân Receipt được cắt riêng theo mục `## Receipt` nên không đụng tới trường của Verification Plan.

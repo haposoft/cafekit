@@ -5,6 +5,16 @@ All notable changes to @haposoft/cafekit will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- **`cf:specs` is described by the request that should open it.** Measured with the new `evals/` suite (`claude plugin eval`, with and without the skill, three runs each): with the skill loaded and visible, sonnet did not invoke it in 3 of 3 runs and opus in 1 of 1 when asked to add Google login "right now" — both went straight to implementation, and opus settled architecture decisions on the user's behalf, the outcome the C1 gate exists to prevent. The description now opens with what a user says (add, build, implement, or change a capability), gives examples, states that being in a hurry is not a reason to skip a one-turn scope question, and says it never writes code; the skip clause is kept verbatim. After: the skill is invoked in 10 of 12 positive runs across both models (0 of 4 before), stops at C1 in 7 of 12 by the judge (0 of 7 before), and never fires on 24 negative runs. Measured limit: opus still judges "export customers to CSV" routine and skips the skill in 2 of 3 runs; sonnet does not.
+
+### Fixed
+
+- **A hand-typed provenance pair was told to add lines it already had.** The completion gate now says the `Base:`/`Head:` lines are present but are not the pair this runtime derives, and names the expected shapes, so the fix is to re-derive.
+
 ## [0.16.7] - 2026-09-16
 
 ### Fixed
