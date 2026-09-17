@@ -794,7 +794,7 @@ test('Specs primary output is a flat process-first packet with isolated legacy c
   assert.match(regions.primary, /Task files are flat beside `plan\.md`/i);
   assert.match(regions.primary, /one task at a time/i);
   assert.match(regions.primary, /inline `## Receipt`/i);
-  assert.match(regions.primary, /C1 — Scope[\s\S]*C2 — Findings[\s\S]*C3 — Done/i);
+  assert.match(regions.primary, /GATE-SCOPE[\s\S]*GATE-REVIEW[\s\S]*GATE-DONE/i);
   assert.match(regions.legacy, /spec\.json/i);
   assert.match(regions.legacy, /never requires the legacy kernel/i);
   assertVocabularyIsLegacyOnly(SPECS, regions);
@@ -815,7 +815,7 @@ test('core execution agents default to process-first state and isolate legacy pa
   assert.match(implementer, /process-first work[\s\S]{0,100}Ownership[\s\S]{0,100}`Related Files` only for a valid legacy adapter/i);
 
   const auditor = read(PROCESS_FIRST_AGENTS[2]);
-  assert.match(auditor, /accepted C1\/C2 decisions/i);
+  assert.match(auditor, /accepted GATE-SCOPE\/GATE-REVIEW decisions/i);
   assert.match(auditor, /Only for a valid legacy adapter[\s\S]*`Related Files`[\s\S]*`## Evidence`/i);
   assert.match(auditor, /Never require those legacy artifacts from a[\s\S]*process-first packet/i);
   assert.match(auditor, /attestation belongs only to the valid legacy/i);
@@ -825,7 +825,7 @@ test('core execution agents default to process-first state and isolate legacy pa
 
   const deployer = read(PROCESS_FIRST_AGENTS[4]);
   assert.match(deployer, /current final inline Receipt/i);
-  assert.match(deployer, /C3\/release authorization/i);
+  assert.match(deployer, /GATE-DONE\/release authorization/i);
   assert.match(deployer, /does not write process-first Status\/Receipt/i);
 });
 
@@ -1293,7 +1293,7 @@ test('auto authoring reaches readiness only after promotion, validation, groundi
     assert.ok(executableBlocks.every((block) => !/cf:?develop/i.test(block)), 'Specs must never execute Develop');
     assert.match(specs, /An implementation workflow owns execution/i);
     assert.match(specs, /selects one unblocked task[\s\S]*runs\s+the task's verification[\s\S]*inline `## Receipt`/i);
-    assert.match(specs, /The user decides\s+at C3 whether the feature is done/i);
+    assert.match(specs, /The user decides\s+at GATE-DONE whether the feature is done/i);
   } finally {
     fs.rmSync(fixture.root, { recursive: true, force: true });
   }

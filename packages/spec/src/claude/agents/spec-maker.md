@@ -19,7 +19,7 @@ removes product decisions from implementation. The output is Markdown under
 
 Read `skills/specs/SKILL.md` and `skills/specs/references/templates.md` before
 routing; they are the canonical risk and coverage authority. Do not duplicate
-their taxonomy here. Apply their risk-first route before C1 and stop when the
+their taxonomy here. Apply their risk-first route before GATE-SCOPE and stop when the
 request qualifies for direct work; hand off when it requires Brainstorm-only exploration.
 
 ## Required process
@@ -30,7 +30,7 @@ Find current entrypoints, reusable code, callers, tests, docs, and runtime
 registration. Cite concrete `path:line` evidence. Mark facts that cannot be
 verified as `[UNVERIFIED]` and state what would settle them.
 
-### 2. Open C1 once
+### 2. Open GATE-SCOPE once
 
 Summarize what exists, the minimum change set, and expansion signals. Ask the
 user to EXPAND, KEEP, or CUT. Record the answer and explicit exclusions. Do not
@@ -54,7 +54,7 @@ copying their kinds, surfaces, risk, or proof obligations.
 
 Do not create implementation files, receipts, approval records, generated
 registries, readiness claims, or empty supporting documents. Keep every new
-task `Status: blocked` while C2 is open, and keep its `## Receipt` empty.
+task `Status: blocked` while GATE-REVIEW is open, and keep its `## Receipt` empty.
 
 ### 4. Review from fresh context
 
@@ -63,13 +63,13 @@ and give them only the plan packet plus repository access. Require a severity,
 plan location, concrete failure, current `path:line` evidence, and smallest
 repair for every finding.
 
-Deduplicate and cap findings at 15. Open C2 so the user can accept, reject, or
+Deduplicate and cap findings at 15. Open GATE-REVIEW so the user can accept, reject, or
 revise each one. Apply only accepted changes and run the full consistency sweep
 after every edit. Rederive affected CP rows using the canonical delta list in
 the templates. Then derive every task
 state, not only the first candidate:
 `pending` means semantically ready for the dependency-aware queue. Keep a task
-`blocked` while a C1/C2 decision, accepted finding, or `UNKNOWN` closure remains
+`blocked` while a GATE-SCOPE/GATE-REVIEW decision, accepted finding, or `UNKNOWN` closure remains
 open. A named task dependency alone does not make it blocked; write dependencies
 as exact flat task basenames and let the resolver derive the next pending task.
 Move `blocked` to `pending` only when current evidence closes every non-dependency
@@ -77,7 +77,7 @@ blocker. Stop after two paper rounds; later findings need runtime evidence.
 
 ### 5. Hand off without dispatch
 
-Report the created files, C1 decision, accepted C2 findings, remaining
+Report the created files, GATE-SCOPE decision, accepted GATE-REVIEW findings, remaining
 uncertainties, every task status, and the first pending task.
 Do not start Develop or treat dispatchability as user authorization. The user
 chooses when execution begins.
@@ -100,8 +100,8 @@ End with:
 ```text
 Status: DONE | DONE_WITH_CONCERNS | BLOCKED | NEEDS_CONTEXT
 Files: <plan and task paths>
-C1: <decision>
-C2: <accepted/rejected/revised counts>
+GATE-SCOPE: <decision>
+GATE-REVIEW: <accepted/rejected/revised counts>
 Next: <first `Status: pending` task or blocker>
 Unresolved questions: <none or concise list>
 ```

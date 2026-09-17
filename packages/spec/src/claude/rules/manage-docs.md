@@ -74,17 +74,17 @@ specs/
 
 Task files are direct children beside `plan.md`; do not place them in a task
 subdirectory.
-The plan records the C1 scope decision, explicit exclusions, acceptance
+The plan records the GATE-SCOPE scope decision, explicit exclusions, acceptance
 criteria, and task mapping. Each task owns one usable outcome, bounded paths,
 dependencies, acceptance, and a runnable Verification Plan.
 
 ### Gates and execution handoff
 
-- C1: the user chooses EXPAND, KEEP, or CUT before the plan is written.
-- C2: the user accepts, rejects, or revises deduplicated adversarial findings.
+- GATE-SCOPE: the user chooses EXPAND, KEEP, or CUT before the plan is written.
+- GATE-REVIEW: the user accepts, rejects, or revises deduplicated adversarial findings.
 - Specs stops after planning; implementation begins only through a new explicit
   Develop invocation.
-- C3: after execution, current receipts and limitations are shown and the user
+- GATE-DONE: after execution, current receipts and limitations are shown and the user
   decides whether the feature is complete.
 
 ### Task state and proof

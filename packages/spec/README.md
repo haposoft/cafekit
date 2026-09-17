@@ -310,9 +310,9 @@ specs/<feature-name>/
 ```
 
 The process-first workflow has three human decision gates. `cf:specs` opens
-C1 to fix scope before authoring and C2 to resolve adversarial findings, then
+GATE-SCOPE to fix scope before authoring and GATE-REVIEW to resolve adversarial findings, then
 stops. A later explicit `cf:develop` invocation executes the tasks and
-presents C3 for closeout only after real execution proof. Each task has one
+presents GATE-DONE for closeout only after real execution proof. Each task has one
 `Status:` field and keeps its canonical `## Receipt` inline, including the
 exact Verification Plan command, `Exit: 0`, `Verification: PASS`,
 runtime-derived Base and Head, and current command output.

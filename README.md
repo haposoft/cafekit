@@ -136,11 +136,11 @@ specs/<feature>/
 Process-first Specs packets are flat and hand-editable. `plan.md` is the
 index; each `task-NN-<slug>.md` lives beside it and owns one outcome.
 
-- C1 — scope, before the plan is written.
-- C2 — findings, after adversarial review.
-- C3 — done, after execution proof and receipts.
+- GATE-SCOPE — scope, before the plan is written.
+- GATE-REVIEW — findings, after adversarial review.
+- GATE-DONE — done, after execution proof and receipts.
 
-`plan.md` keeps the C1 scope decision, EARS acceptance criteria, explicit
+`plan.md` keeps the GATE-SCOPE scope decision, EARS acceptance criteria, explicit
 exclusions, and a task table. Every acceptance criterion must map to at least
 one task and one proof command.
 

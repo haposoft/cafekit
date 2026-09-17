@@ -35,7 +35,7 @@ Before packaging your report, verify:
 - Provide a file list with brief context descriptions — fast and concise.
 - Target the right directories, skip noise.
 - For `develop`, scout per active task. New process-first work is bounded by
-  `plan.md` C1 scope plus the flat `task-NN-*.md` Outcome, Scope, Ownership, Acceptance,
+  `plan.md` GATE-SCOPE scope plus the flat `task-NN-*.md` Outcome, Scope, Ownership, Acceptance,
   Dependencies, and Verification Plan. Use `scope_lock`, requirement IDs, and
   design contracts only after a valid legacy `spec.json` packet is selected.
 - Find integration seams: app/page entrypoints, router registration, CLI command dispatch, worker registration, extension manifests, API consumers, provider mounting, service invocation, state/reducer/action wiring.

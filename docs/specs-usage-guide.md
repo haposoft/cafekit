@@ -13,7 +13,7 @@ việc là “nhỏ” hoặc “routine” không được hạ risk floor đã
 | Route | Điều kiện |
 |---|---|
 | Làm trực tiếp | Chỉ khi cause và change đều clear, isolated, reversible, `routine`, và likely giới hạn trong một hoặc hai file |
-| C1/C2 | Còn user-owned observable choice; hỏi và giữ phần bị ảnh hưởng ở `blocked` |
+| GATE-SCOPE/GATE-REVIEW | Còn user-owned observable choice; hỏi và giữ phần bị ảnh hưởng ở `blocked` |
 | Brainstorm | Có material competing technical designs, sau khi user-owned choices đã chốt |
 | Một Specs packet | Material work không đủ điều kiện Direct và không phải Brainstorm-only exploration |
 | Split Specs | Có từ ba independent subsystem trở lên; mỗi subsystem có outcome, boundary và verification/deployment path tự đi qua lifecycle |
@@ -48,18 +48,18 @@ authority cho Specs/Develop.
 
 | Cổng | Khi nào | Quyết định của người dùng |
 |---|---|---|
-| C1 — Scope | Trước khi viết plan | EXPAND, KEEP hoặc CUT |
-| C2 — Findings | Sau adversarial review | Accept, reject, hoặc revise từng finding |
-| C3 — Done | Sau execution | Chấp nhận completion từ output và receipts hiện tại |
+| GATE-SCOPE | Trước khi viết plan | EXPAND, KEEP hoặc CUT |
+| GATE-REVIEW | Sau adversarial review | Accept, reject, hoặc revise từng finding |
+| GATE-DONE | Sau execution | Chấp nhận completion từ output và receipts hiện tại |
 
-Chỉ hỏi ở ba cổng này. Nếu evidence mới làm scope sai, quay lại C1 thay vì tự
+Chỉ hỏi ở ba cổng này. Nếu evidence mới làm scope sai, quay lại GATE-SCOPE thay vì tự
 nới phạm vi âm thầm.
 
 ## Luồng chính
 
 1. Scout repo trước khi viết kế hoạch: tìm code đã có, callers, tests, exports,
    file thật và bất kỳ điểm tái sử dụng nào.
-2. Viết `plan.md` như một index ngắn: quyết định C1, acceptance criteria kiểu
+2. Viết `plan.md` như một index ngắn: quyết định GATE-SCOPE, acceptance criteria kiểu
    EARS, explicit exclusions, và bảng task.
 3. Review adversarially từ fresh context, dedupe finding, cap danh sách ở 15,
    và dừng sau tối đa hai vòng giấy.
@@ -80,7 +80,7 @@ specs/<feature>/
 
 ### `plan.md`
 
-- C1 scope decision và explicit exclusions.
+- GATE-SCOPE scope decision và explicit exclusions.
 - EARS acceptance criteria có ID ổn định.
 - Bảng task: mỗi criterion phải map tới ít nhất một task và một proof command.
 
@@ -106,7 +106,7 @@ trước khi derive task status.
 |---|---|---|
 | `none` | Tiếp tục | Có thể vào `pending` khi các blocker khác đã đóng |
 | `examples-needed` | Thêm ví dụ chỉ để làm rõ rule đã quyết định; nếu ví dụ đổi observable behavior thì promote sang `decision-needed` | Không tự chọn product outcome |
-| `decision-needed` | Hỏi người dùng tại C1/C2 | Affected task giữ `blocked` |
+| `decision-needed` | Hỏi người dùng tại GATE-SCOPE/GATE-REVIEW | Affected task giữ `blocked` |
 | `design-needed` | Sau khi user-owned decision đã chốt, chuyển material competing designs sang Brainstorm | Chưa author implementation choice trong task |
 
 `pending` nghĩa là semantic contract và reachability đã biết, chưa có nghĩa
@@ -128,7 +128,7 @@ command có thể chạy nhiều level probes nếu từng probe được nêu r
 
 - `UNKNOWN` command/caller/environment reachability giữ task ở `blocked`.
 - Known nhưng chưa chạy required proof vẫn có thể ở `pending`.
-- Missing, failed hoặc unavailable required evidence chặn `done` và C3.
+- Missing, failed hoặc unavailable required evidence chặn `done` và GATE-DONE.
 - `source`, `installed` và `live` độc lập; PASS ở level này không promote level
   khác. Source/static checks chỉ chứng minh written contract, không chứng minh
   live-model adherence.
@@ -196,9 +196,9 @@ Receipt không hợp lệ nếu thiếu fenced output, thiếu `Exit: 0`, thiế
 
 ## Develop và Sync
 
-- `cf:develop <feature>` tái dùng C1/C2 đã duyệt, chọn task đầu tiên có
+- `cf:develop <feature>` tái dùng GATE-SCOPE/GATE-REVIEW đã duyệt, chọn task đầu tiên có
   dependency hợp lệ theo thứ tự trong `plan.md`, rồi tiếp tục tuần tự tới blocker
-  thật hoặc C3. Không hỏi lại ở mỗi task.
+  thật hoặc GATE-DONE. Không hỏi lại ở mỗi task.
 - `cf:develop <feature> task-NN-<slug>.md` chỉ làm đúng task được chỉ định,
   không chạm sibling và dừng ngay sau sync thành công.
 - Trạng thái `paused`, `blocked`, dependency không hợp lệ, nhiều task
@@ -208,7 +208,7 @@ Receipt không hợp lệ nếu thiếu fenced output, thiếu `Exit: 0`, thiế
   tree; SHA handoff của worker không thay thế runtime `Head` trong Receipt.
 - `--flash` giữ task ở `in_progress` với `FLASH_UNVERIFIED`, không chain và không
   được promote cho tới một lần non-Flash rõ ràng chạy fresh canonical proof.
-- Trước C3, Develop lặp lại proof của Receipt stale cho tới khi hai lần capture
+- Trước GATE-DONE, Develop lặp lại proof của Receipt stale cho tới khi hai lần capture
   `Head` liên tiếp giống nhau và mọi task `done` cùng bind vào `Head` hiện tại.
 - Các số như số test, số named probe, số file và line budget là structural
   metrics, không phải đo wall-clock hay cam kết tốc độ. Source/installed checks

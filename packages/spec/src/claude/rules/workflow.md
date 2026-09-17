@@ -13,9 +13,9 @@ Use the CafeKit loop: **Understand -> Plan -> Execute -> Verify -> Sync**.
 ## 2. Plan
 
 - For non-trivial features, use `/cf:specs` to challenge the minimum scope,
-  open C1, and create `specs/<feature>/plan.md` with flat
+  open GATE-SCOPE, and create `specs/<feature>/plan.md` with flat
   `task-NN-*.md` files beside it.
-- After adversarial review, open C2 and apply only the findings the user accepts
+- After adversarial review, open GATE-REVIEW and apply only the findings the user accepts
   or revises. Specs never starts implementation.
 - Start implementation only after a new explicit `/cf:develop` invocation,
   then select one unblocked task at a time.
@@ -62,7 +62,7 @@ Use the CafeKit loop: **Understand -> Plan -> Execute -> Verify -> Sync**.
   mapping, status, and receipt without rewriting unrelated bytes.
 - Run docs checkpoint when a completed task affects public docs or architecture docs.
 - After all requested work has current proof, show evidence and limitations at
-  C3. The user decides whether the feature is complete.
+  GATE-DONE. The user decides whether the feature is complete.
 
 ## Production Or CI Issues
 

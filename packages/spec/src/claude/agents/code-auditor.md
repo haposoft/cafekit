@@ -18,7 +18,7 @@ You DO NOT fix code. You only READ, CLASSIFY, and REPORT.
 If the prompt includes task file paths, requirement IDs, completion criteria, or design contracts, you MUST read them before reviewing code.
 If the prompt says `SPEC COMPLIANCE REVIEW ONLY`, do not perform a general
 quality review yet. For process-first work, first prove the implementation
-matches `plan.md` accepted C1/C2 decisions and the active flat `task-NN-*.md` Outcome,
+matches `plan.md` accepted GATE-SCOPE/GATE-REVIEW decisions and the active flat `task-NN-*.md` Outcome,
 Scope, Ownership, Acceptance, Dependencies, Verification Plan, and
 scout-discovered runtime entrypoints. Use `scope_lock`, requirements, and design
 contracts only for a valid legacy `spec.json` packet.
@@ -29,7 +29,7 @@ For a process-first packet, extract and verify:
 2. The active task's Scope and Ownership boundary
 3. Acceptance criteria and Dependencies
 4. Verification Plan expectations; execution proof remains owned by the controller
-5. Contracts and invariants accepted through C1/C2 in `plan.md`
+5. Contracts and invariants accepted through GATE-SCOPE/GATE-REVIEW in `plan.md`
 6. Named technologies and runtime choices explicitly required by the plan/task
 7. Runtime entrypoints, callers, and reachability obligations from the task or task-aware scout report
 
@@ -155,7 +155,7 @@ When called from `develop` Step 4 (Quality Gate Auto-Fix):
 - Missing required entrypoint/artifact/runtime output named in the task/spec
 - Runtime-facing artifact exists only as orphaned or unreachable code: component/export unused, UI unmounted, route unregistered, service/loader uncalled, provider not mounted, reducer/action disconnected, command/worker/manifest not wired
 - Missing scoped acceptance criteria or behavior outside the process-first
-  Scope/Ownership boundary without a C1 amendment; for legacy packets, behavior
+  Scope/Ownership boundary without a GATE-SCOPE amendment; for legacy packets, behavior
   outside `scope_lock` without a spec amendment
 - Placeholder scaffolding marked as complete when the task demanded real wiring
 - Auth/session/transport/persistence behavior that contradicts the design contracts

@@ -39,7 +39,7 @@ function boundaryTableHasRequiredRows(table) {
 }
 
 const IMPLEMENTATION_READINESS_CLAUSES = {
-  noInvention: 'Before implementation handoff, apply the **no-invention gate**: if two implementations conform to the packet text yet can produce different externally observable output, state, error, security, or compatibility behavior, surface the missing choice as an explicit C1 or C2 question and block handoff.',
+  noInvention: 'Before implementation handoff, apply the **no-invention gate**: if two implementations conform to the packet text yet can produce different externally observable output, state, error, security, or compatibility behavior, surface the missing choice as an explicit GATE-SCOPE or GATE-REVIEW question and block handoff.',
   materialDefinition: 'A boundary is material when the task creates, changes, or depends on it and a different choice changes an external observation, security, durable data, compatibility, or proof reachability. Require only the matching material row; omit nonmaterial categories.',
   exactBoundaryChoices: 'For every required row, name each listed choice exactly; labels such as “JSON”, “local path”, “locked”, or “timestamped” alone remain unresolved.',
   proofPlanLines: [
@@ -58,11 +58,11 @@ const IMPLEMENTATION_READINESS_CLAUSES = {
   disposableReviewControls: 'Run mutation or destructive negative controls only on disposable copies below a verified temporary root, never tracked worktree or canonical source bytes.',
   failureSemantics: '`Crash` means abrupt unhandled termination before the claimed catch point; a catchable failure returns/raises an error or exits nonzero. Never use them interchangeably.',
   privacyIdentifiers: 'Any privacy/security claim names the exact identifier surface at risk, such as an env var, header, path, token class, or field name; generic “sensitive data” is insufficient.',
-  freshReplay: 'After applying an accepted C2 finding, a fresh-context closure pass records and freshly replays its original counterexample after the repair under this exact review-log header:',
+  freshReplay: 'After applying an accepted GATE-REVIEW finding, a fresh-context closure pass records and freshly replays its original counterexample after the repair under this exact review-log header:',
   distinctRepairProof: '`Repaired at` cites the repair edit; `Proved at` must cite distinct evidence from the fresh replay, never the repair-edit citation.',
   closureTransition: 'An accepted finding transitions `accepted → repaired → PASS|FAIL|UNKNOWN`.',
   unknownBlocks: 'Only `PASS` closes it; `FAIL` remains open for the remaining paper-review round; `UNKNOWN` blocks implementation handoff.',
-  scopeReturnsToC1: 'A repair that adds user semantics or scope returns to C1.',
+  scopeReturnsToC1: 'A repair that adds user semantics or scope returns to GATE-SCOPE.',
 };
 
 const ADAPTIVE_COVERAGE_PROFILE_HEADER = [
@@ -77,7 +77,7 @@ const ADAPTIVE_COVERAGE_AMBIGUITY_ROWS = [
   ['State', 'Required action'],
   ['`none`', 'proceed'],
   ['`examples-needed`', 'add two or three examples only for an already decided rule; promote to `decision-needed` if an example changes observable behavior'],
-  ['`decision-needed`', 'ask the user at C1/C2 and keep affected tasks blocked'],
+  ['`decision-needed`', 'ask the user at GATE-SCOPE/GATE-REVIEW and keep affected tasks blocked'],
   ['`design-needed`', 'after user-owned decisions settle, route material competing technical designs through Brainstorm'],
 ];
 const ADAPTIVE_REVIEWER_ROWS = [
@@ -98,12 +98,12 @@ const ADAPTIVE_COVERAGE_CLAUSES = {
   openKinds: 'Change kinds are multi-valued (`add`, `modify`, `fix`, `refactor`, `remove`, `migrate`, `integrate`), and unfamiliar kinds or surfaces use `other:<verbatim>` rather than disappearing.',
   scopedUnion: 'Each task references its CP IDs; authoring, review, edge, and proof obligations union only inside affected rows/tasks.',
   profileRederivation: 'Rederive affected CP rows after any accepted scope, outcome, criteria, ownership, dependency, risk, or proof delta before task status.',
-  plannedProof: '`Required proof` is a planned level set, not execution\nevidence: known but unrun proof may be `pending`; `UNKNOWN` reachability blocks\n`pending`; missing, failed, or unavailable required evidence blocks `done`/C3.',
+  plannedProof: '`Required proof` is a planned level set, not execution\nevidence: known but unrun proof may be `pending`; `UNKNOWN` reachability blocks\n`pending`; missing, failed, or unavailable required evidence blocks `done`/GATE-DONE.',
   proofSeparation: 'Levels stay separate and never promote one another.',
   liveLimit: 'Source/static checks prove the written contract, not live-model adherence.',
   specMakerAuthority: 'they are the canonical risk and coverage authority. Do not duplicate\ntheir taxonomy here.',
   specMakerAmbiguity: 'Apply the canonical ambiguity action; examples never decide observable behavior.',
-  specMakerRoute: 'Apply their risk-first route before C1 and stop when the\nrequest qualifies for direct work; hand off when it requires Brainstorm-only exploration.',
+  specMakerRoute: 'Apply their risk-first route before GATE-SCOPE and stop when the\nrequest qualifies for direct work; hand off when it requires Brainstorm-only exploration.',
   reviewRisk: 'Keep Fact Checker as the baseline. Assign every remaining material CP risk to a\nnamed reviewer lens; a critical row includes both relevant security-adversary and\nfailure-mode coverage, and nonmaterial lenses are not added.',
   reviewCapacity: 'Reviewer count is fixed by the table, not lens count. Give each reviewer a distinct primary lens; when material lenses exceed reviewers, combine related named lenses on one reviewer and keep every material lens assigned.',
 };
@@ -1316,8 +1316,8 @@ function assertInstalledReadinessMutationsDetected(tempRoot, project, platform) 
     },
     {
       name: 'fresh-original-counterexample-replay', issue: 'repair-closure', source: 'review',
-      from: 'After applying an accepted C2 finding, a fresh-context closure pass records and\nfreshly replays its original counterexample after the repair under this exact review-log header:',
-      to: 'After applying an accepted C2 finding, record the repair under this review-log header:',
+      from: 'After applying an accepted GATE-REVIEW finding, a fresh-context closure pass records and\nfreshly replays its original counterexample after the repair under this exact review-log header:',
+      to: 'After applying an accepted GATE-REVIEW finding, record the repair under this review-log header:',
     },
     {
       name: 'distinct-repair-and-proof-evidence', issue: 'repair-closure', source: 'review',
@@ -1423,7 +1423,7 @@ function assertInstalledAdaptiveMutationsDetected(tempRoot, project, platform) {
     ['stale-profile-after-c2', 'templates', ADAPTIVE_COVERAGE_CLAUSES.profileRederivation,
       'Keep existing coverage rows after accepted plan changes.', ['profile-lifecycle']],
     ['planned-proof-blocks-start', 'templates', ADAPTIVE_COVERAGE_CLAUSES.plannedProof,
-      '`Required proof` is execution evidence: known but unrun proof blocks `pending`; `UNKNOWN` may proceed; missing evidence may still reach `done`/C3.', ['proof-lifecycle']],
+      '`Required proof` is execution evidence: known but unrun proof blocks `pending`; `UNKNOWN` may proceed; missing evidence may still reach `done`/GATE-DONE.', ['proof-lifecycle']],
     ['source-promotes-live', 'templates', ADAPTIVE_COVERAGE_CLAUSES.proofSeparation,
       'Source proof may promote installed and live proof.', ['proof-lifecycle']],
     ['unmapped-proof-level', 'templates', IMPLEMENTATION_READINESS_CLAUSES.proofLevelMapping,
@@ -1437,7 +1437,7 @@ function assertInstalledAdaptiveMutationsDetected(tempRoot, project, platform) {
     ['spec-maker-examples-decide', 'specMaker', ADAPTIVE_COVERAGE_CLAUSES.specMakerAmbiguity,
       'Use examples to settle every ambiguous observable behavior.', ['spec-maker-authority']],
     ['spec-maker-skips-brainstorm', 'specMaker', ADAPTIVE_COVERAGE_CLAUSES.specMakerRoute,
-      'Apply the risk-first route before C1 and stop only for direct work.', ['spec-maker-authority']],
+      'Apply the risk-first route before GATE-SCOPE and stop only for direct work.', ['spec-maker-authority']],
     ['static-proves-live', 'skill', ADAPTIVE_COVERAGE_CLAUSES.liveLimit,
       'Source/static checks prove live-model adherence.', ['proof-lifecycle']],
   ];

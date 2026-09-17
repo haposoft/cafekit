@@ -21,7 +21,7 @@ Classify material risk before choosing a workflow; user wording never lowers an 
 
 Work directly only when the cause and change are clear, isolated, reversible,
 `routine`, and likely limited to one or two files. Route unresolved user-owned
-observable choices to C1/C2 first; after they settle, route material competing
+observable choices to GATE-SCOPE/GATE-REVIEW first; after they settle, route material competing
 technical designs through Brainstorm. Split three or more independent
 subsystems; otherwise use one Specs packet for any material work that does not qualify for direct work or Brainstorm-only exploration. A subsystem is independent only when its outcome, boundary, and verification/deployment path can move through the lifecycle separately.
 
@@ -31,11 +31,11 @@ Do not create a plan merely because documentation mentions this skill; the user 
 
 | Gate | Timing | Human decision |
 |---|---|---|
-| C1 — Scope | before writing the plan | EXPAND, KEEP, or CUT the proposed minimum change |
-| C2 — Findings | after adversarial review | accept, reject, or revise each deduplicated finding |
-| C3 — Done | after execution | accept completion from current command output and receipts |
+| GATE-SCOPE | before writing the plan | EXPAND, KEEP, or CUT the proposed minimum change |
+| GATE-REVIEW | after adversarial review | accept, reject, or revise each deduplicated finding |
+| GATE-DONE | after execution | accept completion from current command output and receipts |
 
-Ask once at each gate. Do not ask for routine implementation choices between them. New evidence that invalidates scope returns to C1.
+Ask once at each gate. Do not ask for routine implementation choices between them. New evidence that invalidates scope returns to GATE-SCOPE.
 
 ## Primary output layout
 
@@ -52,7 +52,7 @@ Task files are flat beside `plan.md`. Do not create a nested task directory. Use
 
 ## Flow
 
-### 1. Challenge scope, then open C1
+### 1. Challenge scope, then open GATE-SCOPE
 
 Inspect the repository before drafting. Answer three questions with current `path:line` evidence:
 
@@ -65,7 +65,7 @@ scope and explicit exclusions in `plan.md`.
 
 ### 2. Write the plan and task packets
 
-Keep `plan.md` as the short index: C1 decision, EARS criteria, exclusions, and task table. Give every criterion a stable ID mapped by task rows.
+Keep `plan.md` as the short index: GATE-SCOPE decision, EARS criteria, exclusions, and task table. Give every criterion a stable ID mapped by task rows.
 
 For a Specs route, persist the canonical `## Coverage profile` from
 `references/templates.md`: one `CP-NN` row per observable outcome; tasks reference IDs instead of copying it.
@@ -73,15 +73,15 @@ For a Specs route, persist the canonical `## Coverage profile` from
 Each task has one usable outcome, normally at most about five owned files, explicit dependencies, measurable acceptance, and a runnable verification command; no preparation-only tasks.
 
 Author exact state: `pending` means semantically ready for the dependency-aware queue.
-Use `blocked` while a C1/C2 decision, accepted finding, or `UNKNOWN` closure remains
+Use `blocked` while a GATE-SCOPE/GATE-REVIEW decision, accepted finding, or `UNKNOWN` closure remains
 open. Dependencies alone do not change `pending`; the resolver queues them. Promote only after current evidence closes every non-dependency blocker; keep pre-execution Receipts empty.
 
 `Required proof` is planned, not executed evidence. Unknown command/caller/environment
 reachability blocks `pending`; known unrun proof does not. Missing, failed, or unavailable
-required evidence blocks `done`/C3; levels never promote. Rederive affected CP rows after accepted scope, outcome, criteria, ownership, dependency, risk, or proof deltas, before status.
+required evidence blocks `done`/GATE-DONE; levels never promote. Rederive affected CP rows after accepted scope, outcome, criteria, ownership, dependency, risk, or proof deltas, before status.
 Source/static checks prove the written contract, not live-model adherence.
 
-### 3. Review adversarially, then open C2
+### 3. Review adversarially, then open GATE-REVIEW
 
 Read [`references/review.md`](references/review.md) and run its fresh-context review. Require reproducible `path:line` plus a failure scenario; deduplicate, rank, and cap at 15.
 
@@ -98,7 +98,7 @@ Parallel work is allowed only for tasks with disjoint write ownership and
 satisfied dependencies. One file has one writer in a wave. The controller is
 the sole writer of task status and receipts.
 
-### 5. Prove completion, then open C3
+### 5. Prove completion, then open GATE-DONE
 
 A task may say `Status: done` only when its inline receipt contains the exact
 command, `Exit: 0`, `Verification: PASS`, runtime-bound Base and Head values,
@@ -106,12 +106,12 @@ and a non-empty fenced command-output block. Placeholder or remembered output
 is not evidence.
 
 Show the user the current evidence and unresolved limitations. The user decides
-at C3 whether the feature is done. A passing command proves only what it ran;
+at GATE-DONE whether the feature is done. A passing command proves only what it ran;
 it does not invent product approval, review independence, or runtime coverage.
 
 ## Ten operating laws
 
-1. **A1 — Scope once.** Raise scope pressure at C1; reopen only with new proof.
+1. **A1 — Scope once.** Raise scope pressure at GATE-SCOPE; reopen only with new proof.
 2. **A2 — Small packets.** One task, one outcome, one owner, one proof command.
 3. **A3 — One fact, one home.** Reference decisions; never copy mutable lists.
 4. **A4 — Files are state.** Markdown is canonical; indexes are disposable.
@@ -131,8 +131,8 @@ done Receipt, binding Base and Head to the live runtime only while the task file
 committed copy it no longer matches; work elsewhere in the tree never reopens it. It detects drift
 between a receipt and the tree, not invention: a valid pair costs one command and no
 verification run, so a receipt for a command that never ran satisfies it in either
-mode. C3 is where a human weighs the evidence. These checks are a final safety net,
-not a substitute for C1-C3 judgment. Do not add a new schema, approval field,
+mode. GATE-DONE is where a human weighs the evidence. These checks are a final safety net,
+not a substitute for human judgment at the three gates. Do not add a new schema, approval field,
 readiness bit, or review state to make the Markdown look more authoritative.
 
 ## Legacy compatibility

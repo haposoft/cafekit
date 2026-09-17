@@ -7,8 +7,8 @@
 - For process-first Specs, `plan.md` and flat `task-NN-*.md` files are
   canonical, hand-editable state. Each task has exactly one `Status:` field and
   keeps canonical execution proof in its final inline `## Receipt`.
-- Specs uses three user decisions: C1 for scope, C2 for adversarial findings,
-  and C3 for completion. Planning never starts implementation; implementation
+- Specs uses three user decisions: GATE-SCOPE for scope, GATE-REVIEW for adversarial findings,
+  and GATE-DONE for completion. Planning never starts implementation; implementation
   requires a new explicit user invocation.
 - Synchronize only observed task state with surgical edits. Never invent proof,
   readiness, approval, review independence, or completed work.
@@ -72,9 +72,9 @@ Match the language the user writes in. Technical terms, code identifiers, and fi
   `.codex/rules/process-management.md` whenever a task starts, reuses, or ends
   long-running processes.
 - Project hooks live in `.codex/hooks.json`; review trusted hooks with `/hooks`.
-- New Specs work uses the process-first flow. `$cf-specs` opens C1, writes
+- New Specs work uses the process-first flow. `$cf-specs` opens GATE-SCOPE, writes
   `specs/<feature>/plan.md` with flat `task-NN-*.md` files beside it, then opens
-  C2 after adversarial review. It never starts implementation.
+  GATE-REVIEW after adversarial review. It never starts implementation.
 - Start implementation only through a new explicit `$cf-develop` invocation.
   Execute one unblocked task at a time; each task has exactly one `Status:`
   field and the controller is its sole state-and-proof writer.
@@ -82,7 +82,7 @@ Match the language the user writes in. Technical terms, code identifiers, and fi
   requires a canonical final inline `## Receipt` with the exact command,
   `Exit: 0`, `Verification: PASS`, runtime-derived Base and Head values, and
   non-empty fenced current output.
-- At C3, show current receipts and unresolved limitations. The user decides
+- At GATE-DONE, show current receipts and unresolved limitations. The user decides
   completion; no command, review, or host state may invent approval or proof.
 
 ### Legacy Specs compatibility

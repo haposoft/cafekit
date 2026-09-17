@@ -42,7 +42,7 @@ The pair exits `2` before a task edit, receipt, worktree, subagent, or commit. D
 ## Resolve the work packet
 
 1. Resolve one `specs/<feature>/plan.md` plus flat `task-NN-*.md`; an explicit task path wins.
-2. Read C1 scope, exclusions, acceptance mapping, ownership, and task order.
+2. Read GATE-SCOPE scope, exclusions, acceptance mapping, ownership, and task order.
 3. A task is unblocked only when every named dependency is `done` with a valid current inline Receipt.
 4. Without a packet, work directly only when the change is clear, isolated, reversible, and low-risk.
 
@@ -50,10 +50,10 @@ Ambiguity, overlapping ownership, a dependency cycle, or a missing Verification 
 
 ### Accepted process-first fast path
 
-When line two is `Specs-Contract: process-first-ready-v1`, reuse the accepted C1/C2.
+When line two is `Specs-Contract: process-first-ready-v1`, reuse the accepted GATE-SCOPE/GATE-REVIEW.
 Perform only a narrow freshness scout for target revision, scope drift, ownership
-conflict, and dependency/state changes. Reopen C1 only for evidenced scope drift;
-do not research, replan, or add a routine user gate before a real blocker or C3.
+conflict, and dependency/state changes. Reopen GATE-SCOPE only for evidenced scope drift;
+do not research, replan, or add a routine user gate before a real blocker or GATE-DONE.
 This is a source instruction contract, not a parser/runtime or live-model guarantee;
 live-model adherence is `[UNVERIFIED]` without a host invocation.
 
@@ -78,7 +78,7 @@ before any Status or Receipt write.
 | Status is missing, duplicate, or unknown | Stop as malformed state. | Stop as malformed state. |
 
 Feature mode repeats this selection only after the current task closes. Specific-task
-mode never touches a sibling and returns after its successful sync without chaining or C3.
+mode never touches a sibling and returns after its successful sync without chaining or GATE-DONE.
 
 ## Modes
 
@@ -125,7 +125,7 @@ mutation. Resume only unmet work, then run fresh verification.
 ### 2. Implement
 
 Honor Scope, Ownership, Acceptance, and Dependencies. Do not silently replace named contracts;
-scope expansion requires evidence and a return to C1, not implementation convenience.
+scope expansion requires evidence and a return to GATE-SCOPE, not implementation convenience.
 Load `references/subagent-patterns.md` when dispatch helps; only the controller writes Status or Receipt.
 
 ### 3. Verify, review, and close
@@ -148,7 +148,7 @@ zero-test, placeholder, marker-only, skipped, or remembered proof is unfinished.
 
 Reread the task after sync and recompute the queue from current bytes. Specific-task
 mode has already returned. Full-feature mode continues one task at a time, then runs
-the named feature-level integration and reachability checks. Before C3, apply the
+the named feature-level integration and reachability checks. Before GATE-DONE, apply the
 quality-gate final-Head fixed point; show current evidence and limitations, and let
 the user decide completion.
 

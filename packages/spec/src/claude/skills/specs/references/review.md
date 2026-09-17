@@ -1,4 +1,4 @@
-# Plan review — evidence, adversarial lenses, and C2
+# Plan review — evidence, adversarial lenses, and GATE-REVIEW
 
 Review exists to find costly errors before code. It is not a prose-quality
 score. Every accepted finding must be reproducible from current repository
@@ -72,13 +72,13 @@ Apply these to the relevant boundary:
 
 Each finding must describe an observable failure, not a preference.
 
-## Aggregate before C2
+## Aggregate before GATE-REVIEW
 
 Normalize duplicate findings by root cause. Preserve the strongest evidence and
 smallest counterexample. Sort Critical, High, then Medium. Cap the presented
 list at 15; a larger useful set means the plan should be split.
 
-Present C2 as a table:
+Present GATE-REVIEW as a table:
 
 | ID | Severity | Plan location | Failure scenario | Evidence | Proposed repair | Decision |
 |---|---|---|---|---|---|---|
@@ -88,7 +88,7 @@ decision. Record the result in the plan review log.
 
 ## Accepted-repair closure
 
-After applying an accepted C2 finding, a fresh-context closure pass records and
+After applying an accepted GATE-REVIEW finding, a fresh-context closure pass records and
 freshly replays its original counterexample after the repair under this exact review-log header:
 
 | ID | Decision | Original counterexample | Repaired at | Proved at | Replay | Closure |
@@ -97,7 +97,7 @@ freshly replays its original counterexample after the repair under this exact re
 `Repaired at` cites the repair edit; `Proved at` must cite distinct evidence from the fresh replay, never the repair-edit citation.
 An accepted finding transitions `accepted → repaired → PASS|FAIL|UNKNOWN`.
 Only `PASS` closes it; `FAIL` remains open for the remaining paper-review round; `UNKNOWN` blocks implementation handoff.
-A repair that adds user semantics or scope returns to C1.
+A repair that adds user semantics or scope returns to GATE-SCOPE.
 
 ## B3 — consistency sweep
 
@@ -119,7 +119,7 @@ Any unresolved contradiction keeps the plan unready.
 - Round three requires runtime evidence: an executed test, command output, or
   observed host behavior. More paper argument is not a new finding.
 - A repair round should not grow the plan unless evidence proves missing scope.
-- Two add-only rounds trigger a split, deferral, or return to C1.
+- Two add-only rounds trigger a split, deferral, or return to GATE-SCOPE.
 - Stop early when remaining findings are duplicates, preferences, or already
   covered by one acceptance criterion and one verification command.
 

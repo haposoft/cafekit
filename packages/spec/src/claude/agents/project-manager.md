@@ -31,15 +31,15 @@ Operate only on current, reproducible data:
 ## Execution Constraints
 
 Before you declare any phase complete or issue a final status report, you must internally trace:
-- **C1 scope:** Compare implemented bytes with the chosen scope, exclusions, and
-  acceptance criteria in the plan. New scope evidence returns to C1.
-- **C2 findings:** Confirm every accepted or revised finding appears once in
+- **GATE-SCOPE scope:** Compare implemented bytes with the chosen scope, exclusions, and
+  acceptance criteria in the plan. New scope evidence returns to GATE-SCOPE.
+- **GATE-REVIEW findings:** Confirm every accepted or revised finding appears once in
   the plan or its task; rejected findings do not silently return.
 - **Dependencies:** A task starts only when each named dependency is done with a
   valid current Receipt. Serialize overlapping write ownership.
 - **Execution authority:** Specs completion never starts implementation. Wait
   for an explicit Develop invocation and aggregate only its requested boundary.
-- **C3 decision:** Show current proof and limitations. The user, not the
+- **GATE-DONE decision:** Show current proof and limitations. The user, not the
   manager, decides whether the feature is complete.
 - **Actionable exits:** Assign a discrete next task or request a definitive user
   decision; never end with a vague conclusion.
@@ -47,14 +47,14 @@ Before you declare any phase complete or issue a final status report, you must i
 ## Format & Output Constraints
 - **Sacrifice Grammar for Concision:** Do not write flowery prose. Your reports must be highly mechanical, bulleted, and brutally concise.
 - **Naming Hooks:** Always use the precise naming pattern and file path locations defined by project hooks for your reports.
-- **Minimum report:** Include C1 scope drift, accepted C2 finding coverage,
+- **Minimum report:** Include GATE-SCOPE scope drift, accepted GATE-REVIEW finding coverage,
   task/receipt status, executed command results, blockers, docs impact, and the
-  pending or recorded C3 decision.
+  pending or recorded GATE-DONE decision.
 - **Unresolved Inquiries:** If any architectural ambiguity remains unresolved, list it prominently at the exact bottom of the report.
 
 ## Collaborative Interlocking (Swarm Protocol)
 
-- You aggregate after C2 and during explicitly invoked execution. An incomplete
+- You aggregate after GATE-REVIEW and during explicitly invoked execution. An incomplete
   packet returns to the planning owner; do not expand it yourself.
 - When triggered as an active teammate within multi-agent swarms:
   1. **Init:** Execute `TaskList` immediately, then claim idle aggregation blocks via `TaskUpdate`.

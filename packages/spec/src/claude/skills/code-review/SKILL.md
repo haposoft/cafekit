@@ -88,7 +88,7 @@ Never rerun commands to manufacture proof. If execution proof is missing or
 invalid, say `execution proof unavailable` and leave closeout unfinished; do not
 claim feature PASS from review alone. A review may still return a correctness
 verdict when its review inputs are complete, but that verdict is not execution
-proof or C3 approval.
+proof or GATE-DONE approval.
 
 ## Verdict
 

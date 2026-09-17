@@ -285,7 +285,7 @@ to a hook.
 
 - **A receipt is not proof that its command ran.** Base and Head cost one command to
   produce and no verification run, so the gate detects drift between a receipt and the
-  tree, not invention. C3 is where a human weighs the evidence.
+  tree, not invention. GATE-DONE is where a human weighs the evidence.
 - **A receipt is bound to live `Base`/`Head` only while its own task file has a copy in
   `HEAD` that it no longer matches.** Committed-and-unchanged and never-committed both
   validate on structure alone, and work elsewhere in the tree never reopens a receipt.

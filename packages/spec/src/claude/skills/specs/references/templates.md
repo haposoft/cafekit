@@ -1,7 +1,7 @@
 # Process-first plan, task, and receipt templates
 
 Use these as compact starting points. Remove unused examples and placeholders
-before C2. The primary layout is always flat:
+before GATE-REVIEW. The primary layout is always flat:
 
 ```text
 specs/<feature>/
@@ -18,7 +18,7 @@ Keep the plan short enough to scan as one index, normally under 100 lines.
 # <Feature name>
 Specs-Contract: process-first-ready-v1
 
-## Scope decision (C1 — YYYY-MM-DD)
+## Scope decision (GATE-SCOPE — YYYY-MM-DD)
 - Existing: <reusable code with path:line>
 - Minimum change: <required behavior>
 - Expansion signals: <none or evidence>
@@ -94,7 +94,7 @@ Status: blocked
 Trace `Command → Named probe → Reachability → Oracle`. Aggregate suites name the
 owning concrete probe. `Required proof` is a planned level set, not execution
 evidence: known but unrun proof may be `pending`; `UNKNOWN` reachability blocks
-`pending`; missing, failed, or unavailable required evidence blocks `done`/C3.
+`pending`; missing, failed, or unavailable required evidence blocks `done`/GATE-DONE.
 Levels stay separate and never promote one another. Run mutation or destructive
 negative controls only on disposable copies under a verified temporary root,
 never tracked worktree or canonical source bytes.
@@ -105,7 +105,7 @@ reachability here; one command may own several explicitly named level probes.
 
 | Status condition | Persisted state |
 |---|---|
-| C1/C2 decision open | `blocked` |
+| GATE-SCOPE/GATE-REVIEW decision open | `blocked` |
 | accepted finding open or `UNKNOWN` reachability | `blocked` |
 | every non-dependency blocker closed | `pending` |
 | named task dependency not done | keep `pending`; queue gates it |
@@ -157,7 +157,7 @@ Classify ambiguity in every affected CP row:
 |---|---|
 | `none` | proceed |
 | `examples-needed` | add two or three examples only for an already decided rule; promote to `decision-needed` if an example changes observable behavior |
-| `decision-needed` | ask the user at C1/C2 and keep affected tasks blocked |
+| `decision-needed` | ask the user at GATE-SCOPE/GATE-REVIEW and keep affected tasks blocked |
 | `design-needed` | after user-owned decisions settle, route material competing technical designs through Brainstorm |
 
 Do not let examples choose a product outcome: retention of 30 versus 90 days is
@@ -165,7 +165,7 @@ Do not let examples choose a product outcome: retention of 30 versus 90 days is
 
 ## No-invention and conditional boundary contracts
 
-Before implementation handoff, apply the **no-invention gate**: if two implementations conform to the packet text yet can produce different externally observable output, state, error, security, or compatibility behavior, surface the missing choice as an explicit C1 or C2 question and block handoff.
+Before implementation handoff, apply the **no-invention gate**: if two implementations conform to the packet text yet can produce different externally observable output, state, error, security, or compatibility behavior, surface the missing choice as an explicit GATE-SCOPE or GATE-REVIEW question and block handoff.
 
 For a Specs route, `plan.md` owns one `## Coverage profile` row per externally observable outcome; direct and Brainstorm-only routes do not persist it. Change kinds are multi-valued (`add`, `modify`, `fix`, `refactor`, `remove`, `migrate`, `integrate`), and unfamiliar kinds or surfaces use `other:<verbatim>` rather than disappearing. Each task references its CP IDs; authoring, review, edge, and proof obligations union only inside affected rows/tasks. Rederive affected CP rows after any accepted scope, outcome, criteria, ownership, dependency, risk, or proof delta before task status.
 
@@ -203,7 +203,7 @@ verification probe. Do not duplicate it across all three.
 
 ## Quality and saturation checks
 
-Before C2 confirm:
+Before GATE-REVIEW confirm:
 
 - every repository fact has current evidence or `[UNVERIFIED]`;
 - every acceptance criterion maps to task and proof;
@@ -216,4 +216,4 @@ Before C2 confirm:
 
 Stop expanding when a fresh reviewer finds no new material failure with new
 evidence, the 12 dimensions yield no uncovered relevant boundary, and every
-accepted C2 finding is represented exactly once.
+accepted GATE-REVIEW finding is represented exactly once.

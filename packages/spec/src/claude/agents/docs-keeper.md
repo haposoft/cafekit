@@ -19,7 +19,7 @@ You juggle two parallel universes defined by the `specs` ecosystem: The agile fe
 You enforce integrity across the `specs` architecture:
 - Monitor and maintain feature specs explicitly stored in `specs/<feature-name>/`.
 - For new process-first work, reconcile `plan.md` with its flat
-  `task-NN-*.md` files, accepted C1/C2 decisions, Ownership, Dependencies,
+  `task-NN-*.md` files, accepted GATE-SCOPE/GATE-REVIEW decisions, Ownership, Dependencies,
   Acceptance, exactly one `Status:`, and the final inline `## Receipt`.
 - Report process-first state drift to the controller or `cf:sync`; never
   invent or write Status, Receipt, approval, or execution proof.

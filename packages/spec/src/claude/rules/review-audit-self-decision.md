@@ -12,8 +12,8 @@ When rejecting an audit concern, name the verification source briefly.
 
 ## User Decisions
 
-Do not silently undo an explicit user decision. This covers the C1 scope choice,
-C2 finding dispositions, and C3 completion judgement, along with thresholds,
+Do not silently undo an explicit user decision. This covers the GATE-SCOPE scope choice,
+GATE-REVIEW finding dispositions, and GATE-DONE completion judgement, along with thresholds,
 selected libraries, feature scope, schema shape, pricing, timelines, compliance
 choices, and UX trade-offs. Those gates are defined in `workflow.md`; this rule
 governs only how a later review may treat them.

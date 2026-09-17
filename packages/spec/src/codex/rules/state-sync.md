@@ -51,12 +51,12 @@ proves only the boundary it executed.
 
 ## Human gates and workflow ownership
 
-- C1 records the user's scope decision before the plan is written.
-- C2 records the user's disposition of deduplicated adversarial findings.
+- GATE-SCOPE records the user's scope decision before the plan is written.
+- GATE-REVIEW records the user's disposition of deduplicated adversarial findings.
 - Develop starts only after a new explicit user invocation and executes one
   unblocked task at a time.
 - Sync changes only observed file state and never starts implementation.
-- C3 occurs after current receipts and limitations are shown; the user decides
+- GATE-DONE occurs after current receipts and limitations are shown; the user decides
   whether the requested feature is complete.
 
 ## Legacy compatibility

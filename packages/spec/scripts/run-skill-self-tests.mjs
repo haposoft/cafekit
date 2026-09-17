@@ -206,7 +206,7 @@ function boundaryTableHasRequiredRows(table) {
 }
 
 const IMPLEMENTATION_READINESS_CLAUSES = {
-  noInvention: "Before implementation handoff, apply the **no-invention gate**: if two implementations conform to the packet text yet can produce different externally observable output, state, error, security, or compatibility behavior, surface the missing choice as an explicit C1 or C2 question and block handoff.",
+  noInvention: "Before implementation handoff, apply the **no-invention gate**: if two implementations conform to the packet text yet can produce different externally observable output, state, error, security, or compatibility behavior, surface the missing choice as an explicit GATE-SCOPE or GATE-REVIEW question and block handoff.",
   materialDefinition: "A boundary is material when the task creates, changes, or depends on it and a different choice changes an external observation, security, durable data, compatibility, or proof reachability. Require only the matching material row; omit nonmaterial categories.",
   exactBoundaryChoices: "For every required row, name each listed choice exactly; labels such as “JSON”, “local path”, “locked”, or “timestamped” alone remain unresolved.",
   proofPlanLines: [
@@ -225,11 +225,11 @@ const IMPLEMENTATION_READINESS_CLAUSES = {
   disposableReviewControls: "Run mutation or destructive negative controls only on disposable copies below a verified temporary root, never tracked worktree or canonical source bytes.",
   failureSemantics: "`Crash` means abrupt unhandled termination before the claimed catch point; a catchable failure returns/raises an error or exits nonzero. Never use them interchangeably.",
   privacyIdentifiers: "Any privacy/security claim names the exact identifier surface at risk, such as an env var, header, path, token class, or field name; generic “sensitive data” is insufficient.",
-  freshReplay: "After applying an accepted C2 finding, a fresh-context closure pass records and freshly replays its original counterexample after the repair under this exact review-log header:",
+  freshReplay: "After applying an accepted GATE-REVIEW finding, a fresh-context closure pass records and freshly replays its original counterexample after the repair under this exact review-log header:",
   distinctRepairProof: "`Repaired at` cites the repair edit; `Proved at` must cite distinct evidence from the fresh replay, never the repair-edit citation.",
   closureTransition: "An accepted finding transitions `accepted → repaired → PASS|FAIL|UNKNOWN`.",
   unknownBlocks: "Only `PASS` closes it; `FAIL` remains open for the remaining paper-review round; `UNKNOWN` blocks implementation handoff.",
-  scopeReturnsToC1: "A repair that adds user semantics or scope returns to C1.",
+  scopeReturnsToC1: "A repair that adds user semantics or scope returns to GATE-SCOPE.",
 };
 
 function implementationReadinessContractIssues(input) {
@@ -495,8 +495,8 @@ async function runImplementationReadinessContractTests() {
       name: "fresh-original-counterexample-replay",
       issue: "repair-closure",
       source: "review",
-      from: "After applying an accepted C2 finding, a fresh-context closure pass records and\nfreshly replays its original counterexample after the repair under this exact review-log header:",
-      to: "After applying an accepted C2 finding, record the repair under this review-log header:",
+      from: "After applying an accepted GATE-REVIEW finding, a fresh-context closure pass records and\nfreshly replays its original counterexample after the repair under this exact review-log header:",
+      to: "After applying an accepted GATE-REVIEW finding, record the repair under this review-log header:",
     },
     {
       name: "distinct-repair-and-proof-evidence",
@@ -571,7 +571,7 @@ const ADAPTIVE_COVERAGE_AMBIGUITY_ROWS = [
   ["State", "Required action"],
   ["`none`", "proceed"],
   ["`examples-needed`", "add two or three examples only for an already decided rule; promote to `decision-needed` if an example changes observable behavior"],
-  ["`decision-needed`", "ask the user at C1/C2 and keep affected tasks blocked"],
+  ["`decision-needed`", "ask the user at GATE-SCOPE/GATE-REVIEW and keep affected tasks blocked"],
   ["`design-needed`", "after user-owned decisions settle, route material competing technical designs through Brainstorm"],
 ];
 
@@ -585,7 +585,7 @@ const ADAPTIVE_REVIEWER_ROWS = [
 const ADAPTIVE_GUIDE_ROUTE_ROWS = [
   ["Route", "Điều kiện"],
   ["Làm trực tiếp", "Chỉ khi cause và change đều clear, isolated, reversible, `routine`, và likely giới hạn trong một hoặc hai file"],
-  ["C1/C2", "Còn user-owned observable choice; hỏi và giữ phần bị ảnh hưởng ở `blocked`"],
+  ["GATE-SCOPE/GATE-REVIEW", "Còn user-owned observable choice; hỏi và giữ phần bị ảnh hưởng ở `blocked`"],
   ["Brainstorm", "Có material competing technical designs, sau khi user-owned choices đã chốt"],
   ["Một Specs packet", "Material work không đủ điều kiện Direct và không phải Brainstorm-only exploration"],
   ["Split Specs", "Có từ ba independent subsystem trở lên; mỗi subsystem có outcome, boundary và verification/deployment path tự đi qua lifecycle"],
@@ -595,7 +595,7 @@ const ADAPTIVE_GUIDE_AMBIGUITY_ROWS = [
   ["State", "Hành động bắt buộc", "Hệ quả status"],
   ["`none`", "Tiếp tục", "Có thể vào `pending` khi các blocker khác đã đóng"],
   ["`examples-needed`", "Thêm ví dụ chỉ để làm rõ rule đã quyết định; nếu ví dụ đổi observable behavior thì promote sang `decision-needed`", "Không tự chọn product outcome"],
-  ["`decision-needed`", "Hỏi người dùng tại C1/C2", "Affected task giữ `blocked`"],
+  ["`decision-needed`", "Hỏi người dùng tại GATE-SCOPE/GATE-REVIEW", "Affected task giữ `blocked`"],
   ["`design-needed`", "Sau khi user-owned decision đã chốt, chuyển material competing designs sang Brainstorm", "Chưa author implementation choice trong task"],
 ];
 
@@ -608,7 +608,7 @@ const ADAPTIVE_GUIDE_CLAUSES = {
   plannedProof: "`Required proof` trong CP row là planned level set, không phải evidence đã chạy.",
   unknownBlocks: "`UNKNOWN` command/caller/environment reachability giữ task ở `blocked`.",
   knownUnrun: "Known nhưng chưa chạy required proof vẫn có thể ở `pending`.",
-  executionBlocks: "Missing, failed hoặc unavailable required evidence chặn `done` và C3.",
+  executionBlocks: "Missing, failed hoặc unavailable required evidence chặn `done` và GATE-DONE.",
   proofSeparation: "`source`, `installed` và `live` độc lập; PASS ở level này không promote level khác.",
   staticLimit: "Source/static checks chỉ chứng minh written contract, không chứng minh live-model adherence.",
   timingBoundary: "CafeKit chưa đo wall-clock generation time và không công bố SLA cho Specs.",
@@ -709,12 +709,12 @@ const ADAPTIVE_COVERAGE_CLAUSES = {
   openKinds: "Change kinds are multi-valued (`add`, `modify`, `fix`, `refactor`, `remove`, `migrate`, `integrate`), and unfamiliar kinds or surfaces use `other:<verbatim>` rather than disappearing.",
   scopedUnion: "Each task references its CP IDs; authoring, review, edge, and proof obligations union only inside affected rows/tasks.",
   profileRederivation: "Rederive affected CP rows after any accepted scope, outcome, criteria, ownership, dependency, risk, or proof delta before task status.",
-  plannedProof: "`Required proof` is a planned level set, not execution\nevidence: known but unrun proof may be `pending`; `UNKNOWN` reachability blocks\n`pending`; missing, failed, or unavailable required evidence blocks `done`/C3.",
+  plannedProof: "`Required proof` is a planned level set, not execution\nevidence: known but unrun proof may be `pending`; `UNKNOWN` reachability blocks\n`pending`; missing, failed, or unavailable required evidence blocks `done`/GATE-DONE.",
   proofSeparation: "Levels stay separate and never promote one another.",
   liveLimit: "Source/static checks prove the written contract, not live-model adherence.",
   specMakerAuthority: "they are the canonical risk and coverage authority. Do not duplicate\ntheir taxonomy here.",
   specMakerAmbiguity: "Apply the canonical ambiguity action; examples never decide observable behavior.",
-  specMakerRoute: "Apply their risk-first route before C1 and stop when the\nrequest qualifies for direct work; hand off when it requires Brainstorm-only exploration.",
+  specMakerRoute: "Apply their risk-first route before GATE-SCOPE and stop when the\nrequest qualifies for direct work; hand off when it requires Brainstorm-only exploration.",
   reviewRisk: "Keep Fact Checker as the baseline. Assign every remaining material CP risk to a\nnamed reviewer lens; a critical row includes both relevant security-adversary and\nfailure-mode coverage, and nonmaterial lenses are not added.",
   reviewCapacity: "Reviewer count is fixed by the table, not lens count. Give each reviewer a distinct primary lens; when material lenses exceed reviewers, combine related named lenses on one reviewer and keep every material lens assigned.",
 };
@@ -891,7 +891,7 @@ async function runAdaptiveCoverageContractTests() {
     ["stale-profile-after-c2", "templates", ADAPTIVE_COVERAGE_CLAUSES.profileRederivation,
       "Keep existing coverage rows after accepted plan changes.", ["profile-lifecycle"]],
     ["planned-proof-blocks-start", "templates", ADAPTIVE_COVERAGE_CLAUSES.plannedProof,
-      "`Required proof` is execution evidence: known but unrun proof blocks `pending`; `UNKNOWN` may proceed; missing evidence may still reach `done`/C3.", ["proof-lifecycle"]],
+      "`Required proof` is execution evidence: known but unrun proof blocks `pending`; `UNKNOWN` may proceed; missing evidence may still reach `done`/GATE-DONE.", ["proof-lifecycle"]],
     ["source-promotes-live", "templates", ADAPTIVE_COVERAGE_CLAUSES.proofSeparation,
       "Source proof may promote installed and live proof.", ["proof-lifecycle"]],
     ["unmapped-proof-level", "templates", IMPLEMENTATION_READINESS_CLAUSES.proofLevelMapping,
@@ -905,7 +905,7 @@ async function runAdaptiveCoverageContractTests() {
     ["spec-maker-examples-decide", "specMaker", ADAPTIVE_COVERAGE_CLAUSES.specMakerAmbiguity,
       "Use examples to settle every ambiguous observable behavior.", ["spec-maker-authority"]],
     ["spec-maker-skips-brainstorm", "specMaker", ADAPTIVE_COVERAGE_CLAUSES.specMakerRoute,
-      "Apply the risk-first route before C1 and stop only for direct work.", ["spec-maker-authority"]],
+      "Apply the risk-first route before GATE-SCOPE and stop only for direct work.", ["spec-maker-authority"]],
     ["static-proves-live", "skill", ADAPTIVE_COVERAGE_CLAUSES.liveLimit,
       "Source/static checks prove live-model adherence.", ["proof-lifecycle"]],
   ];
@@ -956,7 +956,7 @@ async function runAdaptiveCoverageContractTests() {
 const PROCESS_TASK_STATUS_CLAUSES = {
   skill: [
     "`pending` means semantically ready for the dependency-aware queue.",
-    "Use `blocked` while a C1/C2 decision, accepted finding, or `UNKNOWN` closure remains\nopen.",
+    "Use `blocked` while a GATE-SCOPE/GATE-REVIEW decision, accepted finding, or `UNKNOWN` closure remains\nopen.",
     "Dependencies alone do not change `pending`; the resolver queues them.",
     "Promote only after current evidence closes every non-dependency blocker",
   ],
@@ -964,9 +964,9 @@ const PROCESS_TASK_STATUS_CLAUSES = {
     "Use only direct-child task basenames or `none` under `## Dependencies`; keep `## Receipt` empty until execution produces canonical proof.",
   ],
   specMaker: [
-    "Keep every new\ntask `Status: blocked` while C2 is open",
+    "Keep every new\ntask `Status: blocked` while GATE-REVIEW is open",
     "`pending` means semantically ready for the dependency-aware queue.",
-    "Keep a task\n`blocked` while a C1/C2 decision, accepted finding, or `UNKNOWN` closure remains\nopen.",
+    "Keep a task\n`blocked` while a GATE-SCOPE/GATE-REVIEW decision, accepted finding, or `UNKNOWN` closure remains\nopen.",
     "A named task dependency alone does not make it blocked; write dependencies\nas exact flat task basenames and let the resolver derive the next pending task.",
     "Move `blocked` to `pending` only when current evidence closes every non-dependency\nblocker.",
   ],
@@ -974,7 +974,7 @@ const PROCESS_TASK_STATUS_CLAUSES = {
 
 const PROCESS_TASK_STATUS_MATRIX = [
   ["Status condition", "Persisted state"],
-  ["C1/C2 decision open", "`blocked`"],
+  ["GATE-SCOPE/GATE-REVIEW decision open", "`blocked`"],
   ["accepted finding open or `UNKNOWN` reachability", "`blocked`"],
   ["every non-dependency blocker closed", "`pending`"],
   ["named task dependency not done", "keep `pending`; queue gates it"],
@@ -1021,9 +1021,12 @@ function processTaskStatusContractIssues(input) {
   const contradictoryStatusOverride = (source) => normalizeMarkdownWhitespace(source)
     .split(/(?<=[.!?])\s+/)
     .some((sentence) => {
-      const gateStillOpen = /\bC[12]\b.{0,60}\b(?:open|unresolved|remains?\s+open)\b/i.test(sentence)
-        || /\bunresolved\b.{0,40}\bC[12]\b/i.test(sentence)
-        || /\b(?:before|until)\b.{0,30}\bC[12]\b.{0,30}\b(?:closes?|resolved)\b/i.test(sentence);
+      // Gate names: the current GATE-SCOPE/GATE-REVIEW plus the C1/C2 spelling that
+      // still appears in completed packets and historical plans.
+      const GATE = "(?:C[12]|GATE-(?:SCOPE|REVIEW))";
+      const gateStillOpen = new RegExp(`\\b${GATE}\\b.{0,60}\\b(?:open|unresolved|remains?\\s+open)\\b`, "i").test(sentence)
+        || new RegExp(`\\bunresolved\\b.{0,40}\\b${GATE}\\b`, "i").test(sentence)
+        || new RegExp(`\\b(?:before|until)\\b.{0,30}\\b${GATE}\\b.{0,30}\\b(?:closes?|resolved)\\b`, "i").test(sentence);
       return gateStillOpen
         && /\b(?:pending|dispatch(?:able)?|handoff)\b/i.test(sentence)
         && !/\bblocked\b/i.test(sentence);
@@ -1097,28 +1100,28 @@ async function runProcessTaskStatusContractTests() {
       name: "reject-unconditional-all-pending",
       source: "specMaker",
       from: PROCESS_TASK_STATUS_CLAUSES.specMaker[0],
-      to: "Leave every new task `Status: pending` while C2 is open",
+      to: "Leave every new task `Status: pending` while GATE-REVIEW is open",
       issues: ["contradictory-status-override", "specMaker-status-contract", "unconditional-all-pending"],
     },
     {
       name: "reject-contradictory-status-override",
       source: "skill",
       from: PROCESS_TASK_STATUS_CLAUSES.skill[1],
-      to: `${PROCESS_TASK_STATUS_CLAUSES.skill[1]}\n\nException: a task with an unresolved C2 decision may remain pending.`,
+      to: `${PROCESS_TASK_STATUS_CLAUSES.skill[1]}\n\nException: a task with an unresolved GATE-REVIEW decision may remain pending.`,
       issues: ["contradictory-status-override"],
     },
     {
       name: "reject-c2-open-pending-paraphrase",
       source: "skill",
       from: PROCESS_TASK_STATUS_CLAUSES.skill[1],
-      to: `${PROCESS_TASK_STATUS_CLAUSES.skill[1]}\n\nHowever, while C2 remains open, a task can stay pending.`,
+      to: `${PROCESS_TASK_STATUS_CLAUSES.skill[1]}\n\nHowever, while GATE-REVIEW remains open, a task can stay pending.`,
       issues: ["contradictory-status-override"],
     },
     {
       name: "reject-before-c2-close-pending-paraphrase",
       source: "skill",
       from: PROCESS_TASK_STATUS_CLAUSES.skill[1],
-      to: `${PROCESS_TASK_STATUS_CLAUSES.skill[1]}\n\nA task can be pending before C2 closes.`,
+      to: `${PROCESS_TASK_STATUS_CLAUSES.skill[1]}\n\nA task can be pending before GATE-REVIEW closes.`,
       issues: ["contradictory-status-override"],
     },
   ];
@@ -2232,9 +2235,9 @@ function developPlanNativeContractIssues(input) {
   };
 
   requireClauses("accepted-fast-path", { skill: [
-    "When line two is `Specs-Contract: process-first-ready-v1`, reuse the accepted C1/C2.",
+    "When line two is `Specs-Contract: process-first-ready-v1`, reuse the accepted GATE-SCOPE/GATE-REVIEW.",
     "Perform only a narrow freshness scout for target revision, scope drift, ownership conflict, and dependency/state changes.",
-    "Reopen C1 only for evidenced scope drift; do not research, replan, or add a routine user gate before a real blocker or C3.",
+    "Reopen GATE-SCOPE only for evidenced scope drift; do not research, replan, or add a routine user gate before a real blocker or GATE-DONE.",
     "live-model adherence is `[UNVERIFIED]` without a host invocation.",
     "Load the plan index into working context once.",
   ] });
@@ -2246,10 +2249,10 @@ function developPlanNativeContractIssues(input) {
     "`blocked` is not dependency-valid.",
     "Select the first dependency-valid `pending` row in `plan.md` order.",
     "Start only the exact pending target when dependencies are valid.",
-    "Specific-task mode never touches a sibling and returns after its successful sync without chaining or C3.",
+    "Specific-task mode never touches a sibling and returns after its successful sync without chaining or GATE-DONE.",
   ] });
   if (/\bspecific-task mode\b.{0,160}\b(?:may|can|will)\b.{0,120}\b(?:touch|edit|mutate)\b.{0,40}\bsibling\b/i.test(normalized.skill)
-    || /\bspecific-task mode\b.{0,160}\b(?:may|can|will)\b.{0,120}\b(?:chain|open|enter)\b.{0,40}\b(?:task|C3)\b/i.test(normalized.skill)) {
+    || /\bspecific-task mode\b.{0,160}\b(?:may|can|will)\b.{0,120}\b(?:chain|open|enter)\b.{0,40}\b(?:task|GATE-DONE)\b/i.test(normalized.skill)) {
     issues.add("current-byte-selection");
   }
 
@@ -2273,7 +2276,7 @@ function developPlanNativeContractIssues(input) {
   ] });
 
   requireClauses("final-head-fixed-point", { quality: [
-    "Before C3, repeat within the same three-round repair cap:",
+    "Before GATE-DONE, repeat within the same three-round repair cap:",
     "Capture runtime Head and list every `done` task whose Receipt is stale or bound to a different Head.",
     "If proof changes any non-Specs byte, stop as BLOCKED;",
     "Stop only when consecutive Head captures are identical and every `done` Receipt names that current Head.",
@@ -2385,7 +2388,7 @@ async function runDevelopPlanNativeContractTests() {
   const mutateClause = (name, source, issue, from, to) => ({
     name, source, issue, from, to,
   });
-  const specificTaskBoundary = "Specific-task\nmode never touches a sibling and returns after its successful sync without chaining or C3.";
+  const specificTaskBoundary = "Specific-task\nmode never touches a sibling and returns after its successful sync without chaining or GATE-DONE.";
   const baseline = Object.fromEntries(await Promise.all(
     Object.entries(DEVELOP_PLAN_NATIVE_PATHS).map(async ([key, relativePath]) => [
       key, await readFile(join(packageRoot, relativePath), "utf8"),
@@ -2424,9 +2427,9 @@ async function runDevelopPlanNativeContractTests() {
       "More than one `in_progress` | Resume the first active task.",
     ),
     ...[
-      ["specific-task-touches-sibling", "Specific-task\nmode never touches a sibling and returns after its successful sync without chaining or C3. Specific-task mode may touch a sibling after sync."],
-      ["specific-task-chains", "Specific-task\nmode never touches a sibling and returns after its successful sync without chaining or C3. Specific-task mode may chain to the next task after sync."],
-      ["specific-task-opens-c3", "Specific-task\nmode never touches a sibling and returns after its successful sync without chaining or C3. Specific-task mode may open C3 after sync."],
+      ["specific-task-touches-sibling", "Specific-task\nmode never touches a sibling and returns after its successful sync without chaining or GATE-DONE. Specific-task mode may touch a sibling after sync."],
+      ["specific-task-chains", "Specific-task\nmode never touches a sibling and returns after its successful sync without chaining or GATE-DONE. Specific-task mode may chain to the next task after sync."],
+      ["specific-task-opens-c3", "Specific-task\nmode never touches a sibling and returns after its successful sync without chaining or GATE-DONE. Specific-task mode may open GATE-DONE after sync."],
     ].map(([name, to]) => mutateClause(
       name,
       "skill",
@@ -2570,7 +2573,7 @@ function authoringInstructionIssues(sources) {
     || !/^argument-hint:\s*["']?<feature-description>["']?\s*$/m.test(skill)) {
     issues.push("specs-frontmatter-drift");
   }
-  for (const gate of ["C1", "C2", "C3"]) {
+  for (const gate of ["GATE-SCOPE", "GATE-REVIEW", "GATE-DONE"]) {
     if (!skill.includes(gate)) issues.push(`missing-human-gate-${gate.toLowerCase()}`);
   }
   for (const [key, content] of [["skill", skill], ["templates", templates]]) {
@@ -2635,7 +2638,7 @@ async function runAuthoringInstructionContractTests(fail) {
 
   const mutations = [
     ["old specs flags", "skill", (value) => value.replace("<feature-description>", "[--status]")],
-    ["missing C2 gate", "skill", (value) => value.replaceAll("C2", "D2")],
+    ["missing GATE-REVIEW gate", "skill", (value) => value.replaceAll("GATE-REVIEW", "D2")],
     ["nested task layout", "templatesReference", (value) => `Use specs/<feature>/tasks/task-01.md.\n${value}`],
     ["missing evidence citations", "reviewReference", (value) => value.replaceAll("path:line", "citation")],
     ["missing receipt verification", "templatesReference", (value) => value.replaceAll("Verification: PASS", "Verification: MAYBE")],
@@ -2652,7 +2655,7 @@ async function runAuthoringInstructionContractTests(fail) {
       fail(`instruction lint accepted ${label} mutation`);
     }
   }
-  console.log("✔ Specs v3 flat layout, C1-C3 gates, review, and receipt contracts survive mutations");
+  console.log("✔ Specs v3 flat layout, the three gates, review, and receipt contracts survive mutations");
   console.log("✔ Specs v2.1 vocabulary is isolated under hierarchical Legacy sections");
   console.log("✔ Claude-to-Codex projection rejects Claude-only tool vocabulary");
   return 8;
@@ -2820,7 +2823,7 @@ async function runSpecs21ContractTests() {
   }
   const semanticReviewKeys = Object.keys(stateTemplate.validation?.semantic_review || {}).sort();
   if (semanticReviewKeys.join(",") !== [...C2_FIELDS].sort().join(",")) {
-    fail("semantic review template fields drifted from the C2 canonical field-list authority");
+    fail("semantic review template fields drifted from the GATE-REVIEW canonical field-list authority");
   }
 
   const instructionFiles = [
@@ -2833,7 +2836,7 @@ async function runSpecs21ContractTests() {
     readFile(join(packageRoot, file), "utf8")
   )))).join("\n");
   for (const token of [
-    "specs/<feature>/", "plan.md", "task-NN-", "C1", "C2", "C3",
+    "specs/<feature>/", "plan.md", "task-NN-", "GATE-SCOPE", "GATE-REVIEW", "GATE-DONE",
     "path:line", "Verification: PASS", "Base:", "Head:",
   ]) {
     if (!instructionText.includes(token)) fail(`instruction model is missing ${token}`);
@@ -4002,7 +4005,7 @@ async function runStaticSemanticTests() {
         content.includes("### 3. Author the flat packet") &&
         content.includes("specs/<feature>/plan.md") &&
         content.includes("Do not create implementation files, receipts, approval records") &&
-        content.includes("Keep every new\ntask `Status: blocked` while C2 is open"),
+        content.includes("Keep every new\ntask `Status: blocked` while GATE-REVIEW is open"),
     },
     {
       label: "installer syncs spec-state template and drops init template",
@@ -4181,7 +4184,7 @@ async function runStaticSemanticTests() {
         /two[^\n]*rounds/i.test(content),
     },
     {
-      label: "cf:specs review gives C2 ownership to the user and sweeps every edit",
+      label: "cf:specs review gives GATE-REVIEW ownership to the user and sweeps every edit",
       file: "src/claude/skills/specs/references/review.md",
       assert: (content) =>
         content.includes("accept, reject, or revise") &&
@@ -4195,10 +4198,10 @@ async function runStaticSemanticTests() {
       assert: (content) => !content.includes("/sdd:"),
     },
     {
-      label: "cf:specs flow is gated C1-C3 and process-first",
+      label: "cf:specs flow is gated GATE-SCOPE to GATE-DONE and process-first",
       file: "src/claude/skills/specs/SKILL.md",
       assert: (content) =>
-        ["C1", "C2", "C3"].every((gate) => content.includes(gate)) &&
+        ["GATE-SCOPE", "GATE-REVIEW", "GATE-DONE"].every((gate) => content.includes(gate)) &&
         content.includes("specs/<feature>/") &&
         /task-(?:NN|\d{2})-(?:\*|<slug>)\.md/.test(content) &&
         content.includes("## Receipt") &&
@@ -4280,9 +4283,9 @@ async function runStaticSemanticTests() {
       label: "cf:specs keeps human decisions at exactly the three named gates",
       file: "src/claude/skills/specs/SKILL.md",
       assert: (content) =>
-        content.includes("C1 — Scope") &&
-        content.includes("C2 — Findings") &&
-        content.includes("C3 — Done") &&
+        content.includes("GATE-SCOPE") &&
+        content.includes("GATE-REVIEW") &&
+        content.includes("GATE-DONE") &&
         content.includes("Ask once at each gate") &&
         content.includes("Do not ask for routine implementation choices"),
     },
@@ -4873,7 +4876,7 @@ async function runStaticSemanticTests() {
       file: "src/claude/skills/specs/SKILL.md",
       assert: (content) =>
         content.includes("detects drift\nbetween a receipt and the tree, not invention") &&
-        content.includes("C3 is where a human weighs the evidence") &&
+        content.includes("GATE-DONE is where a human weighs the evidence") &&
         !content.includes("revalidates every done task's inline Receipt and provenance"),
     },
     {
@@ -5187,7 +5190,7 @@ async function runStaticSemanticTests() {
         return norm.includes("it is not an implementation and does not authorize work") &&
           norm.includes("do not create implementation files, receipts") &&
           norm.includes("do not start develop") &&
-          norm.includes("keep every new task `status: blocked` while c2 is open") &&
+          norm.includes("keep every new task `status: blocked` while gate-review is open") &&
           !norm.includes("leave every new task `status: pending`");
       },
     },
@@ -5197,7 +5200,7 @@ async function runStaticSemanticTests() {
       assert: (content) =>
         content.includes("specs/<feature>/plan.md") &&
         content.includes("task-NN-<slug>.md") &&
-        ["C1 — Scope", "C2 — Findings", "C3 — Done"].every((gate) => content.includes(gate)) &&
+        ["GATE-SCOPE", "GATE-REVIEW", "GATE-DONE"].every((gate) => content.includes(gate)) &&
         ["Verification: PASS", "Command:", "Exit: 0", "Base:", "Head:"]
           .every((field) => content.includes(field)),
     },
@@ -5293,7 +5296,7 @@ async function runStaticSemanticTests() {
           normalized.includes("Reverse only when the audit adds new evidence or the context changed") &&
           normalized.includes("name the verification source") &&
           normalized.includes("Do not silently undo an explicit user decision") &&
-          normalized.includes("C1 scope choice, C2 finding dispositions, and C3 completion judgement") &&
+          normalized.includes("GATE-SCOPE scope choice, GATE-REVIEW finding dispositions, and GATE-DONE completion judgement") &&
           normalized.includes("- the original decision - the audit concern - the trade-off - the concrete options") &&
           normalized.includes("Then wait for the user") &&
           normalized.includes("identify what the code actually stores, protects, or exposes") &&
@@ -5994,7 +5997,7 @@ async function runSpecValidatorFixtureTests() {
     const driftSpec = join(root, "multi-contract-drift-spec");
     await cp(validSpec, driftSpec, { recursive: true });
     const driftDesignPath = join(driftSpec, "design.md");
-    const driftDesign = `${await readFile(driftDesignPath, "utf8")}\n### C1 — Permission payload\n\n<!-- contract:PermissionPayload -->\n\`\`\`json\n{ "user_id": 1, "can_create": true }\n\`\`\`\n\n### C2 — Permission error\n\n<!-- contract:PermissionError -->\n\`\`\`json\n{ "error": "not_found" }\n\`\`\`\n`;
+    const driftDesign = `${await readFile(driftDesignPath, "utf8")}\n### C1 — Permission payload\n\n<!-- contract:PermissionPayload -->\n\`\`\`json\n{ "user_id": 1, "can_create": true }\n\`\`\`\n\n### GATE-REVIEW — Permission error\n\n<!-- contract:PermissionError -->\n\`\`\`json\n{ "error": "not_found" }\n\`\`\`\n`;
     await writeText(
       driftDesignPath,
       driftDesign,
@@ -6188,7 +6191,7 @@ async function runWave1InstructionFixtureTests() {
     for (const text of [
       "Deliver exactly what was asked. Do not expand, polish, or add optional work beyond the request. Match existing code style and structure.",
       "For process-first Specs, `plan.md` and flat `task-NN-*.md` files are",
-      "Specs uses three user decisions: C1 for scope, C2 for adversarial findings,",
+      "Specs uses three user decisions: GATE-SCOPE for scope, GATE-REVIEW for adversarial findings,",
       "When a hook blocks an action, that is an instruction boundary — do not work around it.",
       "Verification comes from the project's hooks and validators, not from spawning more agents.",
       "NO_TESTS",

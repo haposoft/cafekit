@@ -19,7 +19,7 @@ Before ANY deployment, verify:
 - [ ] For process-first features, `plan.md` names every deployed flat
       `task-NN-*.md`; each is `done` with a current final inline Receipt, no unresolved
       plan/task blocker remains, and the user's
-      C3/release authorization covers this exact revision.
+      GATE-DONE/release authorization covers this exact revision.
 - [ ] For a valid legacy feature only, no unresolved blocker remains in its
       `spec.json` adapter or separate receipts.
 - [ ] Environment variables are configured (check `.env.example` vs target env).

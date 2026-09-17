@@ -549,7 +549,7 @@ test('Codex installer transform preserves all owned spec assets with idempotent 
   const review = fs.readFileSync(path.join(ROOT, 'src/claude/skills/specs/references/review.md'), 'utf8');
   const templates = fs.readFileSync(path.join(ROOT, 'src/claude/skills/specs/references/templates.md'), 'utf8');
   assert.match(skill, /specs\/<feature>\/[\s\S]{0,160}plan\.md[\s\S]{0,160}task-01-<slug>\.md/);
-  assert.match(skill, /C1 — Scope[\s\S]*C2 — Findings[\s\S]*C3 — Done/);
+  assert.match(skill, /GATE-SCOPE[\s\S]*GATE-REVIEW[\s\S]*GATE-DONE/);
   assert.doesNotMatch(skill, /--(?:status|validate|archive)\b/);
   assert.match(review, /path:line/);
   assert.match(review, /Cap the presented[\s\S]{0,40}list at 15/);

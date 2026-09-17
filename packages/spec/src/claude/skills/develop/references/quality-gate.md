@@ -74,7 +74,7 @@ manufacture a green result.
 
 ## Final-Head fixed point
 
-Before C3, repeat within the same three-round repair cap:
+Before GATE-DONE, repeat within the same three-round repair cap:
 
 1. Capture runtime Head and list every `done` task whose Receipt is stale or
    bound to a different Head.
@@ -86,7 +86,7 @@ Before C3, repeat within the same three-round repair cap:
 Stop only when consecutive Head captures are identical and every `done` Receipt
 names that current Head. A single pass, remembered result, copied Receipt, or
 proof promoted from another level is not a fixed point. If Head keeps moving or
-the repair cap is reached, report the blocker instead of opening C3.
+the repair cap is reached, report the blocker instead of opening GATE-DONE.
 
 ## Flash gate
 
@@ -106,11 +106,11 @@ report production readiness. Only a later explicit non-Flash invocation may
 recover it: discard Flash output as canonical evidence, inspect current bytes
 and the owned diff, and run fresh proof under the same sync-finalize contract.
 
-## Docs impact and C3
+## Docs impact and GATE-DONE
 
 After proof and review, classify docs impact as `none`, `minor`, or `major`.
 Update only affected existing docs when impact is not none. Show the user the
-current command evidence and limitations at C3; do not infer approval from a
+current command evidence and limitations at GATE-DONE; do not infer approval from a
 receipt.
 
 ## Legacy workflow compatibility
