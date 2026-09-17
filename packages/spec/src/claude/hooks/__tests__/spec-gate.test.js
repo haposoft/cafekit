@@ -1880,6 +1880,26 @@ test('52. the block names what to change, not just which check failed', () => {
   }
 });
 
+test('53. a hand-typed provenance pair is told to re-derive, not to add lines', () => {
+  // Reported from a project whose receipt carried git short SHAs. Telling someone to
+  // add `Base:` and `Head:` lines they had already written sends them looking in the
+  // wrong place; the pair is there, it just is not the one the runtime derives.
+  const dir = makeWorkflowFixture([
+    '## Receipt', '', '- Verification: PASS', '- Command: node --test', '- Exit: 0',
+    '- Base: d72bb57', '- Head: 5da1eca', '```text', '$ node --test', 'pass: 1', '```',
+  ]);
+  try {
+    clearCache();
+    const body = parseBlock(runHook({}, dir).stdout);
+    assert.ok(body && body.decision === 'block');
+    assert.match(body.reason, /present but are not the pair this runtime derives/);
+    assert.match(body.reason, /short SHAs/);
+    assert.doesNotMatch(body.reason, /add runtime-derived/, 'the lines exist; do not ask for them again');
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('49. an unversioned specs root does not keep every receipt bound', () => {
   // Committing specs/ is the user's choice, not the tool's requirement. Without a
   // committed copy of the task file there is no baseline, so the selector used to keep

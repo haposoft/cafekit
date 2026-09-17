@@ -354,12 +354,22 @@ const RECEIPT_FIX_HINTS = Object.freeze([
 ]);
 
 /**
- * Turn receipt check codes into one instruction naming what to change.
+ * Turn receipt check codes into one instruction naming what to change. When the receipt
+ * body is available, a provenance failure is refined: telling someone to add lines they
+ * already wrote sends them looking in the wrong place, and the common cause is a pair
+ * typed by hand — git short SHAs — rather than the pair this runtime derives.
  */
-function receiptFixHint(failures) {
+function receiptFixHint(failures, body) {
   const codes = new Set(Array.isArray(failures) ? failures : []);
   const hints = RECEIPT_FIX_HINTS.filter(([code]) => codes.has(code)).map(([, hint]) => hint);
   if (hints.length === 0) return null;
+  if (codes.has('provenance') && typeof body === 'string'
+    && fieldValues(body, 'Base').length > 0 && fieldValues(body, 'Head').length > 0) {
+    const index = hints.length - 1;
+    hints[index] = 'the `Base:` and `Head:` lines are present but are not the pair this runtime derives'
+      + ' — re-derive them (`Base` is a 40-character commit id, `Head` a 64-character tree digest);'
+      + ' git short SHAs typed by hand never match';
+  }
   return hints.length === 1 ? hints[0] : `${hints.slice(0, -1).join('; ')}; and ${hints[hints.length - 1]}`;
 }
 
@@ -409,7 +419,7 @@ function checkWorkflowReceiptSet(candidates, projectRoot, runtimeSession, policy
     for (const taskPath of doneTasks) {
       const proof = checkWorkflowTaskReceipt(candidate.featureDir, taskPath, runtimeContext, policy);
       if (proof.failures.length > 0) {
-        failures.push({ featureName: candidate.featureName, taskPath, failures: proof.failures });
+        failures.push({ featureName: candidate.featureName, taskPath, failures: proof.failures, body: proof.body });
       }
     }
   }

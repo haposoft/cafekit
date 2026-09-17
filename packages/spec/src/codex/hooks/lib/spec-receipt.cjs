@@ -99,9 +99,9 @@ function checkFeatureReceipt(featureDir, runtimeContext) {
   if (!policy) return { failures: ['shared_validator'], status: 'missing' };
   return receiptHelper().checkFeatureReceipt(featureDir, runtimeContext, policy);
 }
-function receiptFixHint(failures) {
+function receiptFixHint(failures, body) {
   const helper = receiptHelper();
-  return typeof helper.receiptFixHint === 'function' ? helper.receiptFixHint(failures) : null;
+  return typeof helper.receiptFixHint === 'function' ? helper.receiptFixHint(failures, body) : null;
 }
 function readTaskProof(featureDir, taskPath) {
   return receiptHelper().readTaskProof(featureDir, taskPath, getSharedPolicy() || {});

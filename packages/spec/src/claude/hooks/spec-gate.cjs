@@ -150,7 +150,7 @@ try {
     const lines = [`⚠️ Completion gate: ${checked.failures.length} done task(s) lack a verification receipt.`];
     for (const failure of checked.failures) {
       lines.push(`- \`${failure.featureName}/${failure.taskPath}\`: failed check(s) ${failure.failures.join(', ')}`);
-      const hint = typeof RECEIPT.receiptFixHint === 'function' ? RECEIPT.receiptFixHint(failure.failures) : null;
+      const hint = typeof RECEIPT.receiptFixHint === 'function' ? RECEIPT.receiptFixHint(failure.failures, failure.body) : null;
       lines.push(`  Fix in \`specs/${failure.featureName}/${failure.taskPath}\`: ${hint || 'write a runtime-bound `## Receipt` with the planned command'}.`);
     }
     emitBlock(lines.slice(0, 8).join('\n'));
@@ -251,12 +251,12 @@ try {
   );
   const featureDir = path.join(specsPath, featureName);
   const failures = allDoneTasks
-    .map((taskPath) => ({
-      taskPath,
-      fails: processWorkflow
-        ? RECEIPT.checkWorkflowTaskReceipt(featureDir, taskPath, runtimeContext, POLICY).failures
-        : RECEIPT.checkTaskReceipt(featureDir, taskPath, taskRegistry[taskPath], runtimeContext, POLICY).failures,
-    }))
+    .map((taskPath) => {
+      const proof = processWorkflow
+        ? RECEIPT.checkWorkflowTaskReceipt(featureDir, taskPath, runtimeContext, POLICY)
+        : RECEIPT.checkTaskReceipt(featureDir, taskPath, taskRegistry[taskPath], runtimeContext, POLICY);
+      return { taskPath, fails: proof.failures, body: proof.body };
+    })
     .filter((f) => f.fails.length > 0);
 
   const featureCloseoutRequired = !processWorkflow && explicitCloseout && allDoneTasks.length > 0;
@@ -298,12 +298,12 @@ try {
       ? `⚠️ Completion gate: ${failures.length} done task(s) lack a verification receipt.`
       : '⚠️ Completion gate: workflow completion proof is incomplete.',
   ];
-  for (const { taskPath, fails } of failures) {
+  for (const { taskPath, fails, body } of failures) {
     lines.push(`- \`${taskPath}\`: failed check(s) ${fails.join(', ')}`);
     lines.push(taskPath === 'feature-receipt.md'
       ? `  Fix: run final integration proof, then write \`specs/${featureName}/feature-receipt.md\`.`
       : processWorkflow
-        ? `  Fix in \`specs/${featureName}/${path.posix.basename(taskPath)}\`: ${(typeof RECEIPT.receiptFixHint === 'function' && RECEIPT.receiptFixHint(fails)) || 'write a runtime-bound `## Receipt` with command output'}.`
+        ? `  Fix in \`specs/${featureName}/${path.posix.basename(taskPath)}\`: ${(typeof RECEIPT.receiptFixHint === 'function' && RECEIPT.receiptFixHint(fails, body)) || 'write a runtime-bound `## Receipt` with command output'}.`
         : `  Fix: write canonical proof to \`specs/${featureName}/receipts/${path.posix.basename(taskPath)}\`; legacy \`## Evidence\` remains read-compatible.`);
   }
   if (completionBlocked) {
