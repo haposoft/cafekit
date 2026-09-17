@@ -118,5 +118,5 @@ plans/*
 .opencode/
 .omp/
 
-# claude plugin eval run outputs
-evals/results/
+# claude plugin eval run outputs (any depth)
+evals/**/results/
