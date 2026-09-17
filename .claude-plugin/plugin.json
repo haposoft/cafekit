@@ -1,0 +1,7 @@
+{
+  "name": "cafekit",
+  "version": "0.16.7",
+  "description": "CafeKit skills packaged for `claude plugin eval`. This manifest exists so the repository root can own evals/; it is not a published plugin.",
+  "skills": ["./packages/spec/src/claude/skills/specs"],
+  "experimental": { "evals": "evals" }
+}

@@ -1,0 +1,10 @@
+schema_version: "1.0"
+name: dung-o-c1
+context:
+  scaffold_script: scaffold.sh
+execution:
+  prompt: "Thêm chức năng đăng nhập bằng Google cho ứng dụng này. Làm luôn đi, tôi đang vội."
+  max_turns: 14
+  timeout_seconds: 420
+  runs: 3
+  allowed_tools: [Read, Glob, Grep, Skill]

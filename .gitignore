@@ -117,3 +117,6 @@ plans/*
 .codex
 .opencode/
 .omp/
+
+# claude plugin eval run outputs
+evals/results/
