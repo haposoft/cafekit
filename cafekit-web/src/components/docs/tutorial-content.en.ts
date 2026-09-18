@@ -45,16 +45,17 @@ export const tutorialContentEn: TutorialContent = {
       command: "npx @haposoft/cafekit",
       outputs: [
         { kind: "output", text: "Select language · 言語を選択 · Chọn ngôn ngữ" },
-        { kind: "output", text: "selecting platform: Claude Code…" },
-        { kind: "output", text: "Claude Code or Codex CLI — native runtime selected" },
-        { kind: "output", text: "configuring addressing (how AI calls you)…" },
-        { kind: "success", text: "✓ skill dependencies ready (Python venv, pip, npm, Chromium)" },
-        { kind: "success", text: "✓ installation complete — installed: 67  updated: 1  unchanged: 6" },
+        { kind: "output", text: "Platform: Claude Code" },
+        { kind: "output", text: "Claude Code — 230 files, 20 skills" },
+        { kind: "success", text: "Installation complete" },
+        { kind: "success", text: "Installed: 230   Updated: 0   Unchanged: 0   Skills: yes" },
+        { kind: "success", text: "CafeKit Version: 0.16.7" },
       ],
       youWillSee: [
-        "Interactive prompts: language, runtime, addressing, and skill dependencies",
-        "A new .claude/ or .codex/ runtime in your project root",
+        "Interactive prompts: language, platform, addressing (how the AI calls you), and skill dependencies",
+        "A new .claude/ or .codex/ runtime in your project root, holding skills/, agents/, hooks/, scripts/, rules/, runtime.json, and settings.json",
         "Claude Code gets .claude/ and CLAUDE.md; Codex gets .agents/, .codex/, and an AGENTS.md block",
+        "20 skills by default — docx, pdf, pptx, xlsx, and ai-multimodal are optional and install only with --with-document-skills",
       ],
       troubleshooting: [
         { problem: "npx command not found", fix: "Node.js 18+ is required. Check: node --version" },
@@ -67,14 +68,15 @@ export const tutorialContentEn: TutorialContent = {
       title: "Create your first spec",
       narrative: [
         "Now open a Claude Code session inside your project by running claude in the terminal. You are now inside Claude Code — this is where you type /cf:* commands.",
-        "A spec is a written contract that describes what you want to build before code starts. Specs first asks C1 to lock scope, writes the plan and flat tasks, then presents C2 findings for your decision.",
+        "A spec is a written contract that describes what you want to build before code starts. Specs asks GATE-SCOPE first to lock scope, writes the plan and flat tasks, then presents GATE-REVIEW findings for your decision.",
+        "It never decides scope for you: it shows what already exists, the smallest change that delivers the outcome, and any signal that the work is growing, then asks you to choose EXPAND, KEEP, or CUT.",
       ],
       command: "/cf:specs Build a word counter that counts words in a sentence",
       outputs: [
-        { kind: "output", text: "C1 → confirm outcome, scope, exclusions, and constraints" },
+        { kind: "output", text: "GATE-SCOPE → existing code, smallest change, expansion signals → EXPAND / KEEP / CUT?" },
         { kind: "success", text: "✓ specs/word-counter/plan.md" },
         { kind: "success", text: "✓ specs/word-counter/task-01-count-words.md" },
-        { kind: "output", text: "C2 → review findings and decide before implementation" },
+        { kind: "output", text: "GATE-REVIEW → adversarial findings presented before implementation" },
       ],
       youWillSee: [
         "A new specs/word-counter/ folder with plan.md and flat task files",
@@ -93,19 +95,20 @@ export const tutorialContentEn: TutorialContent = {
     {
       id: "validate",
       label: "Approve",
-      title: "Resolve C2 before writing code",
+      title: "Resolve GATE-REVIEW before writing code",
       narrative: [
-        "After adversarial review, CafeKit presents material gaps, risks, and contradictions at C2. Accept them, request changes, or keep an explicitly named limitation before starting implementation.",
+        "After adversarial review, CafeKit lists the findings at GATE-REVIEW. Each one has to carry a reproducible path:line and a failure scenario, and you accept, reject, or revise it. Only accepted findings are applied to the plan.",
       ],
       command: "Accept all",
       outputs: [
-        { kind: "output", text: "recording C2 decisions in plan.md…" },
+        { kind: "output", text: "recording GATE-REVIEW decisions in the plan review log…" },
         { kind: "success", text: "✓ scope and findings accepted" },
         { kind: "success", text: "✓ ready for a new explicit /cf:develop invocation" },
       ],
       youWillSee: [
-        "C2 decisions are durable in plan.md",
-        "Planning stops here; implementation starts only with a new develop command",
+        "GATE-REVIEW decisions are durable in plan.md",
+        "Planning stops here — Specs never starts implementation",
+        "Implementation begins only when you invoke /cf:develop yourself",
       ],
       troubleshooting: [
         { problem: "A finding is unclear", fix: "Ask what decision it changes. Do not accept a material limitation you do not understand." },
@@ -116,24 +119,24 @@ export const tutorialContentEn: TutorialContent = {
       label: "Code",
       title: "Implement the first task",
       narrative: [
-        "Now implement — one task at a time. CafeKit reads the task file, checks what needs to be built, and implements it. After coding it runs a quality gate: build, evidence, and review must all pass.",
+        "Now implement — one task at a time. CafeKit reads the task file, sets its Status to in_progress, and changes only the paths that task owns. After coding it runs the exact command written in the task's Verification Plan and reviews correctness, security, scope, and reachability. Nothing but a literal PASS closes a task.",
       ],
       command: "/cf:develop word-counter",
       outputs: [
         { kind: "output", text: "reading plan.md and task-01-count-words.md…" },
         { kind: "output", text: "implementing countWords()…" },
-        { kind: "output", text: "quality gate → build · evidence · review" },
+        { kind: "output", text: "quality gate → verification · review" },
         { kind: "success", text: "✓ implementation complete" },
-        { kind: "success", text: "✓ task Status: done with inline Receipt" },
+        { kind: "success", text: "✓ Status: done — inline ## Receipt written" },
       ],
       youWillSee: [
         "The countWords() function created in your project",
-        "A verification receipt inside the task file",
-        "The task Status and final inline Receipt are updated by the controller",
+        "An inline ## Receipt at the end of the task file",
+        "Only the controller writes Status and Receipt — develop takes the task all the way to done",
       ],
       glossary: [
-        { term: "quality gate", definition: "Three checks before a task is done: build succeeds, evidence is recorded, review finds no blockers." },
-        { term: "Receipt", definition: "The task's canonical proof: exact command, exit, verification verdict, Base, Head, and current output." },
+        { term: "quality gate", definition: "What a task must clear before it closes: the task's exact command runs and passes, and review leaves no blocker. PASS_WITH_WARNINGS and NO_TESTS cannot close it." },
+        { term: "Receipt", definition: "The task's canonical proof: Verification: PASS, the exact Command, Exit: 0, runtime-derived Base and Head, and a non-empty block of current output." },
       ],
     },
     {
@@ -141,7 +144,7 @@ export const tutorialContentEn: TutorialContent = {
       label: "Test",
       title: "Verify with real tests",
       narrative: [
-        "Run the test suite. CafeKit checks build, types, and tests — and rejects shallow results. A command that exits 0 while running zero tests is NOT a pass.",
+        "Run the tests. CafeKit never invents a command: it detects them from the task and the repository, runs a cheap compile or typecheck precheck when the project has one, then executes the task's exact command and its named probes with real counts. A command that exits 0 while running zero tests is NOT a pass.",
       ],
       command: "/cf:test",
       outputs: [
@@ -152,7 +155,8 @@ export const tutorialContentEn: TutorialContent = {
       ],
       youWillSee: [
         "Test count > 0 — real tests ran",
-        "verdict: PASS — build, types, and tests all green",
+        "verdict: PASS — the precheck and the task's exact command both passed",
+        "The verdict vocabulary is PASS / PASS_WITH_WARNINGS / FAIL / BLOCKED, and only a literal PASS can close a task",
       ],
       troubleshooting: [
         { problem: "verdict: NO_TESTS", fix: "No test file found. Add a test for countWords() and run /cf:test again. Zero tests is not a pass." },
@@ -160,29 +164,32 @@ export const tutorialContentEn: TutorialContent = {
       ],
       glossary: [
         { term: "NO_TESTS", definition: "No test suite ran. Never a passing result — tasks require real evidence." },
+        { term: "PRECHECK_FAIL", definition: "The compile or typecheck precheck failed. It outranks NO_TESTS in the report." },
       ],
     },
     {
       id: "sync",
-      label: "Done",
-      title: "Review and mark as done",
+      label: "Decide",
+      title: "Review, then decide at GATE-DONE",
       narrative: [
-        "Run a code review to catch any issues, then sync the task state to done. A task is only done when implementation, evidence, tests, and review all agree.",
-        "After review passes, sync only observed state. C3 is the final human decision that the current receipts and named limitations are good enough to close the feature.",
+        "Develop already set the task to done and wrote its Receipt. What is left for you is to read an independent review, look at the current evidence and the limitations that remain, and decide whether the feature is finished. That decision is GATE-DONE, and no command makes it for you.",
+        "Use /cf:sync only when file state has drifted: /cf:sync audit word-counter inspects the whole packet, and /cf:sync word-counter task-01-count-words.md blocked \"reason\" records an observed state without inventing proof.",
       ],
       command: "/cf:code-review",
       outputs: [
         { kind: "output", text: "reviewing word-counter implementation…" },
         { kind: "success", text: "✓ spec compliance: ok" },
         { kind: "success", text: "✓ no critical findings" },
-        { kind: "output", text: "next: /cf:sync word-counter, then review C3" },
+        { kind: "output", text: "GATE-DONE → current Receipts and open limitations shown; you decide" },
       ],
       youWillSee: [
-        "no critical findings — ready to mark done",
-        "task Status and inline Receipt remain synchronized after sync",
+        "no critical findings — you can judge completion",
+        "The task's Status and inline Receipt agree",
+        "A passing command proves only the boundary it ran — not product approval",
       ],
       troubleshooting: [
-        { problem: "Critical findings in review", fix: "Fix the issues, re-run /cf:test, then /cf:code-review again before syncing." },
+        { problem: "Critical findings in review", fix: "Fix the issues, re-run /cf:test, then /cf:code-review again. The controller rewrites the Receipt." },
+        { problem: "A Stop hook says a done task has no receipt", fix: "Check that the task's ## Receipt carries the exact Command, Exit: 0, Verification: PASS, runtime-derived Base and Head, and current output." },
       ],
     },
   ],
@@ -193,6 +200,7 @@ export const tutorialContentEn: TutorialContent = {
       "One task at a time — each change is small and reviewable",
       "Real evidence required — no fake green results",
       "State stays auditable — each task owns one Status and one current inline Receipt",
+      "Humans decide in exactly three places — GATE-SCOPE, GATE-REVIEW, GATE-DONE",
     ],
     nextLinks: [
       { label: "Spec-driven development", href: "/docs/spec-driven-development" },
@@ -201,9 +209,10 @@ export const tutorialContentEn: TutorialContent = {
     ],
     glossary: [
       { term: "spec", definition: "Folder of files describing what to build before code starts." },
-      { term: "task packet", definition: "Small scoped work unit with steps, criteria, and evidence." },
-      { term: "C3", definition: "The user's final decision that current proof and limitations are sufficient to close the feature." },
-      { term: "quality gate", definition: "Build + evidence + review — all three must pass." },
+      { term: "task packet", definition: "A flat task-NN-*.md file beside plan.md: one outcome, one Status field, one verification command." },
+      { term: "GATE-DONE", definition: "The third human decision (formerly C3): the user judges whether the current Receipts and named limitations are enough to close the feature." },
+      { term: "GATE-SCOPE / GATE-REVIEW", definition: "The first two human decisions (formerly C1 / C2): choose EXPAND, KEEP, or CUT for scope, then accept, reject, or revise each review finding." },
+      { term: "quality gate", definition: "What a task must clear before it closes: its exact command passes and review leaves no blocker." },
       { term: "NO_TESTS", definition: "No test suite ran. Never a passing result." },
     ],
   },

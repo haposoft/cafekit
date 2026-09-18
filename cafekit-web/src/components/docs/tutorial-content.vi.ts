@@ -45,17 +45,19 @@ export const tutorialContentVi: TutorialContent = {
       command: "npx @haposoft/cafekit",
       outputs: [
         { kind: "output", text: "Select language · 言語を選択 · Chọn ngôn ngữ" },
-        { kind: "output", text: "Chọn (các) nền tảng cần cài…" },
-        { kind: "output", text: "Claude Code — 67 tệp, 30 skill" },
+        { kind: "output", text: "Chọn (các) nền tảng cần cài" },
+        { kind: "output", text: "Claude Code — 230 tệp, 20 skill" },
         { kind: "output", text: "Bạn muốn AI gọi bạn là gì?" },
-        { kind: "success", text: "✓ skill dependencies ready (Python venv, pip, npm, Chromium)" },
-        { kind: "success", text: "✓ cài đặt hoàn tất — đã cài: 67  đã cập nhật: 1  không đổi: 6" },
+        { kind: "success", text: "Cài đặt hoàn tất" },
+        { kind: "success", text: "Đã cài: 230   Đã cập nhật: 0   Không đổi: 0   Skill: có" },
+        { kind: "success", text: "CafeKit Version: 0.16.7" },
       ],
       youWillSee: [
-        "Các bước tương tác: chọn ngôn ngữ, nền tảng, xưng hô, cài skill deps",
+        "Các bước tương tác: chọn ngôn ngữ, nền tảng, xưng hô, cài skill dependencies",
         "Thư mục .claude/ mới xuất hiện trong project root",
-        "Bên trong: skills/, agents/, hooks/, runtime.json, settings.json, cafekit-manifest.json",
-        "File CLAUDE.md chứa quy tắc workflow",
+        "Bên trong: skills/, agents/, hooks/, scripts/, rules/, runtime.json, settings.json, cafekit-manifest.json",
+        "File CLAUDE.md chứa quy tắc workflow, và AGENTS.md dùng chung cho mọi runtime",
+        "Mặc định 20 skill. Nhóm tài liệu (docx, pdf, pptx, xlsx, ai-multimodal) là tuỳ chọn, chỉ cài khi thêm --with-document-skills",
       ],
       troubleshooting: [
         { problem: "Không tìm thấy lệnh npx", fix: "Cần Node.js 18+. Kiểm tra: node --version" },
@@ -69,13 +71,14 @@ export const tutorialContentVi: TutorialContent = {
       narrative: [
         "Mở phiên Claude Code trong project bằng cách chạy claude trong terminal. Bây giờ bạn đang ở trong Claude Code — đây là nơi gõ các lệnh /cf:*.",
         "Spec là bản hợp đồng mô tả điều bạn muốn xây dựng TRƯỚC khi code. Chạy lệnh dưới đây trong Claude Code.",
+        "CafeKit luôn hỏi phạm vi trước (GATE-SCOPE): nó cho bạn xem cái đã có, tập thay đổi nhỏ nhất đủ ra kết quả, và dấu hiệu công việc đang phình ra — rồi mới hỏi bạn chọn EXPAND (mở rộng), KEEP (giữ nguyên) hay CUT (cắt bớt). Nó không tự quyết thay bạn.",
       ],
       command: "/cf:specs Build a word counter that counts words in a sentence",
       outputs: [
-        { kind: "output", text: "C1 → xác nhận outcome, scope, exclusions và constraints" },
+        { kind: "output", text: "GATE-SCOPE → cái đã có, thay đổi nhỏ nhất, dấu hiệu phình → EXPAND / KEEP / CUT?" },
         { kind: "success", text: "✓ specs/word-counter/plan.md" },
         { kind: "success", text: "✓ specs/word-counter/task-01-count-words.md" },
-        { kind: "output", text: "C2 → review findings trước implementation" },
+        { kind: "output", text: "GATE-REVIEW → trình findings của adversarial review trước khi implement" },
       ],
       youWillSee: [
         "Thư mục specs/word-counter/ với plan.md và flat task files",
@@ -94,19 +97,20 @@ export const tutorialContentVi: TutorialContent = {
     {
       id: "validate",
       label: "Duyệt",
-      title: "Giải quyết C2 trước khi code",
+      title: "Giải quyết GATE-REVIEW trước khi code",
       narrative: [
-        "Sau adversarial review, CafeKit đưa ra gap, risk và contradiction quan trọng tại C2. Bạn accept, yêu cầu sửa, hoặc KEEP một limitation có tên rõ trước khi implement.",
+        "Sau adversarial review, CafeKit liệt kê các finding tại GATE-REVIEW. Mỗi finding phải có path:line tái lập được và một kịch bản hỏng cụ thể; bạn chọn chấp nhận, bác bỏ, hoặc sửa lại. Chỉ finding được chấp nhận mới đi vào plan.",
       ],
       command: "Accept all",
       outputs: [
-        { kind: "output", text: "ghi quyết định C2 vào plan.md…" },
+        { kind: "output", text: "ghi quyết định GATE-REVIEW vào Review log của plan.md…" },
         { kind: "success", text: "✓ scope và findings đã được chấp nhận" },
         { kind: "success", text: "✓ sẵn sàng cho invocation /cf:develop mới" },
       ],
       youWillSee: [
-        "Quyết định C2 được lưu bền vững trong plan.md",
-        "Planning dừng tại đây; implementation bắt đầu bằng command develop mới",
+        "Quyết định GATE-REVIEW được lưu bền vững trong plan.md",
+        "Planning dừng tại đây — Specs không bao giờ tự bắt đầu implement",
+        "Implement chỉ bắt đầu khi chính bạn gõ /cf:develop",
       ],
       troubleshooting: [
         { problem: "Validation trả về lỗi", fix: "Đọc kỹ output lỗi. Thường do thiếu trường trong plan.md hoặc task file không khớp. Chạy lại /cf:specs để tạo mới." },
@@ -117,24 +121,24 @@ export const tutorialContentVi: TutorialContent = {
       label: "Code",
       title: "Implement task đầu tiên",
       narrative: [
-        "Bây giờ mới implement — từng task một. CafeKit đọc file task, kiểm tra những gì cần xây dựng và implement. Sau khi code xong, nó chạy quality gate: build, evidence và review đều phải pass.",
+        "Bây giờ mới implement — từng task một. CafeKit đọc file task, đặt Status thành in_progress, và chỉ sửa trong những đường dẫn task đó sở hữu. Code xong, nó chạy đúng lệnh ghi trong Verification Plan của task rồi review về correctness, security, scope và reachability. Chỉ literal PASS mới đóng được task.",
       ],
       command: "/cf:develop word-counter",
       outputs: [
         { kind: "output", text: "đang đọc task-01-count-words.md…" },
         { kind: "output", text: "đang implement countWords()…" },
-        { kind: "output", text: "quality gate → build · evidence · review" },
+        { kind: "output", text: "quality gate → verification · review" },
         { kind: "success", text: "✓ implement hoàn thành" },
-        { kind: "success", text: "✓ task Status: done với inline Receipt" },
+        { kind: "success", text: "✓ Status: done — đã ghi inline ## Receipt" },
       ],
       youWillSee: [
         "Hàm countWords() được tạo trong project",
-        "Verification receipt bên trong file task",
-        "Status và inline Receipt cuối của task do controller cập nhật",
+        "Một mục ## Receipt nằm cuối file task",
+        "Chỉ controller được ghi Status và Receipt — develop đưa task tới done",
       ],
       glossary: [
-        { term: "quality gate", definition: "Ba kiểm tra phải pass trước khi task xong: build thành công, evidence được ghi, review không có lỗi chặn." },
-        { term: "Receipt", definition: "Proof chuẩn trong task: exact command, exit, verdict, Base, Head và current output." },
+        { term: "quality gate", definition: "Điều kiện để đóng task: đúng lệnh trong task chạy và pass, review không còn lỗi chặn. PASS_WITH_WARNINGS hay NO_TESTS đều không đóng được." },
+        { term: "Receipt", definition: "Proof chuẩn trong task: Verification: PASS, đúng Command, Exit: 0, Base và Head suy từ runtime, và khối output hiện tại không rỗng." },
       ],
     },
     {
@@ -142,7 +146,7 @@ export const tutorialContentVi: TutorialContent = {
       label: "Test",
       title: "Verify bằng test thật",
       narrative: [
-        "Chạy test suite. CafeKit kiểm tra build, types và tests — và từ chối kết quả hời hợt. Một lệnh thoát 0 trong khi chạy 0 test KHÔNG phải là pass.",
+        "Chạy test. CafeKit không tự bịa lệnh: nó phát hiện lệnh từ file task và từ repo, chạy precheck compile/typecheck rẻ tiền nếu dự án có, rồi chạy đúng lệnh của task cùng các named probe với số liệu thật. Một lệnh thoát 0 trong khi chạy 0 test KHÔNG phải là pass.",
       ],
       command: "/cf:test",
       outputs: [
@@ -153,7 +157,8 @@ export const tutorialContentVi: TutorialContent = {
       ],
       youWillSee: [
         "Số lượng test > 0 — test thật đã chạy",
-        "verdict: PASS — build, types và tests đều xanh",
+        "verdict: PASS — precheck và đúng lệnh của task đều qua",
+        "Bộ verdict là PASS / PASS_WITH_WARNINGS / FAIL / BLOCKED; chỉ literal PASS mới đóng được task",
       ],
       troubleshooting: [
         { problem: "verdict: NO_TESTS", fix: "Không tìm thấy file test. Thêm test cho countWords() và chạy lại /cf:test. Zero test không phải pass." },
@@ -161,29 +166,32 @@ export const tutorialContentVi: TutorialContent = {
       ],
       glossary: [
         { term: "NO_TESTS", definition: "Không có test suite nào chạy. KHÔNG phải kết quả pass — task cần evidence thật." },
+        { term: "PRECHECK_FAIL", definition: "Precheck compile/typecheck hỏng. Được báo ưu tiên hơn NO_TESTS." },
       ],
     },
     {
       id: "sync",
-      label: "Xong",
-      title: "Review và đánh dấu hoàn thành",
+      label: "Quyết định",
+      title: "Review, rồi quyết ở GATE-DONE",
       narrative: [
-        "Chạy code review để bắt các vấn đề, rồi sync trạng thái task thành done. Task chỉ được coi là done khi implementation, evidence, tests và review đều đồng ý.",
-        "Sau khi review pass, chạy: /cf:sync word-counter task-01-count-words.md done",
+        "Task đã được develop đặt thành done kèm Receipt. Việc còn lại của bạn là đọc một review độc lập, nhìn bằng chứng hiện tại và những giới hạn còn lại, rồi quyết định feature đã xong hay chưa. Đó là GATE-DONE — không lệnh nào quyết thay bạn.",
+        "Chỉ dùng /cf:sync khi trạng thái file bị lệch: /cf:sync audit word-counter soát cả packet, còn /cf:sync word-counter task-01-count-words.md blocked \"lý do\" chỉ ghi lại trạng thái quan sát được, không tạo ra proof.",
       ],
       command: "/cf:code-review",
       outputs: [
         { kind: "output", text: "đang review implementation word-counter…" },
         { kind: "success", text: "✓ spec compliance: ok" },
         { kind: "success", text: "✓ không có critical finding" },
-        { kind: "output", text: "tiếp theo: /cf:sync word-counter task-01-count-words.md done" },
+        { kind: "output", text: "GATE-DONE → trình Receipt hiện tại và các giới hạn chưa giải quyết; bạn là người quyết" },
       ],
       youWillSee: [
-        "no critical findings — sẵn sàng đánh dấu done",
-        "Status và inline Receipt của task vẫn đồng bộ sau sync",
+        "no critical findings — đủ cơ sở để bạn quyết hoàn thành",
+        "Status và inline Receipt của task khớp nhau",
+        "Một lệnh pass chỉ chứng minh đúng ranh giới nó đã chạy — không phải sự phê duyệt sản phẩm",
       ],
       troubleshooting: [
-        { problem: "Review tìm thấy critical issues", fix: "Fix các vấn đề, chạy lại /cf:test, rồi /cf:code-review trước khi sync." },
+        { problem: "Review tìm thấy critical issues", fix: "Fix các vấn đề, chạy lại /cf:test rồi /cf:code-review. Receipt do controller ghi lại." },
+        { problem: "Stop hook báo task done thiếu receipt", fix: "Kiểm tra mục ## Receipt của task có đủ: đúng Command, Exit: 0, Verification: PASS, Base và Head suy từ runtime, và output hiện tại." },
       ],
     },
   ],
@@ -194,6 +202,7 @@ export const tutorialContentVi: TutorialContent = {
       "Từng task một — mỗi thay đổi nhỏ và có thể review",
       "Cần evidence thật — không có kết quả xanh giả",
       "State luôn audit được — mỗi task có đúng một Status và một inline Receipt hiện tại",
+      "Con người chỉ quyết ở đúng ba chỗ — GATE-SCOPE, GATE-REVIEW, GATE-DONE",
     ],
     nextLinks: [
       { label: "Spec-driven development", href: "/docs/spec-driven-development" },
@@ -202,9 +211,10 @@ export const tutorialContentVi: TutorialContent = {
     ],
     glossary: [
       { term: "spec", definition: "Thư mục file mô tả cần xây dựng gì trước khi code bắt đầu." },
-      { term: "task packet", definition: "Đơn vị công việc nhỏ có steps, criteria và evidence." },
-      { term: "C3", definition: "Quyết định cuối của user rằng proof hiện tại và limitation đã nêu là đủ để đóng feature." },
-      { term: "quality gate", definition: "Build + evidence + review — cả ba phải pass." },
+      { term: "task packet", definition: "File task-NN-*.md nằm phẳng cạnh plan.md: một outcome, một trường Status, một lệnh xác minh." },
+      { term: "GATE-DONE", definition: "Cửa quyết định thứ ba của con người (tên cũ: C3): user cân nhắc Receipt hiện tại và các giới hạn đã nêu để quyết đóng feature." },
+      { term: "GATE-SCOPE / GATE-REVIEW", definition: "Hai cửa đầu (tên cũ: C1 / C2): chọn EXPAND / KEEP / CUT cho phạm vi, rồi chấp nhận / bác bỏ / sửa từng finding." },
+      { term: "quality gate", definition: "Điều kiện đóng task: đúng lệnh của task chạy qua và review không còn lỗi chặn." },
       { term: "NO_TESTS", definition: "Không có test suite nào chạy. Không bao giờ là kết quả pass." },
     ],
   },
