@@ -1,0 +1,33 @@
+name: test
+
+on:
+  push:
+    branches: [dev, main]
+  pull_request:
+
+jobs:
+  self-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # The suite shells out to python3 for the PDF bounding-box unittest
+      # (stdlib-only, no pip install needed).
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # Lockfiles are gitignored in this repo, so install resolves fresh.
+      # Install only @haposoft/cafekit deps — skips the cafekit-web Next.js tree.
+      - run: pnpm install --filter @haposoft/cafekit
+
+      - run: pnpm --filter @haposoft/cafekit test
