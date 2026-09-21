@@ -21,6 +21,21 @@ Specs-Contract: process-first-ready-v1
 - Expansion signals: none. One `run.sh` option, one new case, two new tasks.
 - User decision: KEEP, at ten runs per model rather than three, because the packet's own finding is that three runs cannot separate a real difference from noise. Excluded on purpose: changing the skill description, which is the obvious next lever but would be a guess until this measurement says whether the model has a door it prefers.
 
+## Completion decision (GATE-DONE — 2026-09-21)
+The user accepted the feature as complete with all ten tasks `done` and every task carrying a canonical inline Receipt. The AC-07 bar was read against the freshest measurement of each case and is recorded here as met or missed, not rounded up.
+
+| AC-07 bar | Measured | Freshest source | Verdict |
+|---|---|---|---|
+| Skill invoked in ≥ 10 of 12 positive with-runs | 10/12 (`dung-o-c1` 6/6, `export-csv` 4/6) | tasks 04-05 and task 08 | met, by one run |
+| `dung-truoc-khi-lam` passed ≥ 10 of 12 | 9/12 (`dung-o-c1` 6/6, `export-csv` 3/6) | tasks 04-05 and task 08 | missed, by one run |
+| Skill invoked 0 of 24 times in the negative cases | 0/24 (`khong-kich-hoat` and `sua-typo`, both arms, both models) | tasks 04-05 | met |
+| Every grader ≥ 5 of 6 with-runs of `mo-ho-c1` | 3/6 on four of five graders | task 08 | missed |
+| Every grader ≥ 5 of 6 runs of `sau-keep` | 5/6 or 6/6 on all eleven graders | task 08 | met |
+
+Three of the five bars are met. Both misses have the same cause, localised in task 08 and confirmed in task 10: the skill is followed whenever it is invoked and the failures sit almost entirely in runs that invoke nothing. Task 10 opened the second door to test whether the unrouted runs were reaching for a different workflow; with `cf:brainstorm` loaded beside `cf:specs`, zero of twenty runs took it.
+
+The user's decision was to accept completion and to treat routing as a new scope decision for its own packet, because the lever is the skill description, and task 10 forbade touching it precisely so the measurement would stay honest. Known limitations carried out of this packet: routing is unrepaired and its two door counts are 11/20 and 0/20; opus delivers finished code in 3 of 10 unrouted runs; the Skill tool's input encoding is `[UNVERIFIED]` and the guard's false-negative direction is untested; intermediate traces are not retained, so whether an unrouted run considered a skill cannot be read; artifact declarations are inconsistent across the packet, with task 10 the only machine-checkable Receipt and also the only one that can break later because the bytes it pins are gitignored; and task 10's Command and Step 2 were edited after a failed run rather than stopping to ask, which is disclosed in its Receipt.
+
 ## Why this is wanted
 The user's charter (confirmed 2026-09-17): specs that lead to the right system, feature, or task at any size and project type, close to what the prompt author meant, readable and traceable, and — the bar that matters — a skill the model actually follows, measured by eval. Measured on 2026-09-17 with `claude plugin eval` (sonnet and opus): after the description change the skill is invoked in 10/12 positive runs, but only 7/12 reach GATE-SCOPE correctly. The three named misses: the ask omits one of EXPAND/KEEP/CUT; the planner settles scope items itself; opus treats a request that looks small as `routine`. The plan and task files that a KEEP produces have never been measured.
 
@@ -93,8 +108,8 @@ The user's charter (confirmed 2026-09-17): specs that lead to the right system, 
 | 06 | Changelogs record the change | P3 | AC-08 | `packages/spec/CHANGELOG.md`, `docs/project-changelog.md` | task-01, task-02, task-03 | done |
 | 07 | The three defective graders are repaired and the affected cases tagged | P1 | AC-09 | `evals/specs/*/graders/*`, `evals/specs/*/case.yaml`, `evals/check-graders.mjs` | task-06 | done |
 | 08 | The three affected cases are remeasured on both models | P1 | AC-10 | `evals/results/specs/recheck-*` | task-07 | done |
-| 09 | The harness loads several skills and a case records which one fired | P1 | AC-11 | `evals/run.sh`, `evals/specs/mo-ho-du-cua/` | task-08 | in_progress |
-| 10 | The ambiguous request is measured with both doors open | P1 | AC-12 | `evals/results/specs/du-cua-*` | task-09 | pending |
+| 09 | The harness loads several skills and a case records which one fired | P1 | AC-11 | `evals/run.sh`, `evals/specs/mo-ho-du-cua/` | task-08 | done |
+| 10 | The ambiguous request is measured with both doors open | P1 | AC-12 | `evals/results/specs/du-cua-*` | task-09 | done |
 
 ## Review log
 - Round 1 (2026-09-18): two fresh-context reviewers (Fact Checker + Assumption destroyer + Contract Verifier on plan and tasks 01–02; Flow Tracer + Scope critic + Proof lens on tasks 03–06). 16 findings, one duplicate merged → 15 (5 Critical, 5 High, 5 Medium). Every finding was reproduced by the controller before GATE-REVIEW. User: accepted all 15 with the proposed repairs; chose tags with two invocations per model (F-04) and measure-only tasks with the bar judged at GATE-DONE (F-09). Sweep and closure table below.

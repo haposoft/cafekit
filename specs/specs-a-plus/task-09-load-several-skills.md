@@ -1,6 +1,6 @@
 # Task 09 — The harness loads several skills and a case records which one fired
 
-Status: in_progress
+Status: done
 
 ## Outcome
 `evals/run.sh` accepts `--with-skill <name>`, copies each named skill beside the one under test and declares them all in the temporary plugin, so a case can be answered with more than one door open. A new case `mo-ho-du-cua` asks the same under-specified question as `mo-ho-c1` and carries graders that separate a `cf:specs` invocation from a `cf:brainstorm` one, from neither.
@@ -46,4 +46,25 @@ Status: in_progress
 On a failed Step or Verification Plan run: stop; do not widen scope, change the Command, or weaken a test; record observed versus expected; repair only the cited cause; after three failed rounds, stop and ask the user. If loading a second skill changes how an existing case is selected or graded, stop: the earlier measurements must stay comparable.
 
 ## Receipt
-<!-- Fill only after execution; see the canonical form in references/templates.md. -->
+
+Verification: PASS
+Command: evals/run.sh specs --with-skill brainstorm --validate --allow-tools Write Edit
+Exit: 0
+Base: 3eb39f1d2985441dbe4d137b9dd890e994f570c7
+Head: 3c0544ad6a7b70292f8484a65e47b12630df20a95d2b610b4a58293aa2c06323
+```text
+$ evals/run.sh specs --with-skill brainstorm --validate --allow-tools Write Edit
+1 case runs single-arm (no Δ) — no plugin to strip, or a replay case whose history carries the plugin into both arms: sau-keep
+Ablation: 2 arms × 7 cases (53 runs)
+$ echo $?
+0
+```
+Seven cases load with no `✗` line. The manifest the run generates cannot be read from that output because the temporary directory is removed on exit, so it was captured by running a copy of the script with the cleanup trap replaced — a copy that must live inside `evals/`, because `run.sh` derives its root from its own location and a copy elsewhere silently resolves to the wrong tree. Captured with no extra skill: `"skills": ["./skills/specs"]`, byte-identical to what the script produced before this task. With one: `"skills": ["./skills/specs", "./skills/brainstorm"]`. The reviewer captured a third variant with two extra skills and all three were valid JSON.
+
+- Argument handling, each branch exercised: an unknown skill name prints `no skill at packages/spec/src/claude/skills/<name>` and exits 2 before `mktemp`, so no plugin is built; a missing value exits 1 through `${2:?usage: --with-skill <name>}`; the option placed after a pass-through flag is rejected by the CLI rather than silently ignored. `extra=()` is safe under `set -u` on bash 3.2 only because of the `${extra[@]+"${extra[@]}"}` guard, which the reviewer confirmed by removing it and getting `unbound variable`.
+- Nothing already measured moved: `--tag single-turn` still selects 5 cases, `--tag history` 1, `--tag recheck` 3, no tag 7, and the new case is isolated behind `--tag du-cua`. The prompt of `mo-ho-du-cua` is byte-identical to `mo-ho-c1`'s and its scaffold is the same file, so the only difference between the two measurements is how many doors exist.
+- Review: fresh-context reviewer, two rounds. Round 1 FAIL on a Critical of mine: I copied `khong-tu-chot` from `mo-ho-c1` without reading it, and it demands the three uppercase scope words, of which `cf:brainstorm` contains zero — a correct brainstorm answer would have failed for using the wrong skill's vocabulary, in a case whose whole purpose is to let either door win. The rubric is now process-neutral: it names no gate, keyword or answer shape, drops the one-turn requirement that was also a GATE-SCOPE artefact, and scores the three things any correct approach must do.
+- Round 1 also raised a High I could not settle by measurement: the temporary plugin is named `cafekit-specs`, so if the Skill tool encodes the plugin name or the skill path into its input, `input_match: specs` would match every call including a brainstorm one, and the headline number would be manufactured by the plugin's name. The encoding is `[UNVERIFIED]` — no artifact stores the raw tool input and the minified CLI did not yield it. Rather than guess one encoding, the patterns now carry a guard, `(^|[^-])specs` and `(^|[^-])brainstorm`, which excludes `cafekit-specs` by its hyphen while still matching `cf:specs`, `"specs"`, `/specs` and a string beginning with `specs`. The reviewer attacked them with thirteen candidate encodings and twelve classify correctly.
+- The thirteenth is the residual risk and it is one-directional: a brainstorm call whose free-text arguments mention specs would match both graders, inflating `da-goi-specs` and never deflating it. Task-10's Oracle carries the detector — `da-goi-specs + da-goi-brainstorm` must not exceed `da-goi-mot-skill`, an invariant that can only break when a run matches both — and its Step 3 reads the first run's trace either way.
+- Kept against the reviewer's advice, with their agreement after the argument: the two door graders stay at `min: 1` rather than `min: 0`. At `min: 0` both would always pass and the summarizer table would read 10/10 and 10/10, pushing the only numbers this case exists to produce into raw JSON that `summarize.mjs` cannot split by door. The cost is that the two graders are mutually exclusive and scored, so every run caps at 4 of 5 and the case's `overallPassRate` will read 0 — by design, not by failure, and task-10's Receipt must say so.
+- Open limitations for GATE-DONE: the residual encoding collision above; the case score being unreadable as quality; and the fact that `--ablation none` is load-bearing for task-10, without which the harness plans two arms, doubles the cost and turns the three door graders into unscored with-only indicators.
