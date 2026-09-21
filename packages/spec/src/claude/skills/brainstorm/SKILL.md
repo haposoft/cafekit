@@ -1,6 +1,6 @@
 ---
 name: cf:brainstorm
-description: "Turn unresolved product or architecture intent into a bounded decision contract, with proportional routing, evidence, and safe handoff."
+description: "Compare the ways to build something before one is chosen. Use when the outcome is already agreed but two or more approaches would each satisfy it with meaningfully different consequences — setup cost, migration, failure behaviour, who carries the work afterwards. It weighs the viable approaches against a bounded contract of Outcome, Constraints, Non-goals and Acceptance, records what was chosen and what was rejected and why, and stops there; it writes no code and carries nothing onward by itself. Skip it for a direct factual answer, skip it when one viable path makes any alternative artificial, and skip it when the request needs a plan and its tasks rather than a choice between designs."
 user-invocable: true
 when_to_use: "Use when material product, scope, or architecture choices remain; skip direct factual answers and already-concrete Specs work."
 category: utilities
