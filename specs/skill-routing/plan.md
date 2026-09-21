@@ -8,6 +8,23 @@ Specs-Contract: process-first-ready-v1
 - Editable: **both `description` fields**. The catalog fields `when_to_use`, `keywords` and `category` were offered as a third option and not chosen, so they stay fixed.
 - Expansion signals: two modified source files, no new service or class, one independently deliverable group — all below the thresholds, which is why KEEP is the recorded decision rather than a compromise.
 
+## Completion decision (GATE-DONE — 2026-09-21)
+The user accepted the feature as complete with all three tasks `done`, each carrying a canonical inline Receipt, and all six acceptance criteria met. The measurement is recorded here split by model, because the pooled figure alone would misdescribe it.
+
+| Reading | Baseline | This measurement | Two-sided Fisher |
+|---|---|---|---|
+| Runs invoking no door, pooled | 9/20 | 4/40 | p = 0.0057, inside the 7/40 resolution recorded before the run |
+| sonnet | 6/10 | 0/20 | p = 0.0004 |
+| opus | 3/10 | 4/20 | p = 0.66, not separable from noise |
+| Negative cases, skill invoked | 0/24 | 0/12 | held; excludes an over-trigger rate above roughly 22% and no lower |
+
+What was bought: **sonnet no longer leaves the request unrouted, and opus is unchanged as far as twenty runs against a ten-run baseline can tell.** The packet was motivated by opus's shape, so the honest summary is that the description fixed one model and left the other's failure untouched.
+
+The user's decision was to accept completion and to treat opus as a separate packet, because the four remaining unrouted runs share one cause that is not a description problem: each reports that Write, Edit and Bash are unavailable and then delivers the implementation as code to paste. A description cannot reach that behaviour, so the next intervention is a different kind and deserves its own scope decision.
+
+Limitations carried out of this packet: opus is unrepaired and unreadable at this sample size; the remainder's composition worsened, from three harmful and six harmless unrouted runs to four harmful and none harmless, because the harmless shape was sonnet's; run 17 is a disputed `khong-tu-chot` failure where three judge votes and the rubric's own text disagree, which decides 15/20 against 16/20; `cf:brainstorm` at 0/40 tests nothing, so narrowing it remains unmeasured in either direction; that narrowing leaves three body surfaces without a catalogue entry; the `materialChoice` clause now sits 42 characters from a full match and will halt the suite rather than fail a test if a later rewrite completes it; opus's turn distribution moved and cannot be chased because traces are deleted; the installed `.claude/` copy stays two generations behind, so this repository's own sessions do not run what was measured; and the whole measurement lives in a two-door world while the product ships thirty-two skills.
+
+
 ## Why this is wanted
 `specs-a-plus` closed on 2026-09-21 with three of five AC-07 bars met and both misses traced to one cause: the skill is followed whenever it is reached, and the failures sit in runs that reach nothing. Its task 10 measured the ambiguous request ten times per model with both doors loaded: `cf:specs` 11/20, `cf:brainstorm` 0/20, **no skill at all 9/20** (sonnet 6/10, opus 3/10). The retained final messages show what the unrouted runs did — all three unrouted opus runs settled the undecided questions themselves and delivered finished code, while every routed opus run passed every grader. The lever was deliberately left untouched there so the measurement could not defend itself; this packet moves it.
 
@@ -61,8 +78,8 @@ Specs-Contract: process-first-ready-v1
 | # | Task | Priority | Criteria | Primary ownership | Dependencies | Status |
 |---|---|---|---|---|---|---|
 | 01 | Both descriptions cover the under-specified request and divide the doors observably | P1 | AC-01, AC-02, AC-03 | `skills/specs/SKILL.md`, `skills/brainstorm/SKILL.md` | - | done |
-| 02 | The two-door case is measured again, and the negative cases are checked for over-trigger | P1 | AC-04, AC-06 | `evals/results/specs/dinh-tuyen-*`, `evals/results/specs/am-tinh-*` | task-01 | pending |
-| 03 | Both changelogs record the description change with its measured sample | P2 | AC-05 | `packages/spec/CHANGELOG.md`, `docs/project-changelog.md` | task-02 | pending |
+| 02 | The two-door case is measured again, and the negative cases are checked for over-trigger | P1 | AC-04, AC-06 | `evals/results/specs/dinh-tuyen-*`, `evals/results/specs/am-tinh-*` | task-01 | done |
+| 03 | Both changelogs record the description change with its measured sample | P2 | AC-05 | `packages/spec/CHANGELOG.md`, `docs/project-changelog.md` | task-02 | done |
 
 ## Review log
 - GATE-REVIEW (2026-09-21): one fresh-context reviewer, 14 findings after deduplication (2 Critical, 3 High, 4 Medium, 5 Low), verdict FAIL. The controller reproduced every Critical and every Medium factual claim before the gate. Two corrections to the report itself: `.agents/` does exist, at `packages/spec/.agents`, not at the repository root; and the reviewer's per-model resolution figure was optimistic — recomputing gives p = 0.211 for opus at 0/10, not 0.028, so no per-model figure is readable at ten runs.
