@@ -14,6 +14,7 @@ Quality comes from a short decision process; honesty comes from evidence. Keep t
 ## Step 0 — classify risk before routing
 
 Classify material risk before choosing a workflow; user wording never lowers an observed floor.
+Request size is not a risk signal; a one-line request that touches a shared contract is `elevated`.
 
 - `critical`: auth/secrets/privacy; destructive/irreversible work or possible data loss/corruption; money/privilege/safety; production-state mutation.
 - `elevated`: cross-component contracts, compatibility, concurrency, external integration, or installed/runtime behavior.
@@ -60,8 +61,8 @@ Inspect the repository before drafting. Answer three questions with current `pat
 2. What is the smallest change set that delivers the requested outcome?
 3. What signals expansion: more than eight touched files, more than two new services/classes, or three or more independently deliverable subsystems?
 
-Present the answers and ask the user to EXPAND, KEEP, or CUT. Record the chosen
-scope and explicit exclusions in `plan.md`.
+Ask GATE-SCOPE in one message: list every `decision-needed` item (the ambiguity action in `references/templates.md`) as `[NEEDS CLARIFICATION: <question>]`, offer EXPAND, KEEP, and CUT together, and never choose a product outcome on the user's behalf; if an answer leaves an item unsettled, re-ask only that item.
+Record the chosen scope and explicit exclusions in `plan.md`.
 
 ### 2. Write the plan and task packets
 
@@ -83,16 +84,15 @@ Source/static checks prove the written contract, not live-model adherence.
 
 ### 3. Review adversarially, then open GATE-REVIEW
 
+Before GATE-REVIEW, re-run a sample of the plan's `path:line` citations sized by the claim budget in `review.md`; relabel any stale citation `[UNVERIFIED]`.
+
 Read [`references/review.md`](references/review.md) and run its fresh-context review. Require reproducible `path:line` plus a failure scenario; deduplicate, rank, and cap at 15.
 
 Ask the user to accept, reject, or revise each finding; apply only accepted decisions. After every edit, sweep all packet files and rederive every status. Dependencies use exact flat task basenames. Stop after two paper rounds; later findings require runtime evidence.
 
 ### 4. Execute one task at a time
 
-An implementation workflow owns execution. It selects one unblocked task with
-`Status: pending`, changes its single `Status:` field to `in_progress`, respects
-owned paths, runs the task's verification, and appends a real inline `## Receipt`
-only after the command finishes.
+An implementation workflow owns execution. It selects one unblocked task with `Status: pending`, changes its single `Status:` field to `in_progress`, respects owned paths, runs the task's verification, and appends a real inline `## Receipt` only after the command finishes.
 
 Parallel work is allowed only for tasks with disjoint write ownership and
 satisfied dependencies. One file has one writer in a wave. The controller is

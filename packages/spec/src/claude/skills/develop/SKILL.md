@@ -59,7 +59,7 @@ live-model adherence is `[UNVERIFIED]` without a host invocation.
 
 Load the plan index into working context once. Later byte rereads are narrow drift
 checks; load only the active task's referenced coverage-profile rows, Outcome,
-Scope, Ownership, Acceptance, Dependencies, Verification Plan, owned code, and consumers.
+Scope, Ownership, Steps, Acceptance, Dependencies, Verification Plan, Failure Protocol, owned code, and consumers.
 
 ## Current-byte selection
 

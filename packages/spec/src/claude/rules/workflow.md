@@ -24,9 +24,11 @@ Use the CafeKit loop: **Understand -> Plan -> Execute -> Verify -> Sync**.
   - `Outcome`
   - `Scope`
   - `Ownership`
+  - `Steps`
   - `Acceptance`
   - `Dependencies`
   - `Verification Plan`
+  - `Failure Protocol`
 - If these are missing or too vague to verify, route back to spec correction.
 
 ## 3. Execute

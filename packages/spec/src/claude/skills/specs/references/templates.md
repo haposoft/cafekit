@@ -1,14 +1,6 @@
 # Process-first plan, task, and receipt templates
 
-Use these as compact starting points. Remove unused examples and placeholders
-before GATE-REVIEW. The primary layout is always flat:
-
-```text
-specs/<feature>/
-├── plan.md
-├── task-01-<slug>.md
-└── task-NN-<slug>.md
-```
+Use these as compact starting points. Remove unused examples and placeholders before GATE-REVIEW. The primary layout is always flat: `specs/<feature>/` holds `plan.md` beside `task-01-<slug>.md` through `task-NN-<slug>.md`, with no task subdirectory.
 
 ## `plan.md` template
 
@@ -27,6 +19,11 @@ Specs-Contract: process-first-ready-v1
 ## Out of scope
 - <deliberate exclusion>
 
+## Decisions
+| ID | Chosen | Rejected | Why | Load-bearing assumption | Break signal → response |
+|---|---|---|---|---|---|
+| D-01 | <chosen path> | <rejected alternative> | <evidence-backed reason> | <assumption that must hold> | <observable signal> → <pre-decided response> |
+
 ## Coverage profile
 | ID | Outcome | Change kinds | Material surfaces | Ambiguity/action | Risk/evidence | Required proof |
 |---|---|---|---|---|---|---|
@@ -38,9 +35,9 @@ Specs-Contract: process-first-ready-v1
 | AC-01 | When <trigger>, the system shall <response>. | `<command>` |
 
 ## Tasks
-| # | Task | Criteria | Primary ownership | Dependencies | Status |
-|---|---|---|---|---|---|
-| 01 | <one outcome> | AC-01 | `src/example.ts` | - | blocked |
+| # | Task | Priority | Criteria | Primary ownership | Dependencies | Status |
+|---|---|---|---|---|---|---|
+| 01 | <one outcome> | P1 | AC-01 | `src/example.ts` | - | blocked |
 
 ## Review log
 - Round 1: <findings accepted/rejected/revised>; sweep <result>.
@@ -48,6 +45,7 @@ Specs-Contract: process-first-ready-v1
 
 Each acceptance ID must map to at least one task and one proof. A task with no
 criterion is scope drift; a criterion with no task or proof is not executable.
+`Priority`: P1 means the outcome is unusable without it, P2 is needed for acceptance, P3 improves it. Number tasks in priority order so the plan table, the filename order, and the queue agree.
 
 ## `task-NN-*.md` template
 
@@ -73,6 +71,9 @@ Status: blocked
 - Create: `test/a.test.ts`
 - Read: `src/caller.ts`
 
+## Steps
+1. <ordered action on one owned file → expected observation>
+
 ## Acceptance
 - AC-01: <task-local measurable condition>
 
@@ -87,6 +88,9 @@ Status: blocked
 - Counterexample: <material alternative behavior that must make this proof fail>
 - Artifacts: <required artifact path plus digest algorithm/comparison rule, or explicitly ephemeral with cleanup rule>
 
+## Failure Protocol
+On a failed Step or Verification Plan run: stop; do not widen scope, change the Command, or weaken a test; record observed versus expected; repair only the cited cause; after three failed rounds, stop and ask the user.
+
 ## Receipt
 <!-- Fill only after execution; see canonical form below. -->
 ````
@@ -100,6 +104,8 @@ negative controls only on disposable copies under a verified temporary root,
 never tracked worktree or canonical source bytes.
 For every required level in each referenced CP row, map its named probe and
 reachability here; one command may own several explicitly named level probes.
+Verification compares observed output with the Oracle; a judgment such as "looks right" is not a verification.
+Example failure: the Command exits 1 with `expected 3 files, found 2` → record observed versus expected, add the missing writer, and rerun the same Command; never delete the assertion.
 
 ## Status matrix
 
@@ -138,16 +144,13 @@ bare PASS claim without the command output.
 
 ## EARS sentence patterns
 
-Use the narrowest pattern that describes observable behavior:
-
 1. **Ubiquitous:** `The <system> shall <response>.`
 2. **Event-driven:** `When <trigger>, the <system> shall <response>.`
 3. **State-driven:** `While <state>, the <system> shall <response>.`
 4. **Unwanted behavior:** `If <fault>, the <system> shall <response>.`
 5. **Optional feature:** `Where <feature is enabled>, the <system> shall <response>.`
 
-Avoid implementation detail unless it is a user-approved contract. Replace
-"fast", "robust", and "works" with a measurable threshold or observation.
+Use the narrowest pattern that describes observable behavior. Avoid implementation detail unless it is a user-approved contract. Replace "fast", "robust", and "works" with a measurable threshold or observation.
 
 ## Example Mapping rule
 
@@ -186,15 +189,11 @@ For every required row, name each listed choice exactly; labels such as “JSON�
 
 ## Twelve edge-case dimensions
 
-For each material boundary, select relevant dimensions rather than filling a
-ceremonial matrix:
+For each material boundary, select relevant dimensions rather than filling a ceremonial matrix:
 
-- Input shape, identity, state, order: malformed/duplicate/bounds, wrong actor,
-  partial/stale state, replay/reordering.
-- Concurrency, dependency, failure, recovery: races/cancellation, version drift,
-  timeout/nonzero exit, retry/rollback/cleanup.
-- Persistence, integration, security/privacy, observability/proof: partial
-  writes, registration/reachability, traversal/secrets, artifacts/provenance.
+- Input shape, identity, state, order: malformed/duplicate/bounds, wrong actor, partial/stale state, replay/reordering.
+- Concurrency, dependency, failure, recovery: races/cancellation, version drift, timeout/nonzero exit, retry/rollback/cleanup.
+- Persistence, integration, security/privacy, observability/proof: partial writes, registration/reachability, traversal/secrets, artifacts/provenance.
 
 `Crash` means abrupt unhandled termination before the claimed catch point; a catchable failure returns/raises an error or exits nonzero. Never use them interchangeably.
 
@@ -205,15 +204,9 @@ verification probe. Do not duplicate it across all three.
 
 Before GATE-REVIEW confirm:
 
-- every repository fact has current evidence or `[UNVERIFIED]`;
-- every acceptance criterion maps to task and proof;
-- task ownership does not overlap within a proposed parallel wave;
-- dependencies are acyclic and refer to real task numbers;
-- commands are runnable from the named work context;
-- negative, recovery, and reachability probes exist where risk requires them;
-- every ambiguity follows its required action; examples only clarify decided rules;
-- the latest consistency sweep reports zero unresolved contradictions.
+- evidence: every repository fact has a current citation or `[UNVERIFIED]`, and the sampled citations were re-run;
+- mapping: each acceptance criterion reaches a task and a proof; ownership does not overlap inside one parallel wave; dependencies are acyclic and name real task files;
+- proof: commands run from the named work context, and negative, recovery, and reachability probes exist where risk requires them;
+- closure: each ambiguity followed its required action, examples only clarify decided rules, and the latest consistency sweep reports zero unresolved contradictions.
 
-Stop expanding when a fresh reviewer finds no new material failure with new
-evidence, the 12 dimensions yield no uncovered relevant boundary, and every
-accepted GATE-REVIEW finding is represented exactly once.
+Stop expanding when a fresh reviewer finds no new material failure with new evidence, the 12 dimensions yield no uncovered relevant boundary, and each accepted GATE-REVIEW finding is represented exactly once.

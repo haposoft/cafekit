@@ -46,9 +46,9 @@ specs/<feature>/task-01-<slug>.md
 specs/<feature>/task-NN-<slug>.md
 ```
 
-Keep tasks flat beside the plan. Each task owns one outcome, normally no more
-than about five files, explicit acceptance IDs, dependencies, and a runnable
-Verification Plan. Every criterion maps to at least one task and one proof.
+Keep tasks flat beside the plan. Each task owns one outcome, a priority, normally no more
+than about five files, explicit acceptance IDs, dependencies, ordered Steps, a runnable
+Verification Plan, and a Failure Protocol. Every criterion maps to at least one task and one proof.
 Use EARS sentences; each task references its canonical `CP-NN` rows instead of
 copying their kinds, surfaces, risk, or proof obligations.
 

@@ -74,6 +74,8 @@ Each finding must describe an observable failure, not a preference.
 
 ## Aggregate before GATE-REVIEW
 
+Before GATE-REVIEW the author re-runs a sample of the plan's citations sized by the claim budget above and relabels `[UNVERIFIED]` every citation whose cited text is no longer at that line.
+
 Normalize duplicate findings by root cause. Preserve the strongest evidence and
 smallest counterexample. Sort Critical, High, then Medium. Cap the presented
 list at 15; a larger useful set means the plan should be split.

@@ -716,6 +716,16 @@ const ADAPTIVE_COVERAGE_CLAUSES = {
   specMakerAmbiguity: "Apply the canonical ambiguity action; examples never decide observable behavior.",
   specMakerRoute: "Apply their risk-first route before GATE-SCOPE and stop when the\nrequest qualifies for direct work; hand off when it requires Brainstorm-only exploration.",
   reviewRisk: "Keep Fact Checker as the baseline. Assign every remaining material CP risk to a\nnamed reviewer lens; a critical row includes both relevant security-adversary and\nfailure-mode coverage, and nonmaterial lenses are not added.",
+  scopeAskOnce: "Ask GATE-SCOPE in one message: list every `decision-needed` item (the ambiguity action in `references/templates.md`) as `[NEEDS CLARIFICATION: <question>]`, offer EXPAND, KEEP, and CUT together, and never choose a product outcome on the user's behalf; if an answer leaves an item unsettled, re-ask only that item.",
+  sizeNotRisk: "Request size is not a risk signal; a one-line request that touches a shared contract is `elevated`.",
+  factCheckSample: "Before GATE-REVIEW, re-run a sample of the plan's `path:line` citations sized by the claim budget in `review.md`; relabel any stale citation `[UNVERIFIED]`.",
+  reviewFactCheck: "Before GATE-REVIEW the author re-runs a sample of the plan's citations sized by the claim budget above",
+  decisionsTable: "| ID | Chosen | Rejected | Why | Load-bearing assumption | Break signal → response |",
+  orderedSteps: "1. <ordered action on one owned file → expected observation>",
+  priorityRule: "`Priority`: P1 means the outcome is unusable without it, P2 is needed for acceptance, P3 improves it. Number tasks in priority order so the plan table, the filename order, and the queue agree.",
+  workedFailureExample: "Example failure: the Command exits 1 with `expected 3 files, found 2` → record observed versus expected, add the missing writer, and rerun the same Command; never delete the assertion.",
+  verifyCompare: "Verification compares observed output with the Oracle; a judgment such as \"looks right\" is not a verification.",
+  failureProtocol: "On a failed Step or Verification Plan run: stop; do not widen scope, change the Command, or weaken a test; record observed versus expected; repair only the cited cause; after three failed rounds, stop and ask the user.",
   reviewCapacity: "Reviewer count is fixed by the table, not lens count. Give each reviewer a distinct primary lens; when material lenses exceed reviewers, combine related named lenses on one reviewer and keep every material lens assigned.",
 };
 
@@ -829,6 +839,51 @@ function adaptiveCoverageContractIssues(input) {
   if (!boundaryTableHasRequiredRows(boundaryTable)) {
     issues.add("adaptive-boundary-lenses");
   }
+
+  if (!has(skill, ADAPTIVE_COVERAGE_CLAUSES.scopeAskOnce)
+    || !has(skill, ADAPTIVE_COVERAGE_CLAUSES.sizeNotRisk)) {
+    issues.add("scope-ask-once");
+  }
+
+  const taskHeader = markdownTableUnderHeading(input.templates, "Tasks")[0] || [];
+  // `markdownSectionUnderHeading` stops at the next `## ` line even inside a fence, so the
+  // template sections are bounded by their own heading offsets instead.
+  const planTemplateStart = input.templates.indexOf("## `plan.md` template");
+  const taskTemplateStart = input.templates.indexOf("## `task-NN-*.md` template");
+  const taskTemplateEnd = input.templates.indexOf("## Status matrix");
+  // A heading counts only when it appears exactly once as a whole line at level two, so a
+  // demoted or duplicated copy cannot satisfy the section it was moved out of.
+  const soleHeadingOffset = (heading) => (
+    input.templates.split("\n").filter((line) => line === heading).length === 1
+      ? input.templates.indexOf(`\n${heading}\n`)
+      : -1);
+  const inPlanTemplate = (heading) => {
+    const at = soleHeadingOffset(heading);
+    return at > planTemplateStart && planTemplateStart >= 0
+      && taskTemplateStart > planTemplateStart && at < taskTemplateStart;
+  };
+  const inTaskTemplate = (heading) => {
+    const at = soleHeadingOffset(heading);
+    return at > taskTemplateStart && taskTemplateStart > 0
+      && taskTemplateEnd > taskTemplateStart && at < taskTemplateEnd;
+  };
+  if (!has(templates, ADAPTIVE_COVERAGE_CLAUSES.decisionsTable)
+    || !inPlanTemplate("## Decisions")
+    || !taskHeader.includes("Priority")
+    || !has(templates, ADAPTIVE_COVERAGE_CLAUSES.priorityRule)
+    || !has(templates, ADAPTIVE_COVERAGE_CLAUSES.orderedSteps)
+    || !inTaskTemplate("## Steps")
+    || !inTaskTemplate("## Failure Protocol")
+    || !has(templates, ADAPTIVE_COVERAGE_CLAUSES.failureProtocol)
+    || !has(templates, ADAPTIVE_COVERAGE_CLAUSES.workedFailureExample)
+    || !has(templates, ADAPTIVE_COVERAGE_CLAUSES.verifyCompare)) {
+    issues.add("decisions-steps-failure-protocol");
+  }
+
+  if (!has(skill, ADAPTIVE_COVERAGE_CLAUSES.factCheckSample)
+    || !has(review, ADAPTIVE_COVERAGE_CLAUSES.reviewFactCheck)) {
+    issues.add("fact-check-sample");
+  }
   return [...issues].sort();
 }
 
@@ -908,6 +963,20 @@ async function runAdaptiveCoverageContractTests() {
       "Apply the risk-first route before GATE-SCOPE and stop only for direct work.", ["spec-maker-authority"]],
     ["static-proves-live", "skill", ADAPTIVE_COVERAGE_CLAUSES.liveLimit,
       "Source/static checks prove live-model adherence.", ["proof-lifecycle"]],
+    ["scope-ask-drops-cut", "skill", ADAPTIVE_COVERAGE_CLAUSES.scopeAskOnce,
+      "Ask GATE-SCOPE in one message: offer EXPAND or KEEP, and settle the remaining scope items yourself.", ["scope-ask-once"]],
+    ["task-failure-protocol-improvises", "templates", ADAPTIVE_COVERAGE_CLAUSES.failureProtocol,
+      "On a failed Verify, adjust the Command or the test until it passes.", ["decisions-steps-failure-protocol"]],
+    ["priority-rule-optional", "templates", ADAPTIVE_COVERAGE_CLAUSES.priorityRule,
+      "`Priority`: fill it in when the order matters.", ["decisions-steps-failure-protocol"]],
+    ["worked-failure-example-dropped", "templates", ADAPTIVE_COVERAGE_CLAUSES.workedFailureExample,
+      "Example failure: see the Develop repair loop.", ["decisions-steps-failure-protocol"]],
+    ["steps-heading-dropped-from-task-template", "templates", "## Steps\n1. <ordered action on one owned file → expected observation>",
+      "1. <ordered action on one owned file → expected observation>", ["decisions-steps-failure-protocol"]],
+    ["steps-copy-escapes-task-template", "templates", "## Status matrix",
+      "## Steps\n1. <ordered action on one owned file → expected observation>\n\n## Status matrix", ["decisions-steps-failure-protocol"]],
+    ["author-trusts-stale-citations", "skill", ADAPTIVE_COVERAGE_CLAUSES.factCheckSample,
+      "Before GATE-REVIEW, trust the `path:line` citations already written in the plan.", ["fact-check-sample"]],
   ];
   for (const [name, source, from, to, expected] of mutations) {
     const anchor = baseline[source].indexOf(from);
@@ -951,6 +1020,84 @@ async function runAdaptiveCoverageContractTests() {
   console.log(`✔ cf:specs adaptive coverage contract is complete and monotonic; bundle deltas: ${changed}; total ${total}/750`);
   console.log(`✔ cf:specs adaptive coverage checker rejects ${mutations.length} semantic weakenings`);
   return mutations.length + 3;
+}
+
+const CONSUMER_SECTION_CLAUSES = {
+  developLoads: "Scope, Ownership, Steps, Acceptance, Dependencies, Verification Plan, Failure Protocol, owned code, and consumers.",
+  ruleExtractsSteps: "  - `Ownership`\n  - `Steps`\n  - `Acceptance`",
+  ruleExtractsProtocol: "  - `Verification Plan`\n  - `Failure Protocol`",
+  specMakerRequires: "Each task owns one outcome, a priority, normally no more\nthan about five files, explicit acceptance IDs, dependencies, ordered Steps, a runnable\nVerification Plan, and a Failure Protocol.",
+};
+
+// A task's `## Steps` and `## Failure Protocol` are only worth authoring if the workflows that
+// execute the task read them. Each consumer is checked in its own file so a phrase present in the
+// wrong file cannot satisfy another file's obligation.
+function consumerSectionIssues(input) {
+  const keys = input && typeof input === "object" && !Array.isArray(input)
+    ? Object.keys(input).sort()
+    : [];
+  if (keys.join(",") !== "develop,specMaker,workflowRule"
+    || keys.some((key) => typeof input[key] !== "string")) {
+    throw new TypeError("consumer section checker expects develop, workflowRule, and specMaker UTF-8 strings");
+  }
+
+  const issues = new Set();
+  const normalized = (value) => normalizeMarkdownWhitespace(value);
+  if (!normalized(input.develop).includes(normalized(CONSUMER_SECTION_CLAUSES.developLoads))) {
+    issues.add("develop-loads-task-sections");
+  }
+  const ruleExtracts = (block) => input.workflowRule.includes(block);
+  if (!ruleExtracts(CONSUMER_SECTION_CLAUSES.ruleExtractsSteps)
+    || !ruleExtracts(CONSUMER_SECTION_CLAUSES.ruleExtractsProtocol)) {
+    issues.add("rule-extracts-task-sections");
+  }
+  if (!normalized(input.specMaker).includes(normalized(CONSUMER_SECTION_CLAUSES.specMakerRequires))) {
+    issues.add("spec-maker-requires-task-sections");
+  }
+  return [...issues].sort();
+}
+
+async function runConsumerSectionContractTests() {
+  const fail = (message) => {
+    throw new Error(`[FAIL] cf:specs consumer sections: ${message}`);
+  };
+  const baseline = {
+    develop: await readFile(join(packageRoot, "src/claude/skills/develop/SKILL.md"), "utf8"),
+    workflowRule: await readFile(join(packageRoot, "src/claude/rules/workflow.md"), "utf8"),
+    specMaker: await readFile(join(packageRoot, "src/claude/agents/spec-maker.md"), "utf8"),
+  };
+  const baselineIssues = consumerSectionIssues(baseline);
+  if (baselineIssues.length > 0) fail(`intact sources returned ${baselineIssues.join(", ")}`);
+
+  const mutations = [
+    ["develop-drops-failure-protocol", "develop", CONSUMER_SECTION_CLAUSES.developLoads,
+      "Scope, Ownership, Steps, Acceptance, Dependencies, Verification Plan, owned code, and consumers.",
+      ["develop-loads-task-sections"]],
+    ["develop-drops-steps", "develop", CONSUMER_SECTION_CLAUSES.developLoads,
+      "Scope, Ownership, Acceptance, Dependencies, Verification Plan, Failure Protocol, owned code, and consumers.",
+      ["develop-loads-task-sections"]],
+    ["rule-drops-steps", "workflowRule", "  - `Steps`\n  - `Acceptance`", "  - `Acceptance`",
+      ["rule-extracts-task-sections"]],
+    ["rule-drops-failure-protocol", "workflowRule", "  - `Verification Plan`\n  - `Failure Protocol`",
+      "  - `Verification Plan`", ["rule-extracts-task-sections"]],
+    ["spec-maker-drops-protocol-and-priority", "specMaker", CONSUMER_SECTION_CLAUSES.specMakerRequires,
+      "Each task owns one outcome, normally no more\nthan about five files, explicit acceptance IDs, dependencies, and a runnable\nVerification Plan.",
+      ["spec-maker-requires-task-sections"]],
+  ];
+  for (const [name, source, from, to, expected] of mutations) {
+    const anchor = baseline[source].indexOf(from);
+    if (anchor < 0) fail(`${name} mutation anchor is absent from real source`);
+    if (baseline[source].indexOf(from, anchor + from.length) >= 0) {
+      fail(`${name} mutation anchor is not unique in real source`);
+    }
+    const weakened = `${baseline[source].slice(0, anchor)}${to}${baseline[source].slice(anchor + from.length)}`;
+    const actual = consumerSectionIssues({ ...baseline, [source]: weakened });
+    if (JSON.stringify(actual) !== JSON.stringify([...expected].sort())) {
+      fail(`${name} expected ${JSON.stringify([...expected].sort())} but returned ${JSON.stringify(actual)}`);
+    }
+  }
+  console.log(`✔ cf:specs consumers load Steps and Failure Protocol; rejects ${mutations.length} weakenings`);
+  return mutations.length + 1;
 }
 
 const PROCESS_TASK_STATUS_CLAUSES = {
@@ -1085,8 +1232,8 @@ async function runProcessTaskStatusContractTests() {
     {
       name: "task-table-rejects-mixed-default-statuses",
       source: "templates",
-      from: "| 01 | <one outcome> | AC-01 | `src/example.ts` | - | blocked |",
-      to: "| 01 | <one outcome> | AC-01 | `src/example.ts` | - | blocked |\n| 02 | <later outcome> | AC-01 | `src/later.ts` | task-01-example.md | pending |",
+      from: "| 01 | <one outcome> | P1 | AC-01 | `src/example.ts` | - | blocked |",
+      to: "| 01 | <one outcome> | P1 | AC-01 | `src/example.ts` | - | blocked |\n| 02 | <later outcome> | P2 | AC-01 | `src/later.ts` | task-01-example.md | pending |",
       issues: ["template-default-blocked"],
     },
     {
@@ -3956,6 +4103,7 @@ async function runStaticSemanticTests() {
   const processTaskStatusTests = await runProcessTaskStatusContractTests();
   const implementationReadinessTests = await runImplementationReadinessContractTests();
   const adaptiveCoverageTests = await runAdaptiveCoverageContractTests();
+  const consumerSectionTests = await runConsumerSectionContractTests();
   const brainstormContractTests = await runBrainstormContractTests();
   const developPlanNativeTests = await runDevelopPlanNativeContractTests();
   const testPlanNativeTests = await runTestPlanNativeContractTests();
@@ -4260,7 +4408,7 @@ async function runStaticSemanticTests() {
       file: "src/claude/skills/specs/references/templates.md",
       assert: (content) =>
         content.includes("| ID | EARS criterion | Proof |") &&
-        content.includes("| # | Task | Criteria | Primary ownership | Dependencies | Status |") &&
+        content.includes("| # | Task | Priority | Criteria | Primary ownership | Dependencies | Status |") &&
         content.includes("task-NN-<slug>.md") &&
         content.includes("## Verification Plan"),
     },
@@ -5397,7 +5545,7 @@ async function runStaticSemanticTests() {
     + processTaskStatusTests + adaptiveCoverageTests + brainstormContractTests
     + developPlanNativeTests + testPlanNativeTests + debugAdaptiveTests
     + hotfixAdaptiveTests + researchAdaptiveTests + routeContractTests
-    + loopBoundedTests + docsAdaptiveTests;
+    + loopBoundedTests + docsAdaptiveTests + consumerSectionTests;
 }
 
 function runSkillCatalogTests() {
