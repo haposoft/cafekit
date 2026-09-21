@@ -1,5 +1,6 @@
 schema_version: "1.0"
 name: export-csv
+tags: [single-turn, recheck]
 context:
   scaffold_script: scaffold.sh
 execution:

@@ -1,5 +1,6 @@
 schema_version: "1.0"
 name: sua-typo
+tags: [single-turn]
 context:
   scaffold_script: scaffold.sh
 execution:

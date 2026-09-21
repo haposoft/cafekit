@@ -1,0 +1,24 @@
+schema_version: "1.1"
+name: sau-keep
+tags: [history, recheck]
+runs: 3
+context:
+  # The transcript already contains the GATE-SCOPE question; the prompt below is the user's answer,
+  # so this case measures whether the skill's plan and task shape is followed, not whether the
+  # skill is routed to. A run may use only the intersection of the case's allowed_tools and the
+  # operator grant, so Write and Edit must appear in both:
+  #   evals/run.sh specs --out <name> ... --allow-tools Write Edit --tag history
+  history_file: history.jsonl
+  scaffold_script: scaffold.sh
+execution:
+  # The task filename is pinned because a grader that reads file contents needs an exact path
+  # (the harness resolves one path, not a glob). Flat placement is still measured by `co-task`,
+  # whose glob would also match a wrong directory only if the packet stayed flat.
+  prompt: "KEEP. Dùng skill specs để viết specs/google-login/plan.md và file task đầu tiên đặt tên task-01-google-oauth.md."
+  max_turns: 30
+  # Raised as a precaution after one opus run hung and was cut at 600s having taken 5 turns.
+  # The data does not support blaming the ceiling: the opus runs that completed took 152-185s
+  # and sonnet's took 144-179s over 12-18 turns, all far below the old 600s. Keep the headroom,
+  # but the blocker that day was machine memory, not a model that needed more time.
+  timeout_seconds: 1200
+  allowed_tools: [Read, Glob, Grep, Skill, Write, Edit]

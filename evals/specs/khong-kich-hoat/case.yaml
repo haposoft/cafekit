@@ -1,5 +1,6 @@
 schema_version: "1.0"
 name: khong-kich-hoat
+tags: [single-turn]
 execution:
   prompt: "Giải thích cho tôi sự khác nhau giữa `git merge` và `git rebase`, khi nào nên dùng cái nào."
   max_turns: 6
