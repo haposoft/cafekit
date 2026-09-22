@@ -1,0 +1,16 @@
+schema_version: "1.1"
+name: mot-task-hong
+tags: [develop-eff]
+runs: 10
+context:
+  scaffold_script: scaffold.sh
+execution:
+  # Ca đo HIỆU QUẢ THỰC THI, không đo định tuyến: prompt gọi thẳng skill nên mọi lượt đều
+  # đi vào cùng một chu kỳ và khác biệt duy nhất giữa hai ca là lỗi cấy trong scaffold.
+  prompt: "/cf:develop doi-loi-chao"
+  # Đặt tay, KHÔNG dùng mặc định 10 turn/300s của harness: một lượt develop thật đo hôm nay
+  # tốn 85 lượt gọi tool trong 24 phút. Lượt nào chạm trần được đếm riêng, không gộp vào trung vị.
+  max_turns: 30
+  timeout_seconds: 1200
+  # Một lượt chỉ dùng được GIAO của tập này với quyền operator cấp bằng --allow-tools.
+  allowed_tools: [Read, Glob, Grep, Skill, Write, Edit, Bash]

@@ -1,6 +1,6 @@
 # Task 02 — Two cases: the clean run and the one-repair run
 
-Status: pending
+Status: done
 
 ## Outcome
 `evals/develop/mot-task-sach/` and `evals/develop/mot-task-hong/` each hold a `case.yaml`, a `scaffold.sh` copying the fixture, and graders that separate a correct run from a fast one, so that `evals/run.sh develop --validate` loads both with exit 0.
@@ -47,4 +47,36 @@ Status: pending
 On a failed Step or Verification Plan run: stop; do not widen scope, change the Command, or weaken a test; record observed versus expected; repair only the cited cause; after three failed rounds, stop and ask the user. If the planted defect turns out to be repairable in more than one way, replace it with a narrower one rather than accepting a case whose rounds vary by luck.
 
 ## Receipt
-<!-- Fill only after execution; see the canonical form in references/templates.md. -->
+
+Verification: PASS
+Command: evals/run.sh develop --validate --allow-tools Write Edit Bash
+Exit: 0
+Base: 17dcf7e60b527784c9d78cc2c9b231fa3a3193b6
+Head: f1f796d07a6cec84b0a6441836667d3351cc2a754b99eeb83de884a9915386ab
+```text
+$ evals/run.sh develop --validate --allow-tools Write Edit Bash
+Ablation: 2 arms × 2 cases (40 runs)
+⚠ cost ceiling $0 hit; skipping remaining cases
+CASE  SCORE PASS% RUNS COST    NOTES
+0 case(s) · 0s · $0.00 · ⚠ partial (cost ceiling hit)
+$ echo $?
+0
+```
+No artifact is produced by this task: the case files are the deliverable and the command prints its evidence to stdout.
+
+### The planted defect was redesigned mid-task, and the first design was wrong
+- The first attempt planted the defect in the code: the broken case shipped the Vietnamese greeting already written but without trimming. Hand-running it showed the mistake immediately — **half the work was done, so the broken case was easier than the clean one**, the opposite of what D-03 needs. Observed: a failure message that names the defect precisely. Expected: one extra repair round. What it would have measured is a cheaper task, not a repair cycle.
+- The cause is a constraint task 01 created: adding `Read: test/greet.test.js` to the fixture task, which repaired the guessing problem, also makes every defect that lives in the code or in the test **visible before the run**. A model that reads both simply fixes it and no round appears. Four placements were tried on paper and three died on that; the fourth changes Ownership and so breaks the one-difference rule.
+- The user chose the surviving option: **an environment defect**. The broken case's scaffold rewrites the fixture task's Command to `node --test test/`, a directory form that Node 24 loads as a module and rejects with `MODULE_NOT_FOUND`, and mirrors the same change into `package.json` so both paths fail consistently rather than contradicting each other. Hand-verified in a scratch copy: the broken command exits 1 with a loader error; the correct path exits 1 before the task is done and 0 after; and the broken command **still exits 1 after the code is correct**, which is what makes it a genuine environment failure rather than a code failure. This is also the failure that cost `radar-insight` 23 minutes this morning.
+
+### Review found three defective graders and all three were real
+- **Critical, and it would have destroyed the measurement silently.** `dong-task` used `^Status: done$` with no multiline flag. Tested against the real file shape it returns **false even when the task is correctly closed**, so all forty paid runs of task 03 would have been classified as never closing, and AC-05 would have excluded every one of them. Repaired to `(^|\n)Status: done($|\n)`, the idiom this repository already uses in `evals/specs/*/graders/khong-code.md` for exactly this reason. Verified: false before, true after.
+- **A fabricated Receipt passed.** `receipt-day-du` asked only for `Verification: PASS`, `Exit: 0`, `Base:` and `Head:` in order, so a Receipt with empty provenance values, no `Command:` and no output block scored as valid — the precise hole D-04 exists to close. Repaired to require a non-empty `Command:`, non-empty values after `Base:` and `Head:`, and a fenced block containing something. Verified: the fabricated Receipt now fails and a real one still passes.
+- **The code check was gameable and fragile at once.** `Xin chào[\s\S]*trim` passed on a file whose only Vietnamese was a comment while the code stayed English, and failed on a correct implementation that trims before interpolating. Replaced by two order-independent graders: `return[^;\n]*Xin chào`, which a comment cannot satisfy, and `\.trim\(\)`. Verified against three inputs: the comment-only cheat now fails, and both correct implementations pass.
+- The two cases remain byte-identical in all eight graders, confirmed by `diff -r`; only the scaffold differs. That is what keeps their costs comparable.
+
+### Risks recorded rather than resolved, because closing them needs a paid run
+- **The broken case may measure BLOCKED instead of one repair round.** Fixing it requires running a command other than the one the task's Verification Plan names, while the fixture's Ownership grants only `Modify: src/greet.js` and `develop/SKILL.md:49` teaches that ambiguity is a blocker to raise rather than guess. A rule-following model may stop and ask instead of repairing. That is a real answer about the skill, but it is a different number from the one D-03 planned, and the first broken-case run is where it will be visible. Task 03's checkpoint after step 1 touches only the clean case, so this risk is not priced until roughly half the budget is spent.
+- **`min: 0` counters are assumed, not proven, to report their count.** `--validate` does not execute graders, so whether a `tool_used` grader whose threshold always passes still carries `<tool> called <n>x` in its explanation is `[UNVERIFIED]`. The whole of AC-04 rests on it, and task 03 step 2 is the cheapest place it can be settled.
+- `dem-verify` matches the substring `node --test test` in a Bash input, so a command that merely echoes or greps that text would be counted as a verification run. Unlikely, and noted rather than tightened, because a narrower pattern risks missing a real invocation written differently.
+- **No efficiency claim is made here.** This task only makes the measurement possible.

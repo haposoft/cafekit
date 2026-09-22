@@ -68,8 +68,8 @@ Four numbers per run, three of which the harness records without any grader:
 ## Tasks
 | # | Task | Priority | Criteria | Primary ownership | Dependencies | Status |
 |---|---|---|---|---|---|---|
-| 01 | A fixture packet small enough to measure and real enough to execute | P1 | AC-01 | `evals/develop/fixture/` | - | pending |
-| 02 | Two cases: the clean run and the one-repair run | P1 | AC-02, AC-03 | `evals/develop/mot-task-sach/`, `evals/develop/mot-task-hong/` | task-01 | pending |
+| 01 | A fixture packet small enough to measure and real enough to execute | P1 | AC-01 | `evals/develop/fixture/` | - | done |
+| 02 | Two cases: the clean run and the one-repair run | P1 | AC-02, AC-03 | `evals/develop/mot-task-sach/`, `evals/develop/mot-task-hong/` | task-01 | done |
 | 03 | The four efficiency numbers are measured and recorded per model | P1 | AC-04, AC-05 | `evals/results/develop/*` | task-02 | pending |
 
 ## Review log
