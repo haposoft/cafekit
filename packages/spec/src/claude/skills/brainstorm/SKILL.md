@@ -1,8 +1,8 @@
 ---
 name: cf:brainstorm
-description: "Compare the ways to build something before one is chosen. Use when the outcome is already agreed but two or more approaches would each satisfy it with meaningfully different consequences — setup cost, migration, failure behaviour, who carries the work afterwards. It weighs the viable approaches against a bounded contract of Outcome, Constraints, Non-goals and Acceptance, records what was chosen and what was rejected and why, and stops there; it writes no code and carries nothing onward by itself. Skip it for a direct factual answer, skip it when one viable path makes any alternative artificial, and skip it when the request needs a plan and its tasks rather than a choice between designs."
+description: "Shape an unsettled piece of work into a decided one before anyone builds it. Use when the outcome is already agreed but two or more approaches would each satisfy it with meaningfully different consequences — setup cost, migration, failure behaviour, who carries the work afterwards; use it too when an idea still wants exploring, or when only one approach is viable but the contract and the candidate design still need a decision. It weighs viable approaches against a bounded contract of Outcome, Constraints, Non-goals and Acceptance, records what was chosen and what was rejected and why, and stops there; it writes no code and carries nothing onward by itself. Skip it for a direct factual answer, skip it for a bug or failure that still needs its root cause, and skip it when the request needs a plan and its tasks rather than a choice between designs."
 user-invocable: true
-when_to_use: "Use when material product, scope, or architecture choices remain; skip direct factual answers and already-concrete Specs work."
+when_to_use: "Use when an outcome is agreed and designs compete, an idea wants exploring, or a candidate needs a decision; skip direct factual answers, undiagnosed bugs, and requests that need a plan and its tasks."
 category: utilities
 keywords: [ideation, tradeoffs, decisions, scope]
 argument-hint: "<idea_or_problem>"
