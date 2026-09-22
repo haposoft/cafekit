@@ -20,6 +20,24 @@ Four numbers per run, three of which the harness records without any grader:
 
 **A fast run that did the wrong thing is not efficient.** Every case therefore carries correctness graders, and a run that closes a task without a valid Receipt, or without the verification actually passing, is counted as a failure rather than as a cheap success. This rule exists because today's A/B test produced exactly that trap: the arm without a spec finished 30% faster and had skipped 60% of the scope.
 
+## Completion decision (GATE-DONE — 2026-09-22)
+The user accepted the feature as complete with all three tasks `done` and every acceptance criterion met. The measurement cost $20.33 over forty runs, inside the estimate and the ceiling.
+
+| Reading | Figure | Strength |
+|---|---|---|
+| One complete develop cycle, clean, sonnet | **12 tool calls, 70 seconds, $0.2546** | median over 9 correct runs |
+| Same cycle on opus | 13 calls, 156 seconds, $0.6756 | median over 9 correct runs |
+| Effect of one environment defect on sonnet's correct-close rate | **9/10 → 2/10** | two-sided Fisher **p = 0.0055** |
+| Code fixed correctly in the broken cells | **20/20** | both regex graders, both models |
+| sonnet versus opus on the broken case | 2/10 versus 6/10 | **p = 0.170, not readable** |
+
+What the packet bought: the develop cycle itself is cheap — twelve tool calls and seventy seconds for a real task with a real verification — so a thirty-minute budget is not consumed by the process. What consumes it is a verification that fails for a reason unrelated to the code. One such defect left the work correct in every run and the task closed in two of ten.
+
+The user's decision was to accept completion and to treat fixing `cf:develop` as a separate packet. Two contract findings are carried into it, both observed while running this packet rather than argued from the text: the `final-Head fixed point` in `references/quality-gate.md:75-89` demands re-running proof whenever Head moves, which cost 0.3 seconds here and would have cost $11.77 in the previous packet; and `command_identity` assumes one task has one command, so a task whose proof is several commands cannot express it — four `- Command, step N:` lines matched nothing and the gate rejected the Receipt.
+
+Limitations carried out: `Base`/`Head` were never genuinely derivable in the eval workspace, so the measured close is a weaker predicate than the real gate and the true rates are no higher than reported; no grader runs the test, so AC-05's second half is unmeasured and a near-miss implementation would count as correct; the eval carries no hooks and no completion gate, making every figure a floor for the skill text alone; the broken-sonnet cell rests on n = 2 and conditioning on correctness selects against cheap early quits; `dem-read` counts only the `Read` tool; no judge ran, so the cost is model-only; and the fixture verifies in 0.4 seconds while one real task this morning took 85 tool calls over 24 minutes.
+
+
 ## Why this is wanted
 `cf:specs` has seven eval cases and has been measured repeatedly; `cf:develop` has **none**, and `evals/develop/` does not exist. Every claim about how develop executes — including the five findings in today's evaluation of it — rests on one person's session log, not on a repeatable measurement. Meanwhile the user's stated goal is a 30-minute task, and the only figures available for it are a 76-minute average from one project's history and a single 24-minute A/B arm.
 
@@ -70,7 +88,7 @@ Four numbers per run, three of which the harness records without any grader:
 |---|---|---|---|---|---|---|
 | 01 | A fixture packet small enough to measure and real enough to execute | P1 | AC-01 | `evals/develop/fixture/` | - | done |
 | 02 | Two cases: the clean run and the one-repair run | P1 | AC-02, AC-03 | `evals/develop/mot-task-sach/`, `evals/develop/mot-task-hong/` | task-01 | done |
-| 03 | The four efficiency numbers are measured and recorded per model | P1 | AC-04, AC-05 | `evals/results/develop/*` | task-02 | pending |
+| 03 | The four efficiency numbers are measured and recorded per model | P1 | AC-04, AC-05 | `evals/results/develop/*` | task-02 | done |
 
 ## Review log
 - GATE-REVIEW (2026-09-22): one fresh-context reviewer, 15 findings (3 Critical, 6 High, 5 Medium, 1 Low), verdict FAIL. The controller reproduced all three Criticals before the gate: `turns` reads 1 on ten of twenty runs that each cost $0.167 and ran 96 seconds; all seven existing cases set `max_turns` and `timeout_seconds` by hand while this packet set neither; and the single `&&` chain in task 03 would have spent the whole budget before the cost checkpoint could fire.
