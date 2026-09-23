@@ -48,18 +48,21 @@ On a failed Step or Verification Plan run: stop; do not widen scope, change the 
 Verification: PASS
 Command: cd packages/spec && node --test src/claude/hooks/__tests__/spec-gate.test.js bin/__tests__/develop-contract.test.js
 Exit: 0
-Base: ca5dae8320faf81f9e2694f7bd218208337fc457
-Head: ab2e0bc44f81659caf919908ab1d56611a95f4a8aacc57b7fb5cc6c8a142ff66
+Base: 46a4ed1d51f2f293dabd51ec74bdbb4dcc294bc6
+Head: 89673dae9b87e77a1a3b13365dbc49d9c96f3bee5a52b07b7ff499fb2cb696a6
 ```text
 $ cd packages/spec && node --test src/claude/hooks/__tests__/spec-gate.test.js bin/__tests__/develop-contract.test.js
-✔ 52. a plan with several commands binds the Receipt to the last one (3064.007917ms)
-✔ 53. an indented or sub-heading Command never becomes the canonical one (3999.282375ms)
 ℹ tests 139
+ℹ suites 0
 ℹ pass 139
 ℹ fail 0
-$ echo $?
-0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 193899.120042
+EXIT:0
 ```
+Re-run at the final-Head fixed point on 2026-09-23, after tasks 06, 08 and 05 changed files outside `specs/`: still 139 tests.
 No artifact is produced: the changed files are the deliverable.
 
 - `workflowVerificationCommand` now binds the Receipt to the **last top-level** `- Command:` in the Verification Plan. One declared command behaves as before; none declared still returns `null` and fails closed with `command_identity`.

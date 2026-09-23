@@ -1,6 +1,6 @@
 # Task 05 — Both changelogs extend the 0.16.8 entry
 
-Status: pending
+Status: done
 
 ## Outcome
 `packages/spec/CHANGELOG.md` and `docs/project-changelog.md` describe the develop repairs inside the existing `## [0.16.8]` section, in each file's own language, with no new version heading and no reopened `[Unreleased]`.
@@ -29,7 +29,7 @@ Status: pending
 - Neither entry states a count without its sample size.
 
 ## Dependencies
-- task-04-measure-after.md
+- task-07-remeasure-on-real-git.md
 
 ## Verification Plan
 - Command: `test "$(grep -c '^## \[0\.16\.8\]' packages/spec/CHANGELOG.md)" = 1 && test "$(grep -c '^## \[0\.16\.8\]' docs/project-changelog.md)" = 1 && test "$(grep -l 'Unreleased' packages/spec/CHANGELOG.md docs/project-changelog.md | wc -l | tr -d ' ')" = 0`
@@ -43,4 +43,16 @@ Status: pending
 On a failed Step or Verification Plan run: stop; do not widen scope, change the Command, or weaken a test; record observed versus expected; repair only the cited cause; after three failed rounds, stop and ask the user. If 0.16.8 has been published by the time this task runs, stop: D-04 assumed it had not, and the user must choose whether to open 0.16.9.
 
 ## Receipt
-<!-- Fill only after execution; see the canonical form in references/templates.md. -->
+
+Verification: PASS
+Command: test "$(grep -c '^## \[0\.16\.8\]' packages/spec/CHANGELOG.md)" = 1 && test "$(grep -c '^## \[0\.16\.8\]' docs/project-changelog.md)" = 1 && test "$(grep -l 'Unreleased' packages/spec/CHANGELOG.md docs/project-changelog.md | wc -l | tr -d ' ')" = 0
+Exit: 0
+Base: 46a4ed1d51f2f293dabd51ec74bdbb4dcc294bc6
+Head: 89673dae9b87e77a1a3b13365dbc49d9c96f3bee5a52b07b7ff499fb2cb696a6
+```text
+$ test "$(grep -c '^## \[0\.16\.8\]' packages/spec/CHANGELOG.md)" = 1 && test "$(grep -c '^## \[0\.16\.8\]' docs/project-changelog.md)" = 1 && test "$(grep -l 'Unreleased' packages/spec/CHANGELOG.md docs/project-changelog.md | wc -l | tr -d ' ')" = 0
+exit 0
+$ grep -c '^## \[0\.16\.8\]' packages/spec/CHANGELOG.md; grep -c '^## \[0\.16\.8\]' docs/project-changelog.md; grep -l 'Unreleased' packages/spec/CHANGELOG.md docs/project-changelog.md | wc -l
+c0168-pkg=1 c0168-docs=1 unreleased-files=0
+```
+Before editing, `npm view @haposoft/cafekit version` returned `0.16.7`, so 0.16.8 is unpublished and D-04 still holds. Both files had a live `## [Unreleased]` holding the `cf:brainstorm`/`cf:specs` description entry; it was moved to the head of `### Changed` under `## [0.16.8]` and the heading removed. The develop entry comes first and states every count with its sample size, including the figures that did not move as registered (sonnet's broken-cell verification runs 5 → 6) and the command substitution the eval cannot see. The cost is summed from the `costUsd` of the seventeen result directories written today ($36.19), not estimated. The heading date stays `2026-09-22`; changing it is outside this task.

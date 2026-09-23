@@ -48,16 +48,26 @@ On a failed Step or Verification Plan run: stop; do not widen scope, change the 
 Verification: PASS
 Command: cd packages/spec && node scripts/run-skill-self-tests.mjs
 Exit: 0
-Base: ca5dae8320faf81f9e2694f7bd218208337fc457
-Head: ab2e0bc44f81659caf919908ab1d56611a95f4a8aacc57b7fb5cc6c8a142ff66
+Base: 46a4ed1d51f2f293dabd51ec74bdbb4dcc294bc6
+Head: 89673dae9b87e77a1a3b13365dbc49d9c96f3bee5a52b07b7ff499fb2cb696a6
 ```text
 $ cd packages/spec && node scripts/run-skill-self-tests.mjs
+[skill-test] static semantic checks
+[skill-test] skill catalog checks
+[skill-test] installer migration fixtures
+[skill-test] instruction install fixtures
+[skill-test] spec artifact validator fixtures
+[skill-test] reconstruct docs validator fixtures
+[skill-test] package Node tests
+[skill-test] hook behavioral tests
+[skill-test] chrome-devtools script tests
+[skill-test] pdf bounding-box tests
+[skill-test] retired completion-policy sentence is gone from the payload
 [skill-test] source tree stays free of hook state
-Ran 1 test in source tree cleanliness
-[skill-test] PASS: 1379 tests executed
-$ echo $?
-0
+[skill-test] PASS: 1382 tests executed
+EXIT:0
 ```
+Re-run at the final-Head fixed point on 2026-09-23, after tasks 06, 08 and 05 changed files outside `specs/`: suite 1379 → 1382 tests, the three added by task 08; this is the same captured run as task 01's, which shares this exact command.
 No artifact is produced: the changed files are the deliverable.
 
 - Confirmed prose-only before editing: the fixed point appears in `run-skill-self-tests.mjs`, `develop/SKILL.md` and `quality-gate.md`, and in no `.cjs`. The pin map was built with both matchers first; the one sentence to change was unpinned, and the three byte-exact strings, including the two-line `Stop only when … Receipt\nnames that current Head.` anchor, are untouched.
