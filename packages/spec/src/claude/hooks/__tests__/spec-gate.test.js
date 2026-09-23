@@ -1975,3 +1975,57 @@ test('48. the gate\'s own runtime state does not defeat structure mode', () => {
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('52. a plan with several commands binds the Receipt to the last one', () => {
+  // A proof that takes several steps declares several commands. The Receipt must name the
+  // last: naming an earlier, cheaper step would let the task close without its real proof.
+  const planned = 'node -v\n- Command: node --test';
+  const earlier = boundReceipt().map((line) => line
+    .replace('Command: node --test', 'Command: node -v').replace('$ node --test', '$ node -v'));
+  const absent = boundReceipt().map((line) => line
+    .replace('Command: node --test', 'Command: npm test').replace('$ node --test', '$ npm test'));
+  const cases = [
+    [boundReceipt(), null, 'the last declared command closes the task'],
+    [earlier, /command_identity/, 'an earlier declared command must not close the task'],
+    [absent, /command_identity/, 'a command the plan never declared must not close the task'],
+  ];
+  for (const [receipt, expected, message] of cases) {
+    const dir = makeWorkflowFixture(receipt, planned);
+    try {
+      clearCache();
+      const out = runHook({}, dir).stdout;
+      if (expected === null) {
+        assert.strictEqual(out, '', message);
+      } else {
+        const body = parseBlock(out);
+        assert.ok(body && body.decision === 'block', message);
+        assert.match(body.reason, expected, message);
+      }
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  }
+});
+
+test('53. an indented or sub-heading Command never becomes the canonical one', () => {
+  // A cheap command nested under a Counterexample, or placed under a ### step after the main
+  // block, must not become the command a Receipt can close on.
+  const cheap = boundReceipt().map((line) => line
+    .replace('Command: node --test', 'Command: true').replace('$ node --test', '$ true'));
+  for (const planned of [
+    'node --test\n- Counterexample: none\n  - Command: true',
+    'node --test\n\n### Cleanup\n\n- Command: true',
+  ]) {
+    for (const [receipt, expected] of [[cheap, /command_identity/], [boundReceipt(), null]]) {
+      const dir = makeWorkflowFixture(receipt, planned);
+      try {
+        clearCache();
+        const out = runHook({}, dir).stdout;
+        if (expected === null) assert.strictEqual(out, '', `the main command must still close: ${planned}`);
+        else assert.match(parseBlock(out).reason, expected, `a nested command must not close: ${planned}`);
+      } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+      }
+    }
+  }
+});

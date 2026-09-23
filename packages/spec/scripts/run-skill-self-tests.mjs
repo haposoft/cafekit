@@ -2389,6 +2389,23 @@ function developPlanNativeContractIssues(input) {
     "Load the plan index into working context once.",
   ] });
 
+  requireClauses("artifact-rebind", { quality: [
+    "A Receipt that declares artifacts with `sha256` may instead be rebound to the current Head once every declared hash is recomputed and matches,",
+    "only when no file the proof reads changed between its recorded Head and the current one and every claim in the Receipt is derived from those artifacts;",
+    "Otherwise, and for a Receipt with no artifact, re-run; only the controller rebinds.",
+  ] });
+
+  requireClauses("verify-first-and-round", { skill: [
+    "Unless under `--flash` or the command costs money or writes artifacts, run the task's exact Verification Plan command once before changing anything and expect it to fail;",
+    "this pre-change run is not a repair round.",
+    "Passing before any change, outside a resumed task, means the plan cannot judge the work and is a blocker;",
+    "which is a blocker to raise, not a defect to work around while implementing.",
+    "One repair round is one",
+    "observed failure plus its repair and rerun, from proof or from review alike.",
+    "**The Receipt is written last, after proof and review have both passed**",
+    "Read the test or probe that will judge this task before implementing against it.",
+  ] });
+
   requireClauses("current-byte-selection", { skill: [
     "More than one `in_progress` | Fail-stop; name every active task.",
     "Exactly one `in_progress` | Resume exactly that task.",
@@ -2536,6 +2553,38 @@ async function runDevelopPlanNativeContractTests() {
     name, source, issue, from, to,
   });
   const specificTaskBoundary = "Specific-task\nmode never touches a sibling and returns after its successful sync without chaining or GATE-DONE.";
+  const verifyFirstMutations = [
+    mutateClause("rebinds without recomputing hashes", "quality", "artifact-rebind",
+      "once every declared hash is recomputed and matches,", "without checking its hashes,"),
+    mutateClause("lets an artifact-free Receipt skip the re-run", "quality", "artifact-rebind",
+      "Receipt with no artifact, re-run; only the controller rebinds.", "Receipt, rebind the same way."),
+    mutateClause("rebinds after the proof's inputs changed", "quality", "artifact-rebind",
+      "when no file the proof reads changed between its recorded Head and the current one and",
+      "even when the files the proof reads changed and"),
+    mutateClause("expects the pre-change run to pass", "skill", "verify-first-and-round",
+      "before changing anything and expect it to fail;",
+      "before changing anything and expect it to pass;"),
+    mutateClause("drops the costly-command exception", "skill", "verify-first-and-round",
+      "Unless under `--flash` or the command costs money or writes artifacts, run",
+      "Always run"),
+    mutateClause("counts the pre-change run as a round", "skill", "verify-first-and-round",
+      "this pre-change run is not a repair round.",
+      "this pre-change run counts as the first repair round."),
+    mutateClause("accepts a plan that passes before any change", "skill", "verify-first-and-round",
+      "means the plan cannot judge the work and is a blocker;",
+      "means the work is already done;"),
+    mutateClause("lets an unrelated failure be worked around", "skill", "verify-first-and-round",
+      "which is a blocker to raise, not a defect to work around while implementing.",
+      "which can be worked around while implementing."),
+    mutateClause("drops the round definition", "skill", "verify-first-and-round",
+      "One repair round is one", "Repair rounds are counted loosely as one"),
+    mutateClause("drops receipt-last", "skill", "verify-first-and-round",
+      "**The Receipt is written last, after proof and review have both passed**",
+      "The Receipt may be written once proof has passed"),
+    mutateClause("drops scouting the judge", "skill", "verify-first-and-round",
+      "Read the test or probe that will judge this task before implementing against it.",
+      "Read whatever seems relevant."),
+  ];
   const baseline = Object.fromEntries(await Promise.all(
     Object.entries(DEVELOP_PLAN_NATIVE_PATHS).map(async ([key, relativePath]) => [
       key, await readFile(join(packageRoot, relativePath), "utf8"),
@@ -2545,6 +2594,7 @@ async function runDevelopPlanNativeContractTests() {
   if (baselineIssues.length > 0) fail(`intact sources returned ${baselineIssues.join(", ")}`);
 
   const mutations = [
+    ...verifyFirstMutations,
     mutateClause(
       "paused-is-skipped",
       "skill",

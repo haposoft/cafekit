@@ -1,9 +1,9 @@
 # Task 03 — A Verification Plan may declare several commands
 
-Status: pending
+Status: done
 
 ## Outcome
-`spec-receipt.cjs` accepts a Receipt whose `Command:` matches any command declared in its Verification Plan, and still returns `command_identity` when the Receipt names a command the plan does not, proved by tests in both directions.
+`spec-receipt.cjs` accepts a Receipt whose `Command:` matches the last top-level command declared in its Verification Plan, and still returns `command_identity` when the Receipt names a command the plan does not, proved by tests in both directions.
 
 ## Scope
 - In: the command-identity logic in `packages/spec/src/claude/scripts/spec-receipt.cjs` and new cases in `packages/spec/src/claude/hooks/__tests__/spec-gate.test.js`.
@@ -44,4 +44,28 @@ Status: pending
 On a failed Step or Verification Plan run: stop; do not widen scope, change the Command, or weaken a test; record observed versus expected; repair only the cited cause; after three failed rounds, stop and ask the user. A regression in any of the 68 existing tests stops this task immediately: the defect being fixed is an inconvenience, and a broken gate is not.
 
 ## Receipt
-<!-- Fill only after execution; see the canonical form in references/templates.md. -->
+
+Verification: PASS
+Command: cd packages/spec && node --test src/claude/hooks/__tests__/spec-gate.test.js bin/__tests__/develop-contract.test.js
+Exit: 0
+Base: ca5dae8320faf81f9e2694f7bd218208337fc457
+Head: ab2e0bc44f81659caf919908ab1d56611a95f4a8aacc57b7fb5cc6c8a142ff66
+```text
+$ cd packages/spec && node --test src/claude/hooks/__tests__/spec-gate.test.js bin/__tests__/develop-contract.test.js
+✔ 52. a plan with several commands binds the Receipt to the last one (3064.007917ms)
+✔ 53. an indented or sub-heading Command never becomes the canonical one (3999.282375ms)
+ℹ tests 139
+ℹ pass 139
+ℹ fail 0
+$ echo $?
+0
+```
+No artifact is produced: the changed files are the deliverable.
+
+- `workflowVerificationCommand` now binds the Receipt to the **last top-level** `- Command:` in the Verification Plan. One declared command behaves as before; none declared still returns `null` and fails closed with `command_identity`.
+- **Top-level only, which review forced.** The first version kept the old `^\s*` pattern and ended the section only at `#{1,2}`, so an indented `- Command: true` under a Counterexample, or a `- Command: true` under a `### Cleanup` step after the main block, became the canonical command and let a Receipt close on `true` — reopening the cheap-command hole this change was meant to close. Now only unindented commands count, and commands under a `###` sub-heading are used only when the main block declares none, so a plan written the old way with its command under a sub-heading still works.
+- Tests: test 52 covers last closes, earlier blocks, undeclared blocks; test 53 covers the indented and sub-heading forms, each blocking the cheap command and passing the main one. A counterexample was run by hand against the first version — binding to the first command made test 52 fail — and the file was restored.
+- 139 tests pass: the 68 existing hook tests, 69 in `bin/__tests__/develop-contract.test.js`, and the two new ones.
+- Untouched: the legacy separate-receipt path at `spec-receipt.cjs:251`, which reads `plannedField` rather than this matcher.
+- Not documented yet for plan authors: `references/templates.md` still shows a single `- Command:` and does not say the last one is canonical. That file sits at 745/750 in the bundle budget; recorded rather than squeezed in.
+- **This reaches a project only when it reinstalls**; this repository's own gitignored `.claude/scripts/spec-receipt.cjs` is still the 18/09 copy.

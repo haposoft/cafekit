@@ -95,25 +95,20 @@ isolated worktrees, a bounded wave, and one controller writer; otherwise work se
 
 ### Flash (`--flash`)
 
-Flash is an explicit speed trade-off, never completion:
-
-- run only an available cheap syntax, typecheck, or compile preflight;
-- skip dedicated tests, extended manual checks, and review retry loops;
-- keep `Status: in_progress` and record `FLASH_UNVERIFIED` plus blocker
-  `awaiting /cf:test <feature>`;
-- do not unblock dependents or report Test PASS, Evidence PASS, production-ready, or done;
-- stop this invocation without chaining.
-
-Only a later explicit non-Flash invocation may recover the task. It treats Flash
-output as ephemeral, inspects current bytes and the owned diff, and obtains fresh
-canonical proof through the trusted sync-finalize path. Never weaken, delete, or
-rewrite tests to make Flash look complete.
+Load `references/quality-gate.md`. Flash is an explicit speed trade-off, never completion: run a
+cheap preflight, skip dedicated tests, keep `Status: in_progress` with `FLASH_UNVERIFIED` and the
+blocker `awaiting /cf:test <feature>`, do not unblock dependents or report PASS, and
+stop this invocation without chaining.
+Only a later explicit non-Flash invocation may recover the task.
+It treats Flash output as ephemeral, inspects current bytes and the owned diff, and obtains fresh
+canonical proof through the trusted sync-finalize path. Never weaken, delete, or rewrite tests to make Flash look complete.
 
 ## Task cycle
 
 ### 1. Scout
 
 Trace entrypoints, callers, dependents, registration, errors, and owned files.
+Read the test or probe that will judge this task before implementing against it.
 Compilation does not prove an unmounted UI, unregistered route, uncalled service,
 or missing consumer.
 
@@ -123,6 +118,9 @@ against current task bytes and owned diff. Do not blindly replay a non-idempoten
 mutation. Resume only unmet work, then run fresh verification.
 
 ### 2. Implement
+
+Unless under `--flash` or the command costs money or writes artifacts, run the task's exact Verification Plan command once before changing anything and expect it to fail; this pre-change run is not a repair round.
+Passing before any change, outside a resumed task, means the plan cannot judge the work and is a blocker; so is a failure naming something other than the unmet Acceptance, which is a blocker to raise, not a defect to work around while implementing.
 
 Honor Scope, Ownership, Acceptance, and Dependencies. Do not silently replace named contracts;
 scope expansion requires evidence and a return to GATE-SCOPE, not implementation convenience.
@@ -135,10 +133,12 @@ review owner evaluates correctness, security, scope, and reachability without
 manufacturing proof. Use `PASS | PASS_WITH_WARNINGS | FAIL | BLOCKED`; only literal PASS can close.
 
 Load `references/quality-gate.md`. Remediate an observed failure, then rerun only
-affected proof/review. Do not blind-retry a blocked environment. After three failed
-repair rounds, stop and ask the user.
+affected proof/review. Do not blind-retry a blocked environment. One repair round is one
+observed failure plus its repair and rerun, from proof or from review alike. After three
+failed repair rounds, stop and ask the user.
 
-After a real pass, the controller writes the task's final inline `## Receipt` with
+**The Receipt is written last, after proof and review have both passed**; writing it earlier
+and reopening the task is a defect, not a shortcut. After a real pass, the controller writes the task's final inline `## Receipt` with
 `Verification: PASS`, exact `Command`, `Exit: 0`, runtime-derived `Base:` and `Head:`,
 non-empty current output, and required negative/reachability/artifact proof; then it
 sets `Status: done` and only implemented checkboxes. Missing, stale, contradictory,

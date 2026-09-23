@@ -149,11 +149,18 @@ function workflowVerificationCommand(taskText) {
     if (current) current.push(line);
   }
   if (sections.length !== 1) return null;
-  const commands = sections[0]
-    .map((line) => line.match(/^\s*-\s+(?:\*\*Command\*\*|Command)\s*:\s*(.*?)\s*$/i))
-    .filter(Boolean)
+  // Only a top-level `- Command:` counts: an indented one belongs to another field such as a
+  // Counterexample, and one under a `###` sub-heading is a side step that must not outrank
+  // the main block. When commands exist only under sub-headings, they are used as before.
+  const commandOf = (line) => line.match(/^-\s+(?:\*\*Command\*\*|Command)\s*:\s*(.*?)\s*$/i);
+  const firstSub = sections[0].findIndex((line) => /^###\s+/.test(line));
+  const main = (firstSub === -1 ? sections[0] : sections[0].slice(0, firstSub)).map(commandOf).filter(Boolean);
+  const commands = (main.length ? main : sections[0].map(commandOf).filter(Boolean))
     .map((match) => normalizedCommand(match[1]));
-  return commands.length === 1 ? commands[0] : null;
+  // A plan may declare several commands when its proof takes more than one step. The last
+  // is canonical: earlier ones are prerequisites, and binding the Receipt to any of them
+  // would let a task close on its cheapest step. None declared still fails closed.
+  return commands.length >= 1 ? commands[commands.length - 1] : null;
 }
 
 function workflowCommandFailures(taskText, body) {

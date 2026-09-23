@@ -79,7 +79,13 @@ Before GATE-DONE, repeat within the same three-round repair cap:
 1. Capture runtime Head and list every `done` task whose Receipt is stale or
    bound to a different Head.
 2. Run each stale task's exact proof freshly and let only the controller replace
-   its inline Receipt. If proof changes any non-Specs byte, stop as BLOCKED;
+   its inline Receipt. A Receipt that declares artifacts with `sha256` may instead be
+   rebound to the current Head once every declared hash is recomputed and matches, and only
+   when no file the proof reads changed between its recorded Head and the current one and
+   every claim in the Receipt is derived from those artifacts; matching bytes prove the
+   artifacts did not move, not that the proof would still produce them. Otherwise, and for a
+   Receipt with no artifact, re-run; only the controller rebinds.
+   If proof changes any non-Specs byte, stop as BLOCKED;
    remediation must settle those bytes before proof can bind them.
 3. Capture runtime Head again and rescan all `done` Receipts.
 

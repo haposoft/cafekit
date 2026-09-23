@@ -1,6 +1,6 @@
 # Task 02 — The fixed-point rule asks for proof proportionate to its cost
 
-Status: pending
+Status: done
 
 ## Outcome
 `develop/references/quality-gate.md` permits rebinding a stale Receipt whose declared artifacts still match their recorded `sha256`, and requires re-running the proof only where no such artifact exists.
@@ -44,4 +44,28 @@ Status: pending
 On a failed Step or Verification Plan run: stop; do not widen scope, change the Command, or weaken a test; record observed versus expected; repair only the cited cause; after three failed rounds, stop and ask the user. If it turns out a script does implement the fixed point, stop: the scope of this task was decided on the opposite belief and the user must see the correction.
 
 ## Receipt
-<!-- Fill only after execution; see the canonical form in references/templates.md. -->
+
+Verification: PASS
+Command: cd packages/spec && node scripts/run-skill-self-tests.mjs
+Exit: 0
+Base: ca5dae8320faf81f9e2694f7bd218208337fc457
+Head: ab2e0bc44f81659caf919908ab1d56611a95f4a8aacc57b7fb5cc6c8a142ff66
+```text
+$ cd packages/spec && node scripts/run-skill-self-tests.mjs
+[skill-test] source tree stays free of hook state
+Ran 1 test in source tree cleanliness
+[skill-test] PASS: 1379 tests executed
+$ echo $?
+0
+```
+No artifact is produced: the changed files are the deliverable.
+
+- Confirmed prose-only before editing: the fixed point appears in `run-skill-self-tests.mjs`, `develop/SKILL.md` and `quality-gate.md`, and in no `.cjs`. The pin map was built with both matchers first; the one sentence to change was unpinned, and the three byte-exact strings, including the two-line `Stop only when … Receipt\nnames that current Head.` anchor, are untouched.
+- The rule as shipped:
+
+  > A Receipt that declares artifacts with `sha256` may instead be rebound to the current Head once every declared hash is recomputed and matches, and only when no file the proof reads changed between its recorded Head and the current one and every claim in the Receipt is derived from those artifacts; matching bytes prove the artifacts did not move, not that the proof would still produce them. Otherwise, and for a Receipt with no artifact, re-run; only the controller rebinds.
+
+- **The first version was unsound and review caught it.** It allowed a rebind on matching hashes alone and claimed "unchanged bytes prove the result did not move". They do not: task 04 of this very packet pins measurement results, and if `develop/SKILL.md` — the thing measured — changed afterwards, the files would still hash identically and the Receipt would rebind onto a Head whose skill it never measured. The two added conditions close that, and the claim is now stated as what it is.
+- Three mutations pin the rule: rebinding without recomputing hashes, rebinding after the proof's inputs changed, and letting an artifact-free Receipt rebind. The suite goes to 1379 including task 03's tests.
+- The rule applied to its own packet three times: each edit outside `specs/` moved Head, and tasks 01 and 02, having no artifact, were re-run rather than rebound.
+- Limit: "no file the proof reads changed" is a judgement the controller makes; nothing mechanical enumerates a proof's inputs.
