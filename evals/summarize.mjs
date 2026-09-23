@@ -16,7 +16,7 @@ if (directories.length === 0) {
   process.exit(2);
 }
 
-const SKILL_GRADERS = new Set(["co-goi-skill", "khong-goi-specs"]);
+const SKILL_GRADERS = new Set(["co-goi-skill", "khong-goi-specs", "goi-scout"]);
 
 function armRuns(caseEntry) {
   const arms = caseEntry.arms && typeof caseEntry.arms === "object" ? caseEntry.arms : {};
@@ -33,6 +33,21 @@ function skillCalls(run) {
     if (match) return Number(match[1]);
   }
   return null;
+}
+
+// `dem-*` graders are `tool_used` with `min: 0`: they always pass and carry the observed count in
+// their explanation ("Read called 7x ..."), so a median of that count is the tool-call figure.
+function toolCount(run, name) {
+  const grader = (run.graders || []).find((g) => g.name === name);
+  const match = /called (\d+)x/.exec(grader?.explanation || "");
+  return match ? Number(match[1]) : null;
+}
+
+function median(values) {
+  const sorted = values.filter((value) => value !== null).sort((a, b) => a - b);
+  if (sorted.length === 0) return null;
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 }
 
 const loaded = [];
@@ -92,6 +107,21 @@ for (const { directory, report } of loaded) {
       ].filter(Boolean).join(", ");
       row.gaps = (row.gaps || 0) + noGrader + Math.max(unreadable, 0);
       console.log(`  ${caseEntry.name} [${arm}]  runs ${runs.length}  Skill invoked ${invoked}/${runs.length}${gaps ? ` (${gaps})` : ""}  ${passes}`);
+      // Added, indented lines only; every line printed before stays byte-identical.
+      const counters = graderNames.filter((name) => name.startsWith("dem-"));
+      if (counters.length) {
+        console.log(`    median tool calls over all runs: ${counters.map((name) => `${name} ${median(runs.map((run) => toolCount(run, name))) ?? "n/a"}`).join("  ")}`);
+      }
+      if (calls.some((value) => value !== null)) {
+        const invokedRuns = runs.filter((_, index) => calls[index] > 0);
+        const onlyInvoked = graderNames
+          .map((name) => `${name} ${invokedRuns.filter((run) => (run.graders || []).some((g) => g.name === name && g.passed)).length}/${invokedRuns.length}`)
+          .join("  ");
+        console.log(`    over the ${invokedRuns.length} run(s) that invoked the skill: ${onlyInvoked}`);
+        if (counters.length && invokedRuns.length) {
+          console.log(`    median tool calls over those runs: ${counters.map((name) => `${name} ${median(invokedRuns.map((run) => toolCount(run, name))) ?? "n/a"}`).join("  ")}`);
+        }
+      }
     }
   }
 }

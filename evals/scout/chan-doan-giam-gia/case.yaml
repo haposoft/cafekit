@@ -1,0 +1,13 @@
+schema_version: "1.1"
+name: chan-doan-giam-gia
+tags: [scout]
+runs: 10
+context:
+  scaffold_script: scaffold.sh
+execution:
+  # Đo bước scout theo đường dùng thật: 81% lượt đọc scout đến từ một skill khác gọi tới, nên
+  # prompt gọi cf:debug và scout được nạp bên cạnh bằng --with-skill debug.
+  prompt: "/cf:debug Đơn hàng đúng 100.000đ không được giảm 10% dù đã đạt ngưỡng. Chỉ chẩn đoán nguyên nhân gốc, chưa sửa code."
+  max_turns: 30
+  timeout_seconds: 900
+  allowed_tools: [Read, Glob, Grep, Skill, Bash]
