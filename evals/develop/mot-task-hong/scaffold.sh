@@ -14,3 +14,8 @@ rm -f "$TASK.bak"
 sed -i.bak 's|"node --test test/greet.test.js"|"node --test test/"|' package.json
 rm -f package.json.bak
 grep -q 'Command: `node --test test/`$' "$TASK" || { echo "lỗi cấy không áp được" >&2; exit 1; }
+# Commit SAU khi cấy lỗi, để cây sạch và lỗi là một phần của lịch sử chứ không phải thay đổi dở.
+# Script lấy Base/Head về đúng chỗ một dự án đã cài CafeKit có nó, trước commit để cây sạch. Bản
+# trong fixture mang tên khác vì .gitignore bỏ qua mọi `.claude`; check-instrument.sh giữ nó khớp nguồn.
+mkdir -p .claude/scripts && mv claude-scripts/provenance.cjs .claude/scripts/ && rmdir claude-scripts
+git init -q . && git add -A && git -c user.name=eval -c user.email=eval@example.invalid commit -qm fixture
