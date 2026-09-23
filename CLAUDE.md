@@ -13,9 +13,9 @@
   - macOS/Linux: `.claude/skills/.venv/bin/python3 scripts/<script>.py`
   - Windows: `.claude\skills\.venv\Scripts\python.exe scripts\<script>.py`
 - Consult `.claude/rules/state-sync.md`, `.claude/rules/hook-protocols.md`, and `.claude/rules/skill-workflow-routing.md` when their topics apply.
-- New Specs work uses the process-first flow. `/cf:specs` opens C1, writes
+- New Specs work uses the process-first flow. `/cf:specs` opens GATE-SCOPE, writes
   `specs/<feature>/plan.md` with flat `task-NN-*.md` files beside it, then opens
-  C2 after adversarial review. It never starts implementation.
+  GATE-REVIEW after adversarial review. It never starts implementation.
 - Start implementation only through a new explicit `/cf:develop` invocation.
   Execute one unblocked task at a time; each task has exactly one `Status:`
   field and the controller is its sole state-and-proof writer.
@@ -23,7 +23,7 @@
   requires a canonical final inline `## Receipt` with the exact command,
   `Exit: 0`, `Verification: PASS`, runtime-derived Base and Head values, and
   non-empty fenced current output.
-- At C3, show current receipts and unresolved limitations. The user decides
+- At GATE-DONE, show current receipts and unresolved limitations. The user decides
   completion; no command, review, or host state may invent approval or proof.
 
 ### Legacy Specs compatibility

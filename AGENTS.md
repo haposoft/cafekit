@@ -7,8 +7,8 @@
 - For process-first Specs, `plan.md` and flat `task-NN-*.md` files are
   canonical, hand-editable state. Each task has exactly one `Status:` field and
   keeps canonical execution proof in its final inline `## Receipt`.
-- Specs uses three user decisions: C1 for scope, C2 for adversarial findings,
-  and C3 for completion. Planning never starts implementation; implementation
+- Specs uses three user decisions: GATE-SCOPE for scope, GATE-REVIEW for adversarial findings,
+  and GATE-DONE for completion. Planning never starts implementation; implementation
   requires a new explicit user invocation.
 - Synchronize only observed task state with surgical edits. Never invent proof,
   readiness, approval, review independence, or completed work.
