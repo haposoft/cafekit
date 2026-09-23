@@ -15,12 +15,10 @@ const RETIRED_DIRECTORIES = new Set([
   'mobile-development',
   'devops',
   'react-best-practices',
+  'inspect',
+  'hotfix',
+  'question',
 ]);
-const PUBLIC_SUFFIX_BY_DIRECTORY = {
-  hotfix: 'fix',
-  inspect: 'scout',
-  question: 'ask',
-};
 
 function usage() {
   console.log(`Usage:
@@ -124,7 +122,7 @@ function publicIdentity(name) {
 }
 
 function expectedIdentity(directory) {
-  return `cf:${PUBLIC_SUFFIX_BY_DIRECTORY[directory] || directory}`;
+  return `cf:${directory}`;
 }
 
 function diagnostic(code, directory, message) {

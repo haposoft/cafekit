@@ -59,7 +59,8 @@ test('manifest separates core, optional documents, and retired skills', () => {
   }
   assert.deepEqual(manifest.obsolete.skills, [
     'backend-development', 'frontend-development', 'frontend-design',
-    'mobile-development', 'devops', 'react-best-practices'
+    'mobile-development', 'devops', 'react-best-practices',
+    'inspect', 'hotfix', 'question'
   ]);
 });
 
@@ -246,4 +247,74 @@ test('modified retired skill is preserved but excluded from automatic routing', 
     assert.ok(parsed.diagnostics.some((item) =>
       item.directory === 'backend-development' && item.code === 'retired_skill'));
   });
+});
+
+for (const platformKey of ['claude', 'codex']) {
+  test(`${platformKey} upgrade retires the inspect, hotfix and question directories`, () => {
+    withTempProject((root) => {
+      const platform = PLATFORMS[platformKey];
+      const recordRoot = platform.ownership?.recordRoot || platform.folder;
+      const key = (file) => path.relative(recordRoot, file).replace(/\\/g, '/');
+      const ownership = { schemaVersion: 1, version: 'old', files: {} };
+      for (const old of ['inspect', 'hotfix', 'question']) {
+        const file = path.join(platform.skillsDir, old, 'SKILL.md');
+        fs.mkdirSync(path.dirname(file), { recursive: true });
+        fs.writeFileSync(file, `pristine ${old}\n`);
+        ownership.files[key(file)] = { sha256: manifestLib.hashFile(file), version: 'old' };
+      }
+      const ctx = {
+        manifest: loadClaudeMigrationManifest(),
+        documentSkills: { [platformKey]: { enabled: true, selectionSource: 'cli-opt-in' } },
+        ownership: { [platform.folder]: ownership },
+        trackers: { [platformKey]: manifestLib.createTracker(platform.folder, 'next', platform.ownership) },
+        dryRun: false,
+        ui: silentUi(),
+        results: { updated: 0, preserved: 0, preservedFiles: [] }
+      };
+      reconcileSkillInventory(ctx, platformKey);
+      for (const old of ['inspect', 'hotfix', 'question']) {
+        assert.equal(fs.existsSync(path.join(root, platform.skillsDir, old)), false, old);
+      }
+      assert.equal(ctx.results.updated, 3);
+
+      // A user-modified retired copy survives with a warning, and the catalog serves cf:fix from fix/
+      // while marking the old directory retired rather than reporting a folder mismatch.
+      const edited = path.join(root, platform.skillsDir, 'hotfix', 'SKILL.md');
+      fs.mkdirSync(path.dirname(edited), { recursive: true });
+      fs.writeFileSync(edited, [
+        '---', `name: ${platformKey === 'codex' ? 'cf-fix' : 'cf:fix'}`,
+        'description: "User-modified retired copy."', '---', '# Preserved', '',
+      ].join('\n'));
+      const result = spawnSync(process.execPath, [
+        installerPath, '--platform', platformKey, '--yes'
+      ], { cwd: root, encoding: 'utf8' });
+      assert.equal(result.status, 0, result.stderr || result.stdout);
+      assert.equal(fs.existsSync(edited), true);
+      assert.match(`${result.stdout}\n${result.stderr}`, /Preserved user-owned skill: .*hotfix/);
+      for (const renamed of ['scout', 'fix', 'ask']) {
+        assert.equal(fs.existsSync(path.join(root, platform.skillsDir, renamed, 'SKILL.md')), true, renamed);
+      }
+      const scriptRoot = platformKey === 'codex' ? '.codex' : '.claude';
+      const catalog = spawnSync(process.execPath, [
+        path.join(root, scriptRoot, 'scripts', 'generate-skill-catalog.cjs'), '--json'
+      ], { cwd: root, encoding: 'utf8' });
+      assert.equal(catalog.status, 0, catalog.stderr);
+      const parsed = JSON.parse(catalog.stdout);
+      for (const id of ['cf:scout', 'cf:fix', 'cf:ask']) {
+        assert.ok(parsed.skills.some((skill) => skill.public_id === id), id);
+      }
+      assert.equal(parsed.skills.find((skill) => skill.public_id === 'cf:fix').directory, 'fix');
+      assert.ok(parsed.diagnostics.some((item) => item.directory === 'hotfix' && item.code === 'retired_skill'));
+      assert.equal(parsed.diagnostics.some((item) => item.code === 'duplicate_public_name'), false);
+    });
+  });
+}
+
+test('the catalog retires exactly the directories the manifest retires', () => {
+  const source = fs.readFileSync(
+    path.resolve(__dirname, '..', '..', 'src', 'claude', 'scripts', 'generate-skill-catalog.cjs'), 'utf8');
+  const block = source.match(/const RETIRED_DIRECTORIES = new Set\(\[([\s\S]*?)\]\);/);
+  assert.ok(block, 'RETIRED_DIRECTORIES not found');
+  const retired = [...block[1].matchAll(/'([^']+)'/g)].map((match) => match[1]);
+  assert.deepEqual([...retired].sort(), [...loadClaudeMigrationManifest().obsolete.skills].sort());
 });

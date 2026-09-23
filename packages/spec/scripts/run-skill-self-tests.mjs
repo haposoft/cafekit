@@ -3208,12 +3208,12 @@ async function runDebugAdaptiveContractTests() {
 }
 
 const HOTFIX_ADAPTIVE_PATHS = {
-  skill: "src/claude/skills/hotfix/SKILL.md",
-  diagnosis: "src/claude/skills/hotfix/references/diagnosis-protocol.md",
-  review: "src/claude/skills/hotfix/references/review-cycle.md",
-  parallel: "src/claude/skills/hotfix/references/parallel-patterns.md",
-  prevention: "src/claude/skills/hotfix/references/prevention-gate.md",
-  specialized: "src/claude/skills/hotfix/references/workflow-specialized.md",
+  skill: "src/claude/skills/fix/SKILL.md",
+  diagnosis: "src/claude/skills/fix/references/diagnosis-protocol.md",
+  review: "src/claude/skills/fix/references/review-cycle.md",
+  parallel: "src/claude/skills/fix/references/parallel-patterns.md",
+  prevention: "src/claude/skills/fix/references/prevention-gate.md",
+  specialized: "src/claude/skills/fix/references/workflow-specialized.md",
 };
 
 function hotfixAdaptiveContractIssues(input) {
@@ -4165,6 +4165,105 @@ const PORTED_RULE_PATHS = [
   "src/claude/rules/process-management.md",
 ];
 
+// cf:scout is a short subroutine: callers fold its findings into their own report, the scope and
+// no-scan rules stay verbatim, delegation needs the user's permission even when a host enables it,
+// and the delegation procedure lives in the reference.
+function validateScoutSubroutineContract(skill, reference, workflow) {
+  const issues = new Set();
+  const flat = normalizeMarkdownWhitespace(skill);
+  const has = (clause) => flat.includes(normalizeMarkdownWhitespace(clause));
+  const require = (issue, clauses) => { if (!clauses.every(has)) issues.add(issue); };
+  if (skill.trimEnd().split("\n").length > 70) issues.add("scout-line-ceiling");
+  require("scout-scope-gate", [
+    "reject repo-root or root-wide patterns (`.`, `/`, `**/*`, `**/*.ts`) with no scoped directory",
+    "never enter the no-scan lists below.",
+  ]);
+  require("scout-no-scan", [
+    "- `.git/`, `node_modules/`, `dist/`, `build/`, `.next/`, `coverage/`",
+    "- `tmp/`, `temp/`, `vendor/`, `artifacts/`, `secrets/`, `private/`",
+    "- private keys, token dumps, credential exports, `.env` secrets",
+    "- generated bundles, binary blobs",
+  ]);
+  require("scout-smallest-route", [
+    "| Named files/directories or focused scope (about 50 files or fewer) | Main-agent `rg` plus targeted reads; do not delegate |",
+    "| Medium scope that still fits one coherent search | Main-agent scouting; narrow before considering delegation |",
+    "| Broad scope with two or more independent areas | Structure map, then the delegation gate in `./references/internal-inspection.md` |",
+  ]);
+  require("scout-findings-shape", [
+    "Return these for the caller to fold into its own report:",
+    "- **Relevant files** — each as `path:line` with one clause on why it matters.",
+    "- **Entrypoint and call path** — where the behavior starts and each hop to the code in question.",
+    "- **Blast radius** — callers, tests, and config that a change there would touch.",
+    "- **Unknowns** — what the search could not settle, and what would settle it.",
+  ]);
+  require("scout-host-rule", [
+    "A host or runtime mode that enables delegation on its own does not replace the user's permission;",
+    "without it, scout stays in the main agent.",
+  ]);
+  require("scout-role-line", [
+    "`inspector` and Explore are delegation targets that run under this gate and these scope rules, not a replacement for them.",
+  ]);
+  // The Codex projection rewrites this exact sentence, so it stays byte-for-byte.
+  if (!skill.includes("**Fallback to AskUserQuestion:** if the structure map still leaves multiple\nplausible targets and the choice would materially change the scan, offer 2–4\nconcrete scopes from findings, then continue with the selected scope.")) {
+    issues.add("scout-fallback-verbatim");
+  }
+  if (/Scout Report/.test(skill)) issues.add("scout-report-template");
+  if (/3\s*min|three[- ]minutes?|3 minutes/i.test(`${skill}\n${reference}`)) issues.add("scout-timeout");
+  if (/Phase 1|Phase 2|Structure Map/.test(skill)) issues.add("scout-two-phase-home");
+  const flatReference = normalizeMarkdownWhitespace(reference);
+  if (!reference.includes("## Two-Phase Broad Scout")
+    || !flatReference.includes("return a division plan of 1–10 sub-scopes")
+    || !flatReference.includes("merge sub-scopes under 10 files and split those over 100")) {
+    issues.add("scout-two-phase-home");
+  }
+  if (!workflow.includes("- Use `cf:scout` or focused search when structure is unclear.")
+    || /Use `inspect`/.test(workflow)) {
+    issues.add("scout-workflow-name");
+  }
+  return issues;
+}
+
+async function runScoutSubroutineContractTests() {
+  const fail = (message) => { throw new Error(`[FAIL] Scout subroutine contract: ${message}`); };
+  const skill = await readFile(join(packageRoot, "src/claude/skills/scout/SKILL.md"), "utf8");
+  const reference = await readFile(join(packageRoot, "src/claude/skills/scout/references/internal-inspection.md"), "utf8");
+  const workflow = await readFile(join(packageRoot, "src/claude/rules/workflow.md"), "utf8");
+  const baseline = validateScoutSubroutineContract(skill, reference, workflow);
+  if (baseline.size) fail(`current text fails: ${[...baseline].join(", ")}`);
+  const swap = (from, to) => (text) => {
+    if (!text.includes(from)) fail(`mutation anchor missing: ${from}`);
+    return text.replace(from, to);
+  };
+  const mutations = [
+    ["drops-blast-radius", "skill", swap("- **Blast radius** — callers, tests, and config that a change there would touch.\n", ""), "scout-findings-shape"],
+    ["drops-host-rule", "skill", swap("A host or runtime mode that enables delegation on its own does not replace the user's permission;", "A host mode that enables delegation counts as permission;"), "scout-host-rule"],
+    ["drops-role-line", "skill", swap("`inspector` and Explore are delegation targets that run", "`inspector` and Explore may replace scout and run"), "scout-role-line"],
+    ["drops-no-scan-entry", "skill", swap("`artifacts/`, `secrets/`, `private/`", "`artifacts/`, `private/`"), "scout-no-scan"],
+    ["drops-route-row", "skill", swap("| Medium scope that still fits one coherent search | Main-agent scouting; narrow before considering delegation |\n", ""), "scout-smallest-route"],
+    ["drops-scope-gate", "skill", swap("never enter the no-scan lists below.", "scan wherever needed."), "scout-scope-gate"],
+    ["restores-report-template", "skill", (text) => `${text}\n# Scout Report\n`, "scout-report-template"],
+    ["restores-timeout-skill", "skill", (text) => `${text}\n- Timeout: 3 minutes per agent\n`, "scout-timeout"],
+    ["restores-timeout-reference", "reference", (text) => `${text}\n- 3 min/agent; skip non-responders\n`, "scout-timeout"],
+    ["exceeds-line-ceiling", "skill", (text) => `${text}${"\nfiller".repeat(20)}\n`, "scout-line-ceiling"],
+    ["moves-two-phase-out", "reference", swap("## Two-Phase Broad Scout", "## Broad Scout"), "scout-two-phase-home"],
+    ["empties-two-phase", "reference", swap("division plan of 1–10 sub-scopes", "plan"), "scout-two-phase-home"],
+    ["returns-phase-one-to-skill", "skill", (text) => `${text}\n### Phase 1 — Structure Map\n`, "scout-two-phase-home"],
+    ["rewrites-fallback", "skill", swap("offer 2–4\nconcrete scopes from findings", "ask the user to\npick a scope"), "scout-fallback-verbatim"],
+    ["restores-report-prose", "skill", (text) => `${text}\nEnd with a Scout Report.\n`, "scout-report-template"],
+    ["restores-timeout-words", "skill", (text) => `${text}\n- Give each agent three minutes.\n`, "scout-timeout"],
+    ["workflow-names-inspect", "workflow", swap("- Use `cf:scout` or focused search", "- Use `inspect` or focused search"), "scout-workflow-name"],
+  ];
+  for (const [name, source, mutate, issue] of mutations) {
+    const issues = validateScoutSubroutineContract(
+      source === "skill" ? mutate(skill) : skill,
+      source === "reference" ? mutate(reference) : reference,
+      source === "workflow" ? mutate(workflow) : workflow,
+    );
+    if (!issues.has(issue)) fail(`${name} did not raise ${issue}`);
+  }
+  return mutations.length + 1;
+}
+
 async function runStaticSemanticTests() {
   const processTaskStatusTests = await runProcessTaskStatusContractTests();
   const implementationReadinessTests = await runImplementationReadinessContractTests();
@@ -4172,6 +4271,7 @@ async function runStaticSemanticTests() {
   const consumerSectionTests = await runConsumerSectionContractTests();
   const brainstormContractTests = await runBrainstormContractTests();
   const developPlanNativeTests = await runDevelopPlanNativeContractTests();
+  const scoutSubroutineTests = await runScoutSubroutineContractTests();
   const testPlanNativeTests = await runTestPlanNativeContractTests();
   const debugAdaptiveTests = await runDebugAdaptiveContractTests();
   const hotfixAdaptiveTests = await runHotfixAdaptiveContractTests();
@@ -4342,7 +4442,7 @@ async function runStaticSemanticTests() {
     },
     {
       label: "cf:ask skill answers questions with repo-first evidence",
-      file: "src/claude/skills/question/SKILL.md",
+      file: "src/claude/skills/ask/SKILL.md",
       assert: (content) =>
         content.includes("name: cf:ask") &&
         content.includes("Answer questions with evidence") &&
@@ -4361,7 +4461,7 @@ async function runStaticSemanticTests() {
     },
     {
       label: "cf:ask template captures answer evidence and gaps",
-      file: "src/claude/skills/question/templates/question.md",
+      file: "src/claude/skills/ask/templates/question.md",
       assert: (content) =>
         content.includes("## Question") &&
         content.includes("## Answer") &&
@@ -4371,21 +4471,23 @@ async function runStaticSemanticTests() {
         content.includes("## Follow-up Question"),
     },
     {
-      label: "cf:ask is packaged from the question directory in the migration manifest",
+      label: "cf:ask is packaged from the ask directory and the question directory is retired",
       file: "src/claude/migration-manifest.json",
       assert: (content) => {
         const manifest = JSON.parse(content);
-        return manifest.skills.required.includes("question") &&
-          !manifest.skills.required.includes("ask");
+        return manifest.skills.required.includes("ask") &&
+          !manifest.skills.required.includes("question") &&
+          manifest.obsolete.skills.includes("question");
       },
     },
     {
-      label: "cf:fix is packaged from the hotfix directory in the migration manifest",
+      label: "cf:fix is packaged from the fix directory and the hotfix directory is retired",
       file: "src/claude/migration-manifest.json",
       assert: (content) => {
         const manifest = JSON.parse(content);
-        return manifest.skills.required.includes("hotfix") &&
-          !manifest.skills.required.includes("fix");
+        return manifest.skills.required.includes("fix") &&
+          !manifest.skills.required.includes("hotfix") &&
+          manifest.obsolete.skills.includes("hotfix");
       },
     },
     {
@@ -4642,7 +4744,7 @@ async function runStaticSemanticTests() {
     },
     {
       label: "cf:scout uses a focused local fast path before delegation",
-      file: "src/claude/skills/inspect/SKILL.md",
+      file: "src/claude/skills/scout/SKILL.md",
       assert: (content) =>
         content.includes("name: cf:scout") &&
         content.includes("about 50 files or fewer") &&
@@ -4654,7 +4756,7 @@ async function runStaticSemanticTests() {
     },
     {
       label: "cf:scout delegation requires permission runtime support and independent scopes",
-      file: "src/claude/skills/inspect/references/internal-inspection.md",
+      file: "src/claude/skills/scout/references/internal-inspection.md",
       assert: (content) =>
         content.includes("The user explicitly requested or permitted delegation or parallel agents") &&
         content.includes("The active runtime exposes an Explore/delegation capability") &&
@@ -4679,7 +4781,7 @@ async function runStaticSemanticTests() {
     },
     {
       label: "hotfix review cycle consumes severity verdicts",
-      file: "src/claude/skills/hotfix/references/review-cycle.md",
+      file: "src/claude/skills/fix/references/review-cycle.md",
       assert: (content) =>
         content.includes("verdict and severity-classified findings") &&
         content.includes("PASS | PASS_WITH_WARNINGS | FAIL | BLOCKED") &&
@@ -4717,7 +4819,7 @@ async function runStaticSemanticTests() {
     },
     {
       label: "cf:fix is deterministic scout-first without mode selection",
-      file: "src/claude/skills/hotfix/SKILL.md",
+      file: "src/claude/skills/fix/SKILL.md",
       assert: (content) =>
         content.includes("Default: deterministic scout-first fix") &&
         content.includes("There is no initial mode selection step") &&
@@ -4726,7 +4828,7 @@ async function runStaticSemanticTests() {
     },
     {
       label: "cf:fix quick path never skips scout or diagnosis",
-      file: "src/claude/skills/hotfix/SKILL.md",
+      file: "src/claude/skills/fix/SKILL.md",
       assert: (content) =>
         content.includes("it never skips scout, pre-fix evidence, diagnosis, or before/after verification") &&
         content.includes("Quick mode only reduces depth") &&
@@ -4734,7 +4836,7 @@ async function runStaticSemanticTests() {
     },
     {
       label: "cf:fix enforces no-side-effect gate with user options",
-      file: "src/claude/skills/hotfix/SKILL.md",
+      file: "src/claude/skills/fix/SKILL.md",
       assert: (content) =>
         content.includes("<HARD-GATE-NO-SIDE-EFFECTS>") &&
         content.includes("Public contracts are unchanged") &&
@@ -4743,19 +4845,19 @@ async function runStaticSemanticTests() {
     },
     {
       label: "cf:fix references are local and not stale debugger paths",
-      file: "src/claude/skills/hotfix/SKILL.md",
+      file: "src/claude/skills/fix/SKILL.md",
       assert: (content) => !content.includes("references/debugger/"),
     },
     {
       label: "cf:fix prevention gate points back to side-effect sweep",
-      file: "src/claude/skills/hotfix/references/prevention-gate.md",
+      file: "src/claude/skills/fix/references/prevention-gate.md",
       assert: (content) =>
         content.includes("Step 5 side-effect sweep") &&
         !content.includes("references/debugger/"),
     },
     {
       label: "cf:fix review cycle uses pause conditions not mode selection",
-      file: "src/claude/skills/hotfix/references/review-cycle.md",
+      file: "src/claude/skills/fix/references/review-cycle.md",
       assert: (content) =>
         content.includes("## Default Review Handling") &&
         content.includes("## Required User Pause") &&
@@ -5609,7 +5711,7 @@ async function runStaticSemanticTests() {
 
   return checks.length + specs21Tests + implementationReadinessTests
     + processTaskStatusTests + adaptiveCoverageTests + brainstormContractTests
-    + developPlanNativeTests + testPlanNativeTests + debugAdaptiveTests
+    + developPlanNativeTests + scoutSubroutineTests + testPlanNativeTests + debugAdaptiveTests
     + hotfixAdaptiveTests + researchAdaptiveTests + routeContractTests
     + loopBoundedTests + docsAdaptiveTests + consumerSectionTests;
 }

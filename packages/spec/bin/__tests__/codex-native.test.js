@@ -69,7 +69,7 @@ const DOCS_ADAPTIVE_BUNDLE = [
   'references/update-workflow.md',
   'references/standard-docs-workflow.md'
 ];
-const HOTFIX_SOURCE_ROOT = path.join(PACKAGE_ROOT, 'src/claude/skills/hotfix');
+const HOTFIX_SOURCE_ROOT = path.join(PACKAGE_ROOT, 'src/claude/skills/fix');
 const HOTFIX_BUNDLE = [
   'SKILL.md',
   'references/diagnosis-protocol.md',
@@ -1561,13 +1561,13 @@ test('Codex structured-input corpus oracle stays differential and production-awa
     'src/claude/agents/spec-maker.md',
     'src/claude/hooks/session.cjs',
     'src/claude/skills/git/SKILL.md',
-    'src/claude/skills/inspect/SKILL.md'
+    'src/claude/skills/scout/SKILL.md'
   ];
   assert.deepEqual(actualPaths, expectedPaths, 'every source occurrence needs an explicit projection oracle');
 
   const instructionExpectedSnippets = new Map([
     ['src/claude/skills/git/SKILL.md', 'Present options via a structured user-input request — header'],
-    ['src/claude/skills/inspect/SKILL.md', '**Fallback to a structured user-input request:**']
+    ['src/claude/skills/scout/SKILL.md', '**Fallback to a structured user-input request:**']
   ]);
   for (const [relativePath, expectedSnippet] of instructionExpectedSnippets) {
     const sourcePath = path.join(PACKAGE_ROOT, relativePath);
@@ -2260,24 +2260,24 @@ test('Codex installed Specs and spec-maker reject adaptive coverage mutations', 
     assert.ok(skillNames.every((name) => /^[a-z0-9-]+$/.test(name)));
 
     const scoutSkill = fs.readFileSync(
-      path.join(root, '.agents', 'skills', 'inspect', 'SKILL.md'),
+      path.join(root, '.agents', 'skills', 'scout', 'SKILL.md'),
       'utf8'
     );
     assert.match(scoutSkill, /^name:\s*cf-scout$/m);
     assert.equal(
-      fs.existsSync(path.join(root, '.agents', 'skills', 'scout')),
+      fs.existsSync(path.join(root, '.agents', 'skills', 'inspect')),
       false,
-      'public Scout rename must keep the manifest-owned inspect directory'
+      'Scout lives in the scout directory; the retired inspect directory must not be installed'
     );
     const askSkill = fs.readFileSync(
-      path.join(root, '.agents', 'skills', 'question', 'SKILL.md'),
+      path.join(root, '.agents', 'skills', 'ask', 'SKILL.md'),
       'utf8'
     );
     assert.match(askSkill, /^name:\s*cf-ask$/m);
     assert.equal(
-      fs.existsSync(path.join(root, '.agents', 'skills', 'ask')),
+      fs.existsSync(path.join(root, '.agents', 'skills', 'question')),
       false,
-      'public Ask rename must keep the manifest-owned question directory'
+      'Ask lives in the ask directory; the retired question directory must not be installed'
     );
 
     const catalog = spawnSync(
@@ -2338,7 +2338,7 @@ test('Codex installed Specs and spec-maker reject adaptive coverage mutations', 
       (key.startsWith('.codex/') || key.startsWith('.agents/')) && !key.includes('../')
     )));
 
-    const questionSkill = path.join(root, '.agents', 'skills', 'question', 'SKILL.md');
+    const questionSkill = path.join(root, '.agents', 'skills', 'ask', 'SKILL.md');
     fs.appendFileSync(questionSkill, '\nUSER-CODEX-SENTINEL\n');
     // Fresh installs are exact. Refresh/upgrade intentionally documents the
     // current Codex limitation: removed skill paths are not pruned.
@@ -2858,9 +2858,9 @@ test('Codex installed Fix preserves the adaptive repair contract', () => {
     const result = install(root);
     assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
 
-    const installedRoot = path.join(root, '.agents/skills/hotfix');
-    assert.equal(fs.existsSync(path.join(root, '.agents/skills/fix')), false,
-      'public Fix rename must keep the manifest-owned hotfix directory');
+    const installedRoot = path.join(root, '.agents/skills/fix');
+    assert.equal(fs.existsSync(path.join(root, '.agents/skills/hotfix')), false,
+      'Fix lives in the fix directory; the retired hotfix directory must not be installed');
     for (const relative of HOTFIX_BUNDLE) {
       const sourcePath = path.join(HOTFIX_SOURCE_ROOT, relative);
       assert.equal(

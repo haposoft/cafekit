@@ -7,20 +7,20 @@
   "skills": {
     "required": [
       "agent-browser",
+      "ask",
       "brainstorm",
       "chrome-devtools",
       "code-review",
       "debug",
       "delegate",
       "develop",
+      "fix",
       "git",
-      "hotfix",
-      "inspect",
       "loop",
       "orca",
-      "question",
       "research",
       "route",
+      "scout",
       "specs",
       "sync",
       "test",
@@ -86,7 +86,10 @@
       "frontend-design",
       "mobile-development",
       "devops",
-      "react-best-practices"
+      "react-best-practices",
+      "inspect",
+      "hotfix",
+      "question"
     ],
     "agents": {
       "claude": ["agents/god-developer.md"],

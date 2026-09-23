@@ -1,6 +1,6 @@
 # Conditional Discovery with Explore Subagents
 
-Use native Explore agents only after the `SKILL.md` Delegation Gate passes.
+Use native Explore agents only after the delegation gate in `SKILL.md` ("Delegate only when …") passes.
 Focused discovery stays in the main agent even when Explore is available.
 
 ## Delegation Preconditions
@@ -15,6 +15,17 @@ All are required:
 If any precondition fails, use scoped `rg`, file listing, and targeted reads in
 the main agent. Do not request extra authority for an ordinary focused scout.
 
+## Two-Phase Broad Scout
+
+Use when the scope is broad; delegate only when the gate is open.
+
+1. **Structure map** (main agent, or one Explore agent once the gate is open): list the scope
+   root's immediate children and monorepo markers, estimate files per directory, and return a
+   division plan of 1–10 sub-scopes (path or glob, estimated files, focus).
+2. **Parallel scout**: merge sub-scopes under 10 files and split those over 100; spawn Explore agents
+   on distinct sub-scopes, or scout them sequentially in the main agent when the gate is closed; then
+   aggregate into the findings `SKILL.md` asks for.
+
 ## Agent Tool Configuration
 
 ```
@@ -28,13 +39,18 @@ Quickly search {DIRECTORY} for files related to: {USER_PROMPT}
 
 Instructions:
 - Search for relevant files matching the task (Glob/Grep)
-- List files with brief descriptions; timeout 3 minutes; skip if timed out
+- Read-only: do not edit, write, or run anything that changes state
+- Report each relevant file as `path:line` with one clause on why
 
 Report format:
-## Found Files
-- `path/file.ext` - description
-## Patterns
-- Key patterns observed
+## Relevant Files
+- `path/file.ext:line` - why it matters
+## Entrypoint and Call Path
+- where the behavior starts, then each hop
+## Blast Radius
+- callers, tests, config a change would touch
+## Unknowns
+- what this scope could not settle
 ```
 
 ## Spawning Strategy
@@ -53,12 +69,12 @@ distinct and non-overlapping.
 | ≥ 3    | Yes |
 
 Use the live task or plan surface when available. Record scope and ownership
-before spawn, then completion or timeout after collection. Do not create task
+before spawn, then completion or non-response after collection. Do not create task
 state solely for one or two short probes.
 
-## Timeout, Aggregation, Reading
+## Aggregation and Reading
 
-- 3 min/agent; skip non-responders; do not restart; dedupe paths; note gaps in Unresolved Questions
+- Skip agents that do not respond; do not restart them; dedupe paths; note gaps under Unknowns
 - Stay under ~150K tokens; ~500 lines/chunk; max 3–5 small files or 1 large file chunked (`chunks = ceil(total_lines / 500)`); Read with offset/limit
 
 ## Scope Discipline
@@ -67,4 +83,4 @@ Start from concrete directories (not repo root); prefer scoped globs; skip `NO_S
 
 ## Output Contract
 
-Return: file paths, brief description per file, notable relationships/patterns, unresolved questions.
+Return the findings `SKILL.md` names — relevant files as `path:line`, entrypoint and call path, blast radius, patterns, unknowns — for the controller to merge and fold into the caller's report.

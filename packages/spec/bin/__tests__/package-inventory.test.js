@@ -189,10 +189,10 @@ const RESEARCH_LOOP_SOURCE_RELATIVES = {
   domain: 'src/claude/rules/skill-domain-routing.md',
 };
 const HOTFIX_SOURCE_RELATIVES = {
-  skill: 'src/claude/skills/hotfix/SKILL.md',
-  review: 'src/claude/skills/hotfix/references/review-cycle.md',
-  parallel: 'src/claude/skills/hotfix/references/parallel-patterns.md',
-  specialized: 'src/claude/skills/hotfix/references/workflow-specialized.md',
+  skill: 'src/claude/skills/fix/SKILL.md',
+  review: 'src/claude/skills/fix/references/review-cycle.md',
+  parallel: 'src/claude/skills/fix/references/parallel-patterns.md',
+  specialized: 'src/claude/skills/fix/references/workflow-specialized.md',
 };
 const REQUIRED_ADAPTIVE_BRAINSTORM_GROUPS = [
   'adviser-gate-fallback',
@@ -2285,8 +2285,8 @@ function assertTransforms(root, platform) {
   );
   const skill = path.join(skillRoot, 'develop', 'SKILL.md');
   const content = fs.readFileSync(skill, 'utf8');
-  const scout = fs.readFileSync(path.join(skillRoot, 'inspect', 'SKILL.md'), 'utf8');
-  const ask = fs.readFileSync(path.join(skillRoot, 'question', 'SKILL.md'), 'utf8');
+  const scout = fs.readFileSync(path.join(skillRoot, 'scout', 'SKILL.md'), 'utf8');
+  const ask = fs.readFileSync(path.join(skillRoot, 'ask', 'SKILL.md'), 'utf8');
   if (platform === 'codex') {
     assert.match(content, /\$cf-develop/);
     assert.doesNotMatch(content, /\/cf:develop/);
@@ -2297,8 +2297,8 @@ function assertTransforms(root, platform) {
     assert.match(scout, /^name:\s*cf:scout$/m);
     assert.match(ask, /^name:\s*cf:ask$/m);
   }
-  assert.equal(fs.existsSync(path.join(skillRoot, 'scout')), false);
-  assert.equal(fs.existsSync(path.join(skillRoot, 'ask')), false);
+  assert.equal(fs.existsSync(path.join(skillRoot, 'inspect')), false);
+  assert.equal(fs.existsSync(path.join(skillRoot, 'question')), false);
   assert.ok(fs.existsSync(path.join(root, RUNTIMES[platform].root, 'agents')) || platform === 'codex');
 }
 
@@ -2623,11 +2623,13 @@ test('packed Claude and Codex reject adaptive Brainstorm semantic weakenings', (
       const project = path.join(root, platform);
       const installer = installPacked(tarball, project, runtimeClosure);
       runInstaller(installer, project, [platform], null);
-      const publicDirectory = platform === 'claude'
-        ? path.join(project, '.claude/skills/fix')
-        : path.join(project, '.agents/skills/fix');
-      assert.equal(fs.existsSync(publicDirectory), false,
-        `${platform} public Fix rename keeps the manifest-owned hotfix directory`);
+      const skillsRoot = platform === 'claude'
+        ? path.join(project, '.claude/skills')
+        : path.join(project, '.agents/skills');
+      assert.equal(fs.existsSync(path.join(skillsRoot, 'fix', 'SKILL.md')), true,
+        `${platform} installs Fix from the fix directory`);
+      assert.equal(fs.existsSync(path.join(skillsRoot, 'hotfix')), false,
+        `${platform} no longer installs the retired hotfix directory`);
       assertPackedBrainstormParity(project, platform);
       for (const entry of assertPackedAdaptiveBrainstormMutations(project, platform, canonicalBytes)) exercised.add(entry);
       assertPackedBrainstormParity(project, platform);
@@ -2745,8 +2747,8 @@ test('packed Claude and Codex installs reject adaptive Fix semantic weakenings',
     const runtimeClosure = packedRuntimeClosure(path.join(root, 'runtime-closure'));
     assertCleanInventory(packedInventory(tarball));
     const layouts = {
-      claude: { skillsRoot: '.claude/skills/hotfix', refPrefix: 'cf:' },
-      codex: { skillsRoot: '.agents/skills/hotfix', refPrefix: 'cf-' },
+      claude: { skillsRoot: '.claude/skills/fix', refPrefix: 'cf:' },
+      codex: { skillsRoot: '.agents/skills/fix', refPrefix: 'cf-' },
     };
     const exercised = new Set();
     for (const [platform, layout] of Object.entries(layouts)) {

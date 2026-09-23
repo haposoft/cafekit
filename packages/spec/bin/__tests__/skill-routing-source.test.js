@@ -58,7 +58,7 @@ test('skill routing consumes live catalog without fixed optional commands', () =
     installScanner(SCANNER, claudeScript);
     installScanner(SCANNER, codexScript, (content) => normalizeCodexBody(content, SCANNER));
 
-    writeSkill(path.join(root, '.claude/skills'), 'question', {
+    writeSkill(path.join(root, '.claude/skills'), 'ask', {
       name: 'cf:ask', description: 'Answer with evidence.', when: 'Use for factual questions.',
       category: 'utilities', keywords: ['answer', 'evidence'],
     });
@@ -66,7 +66,7 @@ test('skill routing consumes live catalog without fixed optional commands', () =
       name: 'cf:docs', description: 'Work with docs.', when: 'Use for documentation.',
       category: 'documents', keywords: ['docs'],
     });
-    writeSkill(path.join(root, '.agents/skills'), 'question', {
+    writeSkill(path.join(root, '.agents/skills'), 'ask', {
       name: 'cf-ask', description: 'Answer with evidence.', when: 'Use for factual questions.',
       category: 'utilities', keywords: ['answer', 'evidence'],
     });
@@ -101,12 +101,14 @@ test('skill catalog exposes discriminating routing metadata', () => {
       when: 'Use for ambiguous multi-step work.', category: 'utilities',
       keywords: ['routing', 'risk'],
     });
+    // An upgrade can leave a user-modified retired directory beside its replacement; both carry the
+    // same public name, and only the retired one may drop out.
     writeSkill(skills, 'question', {
-      name: 'cf:ask', description: 'First duplicate.', when: 'Use for questions.',
+      name: 'cf:ask', description: 'User-modified retired copy.', when: 'Use for questions.',
       category: 'utilities', keywords: ['answer'],
     });
     writeSkill(skills, 'ask', {
-      name: 'cf:ask', description: 'Second duplicate.', when: 'Use for questions.',
+      name: 'cf:ask', description: 'Answer with evidence.', when: 'Use for questions.',
       category: 'utilities', keywords: ['answer'],
     });
     writeSkill(skills, 'missing-description', { name: 'cf:missing-description' });
@@ -132,15 +134,16 @@ test('skill catalog exposes discriminating routing metadata', () => {
     });
 
     const catalog = runCatalog(SCANNER, root, ['--json', '--root', skills]);
-    assert.deepEqual(catalog.skills.map((skill) => skill.public_id), ['cf:route']);
-    assert.deepEqual(catalog.skills[0], {
+    assert.deepEqual(catalog.skills.map((skill) => skill.public_id), ['cf:ask', 'cf:route']);
+    assert.deepEqual(catalog.skills.find((skill) => skill.public_id === 'cf:route'), {
       name: 'cf:route', public_id: 'cf:route', directory: 'route',
       description: 'Choose a bounded chain.', when_to_use: 'Use for ambiguous multi-step work.',
       category: 'utilities', keywords: ['routing', 'risk'], user_invocable: true,
       has_references: false, has_scripts: false,
     });
     const codes = catalog.diagnostics.map((item) => item.code);
-    assert.equal(codes.filter((code) => code === 'duplicate_public_name').length, 2);
+    assert.equal(codes.filter((code) => code === 'duplicate_public_name').length, 0);
+    assert.ok(catalog.diagnostics.some((item) => item.directory === 'question' && item.code === 'retired_skill'));
     for (const required of [
       'folder_name_mismatch', 'malformed_frontmatter', 'missing_routing_metadata', 'retired_skill',
     ]) assert.ok(codes.includes(required), required);
@@ -157,7 +160,15 @@ test('skill catalog exposes discriminating routing metadata', () => {
   const sourceCatalog = runCatalog(SCANNER, PACKAGE_ROOT);
   const retiredDiagnostics = sourceCatalog.diagnostics
     .filter((item) => item.code === 'retired_skill').map((item) => item.directory).sort();
-  assert.deepEqual(retiredDiagnostics, [...MANIFEST.obsolete.skills].sort());
+  // Retired skills kept in the source tree must be flagged; renamed ones were moved, so they are
+  // absent from the source and only matter to an upgrade over an older install.
+  const sourceSkills = path.join(PACKAGE_ROOT, 'src/claude/skills');
+  const keptRetired = MANIFEST.obsolete.skills.filter((name) => fs.existsSync(path.join(sourceSkills, name)));
+  assert.deepEqual(retiredDiagnostics, [...keptRetired].sort());
+  for (const renamed of ['inspect', 'hotfix', 'question']) {
+    assert.ok(MANIFEST.obsolete.skills.includes(renamed), renamed);
+    assert.equal(fs.existsSync(path.join(sourceSkills, renamed)), false, renamed);
+  }
   assert.equal(sourceCatalog.skills.some((skill) => MANIFEST.obsolete.skills.includes(skill.directory)), false);
   const route = sourceCatalog.skills.find((skill) => skill.public_id === 'cf:route');
   assert.ok(route?.description && route.when_to_use && route.category && route.keywords.length > 0);
