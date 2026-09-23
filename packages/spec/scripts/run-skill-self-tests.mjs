@@ -2395,6 +2395,15 @@ function developPlanNativeContractIssues(input) {
     "Otherwise, and for a Receipt with no artifact, re-run; only the controller rebinds.",
   ] });
 
+  requireClauses("provenance-command", { skill: [
+    "`Base:` and `Head:` copied from the `Base` and `Head` fields of `node .claude/scripts/provenance.cjs --project-root . --specs-root specs --spec-file <task file> --feature-name <feature> --session <any label> --json`",
+    "(never typed or computed by hand),",
+  ], quality: [
+    "take Base and Head from the `Base` and `Head` fields printed by",
+    "`node .claude/scripts/provenance.cjs --project-root . --specs-root specs --spec-file <task file> --feature-name <feature> --session <any label> --json`,",
+    "run after the last change outside the specs root, and never type, abbreviate, or compute them by hand;",
+  ] });
+
   requireClauses("verify-first-and-round", { skill: [
     "Unless under `--flash` or the command costs money or writes artifacts, run the task's exact Verification Plan command once before changing anything and expect it to fail;",
     "this pre-change run is not a repair round.",
@@ -2554,6 +2563,13 @@ async function runDevelopPlanNativeContractTests() {
   });
   const specificTaskBoundary = "Specific-task\nmode never touches a sibling and returns after its successful sync without chaining or GATE-DONE.";
   const verifyFirstMutations = [
+    mutateClause("drops the command that derives Base and Head", "quality", "provenance-command",
+      "`node .claude/scripts/provenance.cjs --project-root . --specs-root specs --spec-file <task file> --feature-name <feature> --session <any label> --json`,",
+      "the runtime,"),
+    mutateClause("the skill no longer names the provenance command", "skill", "provenance-command",
+      "copied from the `Base` and `Head` fields of `node .claude/scripts/provenance.cjs", "taken from the runtime of `something"),
+    mutateClause("lets Base and Head be computed by hand", "quality", "provenance-command",
+      "and never type, abbreviate, or compute them by hand;", "or compute them however is convenient;"),
     mutateClause("rebinds without recomputing hashes", "quality", "artifact-rebind",
       "once every declared hash is recomputed and matches,", "without checking its hashes,"),
     mutateClause("lets an artifact-free Receipt skip the re-run", "quality", "artifact-rebind",

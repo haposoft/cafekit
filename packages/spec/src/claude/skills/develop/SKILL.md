@@ -139,7 +139,7 @@ failed repair rounds, stop and ask the user.
 
 **The Receipt is written last, after proof and review have both passed**; writing it earlier
 and reopening the task is a defect, not a shortcut. After a real pass, the controller writes the task's final inline `## Receipt` with
-`Verification: PASS`, exact `Command`, `Exit: 0`, runtime-derived `Base:` and `Head:`,
+`Verification: PASS`, exact `Command`, `Exit: 0`, `Base:` and `Head:` copied from the `Base` and `Head` fields of `node .claude/scripts/provenance.cjs --project-root . --specs-root specs --spec-file <task file> --feature-name <feature> --session <any label> --json` run after the last change outside the specs root (never typed or computed by hand),
 non-empty current output, and required negative/reachability/artifact proof; then it
 sets `Status: done` and only implemented checkboxes. Missing, stale, contradictory,
 zero-test, placeholder, marker-only, skipped, or remembered proof is unfinished.

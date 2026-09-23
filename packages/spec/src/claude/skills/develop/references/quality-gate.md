@@ -26,7 +26,10 @@ Before completion, verify:
 4. negative/failure behavior named by Acceptance;
 5. artifact bytes and SHA-256 when the task declares an artifact;
 6. an inline `## Receipt` with `Verification: PASS`, exact `Command`, `Exit: 0`,
-   runtime-bound Base/Head, and non-empty fenced command output;
+   runtime-bound Base/Head, and non-empty fenced command output; take Base and Head
+   from the `Base` and `Head` fields printed by
+   `node .claude/scripts/provenance.cjs --project-root . --specs-root specs --spec-file <task file> --feature-name <feature> --session <any label> --json`,
+   run after the last change outside the specs root, and never type, abbreviate, or compute them by hand;
 7. correctness/security/scope review at the required depth.
 
 `PRECHECK_FAIL` outranks no-tests. Missing, pending, placeholder, contradictory,
