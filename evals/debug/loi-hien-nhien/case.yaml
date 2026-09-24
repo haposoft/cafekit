@@ -1,0 +1,11 @@
+schema_version: "1.1"
+name: loi-hien-nhien
+tags: [debug-baseline]
+runs: 10
+context:
+  scaffold_script: scaffold.sh
+execution:
+  prompt: "/cf:debug npm test đang báo TypeError ở test slug. Tìm nguyên nhân gốc."
+  max_turns: 30
+  timeout_seconds: 900
+  allowed_tools: [Read, Glob, Grep, Skill, Bash, Edit, Write]

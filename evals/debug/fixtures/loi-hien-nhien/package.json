@@ -1,0 +1,1 @@
+{ "name": "blog", "private": true, "scripts": { "test": "node --test test/slug.test.js" } }

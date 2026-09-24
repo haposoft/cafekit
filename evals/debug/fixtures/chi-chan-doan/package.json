@@ -1,0 +1,1 @@
+{ "name": "cart", "private": true, "scripts": { "test": "node --test test/qty.test.js" } }

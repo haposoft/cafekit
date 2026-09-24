@@ -1,0 +1,11 @@
+schema_version: "1.1"
+name: chi-chan-doan
+tags: [debug-baseline]
+runs: 10
+context:
+  scaffold_script: scaffold.sh
+execution:
+  prompt: "/cf:debug Giỏ hàng vẫn nhận số lượng 0. Chỉ chẩn đoán nguyên nhân, KHÔNG sửa code."
+  max_turns: 30
+  timeout_seconds: 900
+  allowed_tools: [Read, Glob, Grep, Skill, Bash, Edit, Write]
