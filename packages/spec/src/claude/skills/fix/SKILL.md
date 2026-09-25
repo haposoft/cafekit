@@ -172,8 +172,9 @@ Diagnosis chain:
 With `--from-debug`, validate the report before accepting it:
 
 - the exact root-cause contract above is complete;
-- `Evidence Timeline` is present — a skipped timeline is valid in either producer form (`Timeline: skipped - <reason>` or `- skipped: <reason>`);
-- `Elimination Path` records the decisive observation for each removed or retained candidate;
+- when `**Depth:**` is `incident/deep`, `Evidence Timeline` is present — a skipped timeline is valid in either producer form (`Timeline: skipped - <reason>` or `- skipped: <reason>`), as is one line naming the sources checked when none carries timestamps;
+- when `**Depth:**` is `incident/deep`, `Elimination Path` records the decisive observation for each removed or retained candidate;
+- a `quick/local` or `standard` report may omit both; a report with no `**Depth:**` line is treated as `incident/deep`;
 - `Recurrence-Prevention Handoff`, when present, carries evidence-backed candidates only.
 
 A report missing required fields routes back to diagnosis (`cf:debug`); it

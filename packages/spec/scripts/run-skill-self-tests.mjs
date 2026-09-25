@@ -3207,6 +3207,138 @@ async function runDebugAdaptiveContractTests() {
   return mutations.length + 1;
 }
 
+// cf:debug sizes its report to the depth it states, shares that one shape with its agent, invokes
+// scout as a skill, and bounds its confidence and its reads on shared environments.
+function validateDebugProportionalContract(skill, agent) {
+  const issues = new Set();
+  const flat = normalizeMarkdownWhitespace(skill);
+  const has = (text, clause) => normalizeMarkdownWhitespace(text).includes(normalizeMarkdownWhitespace(clause));
+  const require = (issue, clauses) => { if (!clauses.every((clause) => flat.includes(normalizeMarkdownWhitespace(clause)))) issues.add(issue); };
+  const gate = (tag) => {
+    const from = skill.indexOf(`<${tag}>`);
+    const to = skill.indexOf(`</${tag}>`, from);
+    return from < 0 || to < 0 ? "" : skill.slice(from, to);
+  };
+  if (skill.trimEnd().split("\n").length > 245) issues.add("debug-line-ceiling");
+  require("debug-depth-scaled-report", [
+    "Quick/local and Standard reports write the root-cause contract, the confirmed hypothesis, the verification plan, and the fix direction;",
+    "Only Incident/deep reports add `Evidence Timeline`, the other hypotheses tested, `### Elimination Path`, and `### Recurrence-Prevention Handoff`.",
+    "A shorter report omits those sections; it does not write them as skipped.",
+    "When evidence does not directly confirm the first explanation, create 2-3 competing hypotheses.",
+    "when the root cause is unknown, they list every hypothesis tested instead.",
+    "Quick/local and Standard reports fold it into the confirmed hypothesis's evidence; only Incident/deep reports write it under `### Elimination Path`.",
+    "Depth changes evidence breadth and report length, never the six steps, the diagnostic-only gate, or the root-cause standard.",
+  ]);
+  if (/Timeline: skipped|- skipped:/.test(skill)
+    || !has(gate("ROOT-CAUSE-GATE"), "Do NOT stop at the first plausible explanation unless evidence directly confirms it.")) {
+    issues.add("debug-depth-scaled-report");
+  }
+  if (!skill.includes("**Mode:** quick | standard | ci | frontend | perf\n**Depth:** quick/local | standard | incident/deep\n**Root cause confidence:** high | medium | low | unknown")
+    || !skill.includes("- **Standard:** ")) {
+    issues.add("debug-depth-line");
+  }
+  if (skill.includes("✓ Step")) issues.add("debug-step-markers");
+  if (!has(agent, "Write the report in the `## Debug Report` shape of the `cf:debug` skill (`.claude/skills/debug/SKILL.md`), with its `**Depth:**` line")
+    || !has(agent, "Quick/local and Standard reports omit them. Do not use a separate report heading.")
+    || /Debugger Report|## Required Report Shape|## Reporting Standards/.test(agent)) {
+    issues.add("debug-agent-shape");
+  }
+  require("debug-scout-invocation", ["Invoke the `scout` skill (`cf:scout`) for the affected scope"]);
+  if (/Activate `cf:scout`/.test(skill)) issues.add("debug-scout-invocation");
+  if (!has(gate("ROOT-CAUSE-GATE"), "Report confidence `high` only when the cause was reproduced or observed at runtime — the failing command run, a log or probe read. From static reading alone, report at most `medium`.")) {
+    issues.add("debug-runtime-confidence");
+  }
+  if (!has(gate("DIAGNOSTIC-ONLY-GATE"), "Do NOT run heavy or costly reads — table scans, bulk exports, load or stress runs — against shared staging or production without the user's explicit permission; prefer local or fixture data.")) {
+    issues.add("debug-shared-environment");
+  }
+  require("debug-final-heading", ["Open the final answer with `## Debug Report` in this shape"]);
+  if (!skill.includes("```markdown\n## Debug Report\n\n**Issue:**")) issues.add("debug-final-heading");
+  return issues;
+}
+
+async function runDebugProportionalContractTests() {
+  const fail = (message) => { throw new Error(`[FAIL] Debug proportional contract: ${message}`); };
+  const skill = await readFile(join(packageRoot, DEBUG_ADAPTIVE_PATHS.skill), "utf8");
+  const agent = await readFile(join(packageRoot, DEBUG_ADAPTIVE_PATHS.agent), "utf8");
+  const baseline = validateDebugProportionalContract(skill, agent);
+  if (baseline.size) fail(`current text fails: ${[...baseline].join(", ")}`);
+  const swap = (from, to) => (text) => replaceDebugClauseOnce(text, from, to);
+  const append = (extra) => (text) => `${text}${extra}`;
+  const mutations = [
+    ["every-report-adds-deep-sections", "skill", swap("Only Incident/deep reports add", "Every report adds"), "debug-depth-scaled-report"],
+    ["hypotheses-always-competing", "skill", swap("When evidence does not directly confirm the first explanation, create 2-3", "Create 2-3"), "debug-depth-scaled-report"],
+    ["report-writes-skipped", "skill", swap("it does not write them as skipped.", "it writes them as skipped."), "debug-depth-scaled-report"],
+    ["root-cause-gate-loses-exception", "skill", swap("Do NOT stop at the first plausible explanation unless evidence directly confirms it.", "Do NOT stop at the first plausible explanation."), "debug-depth-scaled-report"],
+    ["short-report-writes-elimination", "skill", swap("Quick/local and Standard reports fold it into the confirmed hypothesis's evidence; only", "Every report writes it; so do"), "debug-depth-scaled-report"],
+    ["unknown-cause-drops-hypotheses", "skill", swap("; when the root cause is unknown, they list every hypothesis tested instead.", "."), "debug-depth-scaled-report"],
+    ["exception-leaves-root-cause-gate", "skill", (text) => replaceDebugClauseOnce(text, "Do NOT stop at the first plausible explanation unless evidence directly confirms it.", "Do NOT stop at the first plausible explanation.") + "\nDo NOT stop at the first plausible explanation unless evidence directly confirms it.\n", "debug-depth-scaled-report"],
+    ["restores-skipped-timeline", "skill", append("\nQuick/local work records `Timeline: skipped - local deterministic failure`.\n"), "debug-depth-scaled-report"],
+    ["drops-standard-depth", "skill", swap("- **Standard:** ", "- **Normal:** "), "debug-depth-line"],
+    ["drops-depth-line", "skill", swap("\n**Depth:** quick/local | standard | incident/deep", ""), "debug-depth-line"],
+    ["restores-step-marker", "skill", append("\n**Output:** `✓ Step 1: Scouted - [N] files`\n"), "debug-step-markers"],
+    ["agent-restores-own-heading", "agent", append("\n## Required Report Shape\n\n## Debugger Report\n"), "debug-agent-shape"],
+    ["agent-keeps-deep-sections-always", "agent", swap("Quick/local and Standard reports omit them.", "Every report keeps them."), "debug-agent-shape"],
+    ["agent-drops-pointer", "agent", swap("Write the report in the `## Debug Report` shape of the `cf:debug` skill", "Write a report"), "debug-agent-shape"],
+    ["scout-becomes-activate", "skill", swap("Invoke the `scout` skill (`cf:scout`) for the affected scope", "Activate `cf:scout` for the relevant scope"), "debug-scout-invocation"],
+    ["static-reading-allows-high", "skill", swap("From static reading alone, report at most `medium`.", "Static reading can support `high`."), "debug-runtime-confidence"],
+    ["shared-heavy-reads-allowed", "skill", swap("without the user's explicit permission; prefer local or fixture data.", "when they help the diagnosis."), "debug-shared-environment"],
+    ["template-heading-renamed", "skill", swap("```markdown\n## Debug Report\n", "```markdown\n## Diagnosis\n"), "debug-final-heading"],
+    ["final-heading-dropped", "skill", swap("Open the final answer with `## Debug Report` in this shape", "Use this shape"), "debug-final-heading"],
+    ["exceeds-line-ceiling", "skill", append(`${"\nfiller".repeat(10)}\n`), "debug-line-ceiling"],
+  ];
+  for (const [name, source, mutate, issue] of mutations) {
+    const issues = validateDebugProportionalContract(
+      source === "skill" ? mutate(skill) : skill,
+      source === "agent" ? mutate(agent) : agent,
+    );
+    if (!issues.has(issue)) fail(`${name} did not raise ${issue}: ${[...issues].join(", ")}`);
+  }
+  console.log("✔ cf:debug report is proportional to its stated depth and shared with its agent");
+  console.log(`✔ cf:debug proportional checker rejects ${mutations.length} weakenings`);
+  return mutations.length + 1;
+}
+
+// The debugger agent does not load the cf:debug skill on its own, so its operating boundary points
+// to the skill's two gates — the shared-environment read rule and the runtime-confidence rule — at
+// the start of every investigation and again before it rates confidence.
+const DEBUG_AGENT_GATES_SENTENCE = "At the start of every investigation, before collecting any evidence, read and follow the `<DIAGNOSTIC-ONLY-GATE>` and `<ROOT-CAUSE-GATE>` of the `cf:debug` skill (`.claude/skills/debug/SKILL.md`), and check them again before rating root-cause confidence.";
+
+function validateDebugAgentGates(agent) {
+  const boundary = markdownBetweenHeadings(agent, "Operating Boundary", "Investigation Methodology");
+  const parts = [
+    "At the start of every investigation, before collecting any evidence, read and follow",
+    "<DIAGNOSTIC-ONLY-GATE>",
+    "<ROOT-CAUSE-GATE>",
+    ".claude/skills/debug/SKILL.md",
+    "check them again before rating root-cause confidence",
+  ];
+  return parts.every((part) => boundary.includes(part)) ? [] : ["debug-agent-gates"];
+}
+
+async function runDebugAgentGatesTests() {
+  const fail = (message) => { throw new Error(`[FAIL] Debug agent gates: ${message}`); };
+  const agent = await readFile(join(packageRoot, DEBUG_ADAPTIVE_PATHS.agent), "utf8");
+  const baseline = validateDebugAgentGates(agent);
+  if (baseline.length) fail(`current agent fails: ${baseline.join(", ")}`);
+  const sentence = DEBUG_AGENT_GATES_SENTENCE;
+  const swap = (to) => (text) => replaceDebugClauseOnce(text, sentence, to);
+  const mutations = [
+    ["pointer-dropped", swap("")],
+    ["root-cause-gate-removed", swap(sentence.replace(" and `<ROOT-CAUSE-GATE>`", ""))],
+    ["diagnostic-gate-removed", swap(sentence.replace("`<DIAGNOSTIC-ONLY-GATE>` and ", ""))],
+    ["pointer-moved-to-end", (text) => `${replaceDebugClauseOnce(text, sentence, "")}\n${sentence}\n`],
+    ["trigger-weakened", swap(sentence.replace("At the start of every investigation, before collecting any evidence,", "When convenient,"))],
+    ["path-removed", swap(sentence.replace(" (`.claude/skills/debug/SKILL.md`)", ""))],
+    ["recheck-removed", swap(sentence.replace(", and check them again before rating root-cause confidence.", "."))],
+  ];
+  for (const [name, mutate] of mutations) {
+    if (!validateDebugAgentGates(mutate(agent)).includes("debug-agent-gates")) fail(`${name} did not raise debug-agent-gates`);
+  }
+  console.log("✔ cf:debug agent points to the skill's two gates");
+  console.log(`✔ cf:debug agent-gates checker rejects ${mutations.length} weakenings`);
+  return mutations.length + 1;
+}
+
 const HOTFIX_ADAPTIVE_PATHS = {
   skill: "src/claude/skills/fix/SKILL.md",
   diagnosis: "src/claude/skills/fix/references/diagnosis-protocol.md",
@@ -3242,7 +3374,10 @@ function hotfixAdaptiveContractIssues(input) {
     || !skill.includes("`- skipped: <reason>`")
     || !skill.includes("`Elimination Path` records the decisive observation")
     || !skill.includes("`Recurrence-Prevention Handoff`, when present")
-    || !skill.includes("routes back to diagnosis")) {
+    || !skill.includes("routes back to diagnosis")
+    || !skill.includes("when `**Depth:**` is `incident/deep`, `Evidence Timeline` is present")
+    || !skill.includes("when `**Depth:**` is `incident/deep`, `Elimination Path` records")
+    || !skill.includes("a `quick/local` or `standard` report may omit both; a report with no `**Depth:**` line is treated as `incident/deep`")) {
     issues.add("handoff-validation");
   }
   if (!skill.includes("report `PASS | PASS_WITH_WARNINGS | FAIL | BLOCKED`")
@@ -3345,6 +3480,8 @@ async function runHotfixAdaptiveContractTests() {
     ["handoff-drops-dash-skip-form", "skill", "handoff-validation", "`Timeline: skipped - <reason>`", "`Timeline: omitted`"],
     ["handoff-drops-colon-skip-form", "skill", "handoff-validation", "`- skipped: <reason>`", "`- omitted: <reason>`"],
     ["recurrence-becomes-required", "skill", "handoff-validation", "`Recurrence-Prevention Handoff`, when present, carries evidence-backed candidates only", "`Recurrence-Prevention Handoff` is always required"],
+    ["handoff-drops-depth-condition", "skill", "handoff-validation", "when `**Depth:**` is `incident/deep`, `Evidence Timeline` is present", "`Evidence Timeline` is present"],
+    ["handoff-accepts-undeclared-depth", "skill", "handoff-validation", "a report with no `**Depth:**` line is treated as `incident/deep`", "a report with no `**Depth:**` line is treated as `standard`"],
     ["incomplete-report-implements", "skill", "handoff-validation", "routes back to diagnosis", "may proceed to implementation with caveats"],
     ["enum-drops-warnings", "skill", "verdict-surface", "report `PASS | PASS_WITH_WARNINGS | FAIL | BLOCKED`", "report `PASS | FAIL | BLOCKED`"],
     ["warnings-auto-accept", "review", "verdict-surface", "Only `FAIL` and `PASS_WITH_WARNINGS` enter remediation retry", "Only `FAIL` enters remediation retry; `PASS_WITH_WARNINGS` auto-approves"],
@@ -4274,6 +4411,8 @@ async function runStaticSemanticTests() {
   const scoutSubroutineTests = await runScoutSubroutineContractTests();
   const testPlanNativeTests = await runTestPlanNativeContractTests();
   const debugAdaptiveTests = await runDebugAdaptiveContractTests();
+  const debugProportionalTests = await runDebugProportionalContractTests();
+  const debugAgentGatesTests = await runDebugAgentGatesTests();
   const hotfixAdaptiveTests = await runHotfixAdaptiveContractTests();
   const docsAdaptiveTests = await runDocsAdaptiveContractTests();
   const researchAdaptiveTests = await runResearchAdaptiveContractTests();
@@ -5711,7 +5850,7 @@ async function runStaticSemanticTests() {
 
   return checks.length + specs21Tests + implementationReadinessTests
     + processTaskStatusTests + adaptiveCoverageTests + brainstormContractTests
-    + developPlanNativeTests + scoutSubroutineTests + testPlanNativeTests + debugAdaptiveTests
+    + developPlanNativeTests + scoutSubroutineTests + testPlanNativeTests + debugAdaptiveTests + debugProportionalTests + debugAgentGatesTests
     + hotfixAdaptiveTests + researchAdaptiveTests + routeContractTests
     + loopBoundedTests + docsAdaptiveTests + consumerSectionTests;
 }
