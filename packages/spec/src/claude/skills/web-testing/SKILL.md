@@ -26,15 +26,9 @@ npx @axe-core/cli https://example.com  # Accessibility
 npx lighthouse https://example.com     # Performance
 ```
 
-## Testing Strategy (Choose Your Model)
+## Testing Strategy
 
-| Model | Structure | Best For |
-|-------|-----------|----------|
-| Pyramid | Unit 70% > Integration 20% > E2E 10% | Monoliths |
-| Trophy | Integration-heavy | Modern SPAs |
-| Honeycomb | Contract-centric | Microservices |
-
-→ `./references/testing-pyramid-strategy.md`
+Choosing between pyramid, trophy, and honeycomb: `./references/testing-pyramid-strategy.md`
 
 ## Reference Documentation
 
@@ -88,15 +82,3 @@ node ./scripts/analyze-test-results.js \
   --output markdown
 ```
 Parses Playwright/Vitest/JUnit results into unified summary.
-
-## CI/CD Integration
-
-```yaml
-jobs:
-  test:
-    steps:
-      - run: npm run test:unit      # Gate 1: Fast fail
-      - run: npm run test:e2e       # Gate 2: After unit pass
-      - run: npm run test:a11y      # Accessibility
-      - run: npx lhci autorun       # Performance
-```

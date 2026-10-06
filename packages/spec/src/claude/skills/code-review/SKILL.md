@@ -30,8 +30,9 @@ For process-first proof consumption, this skill's `## Execution-proof boundary`
 is authoritative. Do not load or follow legacy separate-receipt paragraphs from
 references; they apply only to a legacy packet.
 
-Select review depth from `assurance_level`, risk, and blast radius. Lane is a
-derived view:
+Select review depth from risk and blast radius: for a process-first task, its
+coverage-profile Risk/evidence; for a legacy packet, its `assurance_level`. Lane
+is a derived view:
 
 - Direct: targeted correctness/security/spec check;
 - Standard: bounded feature review at closeout;
@@ -65,13 +66,6 @@ Try empty, malformed, unauthorized, duplicate, stale, boundary, and concurrent
 inputs where the changed contract makes them relevant. For Critical obligations,
 review the required independent evidence and provenance. A marker such as
 `Audit: PASS` is not independent evidence.
-
-The independent-audit proof must be a durable object with exactly
-`schema_version: "1"`, distinct concrete `reviewer_session_id` and
-`implementation_session_id`, `expected_provenance: { base, head }` matching the
-runtime binding, concrete `evidence`, and literal `verdict: "PASS"`.
-`independent: true`, `PASS_WITH_WARNINGS`, missing binding, or reused session
-provenance is insufficient.
 
 ## Test-run boundary
 

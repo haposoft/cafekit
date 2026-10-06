@@ -52,8 +52,7 @@ Browser visibility is resolved automatically by `resolveHeadless()` in `lib/brow
 
 Override with `--headless true` or `--headless false` on any script.
 
-- Run multiple scripts/sessions in parallel to simulate real user interactions.
-- Run multiple scripts/sessions in parallel to simulate different device types (mobile, tablet, desktop).
+Scripts share one browser and its first tab through `.browser-session.json`, so run them one at a time; parallel runs drive the same page.
 
 ## ARIA Snapshot (Element Discovery)
 
@@ -104,7 +103,6 @@ node "$SKILL_DIR/aria-snapshot.js" --url https://example.com --output ./packages
 
 ### Interact by Ref
 
-Skills can exist in **project-scope** or **user-scope**. Priority: project-scope > user-scope.
 Use `select-ref.js` to interact with elements by their ref:
 
 ```bash
@@ -129,7 +127,6 @@ node "$SKILL_DIR/select-ref.js" --ref e5 --action hover
 
 ### Store Snapshots
 
-Skills can exist in **project-scope** or **user-scope**. Priority: project-scope > user-scope.
 Store snapshots for analysis in `<project>/packages/spec/src/claude/chrome-devtools/snapshots/`:
 
 ```bash
@@ -162,7 +159,6 @@ node "$SKILL_DIR/aria-snapshot.js" --url https://example.com --output packages/s
 
 ## Local HTML Files
 
-Skills can exist in **project-scope** or **user-scope**. Priority: project-scope > user-scope.
 **IMPORTANT**: Never browse local HTML files via `file://` protocol. Always serve via local server:
 **Why**: `file://` protocol blocks many browser features (CORS, ES modules, fetch API, service workers). Local server ensures proper HTTP behavior.
 
@@ -176,7 +172,7 @@ python -m http.server 3000 --directory ./dist &
 node "$SKILL_DIR/navigate.js" --url http://localhost:3000
 ```
 
-**Note**: when port 3000 is busy, find an available port with `lsof -i :3000` and use a different one.
+**Note**: when port 3000 is busy, find its owner with `lsof -i :3000`; stop it if you started it, otherwise ask the user. Do not move to another port (`rules/process-management.md`).
 
 ## Quick Start
 
@@ -207,11 +203,10 @@ chrome-devtools auto-detects Chrome at standard OS paths and uses it automatical
 
 ### Manual Configuration
 
-To force a specific Chrome installation, copy `.env.example` to `.env` and set `CHROME_EXECUTABLE_PATH`:
+To force a specific Chrome installation, export `CHROME_EXECUTABLE_PATH` (or `PUPPETEER_EXECUTABLE_PATH`) in the shell that runs the scripts; they read the environment, not a `.env` file:
 
 ```bash
-cp "$SKILL_DIR/.env.example" "$SKILL_DIR/.env"
-# Edit .env and set CHROME_EXECUTABLE_PATH to your Chrome executable
+export CHROME_EXECUTABLE_PATH="/path/to/chrome"
 ```
 
 ### Skip Chromium Download
@@ -249,7 +244,6 @@ node "$SKILL_DIR/navigate.js" --url about:blank --close true
 
 ## Available Scripts
 
-Skills can exist in **project-scope** or **user-scope**. Priority: project-scope > user-scope.
 All in `packages/spec/src/claude/skills/chrome-devtools/scripts/`:
 
 | Script | Purpose |
@@ -281,15 +275,14 @@ All in `packages/spec/src/claude/skills/chrome-devtools/scripts/`:
 
 ## Writing Custom Test Scripts
 
-Skills can exist in **project-scope** or **user-scope**. Priority: project-scope > user-scope.
-For complex automation, write scripts to `<project>/packages/spec/src/claude/chrome-devtools/tmp/`:
+For complex automation, write scripts to `$SKILL_DIR/../tmp/` (beside `scripts/`, so the `../scripts/lib/browser.js` import resolves):
 
 ```bash
 # Create tmp directory for test scripts
-mkdir -p $SKILL_DIR/packages/spec/src/claude/chrome-devtools/tmp
+mkdir -p "$SKILL_DIR/../tmp"
 
 # Write a test script
-cat > $SKILL_DIR/packages/spec/src/claude/chrome-devtools/tmp/login-test.js << 'EOF'
+cat > "$SKILL_DIR/../tmp/login-test.js" << 'EOF'
 import { getBrowser, getPage, disconnectBrowser, outputJSON } from '../scripts/lib/browser.js';
 
 async function loginTest() {
@@ -315,7 +308,7 @@ loginTest();
 EOF
 
 # Run the test
-node $SKILL_DIR/packages/spec/src/claude/chrome-devtools/tmp/login-test.js
+node "$SKILL_DIR/../tmp/login-test.js"
 ```
 
 **Key principles for custom scripts**:
@@ -327,11 +320,7 @@ node $SKILL_DIR/packages/spec/src/claude/chrome-devtools/tmp/login-test.js
 
 ## Screenshots
 
-Skills can exist in **project-scope** or **user-scope**. Priority: project-scope > user-scope.
-
-**IMPORTANT:** Store browser artifacts in a project-local screenshots or reports folder and include exact output paths in the final report.
-
-Store screenshots for analysis in `<project>/packages/spec/src/claude/chrome-devtools/screenshots/`:
+Store screenshots in `<project>/packages/spec/src/claude/chrome-devtools/screenshots/` and give their exact output paths in the final report:
 
 ```bash
 # Basic screenshot
@@ -356,14 +345,12 @@ node "$SKILL_DIR/screenshot.js" --url https://example.com --output ./packages/sp
 node "$SKILL_DIR/screenshot.js" --url https://example.com --output ./packages/spec/src/claude/chrome-devtools/screenshots/page.png --max-size 3
 
 # Disable compression
-node "$SKILL_DIR/screenshot.js" --url https://example.com --output ./packages/spec/src/claude/chrome-devtools/screenshots/page.png --no-compress
+node "$SKILL_DIR/screenshot.js" --url https://example.com --output ./packages/spec/src/claude/chrome-devtools/screenshots/page.png --no-compress true
 ```
 
 Store screenshots for analysis in `<project>/packages/spec/src/claude/chrome-devtools/screenshots/`.
 
 ## Console Log Collection & Analysis
-
-Skills can exist in **project-scope** or **user-scope**. Priority: project-scope > user-scope.
 
 ### Capture Logs
 
@@ -407,7 +394,6 @@ node "$SKILL_DIR/console.js" --url https://example.com --types error --duration 
 
 ## Finding Elements
 
-Skills can exist in **project-scope** or **user-scope**. Priority: project-scope > user-scope.
 Use `snapshot.js` to discover selectors before interacting:
 
 ```bash
@@ -423,12 +409,11 @@ node "$SKILL_DIR/snapshot.js" --url https://example.com | jq '.elements[] | sele
 
 ## Error Recovery
 
-Skills can exist in **project-scope** or **user-scope**. Priority: project-scope > user-scope.
 If script fails:
 
 ```bash
 # 1. Capture current state (without navigating to preserve state)
-node "$SKILL_DIR/screenshot.js" --output ./packages/spec/src/claude/skills/chrome-devtools/screenshots/debug.png
+node "$SKILL_DIR/screenshot.js" --output ./packages/spec/src/claude/chrome-devtools/screenshots/debug.png
 
 # 2. Get console errors
 node "$SKILL_DIR/console.js" --url about:blank --types error --duration 1000
@@ -469,22 +454,20 @@ node "$SKILL_DIR/performance.js" --url https://example.com | jq '.vitals'
 All scripts support:
 - `--headless true/false` - Override auto-detected headless mode (default: auto by OS)
 - `--close true` - Close browser completely (default: stay running)
-- `--timeout 30000` - Set timeout (ms)
-- `--wait-until networkidle2` - Wait strategy
+- `--wait-until networkidle2` - Wait strategy when the script loads `--url`
+- `--timeout <ms>` - read by the scripts that load a page or wait for one (`navigate.js`, `click.js`, `fill.js`, `connect-chrome.js`, `import-cookies.js`, `inject-auth.js`)
 
 `navigate.js` additionally supports:
 - `--wait-for-login <pattern>` - Interactive login: open headed, wait for URL regex match
 - `--login-timeout <ms>` - Max wait for login completion (default: 300000 = 5 min)
 
 ## Troubleshooting
-Skills can exist in **project-scope** or **user-scope**. Priority: project-scope > user-scope.
-
 | Error | Solution |
 |-------|----------|
 | `Cannot find package 'puppeteer'` | Run `npm install` in scripts directory |
 | `libnss3.so` missing (Linux) | Run `./install-deps.sh` |
 | Element not found | Use `snapshot.js` to find correct selector |
-| Script hangs | Use `--timeout 60000` or `--wait-until load` |
+| Script hangs | Use `--wait-until load`, or `--timeout 60000` on a script that reads it |
 | Screenshot >5MB | Auto-compressed; use `--max-size 3` for lower |
 | Session stale | Delete `.browser-session.json` and retry |
 

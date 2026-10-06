@@ -236,7 +236,7 @@ agent-browser snapshot -i
 agent-browser fill @e1 "user@example.com"
 agent-browser fill @e2 "password123"
 agent-browser click @e3  # Submit button
-agent-browser wait url "/dashboard"
+agent-browser wait --url "/dashboard"
 ```
 
 ### State Persistence (Auth)
