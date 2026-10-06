@@ -5,20 +5,28 @@ on:
     branches: [dev, main]
   pull_request:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: test-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   self-test:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
       - uses: pnpm/action-setup@v4
         with:
-          version: 10
+          version: 10.28.0
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
+          cache: pnpm
 
       # The suite shells out to python3 for the PDF bounding-box unittest
       # (stdlib-only, no pip install needed).
@@ -26,8 +34,14 @@ jobs:
         with:
           python-version: '3.12'
 
-      # Lockfiles are gitignored in this repo, so install resolves fresh.
-      # Install only @haposoft/cafekit deps — skips the cafekit-web Next.js tree.
-      - run: pnpm install --filter @haposoft/cafekit
+      # Several tests create throwaway git repositories and commit into them.
+      - run: |
+          git config --global user.name "cafekit-ci"
+          git config --global user.email "ci@cafekit.invalid"
+          git config --global init.defaultBranch main
+
+      # The lockfile is committed; install exactly what it pins, and only the
+      # @haposoft/cafekit package so the cafekit-web Next.js tree stays out.
+      - run: pnpm install --frozen-lockfile --filter @haposoft/cafekit
 
       - run: pnpm --filter @haposoft/cafekit test

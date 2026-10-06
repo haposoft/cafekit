@@ -5,6 +5,7 @@ All notable changes to CafeKit are documented here, following
 
 ## [Unreleased]
 ### Added
+- **CI chạy bộ self-test** (`.github/workflows/test.yml`). Mỗi lần push vào `dev` hoặc `main` và mỗi pull request đều cài `@haposoft/cafekit` theo đúng lockfile đã commit (`--frozen-lockfile`) trên Ubuntu với Node 22, pnpm 10.28.0 và Python 3.12, rồi chạy `pnpm --filter @haposoft/cafekit test`. Không cài cây `cafekit-web`, và việc publish lên npm vẫn làm tay.
 - **`cf:ui-ux`** — skill `ui-ux` của evondevKit (https://github.com/evondev/evondevKit, 0.3.13, commit `6465d4c`, MIT) được chép vào `skills/ui-ux/` giữ nguyên từng byte, trừ frontmatter theo chuẩn CafeKit và một dòng trong thân (`"$1"` của `count_files` → `"$*"`, vì Claude Code thay `$0`–`$9` trong thân skill bằng đối số gọi), kèm `LICENSE` và `scripts/package.json` để `--with-skills-deps` cài Playwright và tải Chromium cho `probe.mjs` (cài mặc định `--yes` không tải gì). Quy trình kiểu designer (brief → 2–3 wireframe → chọn → dựng) cho màn trong app, cùng các lối soi UI, dựng lại giữ brand, refactor, dựng design system trước và làm logo. Giữ nguyên như upstream: thân skill tiếng Việt; `probe.mjs` bấm popup, nút mở và chạm chữ bị cắt trên trang nó đo, tìm Playwright theo `--pw`, rồi thư mục đang đứng, rồi thư mục của nó (dự án có Playwright riêng nên truyền `--pw .claude/skills/ui-ux/scripts`), và rơi về Chrome hệ thống; skill bảo model gắn ảnh mẫu Unsplash/randomuser và chạy nền `http.server` — luật quản lý tiến trình và phạm vi của CafeKit vẫn áp dụng; `scripts/lint-skill.mjs` được ship nhưng không dùng. `bin/__tests__/ui-ux-skill.test.js` ghim tên, license, việc không còn `$<số>`, manifest Playwright và bản đã cài; một lần cài thật với `--with-skills-deps` đã đo trang kanban mẫu của skill ở 375 và 1440 px.
 ### Changed
 - `when_to_use` của `cf:ui-ux-pro-max` giờ chỉ nói việc tra cứu (bảng màu, font, style theo loại sản phẩm, luật UX) và chỉ việc dựng màn sang `cf:ui-ux`.
@@ -263,9 +264,6 @@ All notable changes to CafeKit are documented here, following
 
 ### Changed
 - Specs self-tests / Step 7 wording realigned to process-discipline (not token-cut) framing.
-
-### Added
-- **CI test workflow** (`.github/workflows/test.yml`): runs the `@haposoft/cafekit` self-test suite (137 tests, Node 20 + pnpm 10 + Python 3.12) on every push to `dev`/`main` and on pull requests. Filtered install keeps the `cafekit-web` tree out of CI. Release publishing stays manual.
 
 ## [0.13.2] - 2026-06-21
 
