@@ -26,13 +26,6 @@
 - At GATE-DONE, show current receipts and unresolved limitations. The user decides
   completion; no command, review, or host state may invent approval or proof.
 
-### Legacy Specs compatibility
-
-Existing packets containing `spec.json`, nested tasks, or legacy kernel
-artifacts keep their installed adapter, `task_registry`, `semantic_model`,
-`planning_depth`, lane, `execution_tier`, machine authority, separate receipts,
-and closeout contract. Do not migrate them during unrelated process-first work.
-
 ## Addressing (Context Overflow Indicator)
 
 Claude Code always addresses the user as "Bro" throughout the conversation. If it stops doing so, it is a sign the context has been compacted/truncated — tell the user to consider `/clear`.
