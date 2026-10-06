@@ -79,6 +79,7 @@ try {
   const thinkLang = runtime.locale?.thinkingLanguage || (respondLang ? 'en' : '');
   const plansPath = resolveProjectPath(projectRoot, runtime.paths?.plans, 'plans');
   const docsPath = resolveProjectPath(projectRoot, runtime.paths?.docs, 'docs');
+  const specsPath = resolveProjectPath(projectRoot, runtime.paths?.specs, 'specs');
   const lines = [];
 
   if ((thinkLang && thinkLang !== respondLang) || respondLang) {
@@ -92,7 +93,7 @@ try {
 
   lines.push(
     '## Rules',
-    `- Markdown: Plans → "${plansPath}/" | Docs → "${docsPath}/"`,
+    `- Markdown: Specs → "${specsPath}/" | Plans → "${plansPath}/" | Docs → "${docsPath}/"`,
     '- Do not create markdown outside those directories unless explicitly asked.',
     `- docs.maxLoc: ${runtime.docs?.maxLoc || 800} lines per doc file`
   );

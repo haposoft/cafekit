@@ -26,6 +26,7 @@ try {
   const thinkLang = runtime.locale?.thinkingLanguage || (respondLang ? 'en' : '');
   const plansPath = resolveProjectPath(projectRoot, runtime.paths?.plans, 'plans');
   const docsPath = resolveProjectPath(projectRoot, runtime.paths?.docs, 'docs');
+  const specsPath = resolveProjectPath(projectRoot, runtime.paths?.specs, 'specs');
   const venv = resolveVenv(projectRoot);
   const lines = [
     `## Subagent: ${payload.agent_type || 'unknown'}`,
@@ -44,7 +45,7 @@ try {
 
   lines.push(
     '## Rules',
-    `- Plans → ${plansPath}/ | Docs → ${docsPath}/`,
+    `- Specs → ${specsPath}/ | Plans → ${plansPath}/ | Docs → ${docsPath}/`,
     '- YAGNI · KISS · DRY',
     '- Be concise. List unresolved questions at end.'
   );

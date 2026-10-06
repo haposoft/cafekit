@@ -59,6 +59,7 @@ try {
   const baseDir    = agentCwd;
   const plansPath  = path.join(baseDir, runtime.paths?.plans || 'plans');
   const docsPath   = path.join(baseDir, runtime.paths?.docs  || 'docs');
+  const specsPath  = path.join(baseDir, runtime.paths?.specs || 'specs');
 
   // Build context block
   const lines = [];
@@ -76,7 +77,7 @@ try {
   const venv = resolveVenv(agentCwd);
 
   lines.push('## Rules');
-  lines.push(`- Plans → ${plansPath}/ | Docs → ${docsPath}/`);
+  lines.push(`- Specs → ${specsPath}/ | Plans → ${plansPath}/ | Docs → ${docsPath}/`);
   if (venv) {
     lines.push(`- Python in ${skillsDir()}/: use \`${venv}\``);
     lines.push('- Never use global pip install');

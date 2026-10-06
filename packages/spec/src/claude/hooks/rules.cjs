@@ -70,6 +70,7 @@ try {
   const baseDir   = cwd;
   const plansPath = path.join(baseDir, runtime.paths?.plans || 'plans');
   const docsPath  = path.join(baseDir, runtime.paths?.docs  || 'docs');
+  const specsPath = path.join(baseDir, runtime.paths?.specs || 'specs');
   const maxLoc    = runtime.docs?.maxLoc || 800;
 
   const lines = [];
@@ -84,7 +85,7 @@ try {
 
   lines.push(
     '## Rules',
-    `- Markdown files: Plans → "${plansPath}/" | Docs → "${docsPath}/"`,
+    `- Markdown files: Specs → "${specsPath}/" | Plans → "${plansPath}/" | Docs → "${docsPath}/"`,
     '- **DO NOT** create markdown files outside of those directories unless explicitly asked.',
     `- docs.maxLoc: ${maxLoc} lines max per doc file`
   );
