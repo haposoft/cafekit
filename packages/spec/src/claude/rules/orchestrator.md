@@ -22,10 +22,9 @@ Example prompt:
 
 ## Resource Constraints
 
-- Each subagent has a **200K token context window** — scope tasks to fit comfortably within it
-- Spawning many parallel agents degrades system performance — check available CPU/memory before scaling out. For parallel implementation waves the cap is 3 concurrent agents by default, never more than 5 (each agent carries the 200K budget above)
+- Each subagent has its own context window — scope tasks to fit comfortably within it
+- Spawning many parallel agents degrades system performance — check available CPU/memory before scaling out. For parallel implementation waves the cap is 3 concurrent agents by default, never more than 5 (each agent carries its own context window)
 - Prefer fewer, well-scoped agents over many overlapping ones
-- Include system resource info (from hook injection) when delegating tasks so subagents can self-regulate
 
 ---
 
@@ -132,7 +131,7 @@ Docs: [docs path]
 
 | ❌ Vague | ✅ Precise |
 |----------|-----------|
-| "Pick up where we left off" | "Add the `/users` POST endpoint per `phase-02.md`" |
+| "Pick up where we left off" | "Add the `/users` POST endpoint per `task-02-api.md`" |
 | "Fix the issues we talked about" | "Add null-check in `auth.ts:45` — root cause: missing input validation" |
 | "Explore the codebase" | "Read `src/api/routes.ts`, then add the missing handler" |
 | Dumping 50+ lines of chat history | A 5-line summary with file paths |

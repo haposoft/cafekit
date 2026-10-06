@@ -17,6 +17,8 @@
   feedback, reversing a verified or user decision, or cutting scope, and
   `.codex/rules/process-management.md` whenever a task starts, reuses, or ends
   long-running processes.
+- Read `.codex/rules/state-sync.md` before changing a task `Status:` or Receipt,
+  and `.codex/rules/hook-protocols.md` when a hook blocks or asks.
 - Project hooks live in `.codex/hooks.json`; review trusted hooks with `/hooks`.
 - New Specs work uses the process-first flow. `$cf-specs` opens GATE-SCOPE, writes
   `specs/<feature>/plan.md` with flat `task-NN-*.md` files beside it, then opens

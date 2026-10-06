@@ -35,7 +35,7 @@ Use the CafeKit loop: **Understand -> Plan -> Execute -> Verify -> Sync**.
 
 - Implement only the active scope.
 - Modify existing files directly; do not create duplicate "enhanced" variants.
-- Keep named contracts from `design.md` intact.
+- Keep named contracts from the plan and task intact.
 - Do not use placeholder wiring, process-local stand-ins, or fake adapters as completion proof.
 
 ## 4. Verify
@@ -55,14 +55,13 @@ Use the CafeKit loop: **Understand -> Plan -> Execute -> Verify -> Sync**.
   sole writer of task Status and proof.
 - Keep exactly one `Status:` field. Write or replace the task's final inline
   `## Receipt` before setting `Status: done`.
-- A canonical Receipt contains the exact command, `Exit: 0`,
-  `Verification: PASS`, runtime-derived Base and Head values, and non-empty
-  fenced current output. Never invent, copy, or infer missing proof.
+- The canonical Receipt is defined in `state-sync.md`. Never invent, copy, or
+  infer missing proof.
 - When the binding to Base and Head applies, and what the gate does and does not
   detect, are stated once in `state-sync.md`.
 - Re-read each edited task and reconcile its plan row, dependencies, acceptance
   mapping, status, and receipt without rewriting unrelated bytes.
-- Run docs checkpoint when a completed task affects public docs or architecture docs.
+- Update affected existing docs when a completed task changes public or architecture docs.
 - After all requested work has current proof, show evidence and limitations at
   GATE-DONE. The user decides whether the feature is complete.
 

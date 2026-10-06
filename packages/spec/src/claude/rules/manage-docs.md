@@ -2,7 +2,7 @@
 
 ## Living Documents
 
-The project maintains these core documents in `./docs`:
+When the project keeps these core documents in `./docs`, keep them current (a project may have only some of them):
 
 | Document | Purpose |
 |----------|---------|
@@ -14,8 +14,6 @@ The project maintains these core documents in `./docs`:
 ### Freshness Rule
 
 - Before updating any doc, check its last modified date
-- If a doc hasn't been updated in >2 weeks while development is active, flag it for review
-- The `docs-keeper` agent should proactively scan for stale docs during weekly reviews
 
 ## When to Update
 
@@ -26,7 +24,6 @@ The `docs-keeper` agent is responsible for keeping these documents current. Trig
 - A significant feature ships or a critical bug is resolved
 - Security patches are applied or dependencies change
 - Project scope or timeline shifts
-- Weekly progress reviews are due
 
 ### Update Discipline
 
@@ -43,7 +40,7 @@ Use [Keep a Changelog](https://keepachangelog.com/) convention:
 ## [version] - YYYY-MM-DD
 
 ### Added
-- Feature description (#PR-number)
+- Feature description (#PR-number when there is one)
 
 ### Fixed
 - Bug fix description (#issue-number)
@@ -89,14 +86,12 @@ dependencies, acceptance, and a runnable Verification Plan.
 
 ### Task state and proof
 
-Each task contains exactly one `Status:` field. The final inline `## Receipt`
-is canonical proof and must contain the exact command, `Exit: 0`,
-`Verification: PASS`, runtime-derived Base and Head values, and non-empty
-fenced current output before the task becomes done.
+Task status, the inline `## Receipt` and its proof contract are defined in
+`state-sync.md`.
 
 Sync only observed state with surgical edits. Re-read the changed task after
 every update; never infer missing proof, approval, or readiness. When a done
 task changes user-facing behavior, architecture, API contracts, operations, or
 project status, classify docs impact and update only affected existing docs.
 
-Comply with the overarching rules in `./rules/ai-dev-rules.md`.
+Comply with the overarching rules in `ai-dev-rules.md`.

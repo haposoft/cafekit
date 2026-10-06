@@ -42,7 +42,7 @@ Keep implementation simple, scoped, and verifiable.
 
 ## Git Hygiene
 
-- Lint before commit.
+- Lint before commit when the project has a linter.
 - Run required tests before push.
 - Keep commits focused.
 - Use conventional commits.

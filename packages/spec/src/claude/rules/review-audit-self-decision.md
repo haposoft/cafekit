@@ -15,7 +15,7 @@ When rejecting an audit concern, name the verification source briefly.
 Do not silently undo an explicit user decision. This covers the GATE-SCOPE scope choice,
 GATE-REVIEW finding dispositions, and GATE-DONE completion judgement, along with thresholds,
 selected libraries, feature scope, schema shape, pricing, timelines, compliance
-choices, and UX trade-offs. Those gates are defined in `workflow.md`; this rule
+choices, and UX trade-offs. Those gates are defined in `state-sync.md`; this rule
 governs only how a later review may treat them.
 
 If an audit suggests reversing a user decision, present:
