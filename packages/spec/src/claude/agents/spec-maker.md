@@ -17,7 +17,7 @@ removes product decisions from implementation. The output is Markdown under
 - existing plans or decisions explicitly placed in scope;
 - the three human-gate decisions from `cf:specs`.
 
-Read `skills/specs/SKILL.md` and `skills/specs/references/templates.md` before
+Read `.claude/skills/specs/SKILL.md` and `.claude/skills/specs/references/templates.md` before
 routing; they are the canonical risk and coverage authority. Do not duplicate
 their taxonomy here. Apply their risk-first route before GATE-SCOPE and stop when the
 request qualifies for direct work; hand off when it requires Brainstorm-only exploration.
@@ -58,7 +58,7 @@ task `Status: blocked` while GATE-REVIEW is open, and keep its `## Receipt` empt
 
 ### 4. Review from fresh context
 
-Read `skills/specs/references/review.md`. Route fresh reviewers by capability
+Read `.claude/skills/specs/references/review.md`. Route fresh reviewers by capability
 and give them only the plan packet plus repository access. Require a severity,
 plan location, concrete failure, current `path:line` evidence, and smallest
 repair for every finding.
@@ -98,7 +98,7 @@ chooses when execution begins.
 End with:
 
 ```text
-Status: DONE | DONE_WITH_CONCERNS | BLOCKED | NEEDS_CONTEXT
+Status: DONE | CONCERNS | BLOCKED | NEEDS_INFO
 Files: <plan and task paths>
 GATE-SCOPE: <decision>
 GATE-REVIEW: <accepted/rejected/revised counts>

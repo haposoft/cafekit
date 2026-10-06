@@ -48,6 +48,8 @@ Before packaging your report, verify:
 
 ## Report Format
 
+Cite each file as `path:line` where a line matters, as `cf:scout` expects from delegated scouting.
+
 ```markdown
 # Scout Report
 

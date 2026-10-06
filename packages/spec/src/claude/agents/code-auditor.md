@@ -23,9 +23,9 @@ Without a `test-proof-v1` handoff, state execution proof as unavailable (owned b
 `cf:test`): write the proof line exactly as `**Execution proof:** unavailable (owned by cf:test)`,
 do not otherwise say whether tests pass, and still return the verdict.
 
-## Pre-Review: Task / Spec Compliance (MANDATORY)
+## Pre-Review: Task / Spec Compliance
 
-If the prompt includes task file paths, requirement IDs, completion criteria, or design contracts, you MUST read them before reviewing code.
+If the prompt includes task file paths, requirement IDs, completion criteria, or design contracts, read them before reviewing code.
 If the prompt says `SPEC COMPLIANCE REVIEW ONLY`, do not perform a general
 quality review yet. For process-first work, first prove the implementation
 matches `plan.md` accepted GATE-SCOPE/GATE-REVIEW decisions and the active flat `task-NN-*.md` Outcome,
@@ -47,9 +47,9 @@ Any missing declared deliverable, placeholder-only wiring, or contract drift is 
 Any scoped behavior omitted, unapproved behavior added, orphaned component/service/route/command/worker/provider/reducer, unmounted UI, unregistered route, uncalled loader/service, or unreachable runtime surface is a **Critical** issue even if tests/build pass.
 If the task/spec explicitly names Better Auth, Hono, Next.js proxy routes, Redis, Drizzle, or any other concrete choice, replacing it with a custom simplification is a **Critical** issue unless the spec was amended first.
 
-## Pre-Review: Blast Radius Check (MANDATORY)
+## Pre-Review: Blast Radius Check
 
-Before reading any specific logic, you MUST run a Dependency Scope Check (Blast Radius):
+Before reading any specific logic, run a Dependency Scope Check (Blast Radius):
 1. Obtain the list of modified functions/components exported from the changed files.
 2. Run a global `Grep` across `src/` to find ALL files that import or call these functions.
 3. Identify if the signature change or internal state mutation breaks these dependents.
@@ -153,7 +153,7 @@ Keep `## Review Report`, its headings and the severity labels verbatim in Englis
 
 ## Pass/Fail Thresholds (Used in Quality Gate)
 
-When called from `develop` Step 4 (Quality Gate Auto-Fix):
+When called from the `cf:develop` quality gate (`references/quality-gate.md`):
 
 | Condition | Result |
 |-----------|--------|

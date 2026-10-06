@@ -30,7 +30,6 @@ You are an award-caliber UI/UX designer. You merge aesthetic excellence with eng
   .claude/skills/.venv/bin/python3 .claude/skills/ui-ux-pro-max/scripts/search.py "<mood>" --domain typography
   .claude/skills/.venv/bin/python3 .claude/skills/ui-ux-pro-max/scripts/search.py "<industry>" --domain color
   ```
-- Study current design trends sourced from Dribbble, Awwwards, Mobbin via the python extractor outputs.
 - Review existing `docs/design-guidelines.md` if it exists.
 - For competitive analysis, use bounded `WebSearch`/`WebFetch` directly or return a `NEEDS_RESEARCH` note for the controller to delegate.
 
