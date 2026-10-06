@@ -1,74 +1,57 @@
 ---
-title: クイックスタート
-description: idea から reviewed implementation まで最初の CafeKit workflow を走らせます。
+title: Quickstart
+description: Scope decision から verified implementation まで最初の process-first CafeKit workflow。
 ---
 
-<DocsHero
-  eyebrow="First run"
-  title="1つの feature を verified loop に通す。"
-  description="spec を作り、validate し、1つの task packet を実装し、test、review、proof 後の sync まで進めます。"
-/>
+<DocsHero eyebrow="First run" title="One feature を verified loop に通す。" description="Scope を確認し、plan を review、one task を execute、verify、review、proof sync、completion decision を行います。" />
 
-<Callout type="info">**CafeKit が初めてですか？** このページは workflow を知っている方向けのリファレンスです。ゼロから始める場合は[ステップ式チュートリアル](/docs/tutorial)をご利用ください — インストール前から最初の verified feature まで案内します。</Callout>
+<Callout type="info">CafeKit が初めてなら [step-by-step tutorial](/docs/tutorial) を利用してください。</Callout>
 
-## 1. Install CafeKit
+## 1. Install
 
 ```bash
 npx @haposoft/cafekit
 ```
 
-Idea が specs に入れるほど明確でない場合だけ、先に `/hapo:brainstorm` で scope と architecture を明確にします。Main delivery run は specs から始まります。
+## 2. Spec creation and review
 
-## 2. Spec を作る
-
-```bash
-/hapo:specs Build a meeting transcript extension with AI summaries
+```text
+/cf:specs Build a meeting transcript extension with AI summaries
 ```
 
-CafeKit は次を生成します。
+Specs は C1 を開き、次を作成します:
 
 ```text
 specs/<feature>/
-├── spec.json
-├── requirements.md
-├── research.md
-├── design.md
-└── tasks/task-R0-01-*.md
+├── plan.md
+└── task-01-*.md
 ```
 
-## 3. Code 前に validate
+C2 で findings を accept、revision request、または named limitation として KEEP。Planning は C2 後に停止します。
 
-```bash
-/hapo:specs --validate <feature>
+## 3. Explicit implementation
+
+```text
+/cf:develop <feature>
 ```
 
-requirements、design、task files、`task_files`、`task_registry` の整合性を確認します。
+Develop は one unblocked task ずつ実行し、exact planned proof を run、controller が final inline Receipt を書きます。
 
-## 4. 1つの task packet を実装
+## 4. Verify and review
 
-```bash
-/hapo:develop <feature> tasks/task-R0-01-project-scaffold.md
+```text
+/cf:test --full
+/cf:code-review --pending
 ```
 
-task-by-task が最も安全な default です。diff が小さく、evidence も検証しやすくなります。
+`NO_TESTS` と zero executed tests は pass ではありません。
 
-## 5. Test and review
+## 5. Sync and close
 
-```bash
-/hapo:test --full
-/hapo:code-review --pending
+```text
+/cf:sync <feature>
 ```
 
-`NO_TESTS` は success ではありません。implementation、evidence、tests、review、state sync が揃って初めて task は `done` になります。
-
-## 6. Proof 後に sync
-
-```bash
-/hapo:sync <feature> task-R0-01-project-scaffold.md done
-```
-
-この command は `spec.json.task_registry` と matching task markdown を更新します。State が不整合に見える場合は、推測せず `/hapo:sync audit <feature>` を実行します。
-
-[Core workflow](/ja/docs/core-workflow) で各 gate の理由を詳しく確認できます。
+Sync は observed state と proof だけを更新します。C3 で user が current receipts と unresolved limitations が close に十分か決定します。
 
 <QualityGate />

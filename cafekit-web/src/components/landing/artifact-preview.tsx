@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, FileJson2, FileText, ShieldCheck } from "lucide-react";
+import { ArrowRight, ListChecks, FileText, ShieldCheck } from "lucide-react";
 import { useLocale } from "@/hooks/use-locale";
 import { localizeHref } from "@/lib/locale-utils";
 
@@ -13,12 +13,12 @@ const copy = {
     cta: "Open documentation",
     items: [
       {
-        title: "spec.json",
-        description: "Registry-backed state, validation status, and implementation readiness in one place.",
+        title: "plan.md",
+        description: "C1 scope, acceptance criteria, exclusions, decisions, and the flat task map.",
       },
       {
-        title: "task-R*.md",
-        description: "Task packets with objective, completion criteria, and exact verification commands.",
+        title: "task-NN-*.md",
+        description: "Flat task packets with one outcome, one Status, ownership, dependencies, and proof commands.",
       },
       {
         title: "review + test verdict",
@@ -33,12 +33,12 @@ const copy = {
     cta: "Mở tài liệu",
     items: [
       {
-        title: "spec.json",
-        description: "State có registry, validation status và implementation readiness trong một chỗ.",
+        title: "plan.md",
+        description: "C1 scope, acceptance criteria, exclusions, decisions và flat task map.",
       },
       {
-        title: "task-R*.md",
-        description: "Task packet có objective, completion criteria và exact verification commands.",
+        title: "task-NN-*.md",
+        description: "Flat task có một outcome, một Status, ownership, dependencies và proof command.",
       },
       {
         title: "review + test verdict",
@@ -53,12 +53,12 @@ const copy = {
     cta: "ドキュメントを見る",
     items: [
       {
-        title: "spec.json",
-        description: "registry-backed state、validation status、implementation readiness をまとめて保持します。",
+        title: "plan.md",
+        description: "C1 scope、acceptance criteria、exclusions、decisions、flat task map。",
       },
       {
-        title: "task-R*.md",
-        description: "objective、completion criteria、exact verification commands を持つ task packet。",
+        title: "task-NN-*.md",
+        description: "One outcome、one Status、ownership、dependencies、proof command を持つ flat task。",
       },
       {
         title: "review + test verdict",
@@ -68,7 +68,7 @@ const copy = {
   },
 } as const;
 
-const icons = [FileJson2, FileText, ShieldCheck];
+const icons = [ListChecks, FileText, ShieldCheck];
 
 export function ArtifactPreview() {
   const locale = useLocale();

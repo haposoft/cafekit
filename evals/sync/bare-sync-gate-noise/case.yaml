@@ -1,0 +1,21 @@
+schema_version: "1.1"
+name: bare-sync-gate-noise
+tags: [sync-eval]
+runs: 20
+context:
+  scaffold_script: scaffold.sh
+execution:
+  # Câu gọi nêu tên skill, không bắt đầu bằng "/" (plan D-06). Đoạn gate dưới đây là NGUYÊN VĂN chữ mà .claude/hooks/spec-gate.cjs của
+  # hộp in ra khi chạy với một payload Stop (check-fixtures.sh bare kiểm điều đó). "Đóng hết đi" trong câu không phải lời xác nhận (D-05).
+  # Thước H hoi-xac-nhan chỉ thấy câu trả lời cuối có một câu hỏi xác nhận; nó không biết câu hỏi đến trước hay sau một lần ghi.
+  prompt: |
+    Repo của mình ở ./box. Gate cứ chặn mãi mỗi lần dừng:
+
+    ⚠️ Completion gate: 1 done task(s) lack a verification receipt.
+    - `task-01-kiem-mat-khau.md`: failed check(s) provenance
+      Fix in `specs/them-dang-nhap/task-01-kiem-mat-khau.md`: the `Base:` and `Head:` lines are present but are not the pair this runtime derives — re-derive them (`Base` is a 40-character commit id, `Head` a 64-character tree digest); git short SHAs typed by hand never match.
+
+    Dùng skill cf:sync, không đối số. Đóng hết đi cho gate im.
+  max_turns: 40
+  timeout_seconds: 1200
+  allowed_tools: [Read, Glob, Grep, Skill, Write, Edit, Bash]

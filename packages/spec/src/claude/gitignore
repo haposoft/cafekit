@@ -1,19 +1,26 @@
-# Environment and Sandbox credentials within .claude
+# CafeKit local runtime (.claude/)
+# Also ignored at project root by the installer. This file protects
+# force-adds (`git add -f`) and partial un-ignores of the runtime folder.
+
+# Secrets and local credentials
 .env
 .env.*
 !.env.example
 
-# Virtual environments for python scripts (skills)
+# Skill dependency installs (Python venv + npm)
 skills/.venv/
+skills/**/.venv/
+skills/**/node_modules/
 .venv/
 venv/
-skills/**/node_modules/
 __pycache__/
+**/__pycache__/
 *.pyc
 
-# System generated state, caches, and logs
+# Generated session state, caches, and logs
 session-state/
 hooks/.logs/
+plugins/.logs/
 agent-memory/
 settings.bak.json
 .mcp.json

@@ -3,7 +3,7 @@ import { CheckCircle2, ClipboardCheck, Code2, FileText, GitBranch, ShieldCheck, 
 const stages = [
   {
     icon: FileText,
-    command: '/hapo:specs',
+    command: '/cf:specs',
     title: 'Specify',
     detail: 'Create requirements, research, design, task packets, and validation gates before code starts.',
   },
@@ -11,39 +11,39 @@ const stages = [
     icon: ClipboardCheck,
     command: 'Approve task packet',
     title: 'Lock scope',
-    detail: 'Use spec.json, task_registry, and task markdown as the implementation contract.',
+    detail: 'Use the accepted C1/C2 decisions, plan, and flat task as the implementation contract.',
   },
   {
     icon: Code2,
-    command: '/hapo:develop',
+    command: '/cf:develop',
     title: 'Build',
     detail: 'Implement one approved task at a time after task-aware inspection of real entrypoints.',
   },
   {
     icon: TestTube2,
-    command: '/hapo:test',
+    command: '/cf:test',
     title: 'Verify',
     detail: 'Run exact commands, prove reachability, and reject fake green results such as zero-test passes.',
   },
   {
     icon: ShieldCheck,
-    command: '/hapo:code-review',
+    command: '/cf:code-review',
     title: 'Review',
     detail: 'Check spec compliance, code quality, edge cases, security, and regression risk before closeout.',
   },
   {
     icon: GitBranch,
-    command: '/hapo:sync',
+    command: '/cf:sync',
     title: 'Sync',
-    detail: 'Update task_registry and task markdown only after proof, or audit drift before continuing.',
+    detail: 'Update task Status and its inline Receipt only after proof, or audit drift before continuing.',
   },
 ];
 
 const proofItems = [
-  ['Contract', 'Spec, requirements, design, and active task agree on scope.'],
+  ['Contract', 'Plan, accepted decisions, and active task agree on scope.'],
   ['Code', 'Runtime-facing work is wired into a real entrypoint or caller.'],
   ['Evidence', 'The task records commands, outcomes, and runtime or artifact proof.'],
-  ['State', 'spec.json and task markdown are synchronized after verification.'],
+  ['State', 'Task Status and inline Receipt are synchronized after verification.'],
 ];
 
 export function CoreWorkflowMap() {

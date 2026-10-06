@@ -1,0 +1,12 @@
+schema_version: "1.1"
+name: sach
+tags: [test-baseline]
+runs: 10
+context:
+  scaffold_script: scaffold.sh
+execution:
+  # Code đã đúng (lời chào tiếng Việt, cắt khoảng trắng) và Command chạy 2 test đều pass: kết luận đúng là PASS.
+  prompt: "/cf:test doi-loi-chao"
+  max_turns: 30
+  timeout_seconds: 900
+  allowed_tools: [Read, Glob, Grep, Skill, Bash, Write, Edit]

@@ -79,12 +79,16 @@ async function setupNode(ctx, skillsDir) {
     const extraEnv = (skill === 'chrome-devtools' && systemChrome)
       ? { PUPPETEER_SKIP_DOWNLOAD: 'true' }
       : {};
-    const ok = await dep.npmInstall(dir, hasNodeModules, extraEnv);
+    const result = await dep.npmInstall(dir, hasNodeModules, extraEnv);
 
-    if (ok) {
+    if (result.ok) {
       ctx.ui.stopSpinner(ctx.t('npmInstalled', { skill }));
     } else {
-      ctx.ui.stopSpinner(ctx.t('npmFailed', { skill, dir }));
+      ctx.ui.stopSpinner(ctx.t('npmFailed', {
+        skill,
+        dir,
+        error: dep.commandFailureReason(result)
+      }));
       continue;
     }
 
@@ -111,8 +115,15 @@ async function setupNode(ctx, skillsDir) {
 
 /** Detect (don't install) system binaries + global npm CLIs and print guidance. */
 function guideManual(ctx) {
-  const missingTools = dep.SYSTEM_TOOLS.filter((t) => !dep.hasCmd(t.cmd));
-  const missingNpm   = dep.GLOBAL_NPM.filter((g) => !dep.hasCmd(g.cmd));
+  const installed = new Set();
+  for (const key of ctx.platforms) {
+    const skillsDir = PLATFORMS[key].skillsDir;
+    if (!fs.existsSync(skillsDir)) continue;
+    for (const name of fs.readdirSync(skillsDir)) installed.add(name);
+  }
+  const applies = (item) => (item.skills || []).some((skill) => installed.has(skill));
+  const missingTools = dep.SYSTEM_TOOLS.filter((t) => applies(t) && !dep.hasCmd(t.cmd));
+  const missingNpm   = dep.GLOBAL_NPM.filter((g) => applies(g) && !dep.hasCmd(g.cmd));
   if (missingTools.length === 0 && missingNpm.length === 0) return;
 
   const lines = [];

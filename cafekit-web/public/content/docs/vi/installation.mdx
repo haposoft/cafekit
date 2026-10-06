@@ -1,64 +1,51 @@
 ---
 title: Cài đặt
-description: Cài, nâng cấp, và verify package CafeKit hiện tại.
+description: Cài, nâng cấp và verify CafeKit cho Claude Code hoặc Codex CLI.
 ---
 
 <DocsHero
   eyebrow="Install"
-  title="Bootstrap runtime vào repo hiện có."
-  description="Installer detect Claude Code và OpenCode, copy managed runtime files, merge settings an toàn, và ghi lại version package đã cài."
+  title="Bootstrap runtime native vào repo hiện có."
+  description="Installer ghi bundle Claude Code hoặc Codex CLI, giữ user-owned settings và lưu version package đã cài."
 />
 
 ## Yêu cầu
 
 - Node.js `>=18`
 - Project root có quyền ghi
-- Claude Code project, OpenCode project, hoặc chọn runtime lúc cài
+- Claude Code hoặc Codex CLI, hoặc chọn runtime rõ ràng khi cài
 
-## Cài đặt
+## Cài và nâng cấp
 
 ```bash
 npx @haposoft/cafekit
-```
-
-Binary là `cafekit`, trỏ tới `packages/spec/bin/install.js`.
-
-## Nâng cấp
-
-```bash
 npx @haposoft/cafekit --upgrade
 ```
 
-Upgrade mode refresh managed files, xóa hook runtime cũ, và giữ setting user-owned khi có thể.
+Bản cài mới có 18 core skills. Installer tương tác cho phép chọn thêm `docs`,
+`docx`, `pdf`, `pptx`, `xlsx`, và `ai-multimodal`; non-interactive mặc định bỏ qua:
 
-## Platform detection
+```bash
+npx @haposoft/cafekit --with-document-skills
+npx @haposoft/cafekit --without-document-skills
+```
+
+Lệnh thứ hai gỡ bản skill còn nguyên do CafeKit sở hữu; file người dùng đã sửa
+được giữ lại. Bản cài legacy giữ bundle khi upgrade lần đầu.
+
+## Runtime được cài
 
 | Runtime | Detection | Installed shape |
 |---|---|---|
-| Claude Code | `.claude/` | `.claude/skills`, `.claude/agents`, `.claude/hooks`, `settings.json`, `status.cjs`, `CLAUDE.md` |
-| OpenCode | `.opencode/`, `opencode.json`, hoặc `opencode.jsonc` | `.opencode/skills`, `.opencode/agents`, `.opencode/commands`, `.opencode/plugins`, `.opencode/runtime.json`, root `AGENTS.md`, merged `opencode.json` |
+| Claude Code | `.claude/` | skills, agents, hooks, settings, runtime, `CLAUDE.md` |
+| Codex CLI | `.codex/`, `.agents/`, hoặc `--platform codex` | `.agents/skills`, `.codex/agents`, rules, scripts, hooks, runtime và managed `AGENTS.md` block |
 
-Nếu không có marker runtime, installer sẽ hỏi platform cần cài.
+Nếu không có marker, installer hỏi runtime cần cài.
 
 ## Verify
 
-Chạy một trong các command sau trong project:
+Claude Code: `/cf:specs Build a tiny verified feature`
 
-```bash
-/hapo:specs Build a tiny verified feature
-```
+Codex CLI: `$cf-specs Build a tiny verified feature`
 
-Với OpenCode, command sinh ra không có prefix `hapo:`:
-
-```bash
-/specs Build a tiny verified feature
-```
-
-## Version tracking
-
-Installer ghi metadata vào:
-
-- `.claude/cafekit.json`
-- `.opencode/cafekit.json`
-
-Metadata gồm `packageName`, `version`, `platform`, timestamps, previous version nếu có, và exact install command.
+Version và lựa chọn bundle tài liệu được ghi tại `.claude/cafekit.json` hoặc `.codex/cafekit.json`.

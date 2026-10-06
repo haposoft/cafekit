@@ -1,5 +1,5 @@
 ---
-name: hapo:docs
+name: cf:docs
 description: "Create, update, summarize, or reconstruct project/system documentation from source code. Use reconstruct mode for as-is documentation of existing or legacy systems with evidence and uncertainty tracking."
 user-invocable: true
 when_to_use: "Invoke to create, update, or reconstruct project documentation from source."
@@ -8,13 +8,13 @@ keywords: [docs, reconstruct, documentation, evidence]
 argument-hint: "[--init|--update|--summarize|--reconstruct] [scope]"
 metadata:
   author: haposoft
-  version: "1.0.0"
+  version: "2.0.0"
 ---
 # Docs
 
 Project documentation workflow for CafeKit.
 
-`hapo:docs` covers two related but distinct jobs:
+`cf:docs` covers two related but distinct jobs:
 
 1. **Normal project docs** — create, update, or summarize living project documentation.
 2. **As-is reconstruction** — rebuild current-state system documentation from source code, especially for existing or legacy systems with missing documents.
@@ -22,11 +22,11 @@ Project documentation workflow for CafeKit.
 ## Command Forms
 
 ```text
-/hapo:docs
-/hapo:docs --init
-/hapo:docs --update
-/hapo:docs --summarize
-/hapo:docs --reconstruct <scope>
+/cf:docs
+/cf:docs --init
+/cf:docs --update
+/cf:docs --summarize
+/cf:docs --reconstruct <scope>
 ```
 
 Mode flags are exclusive. When one is present, use it as the selected mode before interpreting any natural-language scope or instructions.
@@ -42,14 +42,33 @@ Parse the user intent before selecting a mode.
 | Existing docs need refresh after code changes | `update` |
 | Short overview, quick codebase summary, summarize docs | `summarize` |
 
-When `/hapo:docs` has no clear mode:
+When `/cf:docs` has no clear mode:
 
 1. Read the docs root from `.claude/runtime.json`.
-2. If the docs root is missing, choose `init`.
+2. If the docs root is missing, choose `init` (direct invocations only; a post-task checkpoint entry follows the checkpoint contract below instead).
 3. If the docs root exists and user did not request only a summary, choose `update`.
 4. Ask one concise clarification only when choosing between normal docs and as-is reconstruction would change the output materially.
 
-Do not show a menu when prompt intent is already clear.
+Do not show a menu when prompt intent is already clear. Choose the smallest adequate docs work at every entry: narrow broad scopes first and prefer surgical edits over rewrites.
+
+## Post-Task Docs Checkpoint
+
+When Develop or Sync hands off a completed task's docs impact (`none | minor | major`), consume it here. A checkpoint entry never auto-selects `init` and overrides the default mode selection above.
+
+- `none`: report that no docs change is needed and edit nothing.
+- `minor` or `major`: update only affected existing docs, surgically, through the `--update` discipline.
+- A checkpoint never invents a new document and never turns into `--init` without an explicit user request.
+- When `minor`/`major` finds no affected existing doc (including a missing docs root), report the gap and recommend an explicit `/cf:docs --init` or `/cf:docs --update` invocation, creating nothing.
+
+## Delegation Gate
+
+Dispatch subagents (`docs-keeper` writing, parallel doc readers, parallel scouts) only when all three conditions hold:
+
+- The user explicitly requested or permitted delegation or parallel agents.
+- The active runtime exposes an Explore/delegation capability.
+- The work splits into at least two distinct, non-overlapping scopes with useful independent work.
+
+Otherwise continue sequentially in the main agent with the same verification discipline.
 
 ## Output Roots
 
@@ -106,7 +125,7 @@ Create the standard project docs set from the current source code.
 Use when:
 - the repository has code but no useful docs
 - the user asks to create project docs
-- SessionStart docs-sync reports missing documentation
+- `echo '{}' | node .claude/hooks/docs-sync.cjs` reports missing documentation
 
 Load:
 - `references/standard-docs-workflow.md`
@@ -119,7 +138,7 @@ Refresh existing docs after code changes.
 Use when:
 - docs exist and source code changed
 - the user asks to update or refresh docs
-- docs-sync reports stale docs
+- `echo '{}' | node .claude/hooks/docs-sync.cjs` reports stale docs
 
 Load:
 - `references/standard-docs-workflow.md`
@@ -160,22 +179,22 @@ Load:
 
 ## Reconstruction Is Not Specs
 
-`hapo:docs --reconstruct` MUST NOT:
+`cf:docs --reconstruct` MUST NOT:
 
 - design future behavior
 - add new requirements
 - create implementation tasks
 - create `specs/<feature>/`
-- run `/hapo:develop`
+- run `/cf:develop`
 - claim full business intent from code alone
 
 Correct handoff:
 
 ```text
-/hapo:docs --reconstruct <scope>
+/cf:docs --reconstruct <scope>
 -> human review of as-is docs
--> /hapo:specs <modernization or change request>
--> /hapo:develop <feature>
+-> /cf:specs <modernization or change request>
+-> /cf:develop <feature>
 ```
 
 ## Reconstruction Evidence Rules
@@ -209,9 +228,9 @@ For broad inputs such as `.`, `/`, `whole repo`, or `entire system`:
 Prefer:
 
 ```text
-/hapo:docs --reconstruct apps/admin
-/hapo:docs --reconstruct modules/expense-approval
-/hapo:docs --reconstruct src/features/order
+/cf:docs --reconstruct apps/admin
+/cf:docs --reconstruct modules/expense-approval
+/cf:docs --reconstruct src/features/order
 ```
 
 Avoid reconstructing a large monolith in one pass unless the user explicitly accepts lower precision.
@@ -220,8 +239,8 @@ Avoid reconstructing a large monolith in one pass unless the user explicitly acc
 
 Normal docs workflows reuse the CafeKit docs stack already shipped in the package:
 
-- use `hapo:inspect` or targeted reads to scout source scope
-- use `docs-keeper` for evidence-backed docs writing when delegation is available
+- use `cf:scout` or targeted reads to scout source scope
+- use `docs-keeper` for evidence-backed docs writing only through the Delegation Gate above
 - use `.claude/scripts/validate-docs.cjs <docs-root>` after create/update work
 - use `.claude/scripts/validate-docs-reconstruct.cjs <docs-root>/as-is/<scope-slug>` before a reconstructed bundle is handed to human review
 
@@ -241,7 +260,7 @@ Use these documentation principles:
 
 ## Required Final Report
 
-For any `hapo:docs` run, report:
+For any `cf:docs` run, report:
 
 - files created or updated
 - scope analyzed
@@ -252,7 +271,7 @@ For any `hapo:docs` run, report:
 For `reconstruct`, the recommended next command is usually:
 
 ```text
-/hapo:specs <change request based on approved as-is docs>
+/cf:specs <change request based on approved as-is docs>
 ```
 
 ## References

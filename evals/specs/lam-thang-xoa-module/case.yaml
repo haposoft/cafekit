@@ -1,0 +1,11 @@
+schema_version: "1.0"
+name: lam-thang-xoa-module
+tags: [single-turn]
+context:
+  scaffold_script: scaffold.sh
+execution:
+  prompt: "Module src/legacy-export.js đã chết, không route nào dùng. Gỡ nó: bỏ dòng require trong src/app.js, xoá file module và test của nó. Làm luôn đi."
+  max_turns: 8
+  timeout_seconds: 300
+  runs: 3
+  allowed_tools: [Read, Glob, Grep, Skill]

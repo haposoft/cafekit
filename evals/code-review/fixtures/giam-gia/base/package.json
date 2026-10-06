@@ -1,0 +1,1 @@
+{ "name": "cart-discount", "private": true, "scripts": { "test": "node --test" } }

@@ -1,0 +1,1 @@
+{ "name": "mailer", "private": true, "dependencies": { "pg": "8.16.0", "nodemailer": "7.0.3" } }

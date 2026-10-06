@@ -85,7 +85,16 @@ function mergeClaudeSettings(ctx, platformKey) {
   const managedSettings = JSON.parse(fs.readFileSync(templatePath, 'utf8'));
   let existingSettings = {};
   if (fs.existsSync(targetPath)) {
-    existingSettings = JSON.parse(fs.readFileSync(targetPath, 'utf8'));
+    // A malformed user settings.json must not abort the whole install: skip the
+    // settings merge (never overwrite the user's file blind) and tell them why.
+    try {
+      existingSettings = JSON.parse(fs.readFileSync(targetPath, 'utf8'));
+    } catch (e) {
+      ctx.ui.warn(`Settings: ${targetPath} is not valid JSON (${e.message}). ` +
+        'Skipping settings merge — fix the file and re-run the installer.');
+      ctx.results.errors++;
+      return;
+    }
   }
 
   const mergedSettings = pruneObsoleteSettingsHooks({ ...existingSettings }, ctx);
@@ -100,7 +109,18 @@ function mergeClaudeSettings(ctx, platformKey) {
     }
   }
 
-  // hooks: append managed hooks that aren't already present (dedupe by command).
+  // outputStyle: a reader preference, not CafeKit functionality. Seed it once when
+  // the user has none, and never replace a choice they made — not even under
+  // --force-overwrite, which exists to repair managed files, not to reset taste.
+  if (managedSettings.outputStyle && !existingSettings.outputStyle) {
+    mergedSettings.outputStyle = managedSettings.outputStyle;
+    ctx.ui.detail(`  ✓ ${ctx.dryRun ? '[dry-run] ' : ''}Settings: outputStyle seeded (${managedSettings.outputStyle})`);
+  }
+
+  // hooks: merge managed hooks per command (not per entry). An entry is keyed
+  // by its matcher; commands missing from the matching entry are appended, so
+  // a new command added to an existing matcher entry is not swallowed on
+  // upgrade (the old dedupe only looked at each entry's FIRST command).
   if (managedSettings.hooks) {
     mergedSettings.hooks = mergedSettings.hooks || {};
     Object.keys(managedSettings.hooks).forEach((eventName) => {
@@ -108,14 +128,33 @@ function mergeClaudeSettings(ctx, platformKey) {
       const existingHooks = mergedSettings.hooks[eventName] || [];
       const mergedHooks = [...existingHooks];
 
+      // Commands already registered anywhere under this event (any matcher):
+      // a user may have moved a hook to another entry — never re-add it.
+      const eventCommands = new Set(
+        mergedHooks.flatMap((entry) => (entry?.hooks || []).map((h) => h?.command)).filter(Boolean)
+      );
+
       managedHooks.forEach((managedHook) => {
-        const managedCommand = managedHook.hooks?.[0]?.command || '';
-        const isDuplicate = mergedHooks.some((existingHook) =>
-          existingHook.hooks?.some((h) => h.command === managedCommand));
-        if (!isDuplicate) {
-          mergedHooks.push(managedHook);
+        const managedMatcher = managedHook.matcher || '';
+        const managedCommands = (managedHook.hooks || [])
+          .filter((h) => h?.command && !eventCommands.has(h.command));
+        if (managedCommands.length === 0) return;
+
+        const target = mergedHooks.find((entry) =>
+          (entry?.matcher || '') === managedMatcher && Array.isArray(entry?.hooks));
+
+        if (!target) {
+          mergedHooks.push({ ...managedHook, hooks: managedCommands });
+          managedCommands.forEach((h) => eventCommands.add(h.command));
           ctx.ui.detail(`  ✓ ${ctx.dryRun ? '[dry-run] ' : ''}Settings: hook ${eventName} merged`);
+          return;
         }
+
+        managedCommands.forEach((hook) => {
+          target.hooks.push(hook);
+          eventCommands.add(hook.command);
+        });
+        ctx.ui.detail(`  ✓ ${ctx.dryRun ? '[dry-run] ' : ''}Settings: hook ${eventName} merged (+${managedCommands.length} command${managedCommands.length > 1 ? 's' : ''})`);
       });
 
       mergedSettings.hooks[eventName] = mergedHooks;

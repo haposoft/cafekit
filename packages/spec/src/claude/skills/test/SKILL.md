@@ -1,193 +1,204 @@
 ---
-name: hapo:test
-description: "Run and verify project tests across all scopes: unit, integration, e2e, and UI. Blast-radius scoping for speed, chrome-devtools for UI verification, structured verdicts for downstream automation."
+name: cf:test
+description: "Execute the smallest adequate verification scope and own the canonical execution proof."
 user-invocable: true
-when_to_use: "Invoke to run and verify unit, integration, e2e, and UI tests."
+when_to_use: "Use after implementation, for a feature scope, or for an explicit test request."
 category: testing
-keywords: [test, unit, integration, e2e]
+keywords: [test, unit, integration, e2e, proof]
 argument-hint: "[scope|--full|--ui <url>|--ui-auth <url>|--ui-flow <url>]"
 metadata:
   author: haposoft
   version: "2.0.0"
 ---
-# Test — Verify Implementation Quality
+# Test — execution proof owner
 
-Run the project's test suite, analyze results, and return a structured verdict.
-Designed to work **after `hapo:develop`**. Standalone `/hapo:test` uses the same `test-runner` contract that `hapo:develop` relies on during its Quality Gate, and may run **in parallel with `hapo:code-review`**.
-
-**Principles:** Fail-fast | Blast-radius scoping | Zero hidden failures | No mocking to pass
+`cf:test` executes the smallest adequate real verification and owns the
+canonical execution result. For process-first work it returns one typed proof
+handoff to the controller; it never writes task state or the inline Receipt.
+Review consumes validated proof and never invents or duplicates execution.
 
 ## Usage
 
-```bash
-/hapo:test                    # Blast-radius mode: only tests affected by recent changes
-/hapo:test --full             # Run full test suite regardless of changes
-/hapo:test <scope>            # Test a specific module or path
-/hapo:test <feature-name>     # Spec-aware test: load specs/<feature-name> and verify scope/task evidence
-/hapo:test specs/<feature>    # Spec-aware test by spec directory
-/hapo:test --ui <url>         # UI verification via chrome-devtools (public pages)
-/hapo:test --ui-auth <url>    # UI verification with auth injection (protected pages)
-/hapo:test --ui-flow <url>    # UI testing with User Journey (form fill/submit simulation)
+```text
+/cf:test
+/cf:test --full
+/cf:test <scope-or-path>
+/cf:test <feature-name>
+/cf:test specs/<feature>
+/cf:test specs/<feature>/task-NN-<slug>.md
+/cf:test --ui <url>
+/cf:test --ui-auth <url>
+/cf:test --ui-flow <url>
 ```
 
-<HARD-GATE>
-NEVER claim tests pass when they were NOT actually executed.
-NEVER mock, stub, or skip a failing test to produce a green result.
-If no test command is detected, report NO_TESTS — do not fabricate results.
-If a test command exits 0 but runs 0 tests, report NO_TESTS — this is a green lie, not a PASS.
-If tests fail, list every failure explicitly — do not summarize failures away.
-</HARD-GATE>
+## Hard gates
+
+- Never claim a pass without executing the exact relevant command.
+- Never mock, weaken, delete, or skip a failing assertion to obtain green.
+- Missing tooling, a missing command, nonzero exit, or zero executed tests is
+  never `PASS`. Do not auto-install project-local tooling during proof.
+- Preserve exact commands, counts, output, reachability, proof level, Base,
+  Head, artifact hashes, and redaction labels.
+- Source, installed, and live proof are distinct. Live adherence is
+  `[UNVERIFIED]` without a host invocation.
+- Use only `PASS | PASS_WITH_WARNINGS | FAIL | BLOCKED`. Unknown, malformed,
+  partial, contradictory, duplicate, skipped, or stale proof fails closed.
+
+## Target routing
+
+Classify current filesystem bytes before selecting tests. Use `lstat` so broken
+links count as markers. Never migrate or repair packet state while testing.
+
+| Observed state | Route |
+|---|---|
+| Valid regular `plan.md` with `Specs-Contract: process-first-ready-v1`, one or more valid regular flat `task-NN-*.md`, and no legacy marker | Process-first |
+| Any flat marker that is orphaned, malformed, duplicated, symlinked, nonregular, or mixed with a legacy marker | `BLOCKED` |
+| Valid regular legacy root resolving every nested task and separate receipt, with no flat marker | Legacy adapter |
+| Orphan, malformed, symlinked, nonregular, identity-conflicting, or mixed legacy state | `BLOCKED` |
+| No flat or legacy marker | Ordinary non-Spec testing |
+
+A flat marker is a direct-child `plan.md` or `task-NN-*.md`. A legacy marker is
+`spec.json`, a nested legacy task, or a separate legacy receipt. See
+`references/execution-strategy.md` for the complete validation truth table.
+
+## Spec-Aware Mode
 
 <SCOPE-GATE>
-When a feature name or `specs/<feature>` path is supplied, testing is spec-aware.
-Load `spec.json`, `requirements.md`, `design.md`, active/recent task files, and task `Evidence` / test-plan proof.
-The verdict MUST compare executed/reachable behavior against `scope_lock`, requirements, design contracts, task Completion Criteria, and runtime reachability obligations.
-Build/typecheck success without scoped runtime proof is not PASS.
+For a feature target, test only current accepted scope, the active task's exact
+Verification Plan, and reachable runtime surfaces. Missing or orphaned
+reachability fails even when a command exits successfully.
 </SCOPE-GATE>
 
-## 4-Phase Execution
+For a process-first feature:
 
-```mermaid
-flowchart TD
-    A["/hapo:test"] --> B[Phase 1: Detect]
-    B --> C{Test runner found?}
-    C -->|No| Z[STOP: Verdict = NO_TESTS]
-    C -->|Yes| D[Phase 2: Execute]
-    D --> E{--ui / auth / flow?}
-    E -->|Yes| F["UI Verification (Parallel Subagents)"]
-    E -->|No| G[Code Tests (Blast Radius)]
-    F --> H[Phase 3: Verdict]
-    G --> H
-    H --> I[Phase 4: Sync Memory]
-    I -->|PASS| J[Hand off to hapo:code-review]
-    I -->|FAIL| K[Load failure-triage.md → classify → escalate]
+1. Read current `plan.md` and flat task bytes. Select only a contained regular
+   task whose dependencies allow proof.
+2. Use the task's exact `Command`, exact unique `Named probes`, `Reachability`,
+   `Oracle`, `Counterexample`, required proof level, and artifact declaration.
+3. Run the smallest adequate proof. `--full` expands scope but cannot weaken
+   the Verification Plan or substitute unrelated green tests.
+4. Return exactly one canonical `test-proof-v1` object. Do not edit `plan.md`,
+   `Status:`, the task's `## Receipt`, or any sibling task.
+5. The Develop controller validates the payload, recomputes its digest, checks
+   current provenance, and alone writes process-first Status and inline Receipt.
+
+## Execution
+
+1. Detect commands from task and repository files; never invent them.
+2. Run a cheap compile or typecheck precheck when the project provides one.
+3. Execute the exact task command and all named probes with real counts.
+4. For Ordinary non-Spec testing, before any `PASS` or `PASS_WITH_WARNINGS`,
+   read the tests that cover the target or changed code (every test file when
+   the suite is small). When an assertion or its pass condition depends on a
+   nondeterministic source — the clock, randomness, the network, shared
+   filesystem state or test order — the verdict is `FAIL`, naming the source,
+   even when every run passes. When only setup depends on one, rerun just the
+   suspect tests at least twice more; any differing outcome is `FAIL` as flaky.
+   A single green run of such a test is not `PASS`. This step does not apply to
+   process-first Named probes, which run exactly once.
+5. Inspect negative paths, runtime reachability, and declared artifacts.
+6. Capture tracked, untracked, and ignored project-command drift separately
+   from runtime Head. Never silently clean or hide project changes.
+7. Redact sensitive material, validate the complete proof object, then return a
+   concise human report separately from the machine handoff.
+
+Required proof follows the behavior:
+
+| Surface | Adequate proof |
+|---|---|
+| pure logic/parser/validator | unit plus negative path |
+| stateful UI or module wiring | component/integration plus mounted path |
+| API, persistence, provider, or process boundary | real contract/state handoff |
+| complete user workflow | E2E or UI flow |
+| layout, focus, labels, keyboard | viewport/visual/accessibility check |
+| regression | reproduction before fix plus passing regression |
+| security/performance | only when requirement, risk, or boundary requires it |
+
+## Process-first proof handoff
+
+The machine payload is canonical UTF-8 JSON with exact top-level keys:
+
+```text
+schema_version, target, verdict, command, exit, counts, provenance,
+proof_level, expected, observed, reachability, artifacts, branches,
+raw_output, redactions, payload_sha256
 ```
 
-### Phase 1 — Detect
+`schema_version` is exactly `test-proof-v1`; unknown keys block. Branch IDs map
+one-to-one to exact unique Named probes. The digest is lowercase SHA-256 of
+stable JSON excluding only `payload_sha256`. Exact field shapes, nullable
+pre-execution `BLOCKED` rules, and aggregation live in
+`references/execution-strategy.md`.
 
-Auto-detect the test runner from project files:
-- `package.json` → npm/yarn/pnpm/bun test, jest, vitest, mocha
-- `pyproject.toml` / `setup.cfg` → pytest
-- `go.mod` → go test
-- `Cargo.toml` → cargo test
-- `pubspec.yaml` → flutter test
+Only all required branches passing with exact command, exit 0, executed > 0,
+failed/skipped 0, matching Base/Head, `reachability.status: PASS`, valid artifact
+hashes, and safe redaction can aggregate `PASS`. Aggregate in this order:
+`FAIL` > `BLOCKED` > `PASS_WITH_WARNINGS` > `PASS`.
 
-Unless `--full` is specified: apply **Blast Radius scoping** to run only tests
-affected by recent file changes. See `references/execution-strategy.md` Phase A.
+## Persistent-write and authentication boundary
 
-If the argument resolves to `specs/<feature>` or a feature directory under `specs/`, enter **Spec-Aware Mode**:
-- Load `spec.json`, `requirements.md`, `design.md`, and task files referenced by `task_registry`
-- Identify tasks marked `done`, `in_progress`, or recently changed
-- Extract exact commands, runtime/artifact proof, runtime reachability proof, and negative-path checks
-- Scope test selection by affected task files, but do not skip any mandatory task evidence
+- `.hapo/test-memory.json` is optional read-only context. Hash absent/present
+  bytes before and after; never create, merge, or update it during proof.
+- Put only Test-owned temporary files outside the project and clean them.
+  Never create Test-owned reports, caches, lazy installs, or auth state.
+- For authenticated UI proof, prefer the project's own auth helper. Otherwise
+  use only an explicitly selected user-controlled profile bound to a confirmed
+  HTTPS or localhost origin, identity, permissions, and action scope.
+- Block cross-origin redirects and destructive production actions without fresh
+  consent. Never ask for, export, paste, or persist cookies or tokens.
+- Redact Authorization, Cookie, Set-Cookie, session tokens, credentials, and
+  scoped PII from commands, headers/bodies, logs, screenshots, and reports.
+  If safe proof is impossible, return `BLOCKED`.
 
-### Phase 2 — Execute
-
-**Code testing (default):**
-1. Pre-flight: run typecheck/lint to catch compile errors first
-2. Execute test command with coverage flags
-3. Collect test counts, coverage percentages, and fail stack traces
-4. Treat 0 executed tests as `NO_TESTS`, even if the command exits 0
-5. In Spec-Aware Mode, inspect runtime reachability from declared entrypoints/callers and fail if scoped surfaces are missing or orphaned
-
-**Spec-aware test type escalation:**
-- Unit tests are mandatory when task evidence covers pure logic, transforms, validators, sorting/filtering, or regressions.
-- Component/integration tests are expected when task evidence covers stateful UI, context/store wiring, API/service boundaries, or persistence.
-- E2E/UI flow tests are expected once a complete user-facing workflow exists, not for isolated foundation tasks.
-- Visual/responsive checks are expected for layout, theme, dashboard, and style tasks.
-- Accessibility checks are expected for interactive UI surfaces where focus, roles, labels, keyboard navigation, or ARIA can regress.
-- Smoke checks are enough for scaffold/config tasks unless the task requires deeper proof.
-- Performance/security checks are only mandatory when the requirement, design risk, or touched runtime boundary calls for them.
-
-**UI verification (`--ui` / `--ui-auth` / `--ui-flow`):**
-Execute multi-page discovery, then spawn **Parallel UI Subagents** (test-runner instances) to handle Smoke, Core-Vitals, Accessibility, SEO, Security, and User Flows simultaneously.
-See `references/execution-strategy.md` Phase C for full phase breakdown.
-
-Delegate execution to `test-runner` agent:
-```
-Agent(subagent_type="test-runner",
-  prompt="Run tests. Scope: [blast-radius|full|ui|spec-aware]. Target: [path|url|feature]. Load specs when target is a feature. Return structured verdict with scope/spec coverage and runtime reachability.",
-  description="Test [feature]")
-```
-
-### Phase 3 — Verdict
-
-Return a **structured verdict** (required format — not free-form prose):
+## Verdict and report
 
 ```markdown
 ## Test Verdict
 
-**Status:** PASS | FAIL | PARTIAL | NO_TESTS
-**Scope:** blast-radius (N/M tests) | full-suite (N tests) | ui-check
-**Duration:** Xs
+**Status:** PASS | PASS_WITH_WARNINGS | FAIL | BLOCKED
+**Scope:** [target and selected proof]
+**Commands:** [exact redacted commands]
+**Exit:** [actual result]
 
 ### Results
-- Passed: N | Failed: N | Skipped: N
-
-### Coverage (if applicable)
-| Metric    | Result | Threshold | Status    |
-|-----------|--------|-----------|-----------|
-| Lines     | X%     | 80%       | PASS/FAIL |
-| Branches  | X%     | 70%       | PASS/FAIL |
-| Functions | X%     | 80%       | PASS/FAIL |
-
-### Failures (if any)
-1. `path/to/file.test.ts:42` — AssertionError: expected X but got Y — Category: Logic Error
-
-### UI Results (if --ui)
-- Console errors: N found | none
-- Network errors (4xx/5xx): N found | none
-- Performance: LCP Xms | CLS X | FCP Xms
-- Accessibility issues: N found | none
-- Screenshots: [paths]
-
-### Scope / Spec Coverage (if feature scope)
-- Requirements covered: N/N
-- Task evidence checks: PASS | FAIL | UNVERIFIED
-- Runtime reachability: PASS | FAIL | UNVERIFIED
-- Out-of-scope behavior detected: none | [list]
-
-### Test Regression Check
-- **Comparison:** Compare current test count and assertion depth against previous runs.
-- **Result:** OK | REGRESSION (tests deleted/weakened)
+- Passed: N | Failed: N | Skipped: N | Executed: N
+- Reachability: PASS | FAIL | BLOCKED
+- Proof level: source | installed | live
+- Project-command drift: [tracked/untracked/ignored, or none]
 
 ### Action
-- PASS → Proceed. Hand off to hapo:code-review.
-- FAIL → [list specific fixes needed] → Return to god-developer. (If REGRESSION: label "Test Regression — tests were deleted or weakened to produce green result")
-- PARTIAL → [list uncovered areas] → Consider adding tests.
-- NO_TESTS → No test runner detected. User must configure tests first.
-
-<lessons_learned>
-{
-  "flaky_tests_added": []
-}
-</lessons_learned>
+- [controller handoff, exact failure, or changed prerequisite]
 ```
 
-### Phase 4 — Sync Memory
+Do not place the full JSON payload, secrets, verbose raw logs, or screenshots in
+the concise report. `PASS_WITH_WARNINGS` remains unfinished; only literal
+validated `PASS` may be synchronized by the controller.
 
-After receiving the verdict from `test-runner`, the orchestrator (`hapo:test`) intercepts the `<lessons_learned>` block.
-It merges the JSON data into `.hapo/test-memory.json` per `references/test-memory.md` to ensure that future runs remember flaky tests or environment setup requirements without modifying the codebase.
+When the target's task can be read — a process-first packet, or a packet
+`BLOCKED` while it is classified that still holds exactly one regular flat task
+with a readable `Command` and `Named probes` — end the final message with the
+concise report, then a `### Machine handoff (test-proof-v1)` heading and exactly
+one fenced `json` block holding the validated payload. The handoff block follows
+the report and is not part of it. No further fenced block follows it. A
+pre-execution `BLOCKED` takes the same placement; its shape is in
+`references/execution-strategy.md` §4. For any other target, end with the
+report and the line `No payload: target not identifiable.`
 
-## Skill Interconnections
+## Legacy workflow compatibility
 
-| Skill / Agent | Direction | Role |
-|---|---|---|
-| `hapo:code-review` | runs in parallel | Both run at Quality Gate Step 4 |
-| `hapo:develop` | orchestrates | Spawns hapo:test at Step 4 |
-| `inspector` agent | hapo:test → | Scout test file locations when structure is unfamiliar |
-| `god-developer` agent | hapo:test → | FAIL verdicts route back here for fixing |
-| `test-runner` agent | hapo:test → | Primary executor, spawned via Task tool |
-| chrome-devtools scripts | test-runner → | UI verification (navigate, screenshot, console, network, performance, aria-snapshot, inject-auth) |
+A valid legacy packet keeps the v2.1 adapter, legacy task resolution, and its
+separate receipt path. Do not write process-first inline proof into it. If
+legacy proof identities conflict or the packet is mixed/malformed, return
+`BLOCKED`; never choose one source or migrate it during unrelated testing.
+
+Flash legacy behavior remains proof-only: testing may make a current
+`FLASH_UNVERIFIED` task eligible for trusted sync-finalize, but never promotes
+state or unblocks dependents itself. Only explicit trusted sync-finalize may
+promote it.
 
 ## References
 
-- `references/execution-strategy.md` — Blast-radius algorithm, auto-detect logic, UI verification phases (A–E)
-- `references/failure-triage.md` — Failure categories, triage decision tree, escalation rules
-- `references/test-memory.md` — `.hapo/test-memory.json` schema and merge rules
-
-## Related
-
-- Previous skill: `hapo:develop`
-- Parallel skill: `hapo:code-review`
-- Parent workflow: `hapo:develop` Step 4 Quality Gate
+- `references/execution-strategy.md` — routing, payload schema, aggregation,
+  blast radius, UI safety, and report separation.
+- `references/failure-triage.md` — failure classification and four verdicts.
+- `references/test-memory.md` — optional read-only historical context.

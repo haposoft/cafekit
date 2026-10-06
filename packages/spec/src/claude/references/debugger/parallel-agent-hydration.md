@@ -1,43 +1,28 @@
-# Swarm Tactics (Parallel Agent Hydration)
+# Permission-Gated Parallel Reconnaissance
 
-In order to resolve wide-radius cascading failures (e.g. Microservices collapsing simultaneously, Databases going down concurrently with Caches, or obscure Data Race conditions), relying purely on single-threaded execution (Serial execution) within an isolated Context Window will overwhelm and burn immense amounts of time. 
+Parallel discovery is optional, not a default Debug phase. Start with focused repository and runtime evidence in the main agent.
 
-Do not attempt to solve everything alone! Elevate yourself to the role of **Head of Debugging (Chief Orchestrator)** and exploit the swarm potential (Parallel Hydration) inherent to the Multi-Agent grid.
+## Delegation Gate
 
-## 1. When to Issue Swarm Directives?
-- **Cross-examination Audits:** When you suspect an error heavily involves 2-3 disparate services. You must read Frontend Server logs, API Backend endpoints, and Slow Query PostgreSQL logs concurrently.
-- **Widespread Impact Reconnaissance:** Exploring how many times an entire codebase invokes an API that recently suffered a Deprecation notice.
-- **Polluter Isolation Tactics:** Scanning isolated codebase sectors independently to track down memory leaks or Data Races. Instead of executing Git Bisect linearly, deploy 3 Sub-Agents to investigate 3 separate commit history timelines simultaneously.
+Delegate only when all are true:
 
-## 2. Dispatching Proxy Agents (Task Management)
+1. The user explicitly requested or permitted delegation or parallel agents.
+2. The active runtime exposes an Explore/delegation capability.
+3. There are at least two distinct, non-overlapping scopes whose read-only evidence can be collected independently.
 
-Fully weaponized with the `TaskCreate` tool. Broadcast multiple `TaskCreate` commands AS EARLY AS POSSIBLE, granting robust execution authority to each spawned Sub-Agent.
+Otherwise continue sequentially. Lack of delegation must never block diagnosis.
 
-### The Classic Execution: 3 Parallel Operatives
-When investigating severe system latency/bottleneck incidents, initiate 3 concurrent Agents before executing localized manual sweeps:
+## Good Independent Scopes
 
-```json
-// TaskCreate Command 1: Assign to Database Analysis Agent
-{
-  "Goal": "Execute EXPLAIN ANALYZE on queries choking within the last 24h block. Must return a list containing the top 3 worst SQL execution plans.",
-  "Files/Context": "src/database/... (assign appropriate CWD)",
-  "ExpectedOutput": "A concise text summary published via TaskUpdate."
-}
+- Frontend console/network evidence vs backend request/log evidence
+- Application trace vs database query/lock evidence
+- Failing CI job vs nearest known-good run
+- Independent service or package boundaries in a cascading incident
 
-// TaskCreate Command 2: Assign to Frontend Performance Agent
-{
-  "Goal": "Monitor Network tabs, analyze HAR files or Load Test scripts. Specifically identify any JS Bundle requiring more than 5 seconds to load.",
-  "Files/Context": "src/frontend/... "
-}
+## Dispatch Contract
 
-// TaskCreate Command 3: Assign to Infrastructure/CI Pipeline Agent
-{
-  "Goal": "Download GitHub Actions pipeline logs executed at midnight. Scan precisely for Out Of Memory (OOM) Errors occurring within Docker pods.",
-  "Files/Context": "Utilize robust bash curl executions pointing to Github APIs."
-}
-```
-
-## 3. Disruption Avoidance Rules (Isolation Paradigms)
-- **Zero Shared Modification Allowed:** Sub-Agents deployed during the "Reconnaissance" Phase (Hydration) are explicitly RESTRICTED TO READ-ONLY OPERATIONS (Read-only, Grep, Log search). Absolutely forbid assigning dual sub-agents to mutate the same `.ts` file simultaneously, an act which guarantees catastrophic Merge Conflicts.
-- **Context Injection (Knowledge Passing):** Do not expect your proxy agents to derive full systemic context from nothing. Inject rich knowledge matrices directly into the Description string during `TaskCreate`: "Navigate exclusively into directory X, execute command Y, locate error line Z. Return report immediately here".
-- **Acknowledge & Gather Pattern (Re-assimilation):** After deploying the fleet, aggressively monitor the grid using `TaskList` or `TaskGet`. Wait for operative `DONE` statuses and updates. Finally, amalgamate returning reports into a master Cross-correlation diagnostic map before passing your final judgment execution.
+- Assign explicit source/log/runtime boundaries with no overlap.
+- Reconnaissance is read-only: no product edits, fix application, migrations, or state mutation.
+- Provide the symptom, known evidence, exact questions, allowed commands, and required provenance.
+- Require findings to distinguish observed fact, inference, and unknown.
+- Join all results before root-cause judgment. Resolve contradictions against primary evidence and record unresolved conflicts.

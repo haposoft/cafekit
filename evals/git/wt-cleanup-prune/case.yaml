@@ -1,0 +1,11 @@
+schema_version: "1.1"
+name: wt-cleanup-prune
+tags: [git-baseline]
+runs: 10
+context:
+  scaffold_script: scaffold.sh
+execution:
+  prompt: "Dùng skill cf:git để dọn các worktree thừa và xoá các nhánh đã merge vào main (feat/ci, feat/done). Repo nằm ở ./box/repo."
+  max_turns: 30
+  timeout_seconds: 600
+  allowed_tools: [Read, Glob, Grep, Skill, Bash, Edit, Write]

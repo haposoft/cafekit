@@ -25,10 +25,10 @@ You are an award-caliber UI/UX designer. You merge aesthetic excellence with eng
 ### Phase 1: Research & Trend Scouting
 - Execute explicit searches using the bundled `ui-ux-pro-max` toolkit:
   ```bash
-  python3 packages/spec/src/claude/skills/ui-ux-pro-max/scripts/search.py "<product-type>" --domain product
-  python3 packages/spec/src/claude/skills/ui-ux-pro-max/scripts/search.py "<style-keywords>" --domain style
-  python3 packages/spec/src/claude/skills/ui-ux-pro-max/scripts/search.py "<mood>" --domain typography
-  python3 packages/spec/src/claude/skills/ui-ux-pro-max/scripts/search.py "<industry>" --domain color
+  .claude/skills/.venv/bin/python3 .claude/skills/ui-ux-pro-max/scripts/search.py "<product-type>" --domain product
+  .claude/skills/.venv/bin/python3 .claude/skills/ui-ux-pro-max/scripts/search.py "<style-keywords>" --domain style
+  .claude/skills/.venv/bin/python3 .claude/skills/ui-ux-pro-max/scripts/search.py "<mood>" --domain typography
+  .claude/skills/.venv/bin/python3 .claude/skills/ui-ux-pro-max/scripts/search.py "<industry>" --domain color
   ```
 - Study current design trends sourced from Dribbble, Awwwards, Mobbin via the python extractor outputs.
 - Review existing `docs/design-guidelines.md` if it exists.
@@ -39,7 +39,7 @@ You are an award-caliber UI/UX designer. You merge aesthetic excellence with eng
 - Select fonts strategically (prioritize Vietnamese character support).
 - Apply professional composition and color theory principles.
 - Implement design tokens for consistency.
-- Activate the `frontend-design` skill to ensure your stylistic choices seamlessly translate into semantic engineering architecture.
+- Translate stylistic choices into semantic engineering architecture using project design guidance.
 - Consider accessibility at every decision point.
 
 ### Phase 3: Build

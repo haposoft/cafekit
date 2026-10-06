@@ -1,56 +1,36 @@
 ---
 title: Spec-driven development
-description: The simple mental model for how CafeKit turns requests into verified code.
+description: The process-first mental model for turning substantial requests into verified code.
 ---
 
 <SddHeroVisual locale="en" />
 
 ## The simple version
 
-Spec-driven development means **the spec is the boss, not the chat**.
-
-In normal AI coding, the assistant often works from conversation memory. That is fragile. The request may be summarized incorrectly, scope may shift, and the next session may not know why a decision was made.
-
-CafeKit changes the center of gravity. Before code changes, the work is written into `specs/<feature>/`. That folder becomes the shared contract for the human, assistant, reviewer, and future sessions.
+The spec is the durable contract, not chat memory. New work stores that contract in `specs/<feature>/plan.md` and flat `task-NN-*.md` files.
 
 <SddLoopVisual locale="en" />
 
-## What the assistant is allowed to trust
-
-The assistant should trust durable repo artifacts first:
+## What each artifact answers
 
 <SddArtifactMap locale="en" />
 
-The important point is not that CafeKit creates more files. The point is that each file answers a different question:
+| Artifact | Question |
+|---|---|
+| `plan.md` | What outcome, scope, exclusions, acceptance, decisions, and task map were approved? |
+| `task-NN-*.md` | What single outcome is executable now, who owns it, and what exact proof is required? |
+| Final inline `## Receipt` | What current command and output prove the task passed? |
 
-| Artifact | Question it answers |
-| --- | --- |
-| `requirements.md` | What should the product do? |
-| `research.md` | What source-backed facts or decisions matter? |
-| `design.md` | How should the system be shaped? |
-| `tasks/task-R*.md` | What exact implementation unit is approved now? |
-| `spec.json` | What is the machine-readable state of the feature? |
+## Working rule
 
-## Daily working rule
-
-When a feature is meaningful, use this rule:
-
-Use `/hapo:brainstorm` first only when the request is not ready for specs. The delivery path itself starts here:
-
-1. Run `/hapo:specs` when the goal is clear enough to become a contract.
-2. Do not develop until the spec has approved task packets.
-3. Run `/hapo:develop` for one task packet at a time.
-4. Verify with `/hapo:test` and review with `/hapo:code-review`.
-5. Run `/hapo:sync` only after proof exists, or use `/hapo:sync audit <feature>` to repair drift.
+1. Use brainstorm only while intent or architecture is unresolved.
+2. Specs opens C1, writes the plan and tasks, then presents C2 findings.
+3. Planning stops. Start work only with a new explicit develop invocation.
+4. Develop executes one unblocked task; test and code review verify it.
+5. Sync only observed Status and proof. The user decides completion at C3.
 
 <SddCompareVisual locale="en" />
 
-## When to use the full SDD path
+Use the full path for substantial, risk-elevated, multi-file, runtime, data, auth, package, or handoff-sensitive work. Clear isolated one- or two-file routine changes may use direct work.
 
-Use the full path when the work changes product behavior, touches multiple files, crosses runtime boundaries, changes data/auth/package contracts, affects users, needs review evidence, or may be handed to another assistant or teammate.
-
-For tiny copy edits or clearly isolated one-line fixes, the full spec flow may be too heavy. But even then, the same habit still applies: state the boundary, change only that boundary, verify the result, and avoid hidden scope growth.
-
-## Where to go next
-
-Read [Core workflow](/docs/core-workflow) to see the full command path. Read [Spec lifecycle](/docs/spec-lifecycle) when you need the deeper rules for `spec.json`, task packets, validation, and readiness.
+Read [Core workflow](/docs/core-workflow) for routing and [Spec lifecycle](/docs/spec-lifecycle) for the full contract.

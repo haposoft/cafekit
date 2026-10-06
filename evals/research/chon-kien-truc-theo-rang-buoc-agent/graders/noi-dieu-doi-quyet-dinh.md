@@ -1,0 +1,6 @@
+---
+type: regex
+target: last_message
+---
+
+(?:[Nn]ếu|[Kk]hi|[Tt]rừ khi|[Ii]f|[Ww]hen|[Uu]nless|[Oo]nce)[^\n]{0,120}?(?:Redis|vượt|exceed|hơn[ \t]*\d|more than[ \t]*\d|>[ \t]?\d)[^\n]{0,120}?(?:đổi|chuyển|xem lại|xét lại|cân nhắc lại|đánh giá lại|switch|move to|revisit|reconsider|re-evaluate)|(?:[Đđ]iều kiện|[Tt]ín hiệu|[Cc]onditions?|[Tt]riggers?)[^\n]{0,40}(?:đổi|xem lại|xét lại|thay đổi|chuyển|revisit|change|switch)|(?:[Xx]em lại|[Xx]ét lại|[Rr]evisit|[Rr]econsider|[Đđ]ánh giá lại|[Cc]ân nhắc lại)[^\n]{0,40}(?:nếu|khi|if|when|once)|(?:[Nn]ếu|[Kk]hi|[Tt]rừ khi|[Ii]f|[Ww]hen|[Uu]nless|[Oo]nce)[^\n]{0,120}?(?:xem lại|xét lại|cân nhắc lại|đánh giá lại|revisit|reconsider|re-evaluate)[^\n]{0,120}?Redis|(?:[Kk]hi nào(?: nên)? (?:chọn|dùng)|[Ww]hen to (?:choose|pick|use|switch to)) BullMQ[^\n]*(?:\n[^\n]*){0,4}?(?:Redis|vượt|exceed|hơn[ \t]*\d|more than[ \t]*\d|>[ \t]?\d)|(?:[Đđ]ổi|[Cc]huyển|[Ss]witch|[Mm]ove)(?: sang| to)? BullMQ[^\n]{0,60}?(?:khi|nếu|if|when|once|unless)[^\n]{0,120}?(?:Redis|vượt|exceed|hơn[ \t]*\d|more than[ \t]*\d|>[ \t]?\d|nghìn|thousands?)|BullMQ[^\n]*(?:\n[^\n]*){0,2}?(?:[Kk]hi nào(?: nên)? (?:chọn|dùng)(?![ \t]*(?:pg-boss|Postgres))|(?<!pg-boss(?:(?!BullMQ)[^\n])*)chọn khi|[Ww]hen to (?:choose|pick|use)(?![ \t]*(?:pg-boss|Postgres)))[^\n]*(?:\n[^\n]*){0,4}?(?:Redis|vượt|exceed|hơn[ \t]*\d|more than[ \t]*\d|>[ \t]?\d)

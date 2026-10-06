@@ -23,22 +23,39 @@ description: Commands, package facts, files, and state values.
 
 ## Command cheatsheet
 
-| Claude Code command | OpenCode command | Purpose |
-|---|---|---|
-| `/hapo:question` | `/question` | Answer project and technical questions with repo-first evidence. |
-| `/hapo:brainstorm` | `/brainstorm` | Clarify unclear ideas before specs. |
-| `/hapo:specs` | `/specs` | Create, resume, validate, or approve specs. |
-| `/hapo:develop` | `/develop` | Implement approved task packets. |
-| `/hapo:test` | `/test` | Run task-aware verification. |
-| `/hapo:code-review` | `/code-review` | Review changes for regressions and security. |
-| `/hapo:sync` | — | Sync task status, `task_registry`, task markdown, phase, or audit drift. |
-| `/hapo:debug` | `/debug` | Diagnose failures before fixing. |
-| `/hapo:hotfix` | `/hotfix` | Apply narrow diagnosed fixes. |
-| `/hapo:docs` | `/docs` | Create, update, summarize, or reconstruct docs. |
-| `/hapo:inspect` | `/inspect` | Scout source files and project structure. |
-| `/hapo:generate-graph` | `/generate-graph` | Generate technical diagrams. |
+The second column records the frozen OpenCode 0.16 command surface for
+historical migration only. OpenCode is not a current runtime, and these entries
+are not aliases for current Claude or Codex commands.
 
-OpenCode currently gets generated slash commands for the main implementation surface. The `sync` skill is still shipped in the shared skill bundle, but the installer does not generate a `/sync` OpenCode wrapper.
+| Claude Code command | Legacy OpenCode 0.16 command | Purpose |
+|---|---|---|
+| `/cf:ask` | `/question` | Answer project and technical questions with repo-first evidence. |
+| `/cf:brainstorm` | `/brainstorm` | Clarify unclear ideas before specs. |
+| `/cf:specs` | `/specs` | Create a process-first plan and flat tasks through C1/C2. |
+| `/cf:develop` | `/develop` | Execute one approved flat task at a time. |
+| `/cf:test` | `/test` | Run task-aware verification. |
+| `/cf:code-review` | `/code-review` | Review changes for regressions and security. |
+| `/cf:sync` | — | Sync observed task Status and final inline Receipt. |
+| `/cf:debug` | `/debug` | Diagnose failures before fixing. |
+| `/cf:fix` | `/hotfix` | Apply narrow diagnosed fixes. |
+| `/cf:docs` | `/docs` | Optional bundle: create, update, summarize, or reconstruct docs. |
+| `/cf:scout` | `/inspect` | Scout source files and project structure. |
+
+For historical OpenCode 0.16 installs, the installer generated slash commands for the main implementation surface. The `sync` skill was shipped in the shared skill bundle, but the installer did not generate a `/sync` OpenCode wrapper.
+
+## Skill selection and loading
+
+Native selection uses progressive disclosure: live catalog metadata identifies
+a candidate, the selected `SKILL.md` defines its contract, and only relevant
+references are loaded. Invoke an installed skill directly for explicit or
+obvious low-risk work; compose a short chain only for ambiguous, multi-step,
+multi-domain, or elevated-risk work. If a skill or agent is absent, continue
+inline when safe or report the gap; optional document skills are usable only
+when installed.
+
+Hooks are not a skill router and do not auto-select capabilities. Source and
+installed projection parity is tested, but live-model adherence remains
+`UNPROVEN` and semantic selection is not deterministic.
 
 ## Installed Claude file structure
 

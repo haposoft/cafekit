@@ -13,7 +13,7 @@ description: Hiểu installed files, hooks, state checks, và validators.
 
 ## Hooks
 
-Claude Code dùng CommonJS hooks trong `.claude/hooks/`. OpenCode dùng TypeScript plugins trong `.opencode/plugins/` — xem [OpenCode platform](/docs/platforms/opencode) để biết mapping plugin ↔ hook.
+Claude Code dùng CommonJS hooks trong `.claude/hooks/`. Codex CLI dùng project hooks trong `.codex/hooks.json` cùng rules và scripts dưới `.codex/`.
 
 | Hook | Mục đích |
 |---|---|
@@ -24,7 +24,6 @@ Claude Code dùng CommonJS hooks trong `.claude/hooks/`. OpenCode dùng TypeScri
 | `docs-sync.cjs` | Detect docs thiếu hoặc stale. |
 | `state.cjs` | Persist session state và modified-file summary. |
 | `agent.cjs` | Cấp context nhẹ cho subagent. |
-| `usage.cjs` | Fetch usage limits cho statusline cache. |
 
 ## Validators
 
@@ -39,7 +38,7 @@ Validator là hard backstop. Prompt có thể drift; script thì không nên.
 
 ## State model
 
-- `spec.json` lưu phase, status, `task_files`, và `task_registry`.
-- `tasks/task-R*.md` lưu context, steps, criteria, và evidence.
+- `plan.md` lưu C1 scope, acceptance criteria, exclusions, C2 decisions và task map.
+- `task-NN-*.md` có một `Status:`, outcome, ownership, dependencies, proof command và final inline `## Receipt`.
 
-Hai layer này phải sync với nhau. Chat không phải source of truth.
+Controller chỉ sync state và proof đã quan sát. Chat không phải source of truth.

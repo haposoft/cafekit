@@ -9,13 +9,13 @@ description: Common questions about CafeKit's runtime and workflow.
   description="Most CafeKit mistakes come from skipping scope, skipping validation, or treating chat as state. This page clarifies the common edge cases."
 />
 
-## Is OpenCode supported?
+## Is OpenCode currently supported?
 
-Yes. The installer writes a self-contained `.opencode/` runtime with skills, agents, commands, rules, references, scripts, `runtime.json`, and TypeScript plugins under `.opencode/plugins/`. It also writes a root `AGENTS.md` and merges `opencode.json`. OpenCode does not share files with `.claude/`.
+No. Current releases support Claude Code and Codex CLI. OpenCode support ended in CafeKit 0.17; the site keeps the frozen 0.16 command map only for migration history.
 
-## Should every task start with `/hapo:specs`?
+## Should every task start with `/cf:specs`?
 
-No. Use specs for meaningful feature work. Use `/hapo:debug` and `/hapo:hotfix` for bugs. Tiny local fixes may not need a full spec.
+No. Use specs for meaningful feature work. Use `/cf:debug` and `/cf:fix` for bugs. Tiny local fixes may not need a full spec.
 
 ## Why does CafeKit care about task files?
 
@@ -27,8 +27,8 @@ No. `NO_TESTS` only means no real test suite ran. Build health, runtime proof, a
 
 ## Can a task be marked `done` from chat?
 
-No. `done` requires physical state sync in `spec.json` and task markdown after fresh verification.
+No. `done` requires fresh verification and a current final inline Receipt in the task. C3 remains the user's completion decision.
 
 ## What should I use for production bugs?
 
-Start with `/hapo:debug` when root cause is unknown. Use `/hapo:hotfix` after diagnosis or when the bug and target fix are already clear.
+Start with `/cf:debug` when root cause is unknown. Use `/cf:fix` after diagnosis or when the bug and target fix are already clear.

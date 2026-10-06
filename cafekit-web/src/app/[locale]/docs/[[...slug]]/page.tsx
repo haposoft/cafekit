@@ -12,10 +12,19 @@ interface PageProps {
   }>;
 }
 
+const publicSkillAliases: Record<string, string> = {
+  ask: 'question',
+  scout: 'inspect',
+  hotfix: 'fix',
+};
+
 async function getRouteInfo(locale: string, slug?: string[]) {
-  const mdxSlug = (!slug || slug.length === 0)
+  const normalizedSlug = slug?.length === 2 && slug[0] === 'skills'
+    ? ['skills', publicSkillAliases[slug[1]] ?? slug[1]]
+    : slug;
+  const mdxSlug = (!normalizedSlug || normalizedSlug.length === 0)
     ? 'index'
-    : slug.join('/');
+    : normalizedSlug.join('/');
 
   const fullPath = `docs/${locale}/${mdxSlug}`;
 

@@ -71,7 +71,7 @@ python scripts/gemini_batch_process.py \
 
 Provide specific recommendations for adjustments." \
   --output docs/assets/integration-analysis.md \
-  --model gemini-2.5-flash
+  --model gemma-4-31b-it
 ```
 
 ## Next.js Integration Example

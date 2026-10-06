@@ -22,22 +22,27 @@ const backup = require('./lib/backup');
 const manifestLib = require('./lib/manifest');
 
 const { selectLanguage, resolvePlatforms } = require('./phases/select-platform');
+const { selectDocumentSkills } = require('./phases/select-skill-bundles');
 const { copyPlatformFiles } = require('./phases/copy-payload');
 const {
   copyRoutingFile,
   copyClaudeRuntimeFiles,
   removeObsoleteClaudeRuntimeFiles,
   copyClaudeMdFile,
-  copyRulesDirectory
+  ensureSharedAgentsMdCore,
+  copyRulesDirectory,
+  copyOutputStylesDirectory,
+  removeObsoleteAgents
 } = require('./phases/claude-runtime');
+const { reconcileSkillInventory } = require('./phases/skill-inventory');
 const { mergeClaudeSettings } = require('./phases/claude-settings');
-const { installOpenCodeRuntime } = require('./phases/opencode-runtime');
+const { installCodexRuntime } = require('./phases/codex-runtime');
+const { installOmpRuntime } = require('./phases/omp-runtime');
 const { writePlatformVersionMetadata } = require('./phases/write-metadata');
 const { checkVersions } = require('./lib/version-check');
 const { ensureGitignore } = require('./phases/root-config');
 const { runPostInstall } = require('./phases/post-install');
 const { setupSkillDeps } = require('./phases/skills-setup');
-const { setupRtk } = require('./phases/setup-rtk');
 const { printSummary } = require('./phases/summary');
 
 /** Install a single platform: payload + runtime + metadata, under one spinner. */
@@ -46,12 +51,18 @@ function installPlatform(ctx, platformKey) {
 
   // Read ownership baseline + start a fresh tracker for this platform.
   ctx.ownership[platform.folder] = manifestLib.read(platform.folder);
-  ctx.trackers[platformKey] = manifestLib.createTracker(platform.folder, packageJson.version);
+  ctx.trackers[platformKey] = manifestLib.createTracker(
+    platform.folder,
+    packageJson.version,
+    platform.ownership
+  );
 
   const before = { copied: ctx.results.copied, updated: ctx.results.updated, skills: ctx.results.installedSkills };
   ctx.ui.startSpinner(ctx.t('installingPlatform', { name: platform.name }));
 
   copyPlatformFiles(ctx, platformKey);
+  reconcileSkillInventory(ctx, platformKey);
+  removeObsoleteAgents(ctx, platformKey);
 
   if (platformKey === 'claude') {
     copyRoutingFile(ctx, platformKey);
@@ -60,10 +71,15 @@ function installPlatform(ctx, platformKey) {
     mergeClaudeSettings(ctx, platformKey);
     copyClaudeMdFile(ctx, platformKey);
     copyRulesDirectory(ctx, platformKey);
+    copyOutputStylesDirectory(ctx, platformKey);
   }
 
-  if (platformKey === 'opencode') {
-    installOpenCodeRuntime(ctx, platformKey);
+  if (platformKey === 'codex') {
+    installCodexRuntime(ctx, platformKey);
+  }
+
+  if (platformKey === 'omp') {
+    installOmpRuntime(ctx, platformKey);
   }
 
   writePlatformVersionMetadata(ctx, platformKey);
@@ -74,7 +90,7 @@ function installPlatform(ctx, platformKey) {
     name: platform.name, files: wrote, skills
   }));
 
-  ctx.results.targets.push(platform.commandsDir);
+  ctx.results.targets.push(platform.commandsDir || platform.skillsDir || platform.folder);
 }
 
 function printHelp() {
@@ -83,17 +99,19 @@ function printHelp() {
 Usage: npx @haposoft/cafekit [options]
 
 Installs CafeKit skills, agents, rules and runtime into the current project
-(.claude/ and/or .opencode/). Re-runs are selective: managed files are updated,
+for Claude Code and/or Codex CLI. Re-runs are selective: managed files are updated,
 your edits are preserved.
 
 Options:
+  --platform <id[,id]> Select claude or codex explicitly
   --dry-run            Preview changes; write nothing
   --force-overwrite    Overwrite user-modified managed files (backup kept)
   -u, --upgrade, -f, --force   Alias of --force-overwrite
   --with-skills-deps   Install skill dependencies (Python venv + pip, npm,
                        Chromium/Playwright). Otherwise prompted interactively.
-  --with-rtk           Install the rtk token-saver (binary + Claude Code hook).
                        Otherwise prompted interactively.
+  --with-document-skills     Install docs/DOCX/PDF/PPTX/XLSX/multimodal skills
+  --without-document-skills  Skip or remove CafeKit-owned document skills
   -y, --yes            Non-interactive: skip prompts, use defaults (CI)
   -h, --help           Show this help
   -v, --version        Print version
@@ -133,7 +151,7 @@ async function main() {
     await resolvePlatforms(ctx);
     if (ctx.cancelled) { lock.release(); process.exit(0); }
 
-    // Version check: same → exit, downgrade → confirm, upgrade → version picker
+    // Version check: same → selective refresh, downgrade → confirm, upgrade → picker
     await checkVersions(ctx);
     if (ctx.cancelled) { lock.release(); process.exit(0); }
 
@@ -154,14 +172,20 @@ async function main() {
       process.exit(result.status ?? 1);
     }
 
+    await selectDocumentSkills(ctx);
+    if (ctx.cancelled) { lock.release(); process.exit(0); }
+
     // ── Pre-run snapshot for rollback ─────────────────────
     // Capture platform folders AND the root files the pipeline mutates
     // (CLAUDE.md, .gitignore) so a mid-run failure rolls back cleanly.
     if (!ctx.dryRun) {
-      const folders = ctx.platforms.map((key) => PLATFORMS[key].folder);
-      ctx.backupDir = backup.snapshot([...folders, 'CLAUDE.md', '.gitignore'], ctx.runId);
+      const targets = ctx.platforms.flatMap((key) => (
+        PLATFORMS[key].backupTargets || [PLATFORMS[key].folder]
+      ));
+      ctx.backupDir = backup.snapshot([...targets, '.gitignore'], ctx.runId);
     }
 
+    ensureSharedAgentsMdCore(ctx);
     for (const platformKey of ctx.platforms) {
       installPlatform(ctx, platformKey);
     }
@@ -169,12 +193,19 @@ async function main() {
     ensureGitignore(ctx);
     await runPostInstall(ctx);
     await setupSkillDeps(ctx);
-    await setupRtk(ctx);
+
+    // Phase handlers may report recoverable-looking errors through counters
+    // instead of throwing. Treat them as transactional failure so the snapshot
+    // is restored before any success summary or backup pruning occurs.
+    if (ctx.results.errors > 0) {
+      throw new Error(`Installer reported ${ctx.results.errors} error${ctx.results.errors === 1 ? '' : 's'}`);
+    }
+
     printSummary(ctx);
 
     if (!ctx.dryRun) backup.prune(3);
 
-    exitCode = ctx.results.errors > 0 ? 1 : 0;
+    exitCode = 0;
   } catch (error) {
     const log = ctx && ctx.ui ? ctx.ui : { error: (m) => console.error(m) };
     const t = ctx ? ctx.t : (k) => k;

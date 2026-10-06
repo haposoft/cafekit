@@ -7,42 +7,40 @@
   "skills": {
     "required": [
       "agent-browser",
-      "ai-multimodal",
-      "backend-development",
+      "ask",
       "brainstorm",
       "chrome-devtools",
       "code-review",
       "debug",
       "develop",
-      "devops",
-      "docs",
-      "docx",
-      "frontend-design",
-      "frontend-development",
-      "generate-graph",
+      "fix",
       "git",
-      "hotfix",
-      "impact-analysis",
-      "inspect",
-      "mobile-development",
-      "pdf",
-      "pptx",
-      "question",
-      "react-best-practices",
+      "orca",
       "research",
+      "scout",
       "specs",
       "sync",
       "test",
+      "ui-ux",
       "ui-ux-pro-max",
-      "web-testing",
-      "xlsx"
-    ]
+      "web-testing"
+    ],
+    "bundles": {
+      "documentSkills": [
+        "ai-multimodal",
+        "docs",
+        "docx",
+        "pdf",
+        "pptx",
+        "xlsx"
+      ]
+    }
   },
   "agents": {
     "required": [
       "test-runner.md",
       "code-auditor.md",
-      "god-developer.md",
+      "implementer.md",
       "debugger.md",
       "docs-keeper.md",
       "git-ops.md",
@@ -52,7 +50,8 @@
       "researcher.md",
       "spec-maker.md",
       "ui-ux-designer.md",
-      "deployer.md"
+      "deployer.md",
+      "strategist.md"
     ]
   },
   "scripts": {
@@ -60,8 +59,16 @@
       "validate-docs.cjs",
       "validate-docs-reconstruct.cjs",
       "generate-skill-catalog.cjs",
-      "browser-tool.cjs",
-      "validate-spec-output.cjs"
+      "validate-spec-output.cjs",
+      "scan-staged-secrets.cjs",
+      "workflow-policy.cjs",
+      "spec-resolver.cjs",
+      "spec-receipt.cjs",
+      "spec-ground.cjs",
+      "spec-semantic-model.cjs",
+      "spec-final-state.cjs",
+      "spec-readiness.cjs",
+      "provenance.cjs"
     ]
   },
   "agentReferences": {
@@ -71,28 +78,83 @@
     "assumed": []
   },
   "obsolete": {
+    "skills": [
+      "backend-development",
+      "frontend-development",
+      "frontend-design",
+      "mobile-development",
+      "devops",
+      "react-best-practices",
+      "inspect",
+      "hotfix",
+      "question",
+      "loop",
+      "route",
+      "delegate"
+    ],
+    "agents": {
+      "claude": ["agents/god-developer.md"],
+      "codex": ["agents/god_developer.toml"]
+    },
     "runtimeFiles": [
       "hooks/skill-router.cjs",
-      "hooks/lib/skill-router-routes.cjs"
+      "hooks/lib/skill-router-routes.cjs",
+      "scripts/browser-tool.cjs",
+      "skills/generate-graph",
+      "skills/impact-analysis",
+      "skills/specs/references/archive-workflow.md",
+      "skills/specs/references/ask-user-question-gates.md",
+      "skills/specs/references/codebase-analysis.md",
+      "skills/specs/references/cross-spec-dependency.md",
+      "skills/specs/references/research-strategy.md",
+      "skills/specs/references/scope-inquiry.md",
+      "skills/specs/references/translation-mirror.md",
+      "skills/specs/rules/design-discovery-full.md",
+      "skills/specs/rules/design-discovery-light.md",
+      "skills/specs/rules/design-principles.md",
+      "skills/specs/rules/design-review.md",
+      "skills/specs/rules/ears-format.md",
+      "skills/specs/rules/phase-decision-matrix.md",
+      "skills/specs/rules/task-scoring-rubric.md",
+      "skills/specs/rules/tasks-generation.md",
+      "hooks/usage.cjs",
+      "hooks/completion-authority.cjs",
+      "hooks/completion-authority-check.cjs",
+      "hooks/completion-authority-state.cjs",
+      "hooks/semantic-review-authority.cjs",
+      "hooks/task-scaffold-guard.cjs"
     ],
     "settingsHookCommandSubstrings": [
-      "hooks/skill-router.cjs"
+      "hooks/skill-router.cjs",
+      ".claude/hooks/usage.cjs",
+      ".claude/hooks/docs-sync.cjs",
+      ".claude/hooks/completion-authority.cjs",
+      ".codex/hooks/completion-authority.cjs",
+      ".codex\\hooks\\completion-authority.cjs",
+      ".claude/hooks/semantic-review-authority.cjs",
+      ".codex/hooks/semantic-review-authority.cjs",
+      ".codex\\hooks\\semantic-review-authority.cjs",
+      ".claude/hooks/task-scaffold-guard.cjs",
+      ".codex/hooks/task-scaffold-guard.cjs",
+      ".codex\\hooks\\task-scaffold-guard.cjs"
     ]
   },
   "runtime": {
     "files": [
       "gitignore",
       "runtime.json",
+      "runtime.schema.json",
       "status.cjs",
       "hooks/session.cjs",
+      "hooks/precompact.cjs",
       "hooks/docs-sync.cjs",
       "hooks/agent.cjs",
-      "hooks/usage.cjs",
       "hooks/privacy-block.cjs",
+      "hooks/secret-output-guardrail.cjs",
       "hooks/inspect-block.cjs",
-      "hooks/task-scaffold-guard.cjs",
       "hooks/rules.cjs",
       "hooks/spec-state.cjs",
+      "hooks/spec-gate.cjs",
       "hooks/state.cjs",
       "hooks/lib/color.cjs",
       "hooks/lib/parser.cjs",
@@ -100,7 +162,13 @@
       "hooks/lib/git.cjs",
       "hooks/lib/config.cjs",
       "hooks/lib/context.cjs",
-      "hooks/lib/detect.cjs"
+      "hooks/lib/detect.cjs",
+      "hooks/lib/hook-state-dir.cjs",
+      "hooks/lib/runtime-dir.cjs",
+      "hooks/lib/hook-payload.cjs",
+      "hooks/lib/privacy-command-analysis.cjs",
+      "hooks/lib/secret-keywords.cjs",
+      "hooks/lib/runtime-path-safety.cjs"
     ]
   },
   "settings": {

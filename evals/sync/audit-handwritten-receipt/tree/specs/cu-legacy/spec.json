@@ -1,0 +1,11 @@
+{
+  "schema_version": "2.1",
+  "feature_name": "cu-legacy",
+  "current_phase": "implementation",
+  "status": "in_progress",
+  "task_registry": {
+    "R1": { "path": "tasks/task-R1.md", "status": "pending", "updated_at": "2026-08-01T00:00:00Z" }
+  },
+  "planning_depth": "standard",
+  "workflow_policy": { "lane": "standard", "execution_tier": "single" }
+}

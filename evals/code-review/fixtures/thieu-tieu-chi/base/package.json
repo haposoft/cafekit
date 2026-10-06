@@ -1,0 +1,1 @@
+{ "name": "blog-slug", "private": true, "scripts": { "test": "node --test" } }

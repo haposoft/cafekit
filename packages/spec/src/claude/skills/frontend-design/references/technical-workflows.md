@@ -24,7 +24,7 @@ python scripts/gemini_batch_process.py \
   suitability for overlaying white text, professional quality.
   List any improvements needed." \
   --output docs/assets/hero-evaluation.md \
-  --model gemini-2.5-flash
+  --model gemma-4-31b-it
 
 # 3. If score ≥ 7/10, optimize for web
 python scripts/media_optimizer.py \
@@ -59,7 +59,7 @@ python scripts/gemini_batch_process.py \
   --task analyze \
   --prompt "[use extraction prompt from extraction-prompts.md]" \
   --output docs/design-guidelines/competitor-analysis.md \
-  --model gemini-2.5-flash
+  --model gemma-4-31b-it
 
 # 2. Generate asset based on extracted guidelines
 # (Review competitor-analysis.md for color palette, aesthetic)
@@ -77,7 +77,7 @@ python scripts/gemini_batch_process.py \
   --prompt "Compare to competitor design. Rate differentiation (1-10).
   Are we too similar or successfully distinct?" \
   --output docs/assets/differentiation-analysis.md \
-  --model gemini-2.5-flash
+  --model gemma-4-31b-it
 
 # 4. Extract colors from our final asset for CSS
 python scripts/gemini_batch_process.py \
@@ -85,7 +85,7 @@ python scripts/gemini_batch_process.py \
   --task analyze \
   --prompt "[use color extraction prompt from visual-analysis-overview.md]" \
   --output docs/assets/color-palette.md \
-  --model gemini-2.5-flash
+  --model gemma-4-31b-it
 ```
 
 ## Example 3: A/B Test Assets
@@ -116,7 +116,7 @@ python scripts/gemini_batch_process.py \
   3. Conversion potential
   Recommend which to test." \
   --output docs/assets/ab-comparison.md \
-  --model gemini-2.5-flash
+  --model gemma-4-31b-it
 
 # Generate production version of winner
 python scripts/gemini_batch_process.py \
@@ -146,5 +146,5 @@ python scripts/gemini_batch_process.py \
   --task analyze \
   --prompt "Rank these variations 1-3 with scores. Identify winner." \
   --output docs/assets/batch-analysis.md \
-  --model gemini-2.5-flash
+  --model gemma-4-31b-it
 ```

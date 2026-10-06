@@ -1,0 +1,122 @@
+{
+  "description": "CafeKit project-local lifecycle hooks for Codex CLI. Review and trust with /hooks.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \".codex/hooks/session.cjs\"",
+            "commandWindows": "node \".codex/hooks/session.cjs\""
+          },
+          {
+            "type": "command",
+            "command": "node \".codex/hooks/docs-sync.cjs\"",
+            "commandWindows": "node \".codex/hooks/docs-sync.cjs\""
+          },
+          {
+            "type": "command",
+            "command": "node \".codex/hooks/state.cjs\"",
+            "commandWindows": "node \".codex/hooks/state.cjs\""
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \".codex/hooks/agent.cjs\"",
+            "commandWindows": "node \".codex/hooks/agent.cjs\""
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \".codex/hooks/secret-output-guardrail.cjs\"",
+            "commandWindows": "node \".codex/hooks/secret-output-guardrail.cjs\""
+          },
+          {
+            "type": "command",
+            "command": "node \".codex/hooks/privacy-approval.cjs\"",
+            "commandWindows": "node \".codex/hooks/privacy-approval.cjs\""
+          },
+          {
+            "type": "command",
+            "command": "node \".codex/hooks/rules.cjs\"",
+            "commandWindows": "node \".codex/hooks/rules.cjs\""
+          },
+          {
+            "type": "command",
+            "command": "node \".codex/hooks/spec-state.cjs\"",
+            "commandWindows": "node \".codex/hooks/spec-state.cjs\""
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash|exec_command|apply_patch|Edit|Write|Read|Glob|Grep|mcp__.*|shell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \".codex/hooks/privacy-block.cjs\"",
+            "commandWindows": "node \".codex/hooks/privacy-block.cjs\""
+          },
+          {
+            "type": "command",
+            "command": "node \".codex/hooks/inspect-block.cjs\"",
+            "commandWindows": "node \".codex/hooks/inspect-block.cjs\""
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Agent|spawn_agent|update_plan|task|Task|TodoWrite",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \".codex/hooks/state.cjs\"",
+            "commandWindows": "node \".codex/hooks/state.cjs\""
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \".codex/hooks/spec-gate.cjs\"",
+            "commandWindows": "node \".codex/hooks/spec-gate.cjs\""
+          },
+          {
+            "type": "command",
+            "command": "node \".codex/hooks/state.cjs\"",
+            "commandWindows": "node \".codex/hooks/state.cjs\""
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \".codex/hooks/state.cjs\"",
+            "commandWindows": "node \".codex/hooks/state.cjs\""
+          }
+        ]
+      }
+    ]
+  }
+}

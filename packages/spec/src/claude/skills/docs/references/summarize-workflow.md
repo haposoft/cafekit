@@ -1,6 +1,6 @@
 # Summarize Workflow
 
-Use with `/hapo:docs --summarize`.
+Use with `/cf:docs --summarize`.
 
 ## Goal
 
@@ -48,7 +48,7 @@ Read the smallest evidence set needed:
 - runtime entry points and dependency boundaries needed to orient readers
 - tests/config only when they clarify behavior or commands
 
-Use `hapo:inspect` only if the relevant path is unclear. For a broad explicit scan, apply inspect scope gating first.
+Use `cf:scout` only if the relevant path is unclear. For a broad explicit scan, apply scout scope gating first.
 
 ### Phase 3: Write Summary
 

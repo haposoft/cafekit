@@ -24,7 +24,7 @@ Comprehensive testing approaches, frameworks, and quality assurance practices (2
 ### Frameworks by Language
 
 **TypeScript/JavaScript:**
-- **Vitest** - 50% faster than Jest in CI/CD, ESM native
+- **Vitest** - Faster than Jest in CI/CD, ESM native
 - **Jest** - Mature, large ecosystem, snapshot testing
 
 **Python:**
@@ -269,7 +269,7 @@ test('user can register and login', async ({ page }) => {
 
 ## Database Migration Testing
 
-**Critical:** 83% migrations fail without proper testing
+**Migrations fail without proper testing**
 
 ```typescript
 describe('Database Migrations', () => {

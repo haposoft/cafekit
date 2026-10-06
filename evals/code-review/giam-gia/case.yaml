@@ -1,0 +1,11 @@
+schema_version: "1.1"
+name: giam-gia
+tags: [code-review-baseline]
+runs: 10
+context:
+  scaffold_script: scaffold.sh
+execution:
+  prompt: "/cf:code-review commit cuối giúp mình nhé, mình vừa thêm mức giảm 15% cho đơn từ 1 triệu."
+  max_turns: 40
+  timeout_seconds: 900
+  allowed_tools: [Read, Glob, Grep, Skill, Bash, Edit, Write, Agent]

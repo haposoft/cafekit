@@ -1,11 +1,11 @@
 ---
 title: Platforms
-description: CafeKit runtime support overview for Claude Code and OpenCode.
+description: CafeKit runtime support overview for Claude Code and Codex CLI.
 ---
 
 <DocsHero
   eyebrow="Platforms"
-  title="Claude Code and OpenCode each get a self-contained runtime."
+  title="Claude Code and Codex CLI each get a native runtime."
   description="The installer detects the target platform from project markers and writes a complete, isolated runtime. Pick your platform below for the full bundle layout, hooks, plugins, and commands."
 />
 
@@ -14,19 +14,19 @@ description: CafeKit runtime support overview for Claude Code and OpenCode.
 ## Pick your platform
 
 - [Claude Code](/docs/platforms/claude) — `.claude/` skills, agents, hooks, runtime, and `CLAUDE.md`.
-- [OpenCode](/docs/platforms/opencode) — `.opencode/` skills, agents, plugins, runtime, and `AGENTS.md`.
+- **Codex CLI** — `.agents/skills`, `.codex/agents`, rules, scripts, hooks, runtime metadata, and a managed `AGENTS.md` block.
 
-Each platform is self-contained: OpenCode does not depend on any `.claude/` files, and Claude Code does not depend on any `.opencode/` files.
+Each runtime consumes the shared CafeKit contract through its native project surfaces. Physical package directories may keep legacy internal names while public skill names remain `ask`, `scout`, and `fix`.
 
 ## Detection
 
 | Platform | Markers |
 |---|---|
 | Claude Code | `.claude/`, `CLAUDE.md`, `.mcp.json` |
-| OpenCode | `.opencode/`, `AGENTS.md`, `opencode.json`, `opencode.jsonc` |
+| Codex CLI | `.codex/`, `.agents/`, or explicit installer selection |
 
-If both targets are detected, the installer offers a per-target choice. Empty marker files (e.g. `opencode.json: {}`) are valid project markers.
+If multiple current targets are detected, the installer offers a per-target choice.
 
 ## Future platforms
 
-Cursor is not a packaged runtime target in the current installer.
+OpenCode support ended in CafeKit 0.17; [OpenCode 0.16 notes](/docs/platforms/opencode) remain only for historical migration. Cursor is not a current packaged runtime target.

@@ -25,9 +25,9 @@ Comprehensive guide for image analysis, object detection, and visual understandi
 ## Model Selection
 
 ### Gemini 2.5 Series
-- **gemini-2.5-pro**: Best quality, segmentation + detection
-- **gemini-2.5-flash**: Fast, efficient, all features
-- **gemini-2.5-flash-lite**: Lightweight, all features
+- **gemma-4-31b-it**: Best quality, segmentation + detection
+- **gemma-4-31b-it**: Fast, efficient, all features
+- **gemma-4-31b-it-lite**: Lightweight, all features
 
 ### Feature Requirements
 - **Segmentation**: Requires 2.5+ models
@@ -49,7 +49,7 @@ with open('image.jpg', 'rb') as f:
     img_bytes = f.read()
 
 response = client.models.generate_content(
-    model='gemini-2.5-flash',
+    model='gemma-4-31b-it',
     contents=[
         'Describe this image in detail',
         genai.types.Part.from_bytes(data=img_bytes, mime_type='image/jpeg')
@@ -62,7 +62,7 @@ print(response.text)
 
 ```python
 response = client.models.generate_content(
-    model='gemini-2.5-flash',
+    model='gemma-4-31b-it',
     contents=[
         'Classify this image. Provide category and confidence level.',
         img_part
@@ -74,7 +74,7 @@ response = client.models.generate_content(
 
 ```python
 response = client.models.generate_content(
-    model='gemini-2.5-flash',
+    model='gemma-4-31b-it',
     contents=[
         'How many people are in this image and what are they doing?',
         img_part
@@ -88,7 +88,7 @@ response = client.models.generate_content(
 
 ```python
 response = client.models.generate_content(
-    model='gemini-2.5-flash',
+    model='gemma-4-31b-it',
     contents=[
         'Detect all objects in this image and provide bounding boxes',
         img_part
@@ -103,7 +103,7 @@ response = client.models.generate_content(
 
 ```python
 response = client.models.generate_content(
-    model='gemini-2.5-flash',
+    model='gemma-4-31b-it',
     contents=[
         'Create a segmentation mask for all people in this image',
         img_part
@@ -122,7 +122,7 @@ img1 = PIL.Image.open('photo1.jpg')
 img2 = PIL.Image.open('photo2.jpg')
 
 response = client.models.generate_content(
-    model='gemini-2.5-flash',
+    model='gemma-4-31b-it',
     contents=[
         'Compare these two images. What are the differences?',
         img1,
@@ -135,7 +135,7 @@ response = client.models.generate_content(
 
 ```python
 response = client.models.generate_content(
-    model='gemini-2.5-flash',
+    model='gemma-4-31b-it',
     contents=[
         'Extract all visible text from this image',
         img_part
@@ -155,7 +155,7 @@ with open('image.jpg', 'rb') as f:
     img_bytes = f.read()
 
 response = client.models.generate_content(
-    model='gemini-2.5-flash',
+    model='gemma-4-31b-it',
     contents=[
         'Analyze this image',
         types.Part.from_bytes(data=img_bytes, mime_type='image/jpeg')
@@ -171,7 +171,7 @@ import PIL.Image
 img = PIL.Image.open('photo.jpg')
 
 response = client.models.generate_content(
-    model='gemini-2.5-flash',
+    model='gemma-4-31b-it',
     contents=['What is in this image?', img]
 )
 ```
@@ -184,12 +184,12 @@ myfile = client.files.upload(file='large-image.jpg')
 
 # Use multiple times
 response1 = client.models.generate_content(
-    model='gemini-2.5-flash',
+    model='gemma-4-31b-it',
     contents=['Describe this image', myfile]
 )
 
 response2 = client.models.generate_content(
-    model='gemini-2.5-flash',
+    model='gemma-4-31b-it',
     contents=['What colors dominate this image?', myfile]
 )
 ```
@@ -198,7 +198,7 @@ response2 = client.models.generate_content(
 
 ```python
 response = client.models.generate_content(
-    model='gemini-2.5-flash',
+    model='gemma-4-31b-it',
     contents=[
         'Analyze this image',
         types.Part.from_uri(
@@ -250,7 +250,7 @@ class ImageAnalysis(BaseModel):
     scene_type: str
 
 response = client.models.generate_content(
-    model='gemini-2.5-flash',
+    model='gemma-4-31b-it',
     contents=['Analyze this image', img_part],
     config=genai.types.GenerateContentConfig(
         response_mime_type='application/json',
@@ -272,7 +272,7 @@ images = [
 ]
 
 response = client.models.generate_content(
-    model='gemini-2.5-flash',
+    model='gemma-4-31b-it',
     contents=['Analyze these images and find common themes'] + images
 )
 ```
@@ -284,7 +284,7 @@ before = PIL.Image.open('before.jpg')
 after = PIL.Image.open('after.jpg')
 
 response = client.models.generate_content(
-    model='gemini-2.5-flash',
+    model='gemma-4-31b-it',
     contents=[
         'Compare before and after. List all visible changes.',
         before,
@@ -300,7 +300,7 @@ reference = PIL.Image.open('target.jpg')
 candidates = [PIL.Image.open(f'option{i}.jpg') for i in range(5)]
 
 response = client.models.generate_content(
-    model='gemini-2.5-flash',
+    model='gemma-4-31b-it',
     contents=[
         'Find which candidate images contain objects similar to the reference',
         reference
@@ -333,7 +333,7 @@ response = client.models.generate_content(
 **Few-shot examples**:
 ```python
 response = client.models.generate_content(
-    model='gemini-2.5-flash',
+    model='gemma-4-31b-it',
     contents=[
         'Example: For an image of a cat on a sofa, respond: "Object: cat, Location: sofa"',
         'Now analyze this image:',
@@ -371,7 +371,7 @@ response = client.models.generate_content(
 
 ```python
 response = client.models.generate_content(
-    model='gemini-2.5-flash',
+    model='gemma-4-31b-it',
     contents=[
         '''Analyze this product image:
         1. Identify the product
@@ -388,7 +388,7 @@ response = client.models.generate_content(
 
 ```python
 response = client.models.generate_content(
-    model='gemini-2.5-flash',
+    model='gemma-4-31b-it',
     contents=[
         'Extract all text and UI elements from this screenshot',
         img_part
@@ -400,7 +400,7 @@ response = client.models.generate_content(
 
 ```python
 response = client.models.generate_content(
-    model='gemini-2.5-pro',
+    model='gemma-4-31b-it',
     contents=[
         'Describe visible features in this medical image. Note: This is for informational purposes only.',
         img_part
@@ -412,7 +412,7 @@ response = client.models.generate_content(
 
 ```python
 response = client.models.generate_content(
-    model='gemini-2.5-flash',
+    model='gemma-4-31b-it',
     contents=[
         'Extract data from this chart and format as JSON',
         img_part
@@ -424,7 +424,7 @@ response = client.models.generate_content(
 
 ```python
 response = client.models.generate_content(
-    model='gemini-2.5-flash',
+    model='gemma-4-31b-it',
     contents=[
         '''Analyze this scene:
         1. Location type
@@ -451,7 +451,7 @@ def analyze_image_with_retry(image_path, prompt, max_retries=3):
                 img_bytes = f.read()
 
             response = client.models.generate_content(
-                model='gemini-2.5-flash',
+                model='gemma-4-31b-it',
                 contents=[
                     prompt,
                     genai.types.Part.from_bytes(

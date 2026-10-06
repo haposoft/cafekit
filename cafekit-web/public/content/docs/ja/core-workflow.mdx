@@ -1,139 +1,56 @@
 ---
 title: Core workflow
-description: idea から verified change までの CafeKit の主ルート。
+description: Bounded intent から verified change までの CafeKit main path。
 ---
 
-<DocsHero
-  eyebrow="Main workflow"
-  title="Idea は contract になってから code になります。"
-  description="CafeKit の delivery workflow は specs から始まります。contract を作り、task packet を固定し、1つの boundary を実装し、実 evidence で verify し、adversarial review を通し、state を sync します。"
-/>
+<DocsHero eyebrow="Main workflow" title="Intent は reviewed contract を通って code になります。" description="C1 で scope、C2 で findings review、one flat task を implement、proof、C3 で user が close。" />
 
 <CoreWorkflowMap />
 
-## Short version
+## Main path
 
 ```text
-/hapo:specs                  # requirements, research, design, tasks
-  -> approve task packet     # scope と evidence の contract
-  -> /hapo:develop           # unblocked task を1つずつ
-  -> /hapo:test              # real commands と runtime proof
-  -> /hapo:code-review       # spec, quality, security, regression
-  -> /hapo:sync              # task_registry と task markdown を同期
+/cf:brainstorm         # intent または architecture が未解決なら optional
+  -> /cf:specs         # C1 -> plan.md + flat tasks -> adversarial review -> C2
+  -> planning stop
+  -> /cf:develop       # new explicit invocation; one unblocked task
+  -> /cf:test          # smallest adequate real proof
+  -> /cf:code-review   # correctness, security, regression, contract drift
+  -> /cf:sync          # observed Status と inline Receipt のみ
+  -> C3                  # user completion decision
 ```
 
-重要なのは command list そのものではありません。重要なのは **chat が source of truth ではない** という点です。永続的な contract は `specs/<feature>/spec.json`, `requirements.md`, `research.md`, `design.md`, `tasks/task-R*.md` にあります。
+Chat は source of truth ではありません。New work は `specs/<feature>/plan.md` と flat `task-NN-*.md` を使います。
 
-## Optional pre-spec clarification
+## Contract and execution
 
-request がまだ粗い場合は `/hapo:brainstorm` を使います。product direction が未確定、architecture の選択肢が残っている、risk が不明、最初の質問を repo reality に基づけたい場合です。
+`plan.md` は C1 scope、exclusions、acceptance criteria、dependencies、C2 decisions を記録します。各 task は one outcome、one `Status:`、ownership、dependencies、proof command、final inline `## Receipt` を持ちます。
 
-Brainstorm は scout-first で、delivery path の前にあります。この phase では implementation code を書きません。出力は spec-ready な decision set です: 何を解くか、何を out of scope にするか、どの architecture が最も単純か、どの risk を spec に持ち込むか。
+Develop は mutation 前に real entrypoints と callers を scout。Runtime-facing work は actual route、command、UI mount、worker、service、API boundary から reachable になるまで incomplete です。
 
-request が requirements に変換できるほど具体的な場合だけ、この phase を skip します。
+Named technology や runtime choice を黙って置換しません。Scope change は plan と user decision に戻します。
 
-## 1. Request を spec にする
-
-`/hapo:specs` は intent を永続 artifact に変換します。健全な spec には以下があります:
-
-| Artifact | Role |
-|---|---|
-| `spec.json` | machine-readable な status, phase, scope, task registry, task file list。 |
-| `requirements.md` | functional requirements, non-functional requirements, constraints, acceptance criteria。 |
-| `research.md` | source-backed research と technical decisions。 |
-| `design.md` | architecture, contracts, data flow, interfaces, invariants。 |
-| `tasks/task-R*.md` | objective, related files, steps, completion criteria, evidence を含む task packet。 |
-
-Spec は paperwork ではありません。drift を防ぐ層です。assistant が named technology を置き換える、hidden scope を増やす、placeholder behavior を complete と呼ぶことを防ぎます。
-
-## 2. Task packet を approve する
-
-CafeKit implementation は、assistant の頭の中にある feature 全体から始めません。1つの active task packet から始めます。
-
-Task packet は次を答えられる必要があります:
-
-- どの behavior が正確に in scope か？
-- どの file / surface が related か？
-- どの requirement を満たす task か？
-- どの design contract を守る必要があるか？
-- done を証明する evidence は何か？
-- 何を guess せず blocker として扱うべきか？
-
-これらが不足している場合は `/hapo:specs` または `/hapo:sync audit <feature>` に戻します。implementation guess で gap を埋めません。
-
-## 3. Boundary を1つずつ実装する
-
-Full-spec execution は `/hapo:develop <feature>`、surgical task は `/hapo:develop <feature> <task-file>` を使います。
-
-CafeKit の implementation rule は単純です: **1つの unblocked task、1つの scout、1つの implementation loop、1つの proof set**。
-
-Code の前に task を `in_progress` にします。assistant は real entrypoints, callers, adjacent patterns, previous task outputs, blast radius を inspect する必要があります。runtime-facing work は、実際の route, command, UI mount, worker, service, API boundary から reachable になるまで incomplete です。
-
-Named contract を黙って差し替えません。spec が Next.js route, Better Auth, Redis, Drizzle, S3, OpenCode command, その他 concrete runtime choice を指定している場合、それは contract です。spec が明示しない限り、local placeholder はそれを満たしません。
-
-## 4. Optimism ではなく evidence で verify する
-
-Implementation 後に `/hapo:test <feature>` または `/hapo:test --full` を使います。Test phase は runner を detect し、real commands を実行し、results を集め、requirements, design contracts, task evidence, reachability obligations と比較します。
-
-`NO_TESTS` は pass ではありません。command が `0` で終了しても zero tests なら pass ではありません。Build success だけでは runtime-facing task の proof になりません。task には completion criteria に合う evidence が必要です。
+## Proof stack
 
 <WorkflowProofStack />
 
-## 5. Production を壊そうとしている change として review する
+Green command だけでは不十分です。Acceptance に関係する exact commands を実行し、zero tests と `NO_TESTS` は pass しません。Review finding は repair と reverify まで completion を block します。
 
-`/hapo:code-review --pending`、feature scope、PR、commit target を使います。
-
-Review は3層を確認します:
-
-| Layer | Catches |
-|---|---|
-| Spec compliance | missing requirements, extra scope, wrong runtime choice, unverified task claims。 |
-| Code quality | YAGNI, KISS, DRY, naming, boundaries, hardcoded values, missing tests。 |
-| Adversarial review | security holes, edge cases, race conditions, false assumptions, regression paths。 |
-
-Critical finding は completion を block します。Review は polish step ではなく Definition of Done の一部です。
-
-## 6. State と documentation を sync する
-
-Proof が存在してから `/hapo:sync <feature> <task> done` を使います。State drift が疑われる場合は `/hapo:sync audit <feature>` を使います。CafeKit は machine state と human state が一緒に進むことを期待します:
+## State ownership
 
 <WorkflowStateRail />
 
-Task が `done` になるとき、`spec.json.task_registry` と該当 task markdown は一致している必要があります。Task には readable verification receipt が必要です: 実行した commands、outcomes、artifact proof、runtime proof、または recorded blocker。
+Controller だけが task Status と canonical Receipt を更新します。Sync は observed state を reconcile できますが execution、approval、completion を捏造できません。
 
-Verified task の後は docs checkpoint を考慮します。Source behavior が変わり、docs や onboarding が嘘になるなら release 前に更新します。
-
-## Main workflow が分岐する場合
-
-Core flow は planned feature delivery 用です。作業タイプが違う場合は別 route を使います:
+## Alternate routes
 
 | Situation | Route |
 |---|---|
-| 既存 system に信頼できる docs がない | specs の前に `/hapo:docs --reconstruct <scope>`。 |
-| Root cause が不明 | code 変更前に `/hapo:debug`。 |
-| Production bug に narrow fix が必要 | evidence-first diagnosis 後に `/hapo:hotfix`。 |
-| Spec/task state が drift している | `/hapo:sync audit <feature>`。 |
-| Architecture に visual artifact が必要 | `/hapo:generate-graph <request>`。 |
-| Verified changes を publish できる | `/hapo:git commit` then `/hapo:git push`。 |
+| Evidence-backed answer | `/cf:ask` |
+| Scoped codebase discovery | `/cf:scout` |
+| Root cause unknown | `/cf:debug` |
+| Diagnosed bug repair | `/cf:fix` |
+| Existing system lacks reliable docs | `/cf:docs --reconstruct <scope>` |
+| Uncertain technical decision | `/cf:research` |
 
-## OpenCode equivalent
-
-OpenCode は prefix-free commands を使いますが、同じ CafeKit skill bundle を読みます:
-
-```text
-/specs -> /develop -> /test -> /code-review
-```
-
-Contract は同じです: source-backed spec、1 task at a time、real evidence、adversarial review、synchronized state。
-
-## Definition of Done
-
-CafeKit task は以下がすべて true のときだけ done です:
-
-- Approved task packet が hidden scope change なしに実装された。
-- Runtime-facing work が real entrypoint に wired された。
-- Completion criteria が満たされた。
-- Verification evidence に exact commands と outcomes が記録された。
-- Code review に blocking correctness, security, regression issue がない。
-- `spec.json` と task markdown が一致している。
-- Docs impact が処理済み、または明示的に記録されている。
+Claude Code は `/cf:*`、Codex CLI は native `$cf-*` skills。OpenCode commands は historical 0.16 notes のみです。

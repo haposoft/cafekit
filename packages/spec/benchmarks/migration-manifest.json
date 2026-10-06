@@ -1,0 +1,49 @@
+{
+  "schema_version": "1",
+  "feature": "cafekit-semantic-eval-firewall",
+  "description": "R8.1 migration checklist for the canonical semantic-model IR (C11) cutover. Each phase is explicit and sequential; a phase only advances once its own rollback condition is provably false for the current candidate.",
+  "phases": [
+    {
+      "phase": "inventory",
+      "order": 0,
+      "description": "Enumerate every markdown-projection call site (spec-semantic-model.cjs, spec-readiness.cjs, validate-spec-output.cjs) that must eventually read from the canonical IR instead of re-deriving from Markdown ad hoc.",
+      "owner_task": "R3-01",
+      "rollback_condition": "A call site is discovered after report-only wiring begins that was not inventoried here; migration halts at inventory until the manifest is corrected."
+    },
+    {
+      "phase": "report_only_diagnostics",
+      "order": 1,
+      "description": "IR mode = shadow. Dual-run compare runs on every candidate under C11 and writes a disagreement report on mismatch, but Markdown projection remains semantic_model authority; disagreements never alone flip readiness.",
+      "owner_task": "R3-01",
+      "rollback_condition": "Any disagreement report references a private/sealed fixture body or omits a required C11 field; mode reverts to off until the wiring defect is fixed."
+    },
+    {
+      "phase": "public_property_coverage",
+      "order": 2,
+      "description": "Public metamorphic and mutation controls (R7) exercise the IR path so normalized graph invariants and mutant-kill proofs cover both the Markdown and IR projections before promote is ever considered.",
+      "owner_task": "R4-02",
+      "rollback_condition": "A critical mutant survives against the IR projection while shadow mode is active; promote is refused until the owned mutation suite is green."
+    },
+    {
+      "phase": "dual_run",
+      "order": 3,
+      "description": "Shadow dual-run continues across every ordered D8 release gate on the same candidate, accumulating zero-disagreement evidence, fresh independent adjudication, and Claude/Codex packed parity.",
+      "owner_task": "R5-01",
+      "rollback_condition": "Any D8 gate fails, adjudication is stale, or packed parity diverges; mode stays shadow and the candidate does not qualify for promote."
+    },
+    {
+      "phase": "promote",
+      "order": 4,
+      "description": "IR mode flips to promote only under the exact D5 gate list on the same candidateDigest: every D8 gate passed, fresh adjudication, packed parity, and zero shadow disagreement. IR becomes semantic_model projection authority; a promote-mode disagreement hard-fails readiness and rolls mode back to shadow immediately, never sticky.",
+      "owner_task": "R5-01",
+      "rollback_condition": "A promote-mode disagreement occurs for any candidate; mode is written back to shadow in the same cycle and the next candidate must re-earn every gate from shadow again."
+    },
+    {
+      "phase": "proxy_removal",
+      "order": 5,
+      "description": "The legacy Markdown-projection proxy path is removed from the readiness/model call sites only while the owned mutation suite continues to kill every critical mutant against the IR-only path with promote stable across multiple candidates.",
+      "owner_task": "R5-01",
+      "rollback_condition": "A previously-killed critical mutant survives once the Markdown proxy path is removed, or promote has not remained stable (no rollback) across the required consecutive candidates; the proxy path is restored and proxy_removal is deferred."
+    }
+  ]
+}

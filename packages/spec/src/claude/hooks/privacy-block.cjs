@@ -7,20 +7,20 @@
  * Claude Code CLI privacy gate for sensitive files.
  *
  * Runtime contract:
- * - Non-bash file access to sensitive files is blocked with a JSON marker
- * - Assistant must use AskUserQuestion with that JSON payload
- * - If user approves, assistant should read via `bash cat "file"`
- * - Bash access is allowed with a warning to enable the approved follow-up path
+ * - Sensitive access returns Claude Code's native PreToolUse "ask" decision
+ * - The same decision applies to direct tools and Bash commands
+ * - Symlinks are classified by their resolved target before their alias
  *
- * Exit: 0 = allow, 2 = block
+ * Exit: 0 (the JSON hook output carries the permission decision)
  */
 
 try {
   const fs = require('fs');
   const path = require('path');
+  const { commandAccess } = require('./lib/privacy-command-analysis.cjs');
 
   const RESTRICTED_PATTERNS = [
-    /^\.env(\.|$)/i,
+    /^\.env(?:[.\[*?{]|$)/i,
     /^credentials/i,
     /secrets?\.(ya?ml|json)$/i,
     /\.pem$/i,
@@ -41,9 +41,10 @@ try {
     /\.env\.(example|sample|template|test)$/i
   ];
 
+  const { runtimeDirName, runtimeDir, runtimePath } = require('./lib/runtime-dir.cjs');
   function readRuntime(cwd) {
     try {
-      const file = path.join(cwd, '.claude', 'runtime.json');
+      const file = runtimePath(cwd, 'runtime.json');
       return fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : {};
     } catch {
       return {};
@@ -60,14 +61,107 @@ try {
     return RESTRICTED_PATTERNS.some((rule) => rule.test(base) || rule.test(filePath));
   }
 
-  function extractBashPaths(command) {
-    const paths = [];
-    const regex = /(?:cat|less|more|head|tail|source|\.)\s+(?:"([^"]+)"|'([^']+)'|([^\s]+))/g;
-    let match;
-    while ((match = regex.exec(command)) !== null) {
-      paths.push(match[1] || match[2] || match[3]);
+  /**
+   * Resolve a symlink to its real target so a harmless-looking name that points
+   * at a sensitive file cannot slip through the basename check. Returns null
+   * when the path cannot be resolved (missing file, broken link) — fail-open to
+   * the original-path check in that case. See isSymlinkToSensitive for dangling handling.
+   */
+  function resolveTarget(filePath, cwd) {
+    try {
+      const requested = path.isAbsolute(filePath) ? filePath : path.resolve(cwd, filePath);
+      return fs.realpathSync(requested);
+    } catch {
+      return null;
     }
-    return paths;
+  }
+
+  /**
+   * When realpath fails, check whether the requested path is a symlink (or chain)
+   * whose lexical target is sensitive. Dangling link to protected target -> true (fail-closed ask);
+   * dangling benign link or link to allowed example/template -> false (allow).
+   * Limit hops to avoid loops; malformed/looping -> fail closed.
+   * TOCTOU note: check and use are not atomic; target could be swapped between this check and the actual read.
+   * This is a best-effort guardrail, not an arbitrary-shell security boundary. For strong isolation use OS sandbox.
+   */
+  function isSymlinkToSensitive(filePath, cwd) {
+    try {
+      const requested = path.isAbsolute(filePath) ? filePath : path.resolve(cwd, filePath);
+      let current = requested;
+      let hops = 0;
+      const MAX_HOPS = 8;
+      while (hops < MAX_HOPS) {
+        let stat;
+        try {
+          stat = fs.lstatSync(current);
+        } catch {
+          return false;
+        }
+        if (!stat.isSymbolicLink()) return false;
+        let linkTarget;
+        try {
+          linkTarget = fs.readlinkSync(current);
+        } catch {
+          return true;
+        }
+        if (isSensitive(linkTarget) && !isSafe(linkTarget)) return true;
+        if (isSafe(linkTarget)) return false;
+        const next = path.isAbsolute(linkTarget) ? linkTarget : path.resolve(path.dirname(current), linkTarget);
+        if (next === current) return true;
+        try {
+          const real = fs.realpathSync(next);
+          if (isSensitive(real) && !isSafe(real)) return true;
+          if (isSafe(real)) return false;
+          return false;
+        } catch {
+          current = next;
+          hops += 1;
+          continue;
+        }
+      }
+      return true;
+    } catch {
+      return true;
+    }
+  }
+
+  function extractBashPaths(command) {
+    // The analyzer parses the command and returns the operands of every reading
+    // command it recognises, nested shells and `find -exec` included. Treating
+    // every unresolved expansion as sensitive, as this did before, asked on
+    // `cat $FILE`, `wc -l *.cjs` and `cat ~/.zshrc` alike. Noise is what trains
+    // people to click through the prompt that matters.
+    // A heredoc whose delimiter is quoted (<<'BODY') is inert: the shell
+    // expands nothing inside it, so no word in the body is ever read. The
+    // analyzer has no notion of heredocs and parses the body as shell, so prose
+    // that quotes a command -- a PR body carrying `cat .env` in backticks --
+    // came back as a real command substitution. Blank those bodies out first.
+    // An unquoted delimiter (<<BODY) does expand, so it is left to the
+    // analyzer.
+    const scrubbed = String(command).replace(
+      /(<<-?[ \t]*)(['"])([A-Za-z_]\w*)\2[^\n]*\n[\s\S]*?\n[ \t]*\3\b/g,
+      '$1$2$3$2'
+    );
+
+    const paths = new Set(commandAccess(scrubbed).paths);
+
+    // Two shapes the analyzer cannot return. It drops any word carrying an
+    // expansion, so `~/.ssh/id_rsa` and `certs/*.pem` still have to be matched
+    // by name. And it only walks commands it recognises, so an unknown tool
+    // handed a secret through a file-shaped option, such as
+    // `docker compose --env-file .env`, is invisible to it.
+    const FILE_OPTION = /^--?[\w-]*(?:file|config|key|cert|identity)$/i;
+    const tokens = scrubbed.split(/[\s|;&<>"'()`]+/);
+    for (let index = 0; index < tokens.length; index += 1) {
+      const token = tokens[index];
+      const shaped = /^~|[*?[{]/.test(token);
+      const optionFed = index > 0 && FILE_OPTION.test(tokens[index - 1]);
+      if (!shaped && !optionFed) continue;
+      const value = token.replace(/^~/, '').replace(/^["'()`]+|["'(),]+$/g, '');
+      if (value && isSensitive(value) && !isSafe(value)) paths.add(value);
+    }
+
+    return [...paths];
   }
 
   function extractPaths(toolName, input) {
@@ -93,51 +187,25 @@ try {
     return paths.filter(Boolean);
   }
 
-  function formatBlockMessage(filePath) {
+  function askForPermission(filePath) {
     const basename = path.basename(filePath);
-    const promptData = {
-      type: 'PRIVACY_PROMPT',
-      file: filePath,
-      basename,
-      question: {
-        header: 'File Access',
-        text: `I need to read "${basename}" which may contain sensitive data (API keys, passwords, tokens). Do you approve?`,
-        options: [
-          {
-            label: 'Yes, approve access',
-            description: `Allow reading ${basename} this time`
-          },
-          {
-            label: 'No, skip this file',
-            description: 'Continue without accessing this file'
-          }
-        ]
+    process.stdout.write(JSON.stringify({
+      hookSpecificOutput: {
+        hookEventName: 'PreToolUse',
+        permissionDecision: 'ask',
+        permissionDecisionReason: `Sensitive file access requires approval: ${basename}`
       }
-    };
-
-    return [
-      'NOTE: This is not an error. This block protects sensitive data.',
-      '',
-      `PRIVACY BLOCK: Sensitive file access requires user approval`,
-      `File: ${filePath}`,
-      '',
-      '@@PRIVACY_PROMPT_START@@',
-      JSON.stringify(promptData, null, 2),
-      '@@PRIVACY_PROMPT_END@@',
-      '',
-      'Claude Code follow-up:',
-      `- If approved: use bash to read: cat "${filePath}"`,
-      '- If denied: continue without this file'
-    ].join('\n');
+    }) + '\n');
   }
 
   const stdin = fs.readFileSync(0, 'utf8').trim();
   if (!stdin) process.exit(0);
 
-  const data = JSON.parse(stdin);
+  const { normalizeHookPayload } = require('./lib/hook-payload.cjs');
+  const data = normalizeHookPayload(JSON.parse(stdin));
   const toolName = data.tool_name || '';
   const toolInput = data.tool_input || {};
-  const cwd = data.cwd || process.cwd();
+  const cwd = typeof data.cwd === 'string' && data.cwd.trim() ? data.cwd : process.cwd();
   const runtime = readRuntime(cwd);
 
   if (runtime.privacyBlock === false) process.exit(0);
@@ -146,34 +214,36 @@ try {
   if (!paths.length) process.exit(0);
 
   for (const filePath of paths) {
-    if (isSafe(filePath)) continue;
-    if (!isSensitive(filePath)) continue;
+    const target = resolveTarget(filePath, cwd);
 
-    if (toolName === 'Bash') {
-      console.error(`WARN: Privacy-sensitive file access via bash allowed for approved follow-up: ${path.basename(filePath)}`);
-      process.exit(0);
+    // The real target is authoritative: an exempt-looking alias must not hide
+    // a sensitive target, while a real .env.example target remains safe.
+    if (target) {
+      if (isSensitive(target) && !isSafe(target)) {
+        askForPermission(filePath);
+        process.exit(0);
+      }
+      if (isSafe(target)) continue;
+    } else {
+      if (isSymlinkToSensitive(filePath, cwd)) {
+        askForPermission(filePath);
+        process.exit(0);
+      }
     }
 
-    console.error(formatBlockMessage(filePath));
-    process.exit(2);
+    if (isSafe(filePath) || !isSensitive(filePath)) continue;
+    askForPermission(filePath);
+    process.exit(0);
   }
 
   process.exit(0);
-} catch (error) {
-  try {
-    const fs = require('fs');
-    const path = require('path');
-    const logDir = path.join(__dirname, '.logs');
-    if (!fs.existsSync(logDir)) fs.mkdirSync(logDir, { recursive: true });
-    fs.appendFileSync(
-      path.join(logDir, 'hook-log.jsonl'),
-      JSON.stringify({
-        ts: new Date().toISOString(),
-        hook: 'privacy-block',
-        status: 'crash',
-        error: error.message
-      }) + '\n'
-    );
-  } catch (_) {}
+} catch (_) {
+  process.stdout.write(JSON.stringify({
+    hookSpecificOutput: {
+      hookEventName: 'PreToolUse',
+      permissionDecision: 'ask',
+      permissionDecisionReason: 'Sensitive access could not be evaluated safely.'
+    }
+  }) + '\n');
   process.exit(0);
 }

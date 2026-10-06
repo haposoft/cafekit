@@ -1,0 +1,11 @@
+schema_version: "1.1"
+name: khong-luu-khong-sua-agent
+tags: [research-baseline]
+runs: 10
+context:
+  scaffold_script: scaffold.sh
+execution:
+  prompt: "Dùng agent researcher nghiên cứu kỹ các hạn mức gói miễn phí mà plans/sync-v2/plan.md đang giả định, xem còn đúng không."
+  max_turns: 40
+  timeout_seconds: 900
+  allowed_tools: [Read, Glob, Grep, Skill, Bash, Agent, WebSearch, WebFetch, Edit, Write]

@@ -4,11 +4,38 @@ const fs = require('fs');
 const path = require('path');
 
 const TEXT_REWRITE_EXTENSIONS = new Set([
-  '.md', '.mdx', '.txt', '.json', '.cjs', '.js', '.mjs', '.ts', '.sh', '.yml', '.yaml'
+  '.md', '.mdx', '.txt', '.json', '.cjs', '.js', '.mjs', '.ts', '.py', '.sh', '.toml', '.yml', '.yaml'
 ]);
 
 function isTextAsset(filePath) {
   return TEXT_REWRITE_EXTENSIONS.has(path.extname(filePath).toLowerCase());
+}
+
+// Generated artifacts never ship as runtime payload: the coverage db, the
+// Python bytecode cache directory, and bytecode files. Skipping them here keeps
+// both copyRecursive and copyManagedTree
+// built on copyRecursive) from ever copying build residue.
+function isGeneratedArtifact(name) {
+  const base = String(name || '');
+  return (
+    base === '.coverage'
+    || base === '__pycache__'
+    || base.endsWith('.pyc')
+    || base.endsWith('.pyo')
+  );
+}
+
+function normalizeSourcePaths(content, options = {}) {
+  const runtimeRoot = String(options.runtimeRoot || '.claude');
+  const skillsRoot = String(options.skillsRoot || `${runtimeRoot}/skills`);
+  const runtimeRootWindows = runtimeRoot.replace(/\//g, '\\');
+  const skillsRootWindows = skillsRoot.replace(/\//g, '\\');
+
+  return String(content)
+    .replace(/packages\/spec\/src\/claude\/skills(?=\/|$)/g, skillsRoot)
+    .replace(/packages\\spec\\src\\claude\\skills(?=\\|$)/g, skillsRootWindows)
+    .replace(/packages\/spec\/src\/claude(?=\/|$)/g, runtimeRoot)
+    .replace(/packages\\spec\\src\\claude(?=\\|$)/g, runtimeRootWindows);
 }
 
 function copyRecursive(src, dest, options = {}) {
@@ -22,10 +49,12 @@ function copyRecursive(src, dest, options = {}) {
       fs.mkdirSync(dest, { recursive: true });
     }
     fs.readdirSync(src).forEach(childItemName => {
+      if (isGeneratedArtifact(childItemName)) return;
       const destItemName = childItemName === 'gitignore' ? '.gitignore' : childItemName;
       copyRecursive(path.join(src, childItemName), path.join(dest, destItemName), options);
     });
   } else {
+    if (isGeneratedArtifact(path.basename(src))) return;
     if (fs.existsSync(dest) && !shouldOverwriteManagedFiles) {
       return;
     }
@@ -56,6 +85,8 @@ function readJsonFile(filePath) {
 module.exports = {
   TEXT_REWRITE_EXTENSIONS,
   isTextAsset,
+  isGeneratedArtifact,
+  normalizeSourcePaths,
   copyRecursive,
   readJsonFile
 };

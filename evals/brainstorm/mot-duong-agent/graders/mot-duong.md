@@ -1,0 +1,6 @@
+---
+type: regex
+target: last_message
+---
+
+(?<!(?:[Kk]hông|[Nn]ot|[Cc]hưa) )(?<!(?:[Kk]hông|[Cc]hưa) phải[^\n.;!?]{0,20})(?:[Cc]hỉ (?:có |còn lại |còn |để lại |có thể có )?(?:đúng )?(?:một|1|duy nhất(?: một)?)|[Dd]uy nhất(?: một)?|[Oo]nly (?:one|a single)|[Oo]ne viable|[Aa] single(?: viable)?|[Ss]ingle[- ](?:viable )?)[^\n]{0,30}?(?:hướng|phương án|cách|lựa chọn|đường|path|option|approach|design|solution)|(?<!(?:[Kk]hông|[Cc]hưa) phải (?:là )?)(?:hướng|phương án|lựa chọn|[Pp]ath|[Oo]ption|[Aa]pproach)(?: khả thi)? duy nhất|(?<!(?:[Kk]hông|[Cc]hưa) phải (?:là )?)cách(?: khả thi)? duy nhất(?![ \t]+để)|(?<![Nn]ot )[Tt]he only (?:viable |feasible )?(?:path|option|approach|design)|[Kk]hông (?:có |còn )?(?:hai|2) (?:hướng|phương án|cách|lựa chọn)(?: nào)?(?: thực sự)? (?:cạnh tranh|khả thi|đáng so)|[Nn]o two (?:viable |real )?(?:paths|options|approaches|designs)(?: really| truly)? (?:compete|are viable)|không phải (?:là )?(?:một )?(?:quyết định|lựa chọn) kiến trúc thật sự|[Nn]o (?:real|material) (?:architectural )?choice|(?<!(?:[Kk]hông|[Nn]ot|[Cc]hưa) )[Cc]hỉ còn (?:lại )?(?:đúng )?(?:một|1)(?=[.!;\n])|[Kk]hông có (?:một )?(?:lựa chọn|quyết định) kiến trúc (?:nào )?thật|(?:biến thể|cách viết|cách cài đặt)[^\n]{0,30}?(?:của )?cùng một (?:hướng|phương án|kiến trúc)

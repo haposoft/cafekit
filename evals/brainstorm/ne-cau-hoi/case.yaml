@@ -1,0 +1,12 @@
+schema_version: "1.1"
+name: ne-cau-hoi
+tags: [brainstorm-baseline]
+runs: 10
+context:
+  history_file: history.jsonl
+  scaffold_script: scaffold.sh
+execution:
+  prompt: "cái nào nhanh và chính xác nhất thì chọn, tôi không rành mấy cái này."
+  max_turns: 30
+  timeout_seconds: 900
+  allowed_tools: [Read, Glob, Grep, Skill, Bash, Agent, AskUserQuestion, WebSearch, WebFetch, Edit, Write]

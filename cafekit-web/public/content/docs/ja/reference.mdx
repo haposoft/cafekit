@@ -23,22 +23,39 @@ description: commands、package facts、files、state values。
 
 ## Command cheatsheet
 
-| Claude Code command | OpenCode command | Purpose |
-|---|---|---|
-| `/hapo:question` | `/question` | Project と technical questions に repo-first evidence で回答。 |
-| `/hapo:brainstorm` | `/brainstorm` | spec 前に idea を明確化。 |
-| `/hapo:specs` | `/specs` | specs の create、resume、validate、approve。 |
-| `/hapo:develop` | `/develop` | approved task packets の implementation。 |
-| `/hapo:test` | `/test` | task-aware verification。 |
-| `/hapo:code-review` | `/code-review` | regressions と security の review。 |
-| `/hapo:sync` | — | task status、`task_registry`、task markdown、phase、drift audit を sync。 |
-| `/hapo:debug` | `/debug` | fix 前に diagnose。 |
-| `/hapo:hotfix` | `/hotfix` | narrow diagnosed fixes。 |
-| `/hapo:docs` | `/docs` | docs の create、update、summarize、reconstruct。 |
-| `/hapo:inspect` | `/inspect` | source files と structure の scout。 |
-| `/hapo:generate-graph` | `/generate-graph` | technical diagrams の generation。 |
+2 列目は historical migration 用に固定された OpenCode 0.16 command surface
+です。OpenCode は current runtime ではなく、これらは現在の Claude/Codex
+command の alias ではありません。
 
-OpenCode は main implementation surface の generated slash commands を持ちます。`sync` skill は shared skill bundle に含まれますが、installer は現時点で `/sync` OpenCode wrapper を生成しません。
+| Claude Code command | Legacy OpenCode 0.16 command | Purpose |
+|---|---|---|
+| `/cf:ask` | `/question` | Project と technical questions に repo-first evidence で回答。 |
+| `/cf:brainstorm` | `/brainstorm` | spec 前に idea を明確化。 |
+| `/cf:specs` | `/specs` | C1/C2 を通じて process-first plan と flat tasks を作成。 |
+| `/cf:develop` | `/develop` | Approved flat task を one at a time で execute。 |
+| `/cf:test` | `/test` | task-aware verification。 |
+| `/cf:code-review` | `/code-review` | regressions と security の review。 |
+| `/cf:sync` | — | Observed task Status と final inline Receipt を sync。 |
+| `/cf:debug` | `/debug` | fix 前に diagnose。 |
+| `/cf:fix` | `/hotfix` | narrow diagnosed fixes。 |
+| `/cf:docs` | `/docs` | Optional bundle: docs の create、update、summarize、reconstruct。 |
+| `/cf:scout` | `/inspect` | source files と structure の scout。 |
+
+過去の OpenCode 0.16 install では、installer が main implementation surface の slash commands を生成していました。`sync` skill は shared skill bundle に含まれていましたが、installer は `/sync` OpenCode wrapper を生成しませんでした。
+
+## Skill の選択と loading
+
+Native selection は progressive disclosure を使います。Live catalog の
+metadata で candidate を特定し、選択した `SKILL.md` で contract を読み、
+必要な references だけを追加で読みます。Explicit または明確な low-risk
+work は installed skill を直接 invoke します。曖昧、multi-step、
+multi-domain、elevated-risk の場合だけ短い chain を構成します。Skill や
+agent が存在しない場合は、安全なら inline で続行し、それ以外は gap を
+明示します。Optional document skills は installed の場合だけ利用できます。
+
+Hooks は自動選択器ではないため、routing capability を選びません。Source
+と installed projection の parity は test されていますが、live-model
+adherence は `UNPROVEN` であり、semantic selection は非決定的です。
 
 ## Claude file structure
 

@@ -1,64 +1,52 @@
 ---
 title: インストール
-description: 現在の CafeKit package を導入、更新、確認する方法。
+description: Claude Code または Codex CLI 向け CafeKit の install、upgrade、verification。
 ---
 
 <DocsHero
   eyebrow="Install"
-  title="既存 repo に runtime を bootstrap する。"
-  description="Installer は Claude Code と OpenCode を検出し、managed runtime files をコピーし、settings を安全に merge し、インストール済み package version を記録します。"
+  title="既存 repo に native runtime を bootstrap。"
+  description="Installer は Claude Code または Codex CLI bundle を書き、user-owned settings と installed package version を保持します。"
 />
 
 ## Requirements
 
 - Node.js `>=18`
 - 書き込み可能な project root
-- Claude Code project、OpenCode project、または install 時の runtime 選択
+- Claude Code、Codex CLI、または明示的 runtime selection
 
-## Install
+## Install and upgrade
 
 ```bash
 npx @haposoft/cafekit
-```
-
-Binary は `cafekit` で、`packages/spec/bin/install.js` を実行します。
-
-## Upgrade
-
-```bash
 npx @haposoft/cafekit --upgrade
 ```
 
-Upgrade mode は managed files を更新し、obsolete runtime hooks を削除し、可能な限り user-owned settings を保持します。
+Fresh install には 18 core skills が含まれます。Interactive installer では
+`docs`, `docx`, `pdf`, `pptx`, `xlsx`, `ai-multimodal` の optional bundle を
+選択できます。Non-interactive install は明示しない限り bundle を含みません。
 
-## Platform detection
+```bash
+npx @haposoft/cafekit --with-document-skills
+npx @haposoft/cafekit --without-document-skills
+```
+
+後者は CafeKit-owned で未変更の skill を削除します。ユーザー変更は保持され、
+legacy install は最初の upgrade で bundle を維持します。
+
+## Installed runtimes
 
 | Runtime | Detection | Installed shape |
 |---|---|---|
-| Claude Code | `.claude/` | `.claude/skills`, `.claude/agents`, `.claude/hooks`, `settings.json`, `status.cjs`, `CLAUDE.md` |
-| OpenCode | `.opencode/`, `opencode.json`, or `opencode.jsonc` | `.opencode/skills`, `.opencode/agents`, `.opencode/commands`, `.opencode/plugins`, `.opencode/runtime.json`, root `AGENTS.md`, merged `opencode.json` |
+| Claude Code | `.claude/` | skills、agents、hooks、settings、runtime、`CLAUDE.md` |
+| Codex CLI | `.codex/`、`.agents/`、または `--platform codex` | `.agents/skills`、`.codex/agents`、rules、scripts、hooks、runtime、managed `AGENTS.md` block |
 
-runtime marker がない場合、installer が platform を質問します。
+Marker がない場合、installer が runtime を質問します。
 
 ## Verify
 
-target project の中で実行します。
+Claude Code: `/cf:specs Build a tiny verified feature`
 
-```bash
-/hapo:specs Build a tiny verified feature
-```
+Codex CLI: `$cf-specs Build a tiny verified feature`
 
-OpenCode では generated command は `hapo:` prefix を持ちません。
-
-```bash
-/specs Build a tiny verified feature
-```
-
-## Version tracking
-
-Installer は metadata をここに書きます。
-
-- `.claude/cafekit.json`
-- `.opencode/cafekit.json`
-
-`packageName`、`version`、`platform`、timestamps、previous version、exact install command が含まれます。
+Version と document bundle の選択は `.claude/cafekit.json` または `.codex/cafekit.json` に記録されます。

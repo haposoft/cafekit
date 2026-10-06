@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "cafekit-release-baseline.schema.json",
+  "title": "CafeKit C10 ReleaseBaselineAuthority",
+  "description": "Tracked discriminated-union authority at packages/spec/benchmarks/release-baseline.json. Only bootstrapBaseline (state=bootstrap, generation 0) and advanceBaseline (state=released, generation >= 1) may write it.",
+  "oneOf": [
+    { "$ref": "#/$defs/bootstrap" },
+    { "$ref": "#/$defs/released" }
+  ],
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "bootstrap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state", "generation", "baselineCommit", "baselinePackageVersion",
+        "bootstrapReviewDigest", "previousBaselineDigest"
+      ],
+      "properties": {
+        "state": { "const": "bootstrap" },
+        "generation": { "const": 0 },
+        "baselineCommit": { "$ref": "#/$defs/commit" },
+        "baselinePackageVersion": { "type": "string", "minLength": 1 },
+        "bootstrapReviewDigest": { "$ref": "#/$defs/sha256" },
+        "previousBaselineDigest": { "const": null }
+      }
+    },
+    "released": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state", "generation", "baselineCommit", "baselinePackageVersion", "previousBaselineDigest"
+      ],
+      "oneOf": [
+        { "required": ["releasedCandidateDigest"], "not": { "required": ["releaseReceiptDigest"] } },
+        { "required": ["releaseReceiptDigest"], "not": { "required": ["releasedCandidateDigest"] } }
+      ],
+      "properties": {
+        "state": { "const": "released" },
+        "generation": { "type": "integer", "minimum": 1 },
+        "baselineCommit": { "$ref": "#/$defs/commit" },
+        "baselinePackageVersion": { "type": "string", "minLength": 1 },
+        "releasedCandidateDigest": { "$ref": "#/$defs/sha256" },
+        "releaseReceiptDigest": { "$ref": "#/$defs/sha256" },
+        "previousBaselineDigest": { "$ref": "#/$defs/sha256" }
+      }
+    }
+  }
+}

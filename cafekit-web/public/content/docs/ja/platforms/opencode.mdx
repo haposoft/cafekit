@@ -1,21 +1,23 @@
 ---
-title: OpenCode
-description: OpenCode project 向け self-contained な CafeKit runtime。
+title: OpenCode 0.16 history
+description: OpenCode を最後に support した CafeKit release の frozen migration notes。
 ---
 
 <DocsHero
-  eyebrow="Platforms · OpenCode"
-  title="TypeScript plugins を持つ self-contained `.opencode/` runtime。"
-  description="CafeKit は `.claude/` とファイルを共有しない完全な OpenCode runtime を install します。Hooks は型付きの plugin に port され、session start で読み込まれます。"
+  eyebrow="Legacy platform · OpenCode 0.16"
+  title="Historical `.opencode/` runtime reference。"
+  description="OpenCode support は CafeKit 0.17 で終了しました。以下は migration 用の frozen 0.16 behavior で、current installer の説明ではありません。"
 />
+
+<Callout type="warning">Current CafeKit releases は Claude Code と Codex CLI を support します。この page を current installation guide として使わないでください。</Callout>
 
 ## インストール後の layout
 
 ```
 .opencode/
 ├── skills/         # Self-contained skill packs
-├── agents/         # Subagent prompts (hapo: prefix なし)
-├── commands/       # Slash commands (hapo: prefix なし)
+├── agents/         # Subagent prompts (cf: prefix なし)
+├── commands/       # Slash commands (cf: prefix なし)
 ├── plugins/        # TypeScript plugins (下記参照)
 ├── rules/          # Workflow, dev, docs, hook, state-sync rules
 ├── scripts/        # Helper scripts
@@ -47,7 +49,7 @@ OpenCode には per-prompt の inject channel がないため、`rules.ts` は `
 
 ## Commands
 
-OpenCode は意図的に `hapo:` prefix を省略します。
+OpenCode は意図的に `cf:` prefix を省略します。
 
 ```
 /question     /brainstorm    /specs       /develop

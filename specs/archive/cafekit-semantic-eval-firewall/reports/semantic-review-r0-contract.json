@@ -1,0 +1,602 @@
+{
+  "reviewed_criteria": [
+    "R1.1",
+    "R1.2",
+    "R1.3",
+    "R1.4",
+    "R1.5",
+    "R1.6",
+    "R1.7",
+    "R1.8",
+    "R1.9",
+    "R1.10",
+    "R1.11",
+    "R1.12",
+    "R1.13",
+    "R1.14",
+    "R2.1",
+    "R2.2",
+    "R2.3",
+    "R2.4",
+    "R2.5",
+    "R3.1",
+    "R3.2",
+    "R3.3",
+    "R3.4",
+    "R3.5",
+    "R3.6",
+    "R3.7",
+    "R3.8",
+    "R3.9",
+    "R4.1",
+    "R4.2",
+    "R4.3",
+    "R5.1",
+    "R5.2",
+    "R5.3",
+    "R5.4",
+    "R5.5",
+    "R5.6",
+    "R6.1",
+    "R6.2",
+    "R6.3",
+    "R6.4",
+    "R6.5",
+    "R6.6",
+    "R6.7",
+    "R6.8",
+    "R7.1",
+    "R7.2",
+    "R7.3",
+    "R8.1",
+    "R8.2",
+    "R8.3"
+  ],
+  "counterexamples": [
+    {
+      "criterion": "R1.1",
+      "case_kind": "negative",
+      "scenario": "A ChangeProposal with change_intent=benchmark_remediation for a protected path is submitted with an empty failure_ids array.",
+      "expected": "The gate refuses to return accept because benchmark_remediation requires a non-empty failure_ids array naming C15 ledger entries.",
+      "decision_refs": [
+        "C1",
+        "D1"
+      ],
+      "verification_ref": "V1"
+    },
+    {
+      "criterion": "R1.2",
+      "case_kind": "boundary",
+      "scenario": "A benchmark_remediation proposal names primary_failure_class=prompt_ambiguity for a protected path, while a separate authorized_evolution proposal targets the same path for a legitimate maintenance edit.",
+      "expected": "The benchmark_remediation proposal is refused because its class is not framework_regression, and this refusal is scoped to that variant only; the authorized_evolution proposal is evaluated independently under its own rule.",
+      "decision_refs": [
+        "C1",
+        "I8"
+      ],
+      "verification_ref": "V1"
+    },
+    {
+      "criterion": "R1.3",
+      "case_kind": "adversarial",
+      "scenario": "A caller sets the exact reserved environment key CAFEKIT_BASE_COMMIT to attempt overriding the tracked baseline authority during a freeze run.",
+      "expected": "The gate rejects the run with exit code 2 solely because that exact reserved key name is present via Object.prototype.hasOwnProperty, independent of the value assigned to it.",
+      "decision_refs": [
+        "D1",
+        "C10"
+      ],
+      "verification_ref": "V1"
+    },
+    {
+      "criterion": "R1.4",
+      "case_kind": "boundary",
+      "scenario": "A freeze is created while authority is at generation 3, and advanceBaseline later rotates authority to generation 4 without a fresh freeze being created afterward.",
+      "expected": "release-preflight compares the freeze's bound authority generation against the current authority generation, detects the mismatch, and exits 2 rather than accepting the now-stale freeze.",
+      "decision_refs": [
+        "C9",
+        "D1"
+      ],
+      "verification_ref": "V1"
+    },
+    {
+      "criterion": "R1.5",
+      "case_kind": "adversarial",
+      "scenario": "A caller assembles the candidateDigest input object and deliberately includes a candidateDigest field inside that same object before hashing it.",
+      "expected": "computeCandidateDigest excludes its own field from the stable binding input; an attempt to fold the not-yet-computed digest into its own hash input is rejected as a malformed binding.",
+      "decision_refs": [
+        "C9"
+      ],
+      "verification_ref": "V1"
+    },
+    {
+      "criterion": "R1.6",
+      "case_kind": "failure",
+      "scenario": "A deliberately failing sentinel test file is placed under packages/spec/bin/__tests__ and registered via --require-semantic-test alongside the two real R0 basenames.",
+      "expected": "Discovery executes the sentinel, observes its nonzero exit, and the aggregate runner itself exits nonzero instead of silently skipping the injected failure.",
+      "decision_refs": [
+        "D12"
+      ],
+      "verification_ref": "V1"
+    },
+    {
+      "criterion": "R1.7",
+      "case_kind": "negative",
+      "scenario": "An authorized_evolution proposal cites a spec_ref whose workflow_policy.planning_depth is set to the disabled depth value rather than Compact or Full.",
+      "expected": "The gate refuses the proposal unconditionally, since only Compact or Full satisfies the durable-spec planning_depth requirement regardless of any other field's correctness.",
+      "decision_refs": [
+        "C1",
+        "I14"
+      ],
+      "verification_ref": "V1"
+    },
+    {
+      "criterion": "R1.8",
+      "case_kind": "adversarial",
+      "scenario": "bootstrapBaseline is invoked with a C14 attestation whose baseCommit was computed via git merge-base against origin/main instead of read from the legacy-bridge artifact's bootWindowBaseCommit field.",
+      "expected": "bootstrapBaseline compares baseCommit against the durably captured bootWindowBaseCommit field for an exact string match and exits 2 on any divergence, including a plausible merge-base substitute.",
+      "decision_refs": [
+        "C14",
+        "D11"
+      ],
+      "verification_ref": "V1"
+    },
+    {
+      "criterion": "R1.9",
+      "case_kind": "negative",
+      "scenario": "reclassifyFailure is invoked for a failure_id that already carries a resolved event in the ledger.",
+      "expected": "The transition refuses with exit 2 and writes nothing; a post-resolution correction must instead open a new, separately tracked failure_id via openFailure rather than rewriting settled release history.",
+      "decision_refs": [
+        "C15",
+        "I18"
+      ],
+      "verification_ref": "V1"
+    },
+    {
+      "criterion": "R1.10",
+      "case_kind": "boundary",
+      "scenario": "A freeze is created, and immediately afterward openFailure appends a new opened event to the ledger with no new freeze created in between.",
+      "expected": "The next verifyFreezeManifest call recomputes the ledger's current digest and generation, finds them diverged from the freeze's bound values, and exits 2 exactly as an authority mismatch would.",
+      "decision_refs": [
+        "C9",
+        "C15"
+      ],
+      "verification_ref": "V1"
+    },
+    {
+      "criterion": "R1.11",
+      "case_kind": "failure",
+      "scenario": "advanceBaseline persists event (A)'s receipt bytes on a genuinely new first publish, but a filesystem fault causes the bytes actually landing on disk to diverge from the supplied receipt.",
+      "expected": "The read-after-write verification immediately following the write detects the mismatch and throws fail-closed before event (B) ever runs; the C10 authority record stays byte-identical to its pre-call state and advanceBaseline never reports published.",
+      "decision_refs": [
+        "C12",
+        "I11"
+      ],
+      "verification_ref": "V1"
+    },
+    {
+      "criterion": "R1.12",
+      "case_kind": "adversarial",
+      "scenario": "createFreezeManifest is asked to populate remediatedFailureIds by supplementing an id that assertHotspotChangeAllowed's path-union proof never covered for the accepted benchmark_remediation proposal.",
+      "expected": "remediatedFailureIds is populated only by an exact copy of the gate-proven failure_ids array; the unproven supplemental id is never written, and advanceBaseline's later equality check against resolvedFailureIds would reject any such divergence regardless.",
+      "decision_refs": [
+        "C9",
+        "I12"
+      ],
+      "verification_ref": "V1"
+    },
+    {
+      "criterion": "R1.13",
+      "case_kind": "adversarial",
+      "scenario": "resolveFailure is called with a caller-supplied release_receipt_digest argument that does not match the digest recomputed over the canonically persisted receipt bytes at the fixed trusted path.",
+      "expected": "resolveFailure ignores the caller-supplied value, independently recomputes the digest over the persisted bytes, finds it mismatched against the current authority's published releaseReceiptDigest, and exits 2 without appending.",
+      "decision_refs": [
+        "C15",
+        "I13"
+      ],
+      "verification_ref": "V1"
+    },
+    {
+      "criterion": "R1.14",
+      "case_kind": "failure",
+      "scenario": "R0-01's owned test suite executes while specs/cafekit-semantic-eval-firewall/reports/bootstrap-legacy-bridge-review.json is absent from disk.",
+      "expected": "The precondition check R0-01 owns fails with a nonzero exit before any of R0-01's own change-firewall assertions run, and R0-01 never creates or repairs the missing artifact itself.",
+      "decision_refs": [
+        "D11",
+        "I16"
+      ],
+      "verification_ref": "V1"
+    },
+    {
+      "criterion": "R2.1",
+      "case_kind": "negative",
+      "scenario": "A kernel primitive module defines a required field named expected_api_response bound to a literal domain answer.",
+      "expected": "The kernel-vocabulary check rejects the module because primitives may only use domain-neutral vocabulary such as scope, outcome, and decision, never a required product-domain answer.",
+      "decision_refs": [
+        "D2"
+      ],
+      "verification_ref": "V4"
+    },
+    {
+      "criterion": "R2.2",
+      "case_kind": "negative",
+      "scenario": "A domain lens pack ships an oracle_answer field bound to a literal expected product value for one of its questions.",
+      "expected": "Lens activation rejects the pack because lenses may encode only questions and failure relations, never an expected-answer oracle field.",
+      "decision_refs": [
+        "D2"
+      ],
+      "verification_ref": "V4"
+    },
+    {
+      "criterion": "R2.3",
+      "case_kind": "boundary",
+      "scenario": "Kernel source prose mentions retention and API terminology in a code comment, with no literal prompt_sha256:sha256: hash, no public-regression task_id-keyed answer map, and no expected_domain_answer key present anywhere in the file.",
+      "expected": "The ban does not fail this file, since only the three exact machine-checkable patterns trigger rejection and domain-word prose alone is never treated as a match.",
+      "decision_refs": [
+        "D2",
+        "I4"
+      ],
+      "verification_ref": "V4"
+    },
+    {
+      "criterion": "R2.4",
+      "case_kind": "failure",
+      "scenario": "validate-spec-output.cjs's Compact-model code path is edited to skip invoking the oracle-hardcode-ban module for that model kind.",
+      "expected": "Validation fails because the ban must be invoked unconditionally for both Compact and Full models; a skipped invocation on either path is itself a validation defect.",
+      "decision_refs": [
+        "D2"
+      ],
+      "verification_ref": "V4"
+    },
+    {
+      "criterion": "R2.5",
+      "case_kind": "failure",
+      "scenario": "Only a standalone unit test of oracle-hardcode-ban.cjs exists, asserting the module's internal logic in isolation, with no test that instruments validate-spec-output.cjs's real entrypoint.",
+      "expected": "R2.5 remains unsatisfied because owned verification requires an integration or mutation test proving the real validate entrypoint actually invokes the ban module, which a standalone unit test cannot demonstrate.",
+      "decision_refs": [
+        "D2",
+        "I4"
+      ],
+      "verification_ref": "V4"
+    },
+    {
+      "criterion": "R3.1",
+      "case_kind": "negative",
+      "scenario": "A completed semantic_review receipt is submitted containing only the legacy two-key shape of reviewed_criteria and counterexamples after the C2 cutover has already landed.",
+      "expected": "Structural validation rejects it because only the exact C2 key set, including verdict and lifecycle_disposition as separate fields, is accepted after cutover.",
+      "decision_refs": [
+        "C2",
+        "D3"
+      ],
+      "verification_ref": "V2"
+    },
+    {
+      "criterion": "R3.2",
+      "case_kind": "negative",
+      "scenario": "A receipt shows verdict=PASS and lifecycle_disposition=BLOCKED simultaneously, and a caller asks the finalizer to set ready_for_implementation=true from it.",
+      "expected": "The finalizer refuses, since PASS paired with CONTINUE is the only combination that may promote and a PASS/BLOCKED pairing never sets ready true.",
+      "decision_refs": [
+        "C3",
+        "D4"
+      ],
+      "verification_ref": "V3"
+    },
+    {
+      "criterion": "R3.3",
+      "case_kind": "boundary",
+      "scenario": "The current review_epoch's latest recorded entry already carries lifecycle_disposition=BLOCKED, and a new, non-replay completed receipt for that same epoch arrives for processing.",
+      "expected": "The finalizer refuses the entire append operation outright before computing any attempt_index, so no fourth-attempt index is ever derived and the readiness decision stays unchanged.",
+      "decision_refs": [
+        "C13",
+        "I10"
+      ],
+      "verification_ref": "V3"
+    },
+    {
+      "criterion": "R3.4",
+      "case_kind": "failure",
+      "scenario": "A review receipt shows status=completed while its semantic_digest field is left null.",
+      "expected": "The structural validator rejects it purely on nullability grounds, since completed status requires a non-null digest, without evaluating whether the receipt's content is otherwise meaningful.",
+      "decision_refs": [
+        "C2"
+      ],
+      "verification_ref": "V2"
+    },
+    {
+      "criterion": "R3.5",
+      "case_kind": "negative",
+      "scenario": "An owned finalizer test fixture supplies a receipt with verdict=FAIL paired with lifecycle_disposition=CONTINUE and asserts that promotion should succeed.",
+      "expected": "The negative-control fixture must show this promotion attempt refused, since FAIL never pairs with CONTINUE as a promotable state.",
+      "decision_refs": [
+        "C3",
+        "D4"
+      ],
+      "verification_ref": "V3"
+    },
+    {
+      "criterion": "R3.6",
+      "case_kind": "recovery",
+      "scenario": "A completed receipt's review_receipt_digest matches an entry recorded at sequence 2 in the lineage, while the latest entry in that lineage is at sequence 5, and the finalizer is asked to append it as a new entry.",
+      "expected": "Whole-lineage dedupe recognizes the digest match against the sequence-2 entry even though it is not the latest, refuses to append it again, and leaves attempt_index and review_epoch unchanged.",
+      "decision_refs": [
+        "C13",
+        "I6"
+      ],
+      "verification_ref": "V2"
+    },
+    {
+      "criterion": "R3.7",
+      "case_kind": "adversarial",
+      "scenario": "authoring.design is hand-edited directly inside spec.json to read validated without validate-spec-output.cjs and spec-ground.cjs ever having run over the current design.md bytes.",
+      "expected": "Every downstream consumer reading authoring.design treats this as draft, since a validated transition is only ever produced as the direct output of a current validator-plus-grounder pass, never a manual flip.",
+      "decision_refs": [
+        "I15",
+        "C16"
+      ],
+      "verification_ref": "V2"
+    },
+    {
+      "criterion": "R3.8",
+      "case_kind": "failure",
+      "scenario": "authoring.requirements reads validated and validation.authoring_validation.requirements.digest is present, but requirements.md was edited after that digest was recorded so a freshly recomputed digest over the current bytes no longer matches it.",
+      "expected": "The stage is read as draft by validate-spec-output.cjs, the finalizer, and the authorized_evolution C1 check alike, because the stored digest no longer equals the digest recomputed over the file's current bytes.",
+      "decision_refs": [
+        "C16",
+        "I20"
+      ],
+      "verification_ref": "V2"
+    },
+    {
+      "criterion": "R3.9",
+      "case_kind": "adversarial",
+      "scenario": "A script other than spec-authoring-validation.cjs directly sets authoring.tasks to validated inside spec.json.",
+      "expected": "This transition is invalid under every consumer's freshness algorithm, since only spec-authoring-validation.cjs's atomic, clean-pass write may flip a stage to validated together with its C16 receipt.",
+      "decision_refs": [
+        "D13",
+        "I21"
+      ],
+      "verification_ref": "V2"
+    },
+    {
+      "criterion": "R4.1",
+      "case_kind": "failure",
+      "scenario": "spec-semantic-ir.cjs is added to the repository with a complete C11 projection, but neither spec-semantic-model.cjs's projection path nor spec-readiness.cjs's readiness path ever imports or calls it.",
+      "expected": "R4.1 is not satisfied because an unwired orphan IR module, however complete internally, does not count as dual-run wiring when neither required caller invokes the compare.",
+      "decision_refs": [
+        "C11",
+        "D5"
+      ],
+      "verification_ref": "V5"
+    },
+    {
+      "criterion": "R4.2",
+      "case_kind": "failure",
+      "scenario": "IR mode is set to promote, a disagreement is detected on the current candidate, and the readiness path only records a report without hard-failing readiness for that cycle.",
+      "expected": "This violates the promote-mode contract, which requires any disagreement to hard-fail readiness immediately; report-only handling belongs exclusively to shadow mode.",
+      "decision_refs": [
+        "D5",
+        "C8"
+      ],
+      "verification_ref": "V5"
+    },
+    {
+      "criterion": "R4.3",
+      "case_kind": "failure",
+      "scenario": "spec-semantic-model.cjs sorts the decision_refs array using String.prototype.localeCompare, and the resulting order differs between two hosts running different ICU locale data.",
+      "expected": "R4.3 requires one exact ASCII ordinal comparator for every top-level and nested set array; the localeCompare-based sort site is a violation and cross-host sort parity fails.",
+      "decision_refs": [
+        "C11"
+      ],
+      "verification_ref": "V5"
+    },
+    {
+      "criterion": "R5.1",
+      "case_kind": "negative",
+      "scenario": "A file resembling a sealed corpus body is committed under packages/spec/benchmarks/ alongside the public fixture files.",
+      "expected": "Owned checks reject this content because the repository may host only public regression interface, public fixture bodies, and pool contracts, never sealed bodies.",
+      "decision_refs": [
+        "D6"
+      ],
+      "verification_ref": "V6"
+    },
+    {
+      "criterion": "R5.2",
+      "case_kind": "boundary",
+      "scenario": "public-regression.manifest.json lists only seven public-fixture-PR-0N.json entries instead of the required eight.",
+      "expected": "The pool-size check fails because R5.2 requires exactly eight public fixture body files owned by the pool task, and a manifest short by one fixture violates that count.",
+      "decision_refs": [
+        "C4",
+        "D6"
+      ],
+      "verification_ref": "V6"
+    },
+    {
+      "criterion": "R5.3",
+      "case_kind": "negative",
+      "scenario": "The candidate isolation runner sets release-ready state directly from its own telemetry quality boolean, with no independent adjudication record present for that candidate.",
+      "expected": "R5.3 requires an independent adjudicator record binding artifact, candidate, corpus, oracle, and rubric digests before any release-ready claim, so runner-only telemetry is insufficient on its own.",
+      "decision_refs": [
+        "D7",
+        "C5"
+      ],
+      "verification_ref": "V6"
+    },
+    {
+      "criterion": "R5.4",
+      "case_kind": "failure",
+      "scenario": "The B1 benchmark harness script is inadvertently retained in the npm product ship inventory because a files-field entry was left too broad.",
+      "expected": "Owned package-inventory tests catch and fail on this inclusion, since B1 harness scripts must never appear in the npm product ship set.",
+      "decision_refs": [
+        "D9"
+      ],
+      "verification_ref": "V6"
+    },
+    {
+      "criterion": "R5.5",
+      "case_kind": "failure",
+      "scenario": "An owned negative-control test attempts to load a body from a private validation path located under packages/spec/benchmarks, and the loader accepts it without rejection.",
+      "expected": "This is the exact defect R5.5 exists to catch: public loaders must reject private or sealed body paths, and an accepting loader fails the owned negative-control test.",
+      "decision_refs": [
+        "D6",
+        "D9"
+      ],
+      "verification_ref": "V6"
+    },
+    {
+      "criterion": "R5.6",
+      "case_kind": "adversarial",
+      "scenario": "classifyFailure is invoked for a newly opened failure using an adjudication_digest copied from a prior, unrelated adjudication run rather than a fresh AdjudicationRecord produced for this failure.",
+      "expected": "classifyFailure refuses the stale or reused adjudication_digest; a legitimate later reclassifyFailure correction still requires its own fresh, non-reused digest and a matching previous_primary_failure_class.",
+      "decision_refs": [
+        "C15",
+        "I18"
+      ],
+      "verification_ref": "V6"
+    },
+    {
+      "criterion": "R6.1",
+      "case_kind": "boundary",
+      "scenario": "A completed review at repair_round attempt_index 2 within the current epoch carries verdict=FAIL, and a caller attempts to run and promote a fourth review of that same epoch.",
+      "expected": "The ordered gate sequence forbids any further completed review of a BLOCKED epoch from promoting; the fourth attempt is refused outright and readiness remains false.",
+      "decision_refs": [
+        "D8",
+        "C7"
+      ],
+      "verification_ref": "V8"
+    },
+    {
+      "criterion": "R6.2",
+      "case_kind": "negative",
+      "scenario": "Grok reports an overall PASS for a candidate while the required Claude Code matrix member reports host-blocked for the same candidate.",
+      "expected": "A Grok-only green result can never alone greenlight release, since Claude Code and Codex are the required release-blocking matrix members regardless of Grok's own verdict.",
+      "decision_refs": [
+        "D8"
+      ],
+      "verification_ref": "V8"
+    },
+    {
+      "criterion": "R6.3",
+      "case_kind": "adversarial",
+      "scenario": "The required Codex host run for a release candidate is unavailable, and the release-decision assembly synthesizes a simulated PASS result to stand in for it.",
+      "expected": "This is refused because R6.3 requires recording a host-blocked or not-ready outcome instead of simulating a missing host's event or downgrading assurance to invent a PASS.",
+      "decision_refs": [
+        "C7"
+      ],
+      "verification_ref": "V8"
+    },
+    {
+      "criterion": "R6.4",
+      "case_kind": "failure",
+      "scenario": "Packed Claude Code and packed Codex source-removed installs of the same reviewed bytes produce different normalized semantic graphs, and the release workflow proceeds without flagging the divergence.",
+      "expected": "R6.4 requires this divergence to fail owned tests, since silent divergence between the two packed hosts on the same candidate is never acceptable.",
+      "decision_refs": [
+        "D8"
+      ],
+      "verification_ref": "V8"
+    },
+    {
+      "criterion": "R6.5",
+      "case_kind": "negative",
+      "scenario": "A supplied C12 receipt names a releaseCommit that is neither a descendant of nor equal to the current baseline's baselineCommit.",
+      "expected": "advanceBaseline's validation rejects the receipt with exit 2 before writing anything, because releaseCommit must exist and be reachable from the current baseline.",
+      "decision_refs": [
+        "C12"
+      ],
+      "verification_ref": "V8"
+    },
+    {
+      "criterion": "R6.6",
+      "case_kind": "negative",
+      "scenario": "IR mode is flipped from shadow to promote on a candidate for which Claude/Codex packed parity has not yet been confirmed.",
+      "expected": "The flip is refused and mode remains shadow, since R6.6 requires every exact gate, including confirmed packed parity, on the same candidate before a promote transition.",
+      "decision_refs": [
+        "D5",
+        "C8"
+      ],
+      "verification_ref": "V8"
+    },
+    {
+      "criterion": "R6.7",
+      "case_kind": "adversarial",
+      "scenario": "R5-01's orchestration code computes its own release_receipt_digest value and passes it directly as an argument to resolveFailure alongside failure_id.",
+      "expected": "R6.7 requires R5-01 to pass only failure_id and the decision_digest, since resolveFailure independently re-derives and verifies the published digest itself rather than trusting a caller-computed value.",
+      "decision_refs": [
+        "I13",
+        "C15"
+      ],
+      "verification_ref": "V8"
+    },
+    {
+      "criterion": "R6.8",
+      "case_kind": "negative",
+      "scenario": "A release attempt runs the final freeze, receipt, and advanceBaseline sequence when only R0-01, R1-01, and R1-02 have landed.",
+      "expected": "The sequence is refused because a release receipt whose covered scope is only the boot-window tasks must not run until every task through R6-01 has landed and every gate has passed on the same candidate.",
+      "decision_refs": [
+        "D11",
+        "I9"
+      ],
+      "verification_ref": "V8"
+    },
+    {
+      "criterion": "R7.1",
+      "case_kind": "failure",
+      "scenario": "A metamorphic control asserts two semantic models are equivalent under a meaning-preserving transform solely by comparing matching prose strings, without computing any normalized graph delta.",
+      "expected": "R7.1 requires assertions on normalized semantic graph deltas, so a prose-literal-only oracle does not satisfy this criterion regardless of whether the prose text happens to match.",
+      "decision_refs": [
+        "C6"
+      ],
+      "verification_ref": "V7"
+    },
+    {
+      "criterion": "R7.2",
+      "case_kind": "failure",
+      "scenario": "A framework detector fix ships with a true-positive family and a mutation proof but omits any negative-control family from its owned tests.",
+      "expected": "R7.2 requires all three components together, so a fix that omits the negative-control family fails this criterion even when the other two are present.",
+      "decision_refs": [
+        "C6"
+      ],
+      "verification_ref": "V7"
+    },
+    {
+      "criterion": "R7.3",
+      "case_kind": "failure",
+      "scenario": "The mutation suite reports zero mutants generated and zero detected, yet the test runner still exits with status zero as if the proof had been satisfied.",
+      "expected": "R7.3 requires critical material-guess mutants proven killed with at least one negative-control mutant detected, so a suite that never actually runs any mutant is not a passing proof.",
+      "decision_refs": [
+        "C6"
+      ],
+      "verification_ref": "V7"
+    },
+    {
+      "criterion": "R8.1",
+      "case_kind": "failure",
+      "scenario": "The migration checklist artifact documents a promote-phase transition with no rollback condition recorded for that phase.",
+      "expected": "R8.1 requires each phase, including promote, to carry an explicit rollback condition in the checklist, so a phase missing one fails this criterion.",
+      "decision_refs": [
+        "D10",
+        "I5"
+      ],
+      "verification_ref": "V9"
+    },
+    {
+      "criterion": "R8.2",
+      "case_kind": "adversarial",
+      "scenario": "A hypothetical additional task holds a write anchor on validate-spec-output.cjs alongside R1-01 and R2-01, and no coordination.boundaries entry names this new pair at all.",
+      "expected": "The global ownership-contention scan, derived from the complete anchorsByTask projection rather than declared boundaries alone, flags this same-target pair as a defect because no qualifying dependency boundary connects it.",
+      "decision_refs": [
+        "D10",
+        "I7"
+      ],
+      "verification_ref": "V9"
+    },
+    {
+      "criterion": "R8.3",
+      "case_kind": "negative",
+      "scenario": "R6-01 edits validate-spec-output.cjs to add or modify the ownership-contention scan mechanism itself, rather than only verifying it.",
+      "expected": "R8.3 requires R1-01, the file's sole write-owner, to be the sole implementer of this scan mechanism; R6-01 may only verify it via its own owned negative fixture, never implement it.",
+      "decision_refs": [
+        "D10",
+        "I7"
+      ],
+      "verification_ref": "V2"
+    }
+  ]
+}

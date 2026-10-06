@@ -1,56 +1,36 @@
 ---
 title: Spec-driven development
-description: CafeKit が request を verified code に変えるためのシンプルな考え方。
+description: Substantial request を verified code に変える process-first mental model。
 ---
 
 <SddHeroVisual locale="ja" />
 
-## シンプルに言うと
+## Simple version
 
-Spec-driven development とは、**chat ではなく spec が主導する** ということです。
-
-通常の AI coding では、assistant が会話の記憶に頼りがちです。それは壊れやすい状態です。Request が間違って要約されたり、scope がずれたり、次の session が decision の理由を知らないまま進むことがあります。
-
-CafeKit は中心を変えます。Code を変更する前に、作業内容を `specs/<feature>/` に書きます。この folder が human、assistant、reviewer、future sessions の shared contract になります。
+Spec は chat memory ではなく durable contract です。New work は `specs/<feature>/plan.md` と flat `task-NN-*.md` に保存します。
 
 <SddLoopVisual locale="ja" />
 
-## Assistant が信頼すべきもの
-
-Assistant は durable repo artifacts を先に信頼します。
+## Artifact questions
 
 <SddArtifactMap locale="ja" />
 
-重要なのは file 数が増えることではありません。各 file が別の質問に答えることです。
+| Artifact | Question |
+|---|---|
+| `plan.md` | Approved outcome、scope、exclusions、acceptance、decisions、task map は何か? |
+| `task-NN-*.md` | 今 executable な one outcome、owner、required exact proof は何か? |
+| Final inline `## Receipt` | Task pass を証明する current command と output は何か? |
 
-| Artifact | 答える質問 |
-| --- | --- |
-| `requirements.md` | Product は何をするべきか? |
-| `research.md` | Source-backed facts や decisions は何か? |
-| `design.md` | System はどう設計されるべきか? |
-| `tasks/task-R*.md` | 今 approved されている implementation unit は何か? |
-| `spec.json` | Feature の machine-readable state は何か? |
+## Working rule
 
-## 日常の作業ルール
-
-意味のある feature では、この rule を使います。
-
-Request が specs に入れるほど明確でない場合だけ、先に `/hapo:brainstorm` を使います。Delivery path 自体はここから始まります。
-
-1. Goal が contract にできるほど明確なら `/hapo:specs` を実行する。
-2. Approved task packets がない spec では develop しない。
-3. `/hapo:develop` は task packet 1 つずつ実行する。
-4. `/hapo:test` で verify し、`/hapo:code-review` で review する。
-5. Proof がある時だけ `/hapo:sync` を使う。Drift repair には `/hapo:sync audit <feature>` を使う。
+1. Intent または architecture が未解決な間だけ brainstorm。
+2. Specs は C1 を開き、plan/tasks を作り、C2 findings を提示。
+3. Planning stop。New explicit develop invocation だけが work を開始。
+4. Develop は one unblocked task を実行し、test と code review が verify。
+5. Observed Status/proof だけを sync。C3 で user が completion を決定。
 
 <SddCompareVisual locale="ja" />
 
-## Full SDD path を使う場面
+Substantial、risk-elevated、multi-file、runtime、data、auth、package、handoff-sensitive work では full path を使います。Clear isolated one/two-file routine change は direct work が可能です。
 
-Product behavior を変える、複数 file に触れる、runtime boundary をまたぐ、data/auth/package contracts を変える、users に影響する、review evidence が必要、または他の assistant や teammate に handoff する可能性がある場合は full path を使います。
-
-小さな copy edit や明確な one-line fix では full spec flow は重いことがあります。それでも習慣は同じです。Boundary を明確にし、その boundary だけを変更し、結果を verify し、hidden scope growth を避けます。
-
-## 次に読むもの
-
-[Core workflow](/ja/docs/core-workflow) で command path 全体を確認してください。`spec.json`、task packets、validation、readiness の詳細 rules が必要なら [Spec lifecycle](/ja/docs/spec-lifecycle) を読んでください。
+[Core workflow](/ja/docs/core-workflow) と [Spec lifecycle](/ja/docs/spec-lifecycle) を参照してください。

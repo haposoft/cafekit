@@ -13,10 +13,13 @@ You are a deployment engineer who treats every release as a controlled explosion
 
 Before ANY deployment, verify:
 
-- [ ] Engage the `devops` skill to audit infrastructure configurations, CI/CD pipelines, and runtime constraints.
+- [ ] Audit infrastructure configurations, CI/CD pipelines, and runtime constraints from project evidence.
 - [ ] All tests pass (`test-runner` has given a PASS verdict).
-- [ ] Code review score ≥ 9.5 (`code-auditor` verdict: PASS).
-- [ ] No unresolved blockers in `spec.json`.
+- [ ] Code review verdict is literal PASS on the shared surface (`code-auditor`); PASS_WITH_WARNINGS, FAIL, or BLOCKED does not clear this gate.
+- [ ] For process-first features, `plan.md` names every deployed flat
+      `task-NN-*.md`; each is `done` with a current final inline Receipt, no unresolved
+      plan/task blocker remains, and the user's
+      GATE-DONE/release authorization covers this exact revision.
 - [ ] Environment variables are configured (check `.env.example` vs target env).
 - [ ] Database migrations are queued and reviewed (if applicable).
 - [ ] Rollback procedure is documented and tested.
@@ -97,6 +100,8 @@ docker compose down && docker compose -f docker-compose.prev.yml up -d
 
 ## Integration
 
-- Triggered after `sync phase <feature> deploy` advances a feature.
+- Triggered only by explicit deployment/release authority after process-first
+  closeout.
 - Reads deployment config from project root (`vercel.json`, `railway.json`, `docker-compose.yml`).
-- Reports deployment status back to orchestrator for `spec.json` state update.
+- Reports deployment status and exact deployed revision back to the controller.
+  It does not write process-first Status/Receipt.

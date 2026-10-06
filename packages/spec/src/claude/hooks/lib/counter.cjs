@@ -6,6 +6,7 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const { runtimeDir } = require('./runtime-dir.cjs');
 
 function getMcpServerNames(filePath) {
   if (!fs.existsSync(filePath)) return new Set();
@@ -83,16 +84,17 @@ function countConfigs(cwd) {
 
   // Project scope
   if (cwd) {
+    const projectRuntime = runtimeDir(cwd);
     if (fs.existsSync(path.join(cwd, 'CLAUDE.md'))) claudeMdCount++;
     if (fs.existsSync(path.join(cwd, 'CLAUDE.local.md'))) claudeMdCount++;
-    if (fs.existsSync(path.join(cwd, '.claude', 'CLAUDE.md'))) claudeMdCount++;
-    if (fs.existsSync(path.join(cwd, '.claude', 'CLAUDE.local.md'))) claudeMdCount++;
-    rulesCount += countRulesInDir(path.join(cwd, '.claude', 'rules'));
+    if (fs.existsSync(path.join(projectRuntime, 'CLAUDE.md'))) claudeMdCount++;
+    if (fs.existsSync(path.join(projectRuntime, 'CLAUDE.local.md'))) claudeMdCount++;
+    rulesCount += countRulesInDir(path.join(projectRuntime, 'rules'));
     mcpCount += countMcpServersInFile(path.join(cwd, '.mcp.json'));
-    const projectSettings = path.join(cwd, '.claude', 'settings.json');
+    const projectSettings = path.join(projectRuntime, 'settings.json');
     mcpCount += countMcpServersInFile(projectSettings);
     hooksCount += countHooksInFile(projectSettings);
-    const localSettings = path.join(cwd, '.claude', 'settings.local.json');
+    const localSettings = path.join(projectRuntime, 'settings.local.json');
     mcpCount += countMcpServersInFile(localSettings);
     hooksCount += countHooksInFile(localSettings);
   }

@@ -38,7 +38,7 @@ const MESSAGES = {
     modeInstall:  'Mode: install / update  •  your customisations are preserved',
 
     // Intro
-    introDesc:    'AI-native development workflow for Claude Code',
+    introDesc:    'AI-native development workflow',
 
     // Platform install spinner
     installingPlatform:    'Installing {name}',
@@ -58,18 +58,10 @@ const MESSAGES = {
 
     // Skills / deps setup
     skillDepsConfirm:      'Install skill dependencies? (Python venv, pip, npm, Chromium — takes a few minutes)',
+    documentSkillsConfirm: 'Install optional document skills? (docs, DOCX, PDF, PPTX, XLSX, multimodal)',
+    documentSkillsMetadataRecovery: 'Could not read {path}; preserving document skills to avoid destructive cleanup.',
     skillsSkipped:         'Skill dependencies skipped.\n  Run later: npx @haposoft/cafekit --with-skills-deps',
 
-    // rtk token-saver setup
-    rtkConfirm:            'Install the rtk token-saver? (compacts git/grep/ls/build/test output for Claude Code Bash commands)',
-    rtkInstalling:         'Installing rtk via {method}',
-    rtkInstalled:          'rtk installed',
-    rtkInstallFailed:      'Could not install rtk — skipping (non-fatal). Install manually later: https://github.com/rtk-ai/rtk',
-    rtkInitFailed:         'rtk init -g failed: {reason} — hook not registered (non-fatal)',
-    rtkNeedsJq:            'rtk hook needs jq to run. Install jq, then the hook activates automatically.',
-    rtkFailed:             'rtk setup error: {reason} — skipped (non-fatal)',
-    rtkSkipped:            'rtk token-saver skipped.\n  Run later: npx @haposoft/cafekit --with-rtk',
-    rtkSummary:            'rtk token-saver: hook registered for Claude Code Bash commands',
     venvCreating:          'Setting up Python environment',
     venvReady:             'Python environment ready',
     venvFailed:            'Could not create Python environment — check your Python 3 installation.',
@@ -79,7 +71,7 @@ const MESSAGES = {
     pipFailed:             '{skill} — some packages failed. Retry:\n  {cmd}',
     npmInstalling:         'Installing Node packages: {skill}',
     npmInstalled:          '{skill} — Node packages ready',
-    npmFailed:             '{skill} — npm install failed. Check the log and retry in: {dir}',
+    npmFailed:             '{skill} — npm install failed ({error}). Retry in: {dir}',
     playwrightInstalling:  'Downloading Playwright browser for {skill}',
     playwrightReady:       '{skill} — Playwright browser ready',
     playwrightSkipped:     '{skill} — Playwright browser download skipped',
@@ -106,8 +98,8 @@ const MESSAGES = {
 
     // Next steps
     nextStepsTitle:  'Next steps',
-    nsClaude:        'Start coding: /hapo:specs <feature>',
-    nsOpencode:      'Start coding: ask the agent to begin a new feature or brainstorm',
+    nsClaude:        'Start coding: /cf:specs <feature>',
+    nsCodex:         'Start with `$cf-specs <feature>`; review and trust project hooks with `/hooks`',
     nsKeys:          'Some skills need API keys: {skills}\n  Copy <skill>/.env.example → .env and fill in the values',
     nsForce:         'To force-refresh managed files: npx @haposoft/cafekit --force-overwrite',
     dryRunOnly:      'Dry-run complete — no files were changed.\n  Re-run without --dry-run to apply.',
@@ -115,19 +107,25 @@ const MESSAGES = {
 
     // Version check
     versionUpToDate:      'Already up to date ({v}). Use --force-overwrite to reinstall.',
+    versionRefreshing:    'Refreshing CafeKit {v}; your modified files will be preserved.',
     versionDowngrade:     'Downgrading {from} → {to}. Features may be removed. Continue?',
     versionSamePrompt:    'CafeKit {v} is already installed. What would you like to do?',
     versionForceReinstall: 'Reinstalling CafeKit {v} (--force-overwrite)...',
     versionUpgradePrompt: 'CafeKit {from} → {to}: Update available!',
     updateOption:         'Update to {v}',
+    refreshOption:        'Refresh managed files (preserve your edits)',
     reinstallOption:      'Reinstall (overwrite managed files)',
     reinstallCurrentOption: 'Reinstall {v}',
     skipOption:           'Skip (exit)',
 
     // Platform/language auto-skip when already installed
     installingFor:        'Installing for: {names}',
+    grokCompatNotice:     'Grok CLI reads this install through its Claude compatibility. Trust the project first: run `grok --trust` or `/hooks-trust`, or its project hooks are skipped.',
     langKept:             'Language: {lang} (saved — skipping prompt)',
     platformKept:         'Platform: {names} (saved — skipping prompt)',
+
+    // Add more platforms prompt (interactive, prior install exists)
+    addPlatformsPrompt:   'Existing platforms: {names}. Add more?',
 
     // Version picker
     versionPickPrompt:    'Select CafeKit version to install:',
@@ -158,7 +156,7 @@ const MESSAGES = {
     modeInstall:  'モード: インストール / 更新  •  カスタマイズは保持されます',
 
     // Intro
-    introDesc:    'Claude Code 向け AI ネイティブ開発ワークフロー',
+    introDesc:    'AI ネイティブ開発ワークフロー',
 
     installingPlatform:    '{name} をインストール中',
     platformInstalled:     '{name} — {files} ファイル、{skills} スキル',
@@ -175,18 +173,10 @@ const MESSAGES = {
     changeAddressingOption:'別の名前に変更',
 
     skillDepsConfirm:      'スキルの依存関係をインストールしますか？（Python venv、pip、npm、Chromium — 数分かかります）',
+    documentSkillsConfirm: '任意のドキュメントスキルをインストールしますか？（docs、DOCX、PDF、PPTX、XLSX、multimodal）',
+    documentSkillsMetadataRecovery: '{path} を読み取れないため、破壊的な削除を避けて document skills を保持します。',
     skillsSkipped:         'スキルの依存関係をスキップしました。\n  後で実行: npx @haposoft/cafekit --with-skills-deps',
 
-    // rtk token-saver setup
-    rtkConfirm:            'rtk トークンセーバーをインストールしますか？（Claude Code の Bash コマンドの git/grep/ls/build/test 出力を圧縮します）',
-    rtkInstalling:         '{method} で rtk をインストール中',
-    rtkInstalled:          'rtk をインストールしました',
-    rtkInstallFailed:      'rtk をインストールできませんでした — スキップします（致命的ではありません）。後で手動でインストール: https://github.com/rtk-ai/rtk',
-    rtkInitFailed:         'rtk init -g が失敗しました: {reason} — フックは未登録です（致命的ではありません）',
-    rtkNeedsJq:            'rtk フックの実行には jq が必要です。jq をインストールするとフックが自動的に有効になります。',
-    rtkFailed:             'rtk セットアップエラー: {reason} — スキップしました（致命的ではありません）',
-    rtkSkipped:            'rtk トークンセーバーをスキップしました。\n  後で実行: npx @haposoft/cafekit --with-rtk',
-    rtkSummary:            'rtk トークンセーバー: Claude Code の Bash コマンド用にフックを登録しました',
     venvCreating:          'Python 環境を準備しています',
     venvReady:             'Python 環境の準備ができました',
     venvFailed:            'Python 環境を作成できませんでした — Python 3 のインストールを確認してください。',
@@ -196,7 +186,7 @@ const MESSAGES = {
     pipFailed:             '{skill} — 一部のパッケージが失敗しました。再試行:\n  {cmd}',
     npmInstalling:         'Node パッケージをインストール中: {skill}',
     npmInstalled:          '{skill} — Node パッケージの準備ができました',
-    npmFailed:             '{skill} — npm install に失敗しました。{dir} で手動再試行してください。',
+    npmFailed:             '{skill} — npm install に失敗しました ({error})。{dir} で手動再試行してください。',
     playwrightInstalling:  '{skill} 用の Playwright ブラウザをダウンロード中',
     playwrightReady:       '{skill} — Playwright ブラウザの準備ができました',
     playwrightSkipped:     '{skill} — Playwright ブラウザのダウンロードをスキップしました',
@@ -221,27 +211,33 @@ const MESSAGES = {
     preservedNote:   '編集済みファイル {n} 件はそのままにしました。\n  --force-overwrite で再実行するとリセットできます（.cafekit-backup/ にバックアップ保存）。',
 
     nextStepsTitle:  '次のステップ',
-    nsClaude:        'コーディング開始: /hapo:specs <機能名>',
-    nsOpencode:      'コーディング開始: エージェントに新機能の開始またはブレストを依頼',
+    nsClaude:        'コーディング開始: /cf:specs <機能名>',
+    nsCodex:         '`$cf-specs <機能名>` で開始し、`/hooks` でプロジェクトフックを確認・信頼',
     nsKeys:          '一部のスキルに API キーが必要です: {skills}\n  <skill>/.env.example を .env にコピーし、値を入力してください',
     nsForce:         '管理ファイルを強制更新: npx @haposoft/cafekit --force-overwrite',
     dryRunOnly:      'ドライラン完了 — ファイルへの変更はありませんでした。\n  変更を適用するには --dry-run なしで再実行してください。',
     outroDone:       '完了！  ドキュメント: https://github.com/haposoft/cafekit',
 
     versionUpToDate:      '最新バージョンです（{v}）。再インストールするには --force-overwrite を使用してください。',
+    versionRefreshing:    'CafeKit {v} を更新します。編集済みファイルは保持されます。',
     versionDowngrade:     '{from} → {to} へのダウングレードです。機能が削除される可能性があります。続けますか？',
     versionSamePrompt:    'CafeKit {v} は既にインストールされています。何をしますか？',
     versionForceReinstall: 'CafeKit {v} を再インストール中 (--force-overwrite)...',
     versionUpgradePrompt: 'CafeKit {from} → {to}: アップデートが利用可能です！',
     updateOption:         '{v} にアップデート',
+    refreshOption:        '管理対象ファイルを更新（編集内容を保持）',
     reinstallOption:      '再インストール（管理対象ファイルを上書き）',
     reinstallCurrentOption: '{v} を再インストール',
     skipOption:           'スキップ（終了）',
 
     // Platform/language auto-skip when already installed
     installingFor:        'インストール先: {names}',
+    grokCompatNotice:     'Grok CLI はこのインストールを Claude 互換として読み込みます。先にプロジェクトを信頼してください: `grok --trust` または `/hooks-trust`。信頼しないとプロジェクトフックはスキップされます。',
     langKept:             '言語: {lang} (保存済み — スキップ)',
     platformKept:         'プラットフォーム: {names} (保存済み — スキップ)',
+
+    // Add more platforms prompt (interactive, prior install exists)
+    addPlatformsPrompt:   '既存プラットフォーム: {names}。さらに追加しますか？',
 
     // Version picker
     versionPickPrompt:    'インストールする CafeKit バージョンを選択:',
@@ -272,7 +268,7 @@ const MESSAGES = {
     modeInstall:  'Chế độ: cài / cập nhật  •  nội dung bạn tuỳ chỉnh được giữ nguyên',
 
     // Intro
-    introDesc:    'Quy trình phát triển AI-native cho Claude Code',
+    introDesc:    'Quy trình phát triển AI-native',
 
     installingPlatform:    'Đang cài {name}',
     platformInstalled:     '{name} — {files} tệp, {skills} skill',
@@ -289,18 +285,10 @@ const MESSAGES = {
     changeAddressingOption:'Đổi tên khác',
 
     skillDepsConfirm:      'Cài dependencies cho skill ngay? (Python venv, pip, npm, Chromium — mất vài phút)',
+    documentSkillsConfirm: 'Cài thêm nhóm skill tài liệu? (docs, DOCX, PDF, PPTX, XLSX, multimodal)',
+    documentSkillsMetadataRecovery: 'Không đọc được {path}; giữ nguyên skill tài liệu để tránh dọn nhầm dữ liệu.',
     skillsSkipped:         'Đã bỏ qua dependencies skill.\n  Cài sau bằng lệnh: npx @haposoft/cafekit --with-skills-deps',
 
-    // rtk token-saver setup
-    rtkConfirm:            'Cài rtk token-saver? (rút gọn output git/grep/ls/build/test cho các lệnh Bash của Claude Code)',
-    rtkInstalling:         'Đang cài rtk qua {method}',
-    rtkInstalled:          'Đã cài rtk',
-    rtkInstallFailed:      'Không thể cài rtk — bỏ qua (không nghiêm trọng). Cài thủ công sau: https://github.com/rtk-ai/rtk',
-    rtkInitFailed:         'rtk init -g thất bại: {reason} — hook chưa được đăng ký (không nghiêm trọng)',
-    rtkNeedsJq:            'Hook của rtk cần jq để chạy. Cài jq thì hook sẽ tự kích hoạt.',
-    rtkFailed:             'Lỗi cài rtk: {reason} — đã bỏ qua (không nghiêm trọng)',
-    rtkSkipped:            'Đã bỏ qua rtk token-saver.\n  Cài sau bằng lệnh: npx @haposoft/cafekit --with-rtk',
-    rtkSummary:            'rtk token-saver: đã đăng ký hook cho các lệnh Bash của Claude Code',
     venvCreating:          'Đang thiết lập môi trường Python',
     venvReady:             'Môi trường Python đã sẵn sàng',
     venvFailed:            'Không thể tạo môi trường Python — hãy kiểm tra cài đặt Python 3.',
@@ -310,7 +298,7 @@ const MESSAGES = {
     pipFailed:             '{skill} — một số gói cài thất bại. Chạy lại thủ công:\n  {cmd}',
     npmInstalling:         'Đang cài gói Node: {skill}',
     npmInstalled:          '{skill} — gói Node đã sẵn sàng',
-    npmFailed:             '{skill} — npm install thất bại. Hãy thử lại trong: {dir}',
+    npmFailed:             '{skill} — npm install thất bại ({error}). Hãy thử lại trong: {dir}',
     playwrightInstalling:  'Đang tải Playwright browser cho {skill}',
     playwrightReady:       '{skill} — Playwright browser đã sẵn sàng',
     playwrightSkipped:     '{skill} — đã bỏ qua tải Playwright browser',
@@ -335,27 +323,33 @@ const MESSAGES = {
     preservedNote:   '{n} tệp bạn đã chỉnh sửa được giữ nguyên.\n  Chạy lại với --force-overwrite để cài đè (bản sao lưu ở .cafekit-backup/).',
 
     nextStepsTitle:  'Bước tiếp theo',
-    nsClaude:        'Bắt đầu code: /hapo:specs <mô-tả-tính-năng>',
-    nsOpencode:      'Bắt đầu code: yêu cầu agent khởi động tính năng mới hoặc brainstorm',
+    nsClaude:        'Bắt đầu code: /cf:specs <mô-tả-tính-năng>',
+    nsCodex:         'Bắt đầu bằng `$cf-specs <tính-năng>`; kiểm tra và trust project hooks bằng `/hooks`',
     nsKeys:          'Một số skill cần API key: {skills}\n  Sao chép <skill>/.env.example → .env rồi điền giá trị',
     nsForce:         'Làm mới file được quản lý: npx @haposoft/cafekit --force-overwrite',
     dryRunOnly:      'Dry-run hoàn tất — không có tệp nào thay đổi.\n  Chạy lại không có --dry-run để áp dụng.',
     outroDone:       'Xong!  Tài liệu: https://github.com/haposoft/cafekit',
 
     versionUpToDate:      'Đã là phiên bản mới nhất ({v}). Dùng --force-overwrite để cài lại.',
+    versionRefreshing:    'Đang làm mới CafeKit {v}; các tệp bạn đã sửa sẽ được giữ nguyên.',
     versionDowngrade:     'Đang hạ cấp {from} → {to}. Một số tính năng có thể bị xoá. Tiếp tục?',
     versionSamePrompt:    'CafeKit {v} đã được cài đặt. Bạn muốn làm gì?',
     versionForceReinstall: 'Đang cài lại CafeKit {v} (--force-overwrite)...',
     versionUpgradePrompt: 'CafeKit {from} → {to}: Có bản cập nhật mới!',
     updateOption:         'Cập nhật lên {v}',
+    refreshOption:        'Làm mới file được quản lý (giữ phần bạn đã sửa)',
     reinstallOption:      'Cài lại (ghi đè file được quản lý)',
     reinstallCurrentOption: 'Cài lại {v}',
     skipOption:           'Bỏ qua (thoát)',
 
     // Platform/language auto-skip when already installed
     installingFor:        'Cài cho: {names}',
+    grokCompatNotice:     'Grok CLI đọc bản cài này qua lớp tương thích Claude. Hãy trust project trước: chạy `grok --trust` hoặc `/hooks-trust`, nếu không project hooks sẽ bị bỏ qua.',
     langKept:             'Ngôn ngữ: {lang} (đã lưu — bỏ qua chọn lại)',
     platformKept:         'Nền tảng: {names} (đã lưu — bỏ qua chọn lại)',
+
+    // Add more platforms prompt (interactive, prior install exists)
+    addPlatformsPrompt:   'Nền tảng hiện có: {names}. Thêm nền tảng khác?',
 
     // Version picker
     versionPickPrompt:    'Chọn phiên bản CafeKit để cài:',
@@ -366,11 +360,11 @@ const MESSAGES = {
   }
 };
 
-/** Normalize a language code to a supported one; unknown → 'ja'. */
+/** Normalize a language code to a supported one; unknown → 'en'. */
 function resolveLang(code) {
   if (!code) return 'en';
   const lc = String(code).toLowerCase().slice(0, 2);
-  return SUPPORTED.includes(lc) ? lc : 'ja';
+  return SUPPORTED.includes(lc) ? lc : 'en';
 }
 
 /** Build a translator. Falls back to English per-key, then the key itself. */

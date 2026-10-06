@@ -8,7 +8,7 @@
  * Blocks access to heavy directories that would flood the LLM context window.
  * Also warns on overly-broad glob patterns.
  *
- * Disable: set "inspect": { "enabled": false } in .claude/runtime.json
+ * Disable: set "inspect": { "enabled": false } in <runtime>/runtime.json
  *
  * Exit: 0 = allow, 2 = block
  */
@@ -21,7 +21,7 @@ try {
   // Directories that should never be read (too large / irrelevant to LLM)
   const BLOCKED_DIRS = [
     'node_modules', 'dist', 'build', '.next', '.nuxt', '.output',
-    '__pycache__', '.venv', 'venv', '.env',
+    '__pycache__', '.venv', 'venv',
     'vendor', 'target',
     '.git', 'coverage', '.nyc_output',
   ];
@@ -60,19 +60,41 @@ try {
     return out.filter(Boolean);
   }
 
+  const { runtimeDirName, runtimeDir, runtimePath } = require('./lib/runtime-dir.cjs');
   function readRuntime(cwd) {
     try {
-      const p = path.join(cwd, '.claude', 'runtime.json');
+      const p = runtimePath(cwd, 'runtime.json');
       return fs.existsSync(p) ? JSON.parse(fs.readFileSync(p, 'utf8')) : {};
     } catch { return {}; }
   }
 
   // ── Main ──────────────────────────────────────────────────────────────────
 
+/**
+ * Deny the call with a reason every host can read.
+ *
+ * The reason is the JSON `permissionDecisionReason`, which Claude Code reads natively and
+ * grok honours "regardless of exit code"; the same text also goes to stderr, because on
+ * an exit-2 denial that is the channel Claude Code feeds back, and grok reads only the
+ * first stderr line. Exit 2 stays so a host that reads neither still blocks.
+ */
+function denyWithReason(reason) {
+  process.stdout.write(JSON.stringify({
+    hookSpecificOutput: {
+      hookEventName: 'PreToolUse',
+      permissionDecision: 'deny',
+      permissionDecisionReason: reason
+    }
+  }) + '\n');
+  process.stderr.write(reason + '\n');
+  process.exit(2);
+}
+
   const stdin   = fs.readFileSync(0, 'utf8').trim();
   if (!stdin) process.exit(0);
 
-  const data      = JSON.parse(stdin);
+  const { normalizeHookPayload } = require('./lib/hook-payload.cjs');
+  const data      = normalizeHookPayload(JSON.parse(stdin));
   const toolName  = data.tool_name  || '';
   const toolInput = data.tool_input || {};
   const cwd       = data.cwd        || process.cwd();
@@ -88,12 +110,11 @@ try {
 
   // Broad glob check
   if (toolInput.pattern && isBroadGlob(toolInput.pattern)) {
-    console.log(
+    denyWithReason(
       `SCOPE LIMIT EXCEEDED: Glob pattern is excessively broad\n` +
       `Requested Pattern: ${toolInput.pattern}\n\n` +
       `Please narrow your scope (e.g., src/**/*.ts rather than **/*.ts).`
     );
-    process.exit(2);
   }
 
   // Blocked directory check
@@ -101,12 +122,11 @@ try {
   for (const p of paths) {
     if (isBlockedPath(p)) {
       const blocked = p.replace(/\\/g, '/').split('/').find(s => BLOCKED_DIRS.includes(s));
-      console.log(
+      denyWithReason(
         `SCOPE LIMIT EXCEEDED: Directory "${blocked}/" is explicitly forbidden\n` +
         `Requested Path: ${p}\n` +
         `Restricted zones: ${BLOCKED_DIRS.join(', ')}`
       );
-      process.exit(2);
     }
   }
 
@@ -115,7 +135,7 @@ try {
 } catch (e) {
   try {
     const fs = require('fs'), p = require('path');
-    const d = p.join(__dirname, '.logs');
+    const d = require('./lib/hook-state-dir.cjs').hookStateDir();
     if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
     fs.appendFileSync(p.join(d, 'hook-log.jsonl'),
       JSON.stringify({ ts: new Date().toISOString(), hook: 'inspect-block', status: 'crash', error: e.message }) + '\n');

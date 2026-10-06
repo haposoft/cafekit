@@ -1,0 +1,1 @@
+{ "name": "sync", "private": true, "dependencies": { "@ondrevale/client": "2.3.0" } }

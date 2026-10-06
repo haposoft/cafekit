@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "cafekit-b1-corpus.schema.json",
+  "title": "CafeKit B1 benchmark corpus",
+  "description": "Schema for a frozen B1 corpus. This schema describes task metadata only; it does not make example data a live benchmark.",
+  "type": "object",
+  "required": ["schema_version", "status", "corpus_id", "tasks"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": "b1.v1" },
+    "status": { "enum": ["frozen", "example_template"] },
+    "corpus_id": { "type": "string", "minLength": 1 },
+    "tasks": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/task" }
+    }
+  },
+  "$defs": {
+    "task": {
+      "type": "object",
+      "required": ["task_id", "lane", "repo_sample", "acceptance", "risk"],
+      "additionalProperties": false,
+      "oneOf": [
+        { "required": ["prompt"], "not": { "required": ["prompt_sha256"] } },
+        { "required": ["prompt_sha256"], "not": { "required": ["prompt"] } }
+      ],
+      "properties": {
+        "task_id": { "type": "string", "minLength": 1 },
+        "lane": { "enum": ["Direct", "Standard", "Critical"] },
+        "prompt": { "type": "string", "minLength": 1 },
+        "prompt_sha256": { "pattern": "^sha256:[0-9a-f]{64}$" },
+        "repo_sample": { "type": "string", "minLength": 1 },
+        "acceptance": {
+          "type": "object",
+          "minProperties": 1,
+          "description": "Observable acceptance criteria, not a vanity score."
+        },
+        "risk": {
+          "type": "object",
+          "minProperties": 1,
+          "description": "Risk and negative-control metadata used for lane adjudication."
+        }
+      }
+    }
+  }
+}

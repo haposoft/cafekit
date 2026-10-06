@@ -1,0 +1,12 @@
+schema_version: "1.1"
+name: hoi-lai
+tags: [ask-baseline]
+runs: 10
+context:
+  scaffold_script: scaffold.sh
+execution:
+  # Câu hỏi mơ hồ (ổn định theo nghĩa nào?): đúng là hỏi lại một câu trước khi trả lời.
+  prompt: "/cf:ask \"Hệ thống này có ổn định không?\""
+  max_turns: 30
+  timeout_seconds: 600
+  allowed_tools: [Read, Glob, Grep, Skill, Bash, Write, Edit, WebSearch, WebFetch]

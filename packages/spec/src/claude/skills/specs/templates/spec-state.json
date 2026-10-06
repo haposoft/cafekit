@@ -1,81 +1,56 @@
 {
+  "schema_version": "2.1",
   "feature_name": "{{FEATURE_NAME}}",
   "created_at": "{{TIMESTAMP}}",
   "updated_at": "{{TIMESTAMP}}",
   "language": "en",
   "status": "in_progress",
-  "phase": "initialized",
-  "current_phase": "init",
-  "priority": "P2",
-  "effort": null,
-  "tags": [],
-  "approvals": {
-    "requirements": {
-      "generated": false,
-      "approved": false
-    },
-    "design": {
-      "generated": false,
-      "approved": false
-    },
-    "tasks": {
-      "generated": false,
-      "approved": false
-    }
-  },
   "scope_lock": {
     "source": "{{PROJECT_DESCRIPTION}}",
     "in_scope": [],
     "out_of_scope": [],
     "expansion_policy": "requires-user-approval"
   },
-  "dependencies": {
-    "blockedBy": [],
-    "blocks": []
+  "authoring": {
+    "requirements": "draft",
+    "design": "draft",
+    "research": "absent",
+    "tasks": "absent"
   },
-  "task_files": [],
-  "task_registry": {},
-  "blocker": null,
-  "progress": {
-    "init": "done",
-    "requirements": "pending",
-    "research": "pending",
-    "design": "pending",
-    "tasks": "pending",
-    "code": "pending",
-    "test": "pending",
-    "review": "pending"
-  },
-  "timestamps": {
-    "init": "{{TIMESTAMP}}",
-    "requirements_done": null,
-    "research_done": null,
-    "design_done": null,
-    "tasks_done": null,
-    "code_done": null,
-    "test_done": null,
-    "review_done": null,
-    "validation_done": null
-  },
-  "design_context": {
-    "discovery_mode": null,
-    "discovery_reason": null,
-    "execution_tier": "standard",
-    "validation_recommended": false
+  "coordination": {
+    "boundaries": []
   },
   "validation": {
     "status": "not-run",
-    "session_count": 0,
-    "questions_asked": 0,
-    "last_validated_at": null
+    "semantic_review": {
+      "status": "not-run",
+      "semantic_digest": null,
+      "verdict": null,
+      "lifecycle_disposition": null,
+      "findings": [],
+      "unresolved_decisions": [],
+      "graph_coverage": [],
+      "repair_round": 0,
+      "reviewed_criteria": [],
+      "counterexamples": [],
+      "reviewer_evidence": null
+    },
+    "semantic_review_history": {
+      "lineage_id": "{{LINEAGE_ID}}",
+      "entries": []
+    },
+    "authoring_validation": null
   },
-  "translation": {
-    "enabled": false,
-    "language": null,
-    "language_code": null,
-    "dir": null,
-    "sync": "always",
-    "last_synced_at": null
-  },
-  "ready_for_implementation": false
+  "semantic_model": null,
+  "ready_for_implementation": false,
+  "workflow_policy": {
+    "version": "2.1",
+    "planning_depth": "Compact",
+    "assurance_level": "Routine",
+    "classified_minimum": {
+      "planning_depth": "Compact",
+      "assurance_level": "Routine"
+    },
+    "risks": []
+  }
 }

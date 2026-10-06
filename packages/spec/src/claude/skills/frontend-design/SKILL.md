@@ -1,7 +1,7 @@
 ---
-name: hapo:frontend-design
+name: cf:frontend-design
 description: Create polished frontend interfaces from designs/screenshots/videos. Use for web components, 3D experiences, replicating UI designs, quick prototypes, immersive interfaces, avoiding AI slop.
-license: Complete terms in LICENSE.txt
+license: MIT
 user-invocable: true
 when_to_use: "Invoke to translate mockups or screenshots into UI implementation."
 category: frontend
@@ -29,13 +29,13 @@ Choose workflow based on input type:
 | Existing project upgrade | Redesign Audit | `./references/redesign-audit-checklist.md` |
 | From scratch | Design Thinking below | - |
 
-**All workflows**: Activate `hapo:ui-ux-pro-max` skill FIRST for design intelligence.
+**All workflows**: Activate `cf:ui-ux-pro-max` skill FIRST for design intelligence.
 
-**Precedence:** When anti-slop rules (below) conflict with `hapo:ui-ux-pro-max` recommendations (e.g., Inter font, AI Purple palette, Lucide-only icons), substitute with alternatives from `./references/anti-slop-rules.md` unless the user explicitly requested the conflicting choice.
+**Precedence:** When anti-slop rules (below) conflict with `cf:ui-ux-pro-max` recommendations (e.g., Inter font, AI Purple palette, Lucide-only icons), substitute with alternatives from `./references/anti-slop-rules.md` unless the user explicitly requested the conflicting choice.
 
 ## Screenshot/Video Replication (Quick Reference)
 
-1. **Analyze** with `hapo:ai-multimodal` skill - extract colors, fonts, spacing, effects
+1. **Analyze** with `cf:ai-multimodal` skill - extract colors, fonts, spacing, effects
 2. **Plan** with `ui-ux-designer` subagent - create phased implementation
 3. **Implement** - match source precisely
 4. **Verify** - compare to original
@@ -90,7 +90,7 @@ Interpret creatively and make unexpected choices that feel genuinely designed fo
 
 **Remember:** Claude is capable of extraordinary creative work. Don't hold back, show what can truly be created when thinking outside the box and committing fully to a distinctive vision.
 
-**Assets**: Analyze supplied visual assets with `hapo:ai-multimodal`; generate or process implementation assets with the project's existing image/CSS/build tooling and document output paths in the task report.
+**Assets**: Analyze supplied visual assets with `cf:ai-multimodal`; generate or process implementation assets with the project's existing image/CSS/build tooling and document output paths in the task report.
 
 ## Asset & Analysis References
 

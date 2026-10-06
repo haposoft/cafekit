@@ -1,304 +1,74 @@
 ---
 title: Spec lifecycle
-description: Understand CafeKit's spec-driven development model from intent to verified implementation.
+description: The process-first path from intent to reviewed plan, verified tasks, and human completion.
 ---
 
 <DocsHero
-  eyebrow="Specification-driven development"
-  title="SDD is the contract layer between intent and code."
-  description="CafeKit turns a feature idea into source-backed requirements, design contracts, task packets, verification evidence, and synchronized machine state before implementation is allowed to move."
+  eyebrow="Process-first specifications"
+  title="A plan is the durable contract between intent and code."
+  description="CafeKit confirms scope at C1, writes plan.md and flat tasks, reviews findings at C2, and leaves completion to the user at C3."
 />
 
 <SpecLifecycleMap />
 
-## What SDD means in CafeKit
-
-Specification-driven development in CafeKit is not a long planning ritual. It is a control system for AI coding work.
-
-The assistant is allowed to code only after the work has a durable contract:
-
-- what problem is in scope
-- what is explicitly out of scope
-- which requirements must be satisfied
-- which design contracts cannot be changed silently
-- which task packet is active now
-- which commands and runtime proof will show the task is done
-- which state files must move after proof exists
-
-This matters because chat memory is soft. A spec is hard. Chat can summarize, forget, rationalize, or drift. `specs/<feature>/` is the durable source of truth that the next assistant, reviewer, or teammate can read without trusting prior conversation context.
-
-## The lifecycle in one line
+## Lifecycle
 
 ```text
-/hapo:specs
-  -> validate spec artifacts
-  -> /hapo:develop one task packet
-  -> /hapo:test + /hapo:code-review
-  -> /hapo:sync after proof
+request
+  -> C1: confirm outcome, scope, exclusions, constraints
+  -> plan.md + flat task-NN-*.md files
+  -> adversarial review
+  -> C2: accept, revise, or KEEP named findings
+  -> stop planning
+  -> new explicit /cf:develop invocation
+  -> exact verification + final inline Receipt
+  -> C3: user decides whether proof and limitations are sufficient
 ```
 
-This is the main SDD delivery loop. For a vague request, architecture debate, multi-system change, or unclear acceptance criteria, use `/hapo:brainstorm` as an optional pre-spec step before this loop starts.
+Planning never starts implementation. No command, hook, reviewer, or host state may invent C1, C2, C3, or execution proof.
 
 ## Artifact contract
 
-CafeKit specs are stored in this shape:
-
 ```text
 specs/<feature>/
-├── spec.json
-├── requirements.md
-├── research.md
-├── design.md
-├── tasks/
-│   ├── task-R0-01-<foundation>.md
-│   ├── task-R1-01-<feature-step>.md
-│   └── task-R2-01-<feature-step>.md
-└── reports/
-    └── red-team-report.md
+├── plan.md
+├── task-01-<slug>.md
+└── task-NN-<slug>.md
 ```
 
-<SpecArtifactGrid />
+`plan.md` records the C1 decision, acceptance criteria, exclusions, findings decisions, dependencies, and task map. Each flat task owns one outcome and exactly one `Status:` field.
 
-Forbidden legacy artifacts:
+Every task should state:
 
-- `init.json`
-- `spec-state.json`
-- `hydration.md`
+- outcome and explicit boundaries
+- owned files or surfaces
+- dependencies and blockers
+- acceptance criteria mapped to the plan
+- exact planned verification command
+- final inline `## Receipt`
 
-Task hydration may happen in the assistant UI, but task files remain the source of truth. Hydration must not be written as a markdown artifact.
+## Human decisions
 
-## Phase-by-phase flow
-
-### 1. Analyze intent
-
-`/hapo:specs <feature-description>` first decides whether the request is ready for a spec.
-
-It should route to `/hapo:brainstorm` when the output is vague, architecture choices are still open, scope boundaries are unclear, acceptance criteria are missing, or the work spans several independent subsystems.
-
-It may warn that a spec is not necessary for a very small one-file change. CafeKit should be strict for meaningful feature work, not ceremonial for trivial edits.
-
-### 2. Scan existing specs and dependencies
-
-Before creating new artifacts, CafeKit scans `specs/` for incomplete specs and overlapping scope.
-
-The point is to avoid two specs fighting over the same files, contracts, migrations, commands, or runtime surfaces. If dependency exists, the relationship should be recorded in `spec.json` so implementation order is visible.
-
-### 3. Assess complexity and lock scope
-
-CafeKit evaluates the request across intent, implementation hypothesis, gap size, risk, and blast radius.
-
-The output is a scope lock:
-
-| Scope lock field | Meaning |
-|---|---|
-| `source` | The original user request or approved design summary. |
-| `in_scope` | Behavior the spec is allowed to deliver. |
-| `out_of_scope` | Behavior the assistant must not add. |
-| `expansion_policy` | Usually `requires-user-approval`. |
-
-Once scope is confirmed, the assistant should not silently expand, shrink, or reinterpret it. A needed scope change is a spec update, not an implementation shortcut.
-
-### 4. Create `spec.json`
-
-`spec.json` is the machine-readable state file. It tracks status, current phase, approvals, scope, design context, task files, task registry, timestamps, and readiness.
-
-Important fields:
-
-| Field | Why it matters |
-|---|---|
-| `status` | Canonical values include `in_progress`, `blocked`, `done`, and `archived`. New specs should not emit legacy `in-progress`. |
-| `current_phase` | Shows whether the spec is in `init`, `requirements`, `design`, `tasks`, `develop`, `test`, or `review`. |
-| `scope_lock` | Prevents hidden scope changes during specs and implementation. |
-| `task_files` | Must exactly match physical files under `tasks/`. |
-| `task_registry` | Machine state for each task file. |
-| `ready_for_implementation` | Hard gate; true only after approvals, registry sync, validation, and task readiness pass. |
-
-### 5. Write evidence before final requirements
-
-For non-trivial specs, `research.md` must exist before requirements, design, or tasks are finalized.
-
-Evidence can be:
-
-- targeted codebase scout findings
-- official or current external documentation
-- constraints from package/runtime files
-- explicit skip rationale for trivial docs-only or isolated work
-
-The Evidence Summary should record:
-
-- codebase scout result
-- external research result or skip rationale
-- selected decision
-- rejected alternatives
-- remaining gaps
-- downstream task and test implications
-
-The goal is to prevent requirements from being written from memory when the repo or current upstream docs can answer the question.
-
-### 6. Write requirements
-
-`requirements.md` turns intent into testable behavior. Requirements should use numeric IDs and acceptance criteria precise enough to verify.
-
-Good requirements are:
-
-- singular
-- unambiguous
-- testable
-- mapped to later tasks
-- honest about non-functional needs such as security, performance, reliability, accessibility, migration, and rollback
-
-If a requirement cannot be tested, it is not ready to become implementation work.
-
-### 7. Write design contracts
-
-`design.md` explains how the feature will be built. It should not just say "implement the feature." It should lock the decisions a later implementation must preserve.
-
-For auth, session, transport, persistence, schemas, generated artifacts, commands, package exports, or runtime-sensitive work, the design must include canonical contracts and invariants. These are the rules `/hapo:develop` must not silently replace.
-
-Examples:
-
-| Contract type | Example of what must be explicit |
-|---|---|
-| Runtime entrypoint | route, command, worker, provider, hook, API boundary, UI mount. |
-| Persistence | schema, migration, datastore, deletion/retention policy. |
-| Transport | request/response shape, event contract, queue topic, CLI args. |
-| Integration | which prior task output must be imported, mounted, registered, or invoked. |
-| Testing | unit, integration, E2E, visual, accessibility, smoke, security, or performance proof. |
-
-### 8. Break into task packets
-
-CafeKit does not hand `/hapo:develop` a vague feature. It hands over task packets.
-
-Task files follow this naming convention:
-
-```text
-tasks/task-R{N}-{SEQ}-<slug>.md
-```
-
-`R0` is for shared foundation work. `R1+` are feature clusters. Sequence numbers are two digits.
-
-Each task should be self-contained:
-
-| Task section | Required role |
-|---|---|
-| `Context` | Why the task exists and what outcome it targets. |
-| `Constraints` | MUST, SHOULD, MUST NOT, scope guardrails. |
-| `Steps` | Implementation checklist with enough code-level detail to act. |
-| `Requirements` | Requirement IDs and acceptance criteria covered. |
-| `Related Files` | Exact paths when known; otherwise scout before finalizing. |
-| `Completion Criteria` | Observable checks that prove the task is complete. |
-| `Evidence` | Commands, artifact proof, runtime proof, negative-path proof, reachability proof. |
-| `Risk Assessment` | Risks, severity, and mitigations. |
-
-Vague task files are invalid. A junior developer or AI coding agent should be able to execute a task without guessing.
-
-### 9. Build `task_registry`
-
-`spec.json.task_registry` is keyed by task file path.
-
-Status values:
-
-- `pending`
-- `in_progress`
-- `blocked`
-- `done`
-
-Each registry entry must include:
-
-- `id`
-- `title`
-- `status`
-- `dependencies`
-- `blocker`
-- `started_at`
-- `completed_at`
-- `last_updated_at`
-
-`done` is illegal without fresh verification evidence. If proof is missing, the task stays `pending`, `in_progress`, or `blocked`.
-
-### 10. Validate readiness
-
-Before implementation, run:
-
-```bash
-node .claude/scripts/validate-spec-output.cjs specs/<feature>
-```
-
-The validator checks artifact shape, forbidden files, task path naming, required task sections, requirement coverage, task file inventory, `task_registry`, and readiness consistency.
-
-<SpecReadinessGrid />
-
-`ready_for_implementation = true` is allowed only when the spec is structurally valid, required approvals are complete, task files and registry match disk, validation requirements are satisfied, and tasks contain executable evidence expectations.
-
-## How develop uses the spec
-
-`/hapo:develop` is not "start coding from the whole idea." It is a task executor.
-
-It has two modes:
-
-| Mode | Command | Behavior |
+| Gate | Question | Effect |
 |---|---|---|
-| Specific-task mode | `/hapo:develop <feature> <task-file>` | Load exactly one task packet, implement it, verify it, sync it, then stop. |
-| Full-spec mode | `/hapo:develop <feature>` | Build a queue from `task_registry`, select the next pending unblocked task, finish the full loop, then re-read state. |
+| C1 | What exactly are we planning? | Locks outcome, scope, exclusions, constraints, and unresolved choices. |
+| C2 | What material gaps or risks remain? | The user accepts, requests revision, or keeps a named limitation. |
+| C3 | Is the current result good enough to close? | The user evaluates current receipts and unresolved limitations. |
 
-Before coding, develop must extract:
+## Execution and proof
 
-- objective and constraints
-- related files
-- completion criteria
-- evidence commands
-- requirement IDs
-- named technologies and runtime choices
-- design contracts and invariants
-- prior task outputs that must be consumed
+`/cf:develop <feature>` selects one unblocked task, scouts the real integration path, implements only that boundary, and runs the task's exact proof command. The controller is the sole writer of task state and proof.
 
-Then it scouts real entrypoints and callers. Runtime-facing code is not done if it is only created as an orphan file. It must be imported, mounted, registered, invoked, or otherwise reachable from the real runtime boundary.
+A done task requires a current final inline Receipt containing:
 
-## Quality gate after implementation
+- exact command
+- `Exit: 0`
+- `Verification: PASS`
+- runtime-derived `Base` and `Head`
+- non-empty fenced current output
 
-A task is complete only when all four proof layers pass:
+`NO_TESTS`, zero executed tests, stale output, or a green command unrelated to acceptance does not pass.
 
-| Layer | What must be true |
-|---|---|
-| Automated verification | Compile/typecheck/build and exact task evidence commands pass. |
-| Spec compliance | Scoped requirements and design contracts are implemented with no hidden extras. |
-| Code review | No blocking correctness, security, architecture, or regression findings. |
-| Task evidence | Runtime/artifact proof, reachability, and negative paths match the task's Evidence section. |
+## Sync boundary
 
-`NO_TESTS` is not a pass. A command that exits `0` but runs zero tests is not a pass. Build success alone is not enough proof for user-facing or runtime-facing work.
-
-## Practical SDD routine
-
-Use this routine for planned feature delivery:
-
-```bash
-/hapo:specs <approved idea>
-node .claude/scripts/validate-spec-output.cjs specs/<feature>
-/hapo:develop <feature> <task-file>
-/hapo:test <feature>
-/hapo:code-review --pending
-/hapo:sync <feature> <task-file> done
-```
-
-Use `/hapo:brainstorm <idea>` before this routine only when the idea is not ready for specs.
-
-For larger specs, prefer one task per implementation session. Smaller diffs make evidence, review, and rollback easier.
-
-## When SDD is worth it
-
-Use the full SDD path when the work changes product behavior, touches multiple files, crosses runtime boundaries, updates auth/data/schema/package contracts, affects users, needs review evidence, or will be handed between people or assistant sessions.
-
-Skip or shorten it when the change is truly trivial: typo, isolated copy edit, one-line config, or emergency fix that belongs in `/hapo:hotfix`.
-
-## The core idea
-
-CafeKit SDD is a forcing function:
-
-- intent becomes scope
-- scope becomes requirements
-- requirements become design contracts
-- design becomes task packets
-- task packets become verified code
-- verified code becomes synchronized state
-
-That is the center of CafeKit. The assistant is not successful because it produced code quickly. It is successful when the code matches the approved spec, is reachable in the real system, has evidence, passes review, and leaves state accurate for the next run.
+`/cf:sync` performs surgical updates to observed task Status and inline Receipts. It does not invent execution, approval, readiness, or completion.

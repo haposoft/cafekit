@@ -74,8 +74,8 @@ when (uiState) {
 
 ### Why Compose?
 - **Declarative**: Describe UI state, not imperative commands
-- **60% adoption**: In top 1,000 apps (2024)
-- **Less code**: 40% reduction vs Views
+- **Adoption**: Used in many top 1,000 apps
+- **Less code**: Reduction vs Views
 - **Modern**: Built for Kotlin and coroutines
 - **Material 3**: First-class support
 
@@ -310,7 +310,7 @@ class UserViewModel(
 
 **Hilt vs Koin:**
 - **Hilt**: Compile-time, type-safe, Google-backed, complex setup
-- **Koin**: Runtime, simple DSL, 50% faster setup, reflection-based
+- **Koin**: Runtime, simple DSL, faster setup, reflection-based
 
 ## Performance Optimization
 
@@ -335,14 +335,14 @@ android {
 ```
 
 **Impact:**
-- 10-20% app size reduction
-- 20% faster startup
+- Smaller app size
+- Faster startup
 - Harder to reverse engineer
 
 ### Baseline Profiles
 
 **Performance boost:**
-- 10-20% faster startup
+- Faster startup
 - Reduced jank in critical paths
 - AOT compilation of hot code
 
@@ -572,7 +572,7 @@ android {
 ```
 
 **Benefits:**
-- 15-30% smaller downloads
+- Smaller downloads
 - Dynamic feature modules
 - Instant apps support
 

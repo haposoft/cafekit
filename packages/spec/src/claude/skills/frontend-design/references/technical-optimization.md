@@ -24,7 +24,7 @@ Use ultra model (1 generation):
 
 ## Analysis Model Strategy
 
-- Use gemini-2.5-flash for all analysis (vision understanding)
+- Use gemma-4-31b-it for all analysis (vision understanding)
 - **Cost**: ~$0.001 per analysis
 - **Speed**: ~2-5 seconds per analysis
 - **Token-efficient**: Images count as ~258-1548 tokens

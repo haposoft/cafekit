@@ -1,0 +1,1 @@
+{ "name": "home-page", "private": true, "scripts": { "test": "node --test" } }

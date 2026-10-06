@@ -17,6 +17,19 @@ const { spawnSync, spawn } = require('child_process');
 
 const isWindows = process.platform === 'win32';
 
+/**
+ * npm and npx are `.cmd` launchers on Windows, so Node cannot spawn them
+ * directly without a command interpreter. Keep the shell boundary explicit;
+ * all arguments passed here are installer-owned constants.
+ */
+function resolvePackageCommand(command, args, platform = process.platform, env = process.env) {
+  if (platform !== 'win32') return { command, args };
+  return {
+    command: env.ComSpec || env.COMSPEC || 'cmd.exe',
+    args: ['/d', '/s', '/c', `${command}.cmd`, ...args]
+  };
+}
+
 /** Run a command synchronously, return { ok, stdout, stderr, status }. Never throws. */
 function run(cmd, args, opts = {}) {
   const r = spawnSync(cmd, args, { encoding: 'utf8', ...opts });
@@ -48,9 +61,30 @@ function runAsync(cmd, args, opts = {}) {
       });
     });
     child.on('error', (err) => {
-      resolve({ ok: false, status: null, stdout, stderr: stderr || err.message });
+      resolve({
+        ok: false,
+        status: null,
+        stdout,
+        stderr: stderr || err.message,
+        errorCode: err.code || ''
+      });
     });
   });
+}
+
+/** Return one actionable line without flooding the installer UI with npm output. */
+function commandFailureReason(result) {
+  const lines = `${result.stderr || ''}\n${result.stdout || ''}`
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  return lines.find((line) => (
+    /\bE[A-Z0-9_]{2,}\b/.test(line) || /\bnpm error code\b/i.test(line)
+  ))
+    || lines.find((line) => /^npm error\b/i.test(line))
+    || lines.at(-1)
+    || result.errorCode
+    || `exit ${result.status ?? 'unknown'}`;
 }
 
 /** Is a command available on PATH? */
@@ -104,12 +138,12 @@ async function pipInstall(skillsDir, requirementsPath, upgrade = false) {
   return r.ok;
 }
 
-/** `npm install` (fresh) or `npm update` (existing) in a skill scripts dir. Async — keeps spinner alive. */
+/** `npm install` (fresh) or `npm update` (existing) in a skill scripts dir. */
 async function npmInstall(dir, upgrade = false, extraEnv = {}) {
   const args = upgrade ? ['update', '--no-audit', '--no-fund'] : ['install', '--no-audit', '--no-fund'];
   const env = { ...process.env, ...extraEnv };
-  const r = await runAsync('npm', args, { cwd: dir, env });
-  return r.ok;
+  const npm = resolvePackageCommand('npm', args);
+  return runAsync(npm.command, npm.args, { cwd: dir, env });
 }
 
 /**
@@ -130,10 +164,11 @@ async function installChromium(scriptsDir, interactive = false) {
     const r = await runAsync('node', [installMjs], { cwd: scriptsDir });
     return r.ok;
   }
+  const npx = resolvePackageCommand('npx', ['--yes', '@puppeteer/browsers', 'install', 'chrome']);
   if (interactive) {
-    return run('npx', ['--yes', '@puppeteer/browsers', 'install', 'chrome'], { cwd: scriptsDir, stdio: 'inherit' }).ok;
+    return run(npx.command, npx.args, { cwd: scriptsDir, stdio: 'inherit' }).ok;
   }
-  const r = await runAsync('npx', ['--yes', '@puppeteer/browsers', 'install', 'chrome'], { cwd: scriptsDir });
+  const r = await runAsync(npx.command, npx.args, { cwd: scriptsDir });
   return r.ok;
 }
 
@@ -149,7 +184,8 @@ function pkgHasDep(scriptsDir, name) {
 
 /** Download the Playwright Chromium browser (for the pptx html2pptx workflow). Async — keeps spinner alive. */
 async function installPlaywrightBrowser(scriptsDir) {
-  const r = await runAsync('npx', ['--yes', 'playwright', 'install', 'chromium'], { cwd: scriptsDir });
+  const npx = resolvePackageCommand('npx', ['--yes', 'playwright', 'install', 'chromium']);
+  const r = await runAsync(npx.command, npx.args, { cwd: scriptsDir });
   return r.ok;
 }
 
@@ -235,15 +271,15 @@ function collectSkillPackages(skillsDir) {
 
 /** External binaries some skills shell out to — detected, never auto-installed. */
 const SYSTEM_TOOLS = [
-  { cmd: 'ffmpeg', why: 'ai-multimodal (audio/video)', brew: 'brew install ffmpeg', apt: 'sudo apt install ffmpeg', win: 'winget install ffmpeg' },
-  { cmd: 'pdftotext', why: 'pdf (text extraction, poppler)', brew: 'brew install poppler', apt: 'sudo apt install poppler-utils', win: 'choco install poppler' },
-  { cmd: 'rsvg-convert', why: 'generate-graph (PNG export, librsvg)', brew: 'brew install librsvg', apt: 'sudo apt install librsvg2-bin', win: 'choco install rsvg-convert' },
-  { cmd: 'tesseract', why: 'pdf/ai-multimodal (OCR)', brew: 'brew install tesseract', apt: 'sudo apt install tesseract-ocr', win: 'choco install tesseract' }
+  { cmd: 'ffmpeg', skills: ['ai-multimodal'], why: 'ai-multimodal (audio/video)', brew: 'brew install ffmpeg', apt: 'sudo apt install ffmpeg', win: 'winget install ffmpeg' },
+  { cmd: 'pdftotext', skills: ['pdf'], why: 'pdf (text extraction, poppler)', brew: 'brew install poppler', apt: 'sudo apt install poppler-utils', win: 'choco install poppler' },
+  { cmd: 'rsvg-convert', skills: ['generate-graph'], why: 'generate-graph (PNG export, librsvg)', brew: 'brew install librsvg', apt: 'sudo apt install librsvg2-bin', win: 'choco install rsvg-convert' },
+  { cmd: 'tesseract', skills: ['pdf', 'ai-multimodal'], why: 'pdf/ai-multimodal (OCR)', brew: 'brew install tesseract', apt: 'sudo apt install tesseract-ocr', win: 'choco install tesseract' }
 ];
 
 /** Global npm CLIs some skills expect — detected, never auto-installed. */
 const GLOBAL_NPM = [
-  { cmd: 'agent-browser', pkg: 'agent-browser', why: 'agent-browser skill' }
+  { cmd: 'agent-browser', pkg: 'agent-browser', skills: ['agent-browser'], why: 'agent-browser skill' }
 ];
 
 /** Per-OS install hint for a SYSTEM_TOOLS entry. */
@@ -255,6 +291,8 @@ function systemHint(tool) {
 
 module.exports = {
   isWindows,
+  resolvePackageCommand,
+  commandFailureReason,
   hasCmd,
   findPython,
   venvDir,

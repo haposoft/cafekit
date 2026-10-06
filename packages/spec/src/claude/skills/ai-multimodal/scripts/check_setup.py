@@ -302,7 +302,7 @@ def main():
         print("\nImage generation models:")
         print("  • gemma-4-31b-it-image    - Nano Banana Flash (DEFAULT - fast)")
         print("  • imagen-4.0-generate-001   - Imagen 4 (alternative - production)")
-        print("  • gemini-3-pro-image-preview - Nano Banana Pro (4K text, reasoning)")
+        print("  • gemma-4-31b-it-image-preview - Nano Banana Pro (4K text, reasoning)")
         print("\nExample (uses default model):")
         print("  python scripts/gemini_batch_process.py --task generate \\")
         print("    --prompt 'A sunset over mountains' --aspect-ratio 16:9 --size 2K")

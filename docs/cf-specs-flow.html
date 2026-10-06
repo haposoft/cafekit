@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>cf:specs — Process-First Flow</title>
+<style>
+  :root{
+    --bg:#0b1220;
+    --panel:#141b2d;
+    --panel2:#101827;
+    --panel3:#0e1524;
+    --border:#27324a;
+    --text:#eaf0f7;
+    --muted:#9aa7ba;
+    --accent:#74b9ff;
+    --green:#4ade80;
+    --amber:#f5b546;
+    --red:#ff6b6b;
+    --violet:#b794f4;
+    --radius:16px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;
+    color:var(--text);
+    background:
+      radial-gradient(1100px 520px at 90% -10%, rgba(116,185,255,.16), transparent 55%),
+      radial-gradient(900px 420px at 0% 0%, rgba(183,148,244,.12), transparent 50%),
+      var(--bg);
+    font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+    line-height:1.6;
+  }
+  a{color:var(--accent);text-decoration:none}
+  code{
+    background:var(--panel3);
+    border:1px solid var(--border);
+    border-radius:7px;
+    padding:1px 6px;
+    color:#8dd1ff;
+    font-size:12.5px;
+    white-space:nowrap;
+  }
+  pre{
+    margin:0;
+    background:var(--panel3);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:14px 16px;
+    overflow:auto;
+    color:#cfe4ff;
+  }
+  .layout{
+    display:grid;
+    grid-template-columns:250px minmax(0,1fr);
+    max-width:1280px;
+    margin:0 auto;
+  }
+  @media (max-width: 960px){
+    .layout{grid-template-columns:1fr}
+    .nav{display:none}
+  }
+  .nav{
+    position:sticky;
+    top:0;
+    align-self:start;
+    height:100vh;
+    overflow:auto;
+    border-right:1px solid var(--border);
+    padding:26px 18px;
+    background:rgba(8,13,24,.45);
+    backdrop-filter:blur(10px);
+  }
+  .brand{
+    font-size:22px;
+    font-weight:800;
+    letter-spacing:-.02em;
+    margin-bottom:4px;
+  }
+  .brand span{color:var(--accent)}
+  .nav p{margin:0 0 16px;color:var(--muted);font-size:13px}
+  .nav h4{
+    margin:20px 0 8px;
+    text-transform:uppercase;
+    letter-spacing:1.4px;
+    font-size:11px;
+    color:var(--muted);
+  }
+  .nav a{
+    display:block;
+    padding:6px 10px;
+    margin:2px 0;
+    border-radius:10px;
+    color:var(--muted);
+    font-size:13px;
+  }
+  .nav a:hover{background:var(--panel);color:var(--text)}
+  main{
+    padding:34px 28px 80px;
+    min-width:0;
+  }
+  .hero{
+    padding:4px 0 12px;
+  }
+  .hero h1{
+    margin:0 0 10px;
+    font-size:33px;
+    line-height:1.1;
+    letter-spacing:-.03em;
+  }
+  .hero p{
+    margin:0;
+    max-width:920px;
+    color:var(--muted);
+    font-size:15px;
+  }
+  .chips{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    margin:18px 0 0;
+  }
+  .chip{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    padding:6px 10px;
+    border:1px solid var(--border);
+    border-radius:999px;
+    background:rgba(255,255,255,.03);
+    font-size:12px;
+    color:var(--muted);
+  }
+  .chip b{color:var(--text)}
+  h2{
+    margin:42px 0 14px;
+    font-size:14px;
+    text-transform:uppercase;
+    letter-spacing:2px;
+    color:var(--muted);
+  }
+  .grid2{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:16px;
+  }
+  .grid3{
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:16px;
+  }
+  @media (max-width: 880px){
+    .grid2,.grid3{grid-template-columns:1fr}
+  }
+  .card{
+    background:linear-gradient(180deg, rgba(20,27,45,.96), rgba(14,21,36,.96));
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    padding:18px 18px 16px;
+    box-shadow:0 22px 60px rgba(0,0,0,.24);
+  }
+  .card h3{
+    margin:0 0 8px;
+    font-size:18px;
+    letter-spacing:-.02em;
+  }
+  .card p{margin:0;color:var(--muted)}
+  .mini{
+    margin-top:10px;
+    padding-top:10px;
+    border-top:1px solid var(--border);
+    color:var(--muted);
+    font-size:13px;
+  }
+  .steps{
+    display:grid;
+    gap:14px;
+  }
+  .step{
+    display:grid;
+    grid-template-columns:72px minmax(0,1fr);
+    gap:14px;
+    align-items:start;
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    background:rgba(20,27,45,.72);
+    padding:16px 18px;
+  }
+  @media (max-width: 720px){
+    .step{grid-template-columns:1fr}
+  }
+  .num{
+    width:60px;height:60px;border-radius:16px;
+    display:grid;place-items:center;
+    font-size:22px;font-weight:800;
+    color:var(--accent);
+    border:1px solid var(--border);
+    background:linear-gradient(180deg, rgba(116,185,255,.11), rgba(255,255,255,.02));
+  }
+  .step h3{
+    margin:0 0 6px;
+    font-size:20px;
+    letter-spacing:-.02em;
+  }
+  .step .meta{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    margin-bottom:8px;
+  }
+  .tag{
+    padding:2px 9px;
+    border-radius:999px;
+    font-size:11px;
+    border:1px solid var(--border);
+    color:var(--muted);
+  }
+  .tag.amber{color:var(--amber);border-color:rgba(245,181,70,.35)}
+  .tag.green{color:var(--green);border-color:rgba(74,222,128,.35)}
+  .tag.violet{color:var(--violet);border-color:rgba(183,148,244,.35)}
+  ul{margin:10px 0 0 18px;color:var(--muted)}
+  li{margin:4px 0}
+  table{
+    width:100%;
+    border-collapse:collapse;
+    margin-top:10px;
+    font-size:13px;
+  }
+  th,td{
+    border:1px solid var(--border);
+    padding:9px 10px;
+    vertical-align:top;
+    text-align:left;
+  }
+  th{
+    background:rgba(255,255,255,.03);
+    color:var(--text);
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:.8px;
+  }
+  td{color:var(--muted)}
+  td strong{color:var(--text)}
+  .callout{
+    margin-top:14px;
+    padding:12px 14px;
+    border-left:3px solid var(--amber);
+    background:rgba(245,181,70,.06);
+    border-radius:10px;
+    color:var(--muted);
+    font-size:13px;
+  }
+  .callout.red{
+    border-left-color:var(--red);
+    background:rgba(255,107,107,.07);
+  }
+  .callout.green{
+    border-left-color:var(--green);
+    background:rgba(74,222,128,.06);
+  }
+  .rail{
+    display:grid;
+    grid-template-columns:repeat(5,minmax(0,1fr));
+    gap:10px;
+  }
+  @media (max-width: 880px){
+    .rail{grid-template-columns:1fr}
+  }
+  .rail .node{
+    border:1px solid var(--border);
+    border-radius:14px;
+    background:rgba(255,255,255,.03);
+    padding:12px 12px 10px;
+  }
+  .rail .node span{
+    display:inline-grid;
+    place-items:center;
+    width:28px;height:28px;
+    border-radius:8px;
+    margin-bottom:8px;
+    background:rgba(116,185,255,.12);
+    color:#b7d9ff;
+    font-weight:700;
+    font-size:12px;
+  }
+  .rail .node b{display:block;margin-bottom:2px}
+  footer{
+    margin-top:38px;
+    border-top:1px solid var(--border);
+    padding-top:14px;
+    color:var(--muted);
+    font-size:12px;
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+  <aside class="nav">
+    <div class="brand"><span>cf:</span>specs</div>
+    <p>Process-first flow cho packet phẳng, 3 cổng và receipt inline.</p>
+    <h4>Nội dung</h4>
+    <a href="#overview">Tổng quan</a>
+    <a href="#gates">Ba cổng</a>
+    <a href="#steps">Luồng 5 bước</a>
+    <a href="#packet">Packet phẳng</a>
+    <a href="#trace">Trace criteria → task</a>
+    <a href="#receipt">Receipt + Stop gate</a>
+    <a href="#sync">Develop + Sync</a>
+    <a href="#legacy">Legacy compatibility</a>
+  </aside>
+
+  <main>
+    <header class="hero" id="overview">
+      <h1>cf:specs — Process-First Flow</h1>
+      <p>
+        Layout mặc định là <code>specs/&lt;feature&gt;/plan.md</code> + các file
+        <code>task-NN-&lt;slug&gt;.md</code> nằm cạnh nó. Một packet chỉ cần 1
+        owner cho 1 task, và 3 cổng quyết định để giữ scope, findings và done
+        không trôi khỏi evidence.
+      </p>
+      <div class="chips">
+        <span class="chip"><b>C1</b> scope</span>
+        <span class="chip"><b>C2</b> findings</span>
+        <span class="chip"><b>C3</b> done</span>
+        <span class="chip"><b>Flat</b> task files beside plan.md</span>
+        <span class="chip"><b>Inline</b> canonical Receipt</span>
+      </div>
+    </header>
+
+    <h2>Ba cổng quyết định</h2>
+    <section class="grid3" id="gates">
+      <article class="card">
+        <h3>C1 — Scope</h3>
+        <p>Chốt phạm vi tối thiểu trước khi viết plan. Nếu evidence mới làm scope sai, quay lại C1.</p>
+        <div class="mini">Hỏi: EXPAND, KEEP hay CUT.</div>
+      </article>
+      <article class="card">
+        <h3>C2 — Findings</h3>
+        <p>Review adversarially từ fresh context. Dedupe finding, cap danh sách ở 15, và dừng sau tối đa 2 vòng giấy.</p>
+        <div class="mini">Hỏi: accept, reject, hay revise từng finding.</div>
+      </article>
+      <article class="card">
+        <h3>C3 — Done</h3>
+        <p>Completion chỉ được chấp nhận từ output và receipts hiện tại. Không dựa vào cảm giác “xong rồi”.</p>
+        <div class="mini">Hỏi: evidence hiện tại có đủ để đóng task hay không.</div>
+      </article>
+    </section>
+
+    <h2>Luồng 5 bước</h2>
+    <section class="steps" id="steps">
+      <article class="step">
+        <div class="num">1</div>
+        <div>
+          <h3>Scout</h3>
+          <div class="meta">
+            <span class="tag">repo evidence</span>
+            <span class="tag">callers</span>
+            <span class="tag">tests</span>
+          </div>
+          <p>Tìm code đã có, file thật, callers, exports và các điểm tái sử dụng trước khi viết plan.</p>
+        </div>
+      </article>
+      <article class="step">
+        <div class="num">2</div>
+        <div>
+          <h3>Write plan.md</h3>
+          <div class="meta">
+            <span class="tag">C1 decision</span>
+            <span class="tag">EARS</span>
+            <span class="tag">exclusions</span>
+          </div>
+          <p>Plan là index ngắn: scope decision, acceptance criteria kiểu EARS, explicit exclusions và task table.</p>
+        </div>
+      </article>
+      <article class="step">
+        <div class="num">3</div>
+        <div>
+          <h3>Review adversarially</h3>
+          <div class="meta">
+            <span class="tag amber">fresh context</span>
+            <span class="tag amber">≤ 15 findings</span>
+            <span class="tag amber">≤ 2 rounds</span>
+          </div>
+          <p>Phát hiện lỗi thật, không làm màu. Sau 2 vòng giấy, vòng tiếp theo phải có runtime evidence.</p>
+        </div>
+      </article>
+      <article class="step">
+        <div class="num">4</div>
+        <div>
+          <h3>Execute one task</h3>
+          <div class="meta">
+            <span class="tag green">in_progress</span>
+            <span class="tag">one owner</span>
+            <span class="tag">real verification</span>
+          </div>
+          <p>Chỉ xử lý một task chưa block tại một thời điểm. Không nhảy sang task khác trước khi có proof thật.</p>
+        </div>
+      </article>
+      <article class="step">
+        <div class="num">5</div>
+        <div>
+          <h3>Receipt + sync</h3>
+          <div class="meta">
+            <span class="tag violet">inline Receipt</span>
+            <span class="tag violet">Status: done</span>
+            <span class="tag violet">sync state</span>
+          </div>
+          <p>Ghi canonical Receipt inline, đổi trạng thái thật, rồi mới xem task là done.</p>
+        </div>
+      </article>
+    </section>
+
+    <h2>Packet phẳng</h2>
+    <section class="grid2" id="packet">
+      <article class="card">
+        <h3>Layout bắt buộc</h3>
+        <pre><code>specs/&lt;feature&gt;/
+├── plan.md
+├── task-01-&lt;slug&gt;.md
+└── task-NN-&lt;slug&gt;.md</code></pre>
+        <div class="mini">Không tạo nested task directory cho packet mới.</div>
+      </article>
+      <article class="card">
+        <h3>Nhịp đọc</h3>
+        <table>
+          <tr><th>File</th><th>Vai trò</th></tr>
+          <tr><td><strong>plan.md</strong></td><td>Index ngắn, C1 decision, EARS criteria, exclusions, task table.</td></tr>
+          <tr><td><strong>task-NN-*.md</strong></td><td>One outcome, one owner, one verification plan, one inline Receipt.</td></tr>
+        </table>
+      </article>
+    </section>
+
+    <h2>Trace criteria → task</h2>
+    <section class="card" id="trace">
+      <p style="margin:0;color:var(--muted)">
+        Mỗi acceptance criterion phải có ít nhất một task và một proof command.
+        Một task không có criterion là scope drift.
+      </p>
+      <table>
+        <tr>
+          <th>Criterion</th>
+          <th>Task packet</th>
+          <th>Proof</th>
+        </tr>
+        <tr>
+          <td><strong>AC-01</strong></td>
+          <td><code>task-01-&lt;slug&gt;.md</code></td>
+          <td><code>Command:</code> + output mới + <code>Exit: 0</code></td>
+        </tr>
+        <tr>
+          <td><strong>AC-02</strong></td>
+          <td><code>task-02-&lt;slug&gt;.md</code></td>
+          <td><code>Verification: PASS</code> với output hiện tại</td>
+        </tr>
+      </table>
+      <div class="callout">
+        Nếu một criterion chưa map được vào task nào, quay lại plan thay vì
+        nhét thêm prose vào task file.
+      </div>
+    </section>
+
+    <h2>Receipt + Stop gate</h2>
+    <section class="grid2" id="receipt">
+      <article class="card">
+        <h3>Canonical Receipt</h3>
+        <pre><code>## Receipt
+
+Verification: PASS
+Command: pnpm test -- --filter example
+Exit: 0
+Base: &lt;runtime-derived base commit&gt;
+Head: &lt;runtime-derived tree digest or commit&gt;
+```text
+$ pnpm test -- --filter example
+PASS example.test.ts
+Tests: 3 passed, 3 total
+```</code></pre>
+      </article>
+      <article class="card">
+        <h3>Stop gate</h3>
+        <ul>
+          <li>Thiếu fenced output → không được done.</li>
+          <li>Thiếu <code>Exit: 0</code> hoặc <code>Verification: PASS</code> → không được done.</li>
+          <li>Base/Head không khớp runtime hiện tại → receipt cũ.</li>
+          <li>Placeholder hoặc chỉ nói “PASS” bằng miệng → bị chặn.</li>
+        </ul>
+        <div class="callout red">
+          Stop gate đọc lại receipt của mọi task done. Nó so Base và Head với runtime khi file task khác bản đã commit, và chỉ kiểm cấu trúc khi file đã commit, không đổi, và cây ngoài specs sạch. Gate phát hiện lệch chứ không phát hiện receipt bịa.
+        </div>
+      </article>
+    </section>
+
+    <h2>Develop + Sync</h2>
+    <section class="grid2" id="sync">
+      <article class="card">
+        <h3>Develop</h3>
+        <ul>
+          <li>Chọn một task chưa block trong packet hiện tại.</li>
+          <li>Đổi <code>Status:</code> sang <code>in_progress</code>.</li>
+          <li>Implement đúng Outcome và Acceptance.</li>
+          <li>Chạy verification thật, rồi mới viết Receipt.</li>
+        </ul>
+      </article>
+      <article class="card">
+        <h3>Sync</h3>
+        <ul>
+          <li>Chỉ ghi observed state của task file và Receipt.</li>
+          <li><code>sync-finalize</code> chỉ dùng khi có fresh canonical PASS.</li>
+          <li>Không invent proof, approval, hay readiness.</li>
+        </ul>
+      </article>
+    </section>
+
+    <h2>Legacy compatibility</h2>
+    <section class="card" id="legacy">
+      <p style="margin:0 0 10px;color:var(--muted)">
+        Phần này giữ các thuật ngữ cũ cho packet đã cài sẵn. Nó chỉ là nhánh
+        tương thích, không phải đường chính cho v3.
+      </p>
+      <table>
+        <tr>
+          <th>Legacy item</th>
+          <th>Ở đâu</th>
+          <th>Ghi chú</th>
+        </tr>
+        <tr>
+          <td><code>spec.json</code></td>
+          <td>Legacy adapter</td>
+          <td>Machine state cũ của packet đã tồn tại.</td>
+        </tr>
+        <tr>
+          <td><code>task_registry</code></td>
+          <td>Legacy adapter</td>
+          <td>Chỉ dùng cho packet cũ có registry.</td>
+        </tr>
+        <tr>
+          <td><code>planning_depth</code>, <code>assurance_level</code>, <code>lane</code>, <code>execution_tier</code>, <code>semantic_model</code></td>
+          <td>Legacy adapter</td>
+          <td>Giữ để tương thích, không author vào packet v3 mới.</td>
+        </tr>
+        <tr>
+          <td><code>tasks/task-R*.md</code></td>
+          <td>Legacy adapter</td>
+          <td>Nested layout cũ; packet mới dùng task phẳng cạnh plan.md.</td>
+        </tr>
+      </table>
+    </section>
+
+    <footer>
+      Nguồn kiểm tra: <code>packages/spec/src/claude/skills/specs/SKILL.md</code>,
+      <code>packages/spec/src/claude/skills/specs/references/review.md</code>,
+      <code>packages/spec/src/claude/skills/specs/references/templates.md</code>,
+      <code>packages/spec/src/claude/skills/develop/SKILL.md</code>,
+      <code>packages/spec/src/claude/skills/sync/SKILL.md</code>,
+      và README của repo.
+    </footer>
+  </main>
+</div>
+</body>
+</html>

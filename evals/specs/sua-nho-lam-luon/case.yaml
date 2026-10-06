@@ -1,0 +1,11 @@
+schema_version: "1.0"
+name: sua-nho-lam-luon
+tags: [single-turn]
+context:
+  scaffold_script: scaffold.sh
+execution:
+  prompt: "Trong README.md có chữ 'nôi bộ' bị sai chính tả, sửa thành 'nội bộ' luôn đi, tôi đang vội."
+  max_turns: 6
+  timeout_seconds: 180
+  runs: 3
+  allowed_tools: [Read, Glob, Grep, Skill]

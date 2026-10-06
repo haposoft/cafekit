@@ -1,48 +1,72 @@
 ---
-name: hapo:sync
-description: "Dumb-proof status tracker and file synchronizer. Updates spec.json, task_registry, and tasks/*.md without breaking structural schemas. Includes Auto-Audit."
+name: cf:sync
+description: "Synchronize process-first task Status and inline Receipts without inventing proof."
 user-invocable: true
-when_to_use: "Invoke to synchronize spec state, docs, or task tracking after changes."
+when_to_use: "Invoke after implementation or verification changes a task's real state, or to audit a feature packet for drift."
 category: utilities
 keywords: [sync, state, tracking, consistency]
-argument-hint: "<feature_name> <task_id|task-file> <status> [blocker] | phase <feature_name> <next_phase> | audit <feature_name>"
+argument-hint: "<feature> <task-file> <pending|in_progress|paused|blocked|done|sync-finalize> [blocker] | audit <feature> | rebind <feature> [task-file] | (none: audit all, write nothing)"
 metadata:
   author: haposoft
-  version: "1.0.0"
+  version: "3.0.0"
 ---
-# Sync (State Tracking Protocol)
+# Sync — file-state synchronization
 
-This skill safely bridges the gap between active development state and physical documentation files (`spec.json` + `task_registry` + `tasks/task-R*.md`). Instead of relying on risky raw AI edits, this skill executes precise contextual replacements.
+Synchronize only observed state. For the primary process-first layout, the
+single `Status:` field and inline `## Receipt` in each flat task file are the
+state. Never infer proof, approval, review independence, or product readiness.
 
-## Supported Commands
+## Commands
 
-### 1. Task Synchronization
-Update a specific task's status and automatically check its relevant sub-checkboxes.
+```text
+/cf:sync <feature> <task-NN-slug.md> in_progress
+/cf:sync <feature> <task-NN-slug.md> blocked "reason"
+/cf:sync <feature> <task-NN-slug.md> done
+/cf:sync <feature> <task-NN-slug.md> sync-finalize
+/cf:sync audit <feature>
+/cf:sync rebind <feature> [<task-NN-slug.md>]
+/cf:sync
+```
 
-**Usage:** `/hapo:sync <feature_name> <task_id|task-file> <status> ["optional blocker msg"]`
-- Example 1: `/hapo:sync auth R0-02 done`
-- Example 2: `/hapo:sync payment task-R1-03-chunks-api.md blocked "API Endpoint Down"`
+Resolve one regular direct-child task inside `specs/<feature>/`. Reject path
+escape, symlink, ambiguity, missing `plan.md`, duplicate Status fields, and
+unsupported status values.
 
-### 2. Phase Advancement
-Advance the entire project to the next logical phase.
+## Task synchronization
 
-**Usage:** `/hapo:sync phase <feature_name> <next_phase>`
-- Example: `/hapo:sync phase shopping_cart test`
+1. Read the task Outcome, Acceptance, Dependencies, Verification Plan, current
+   Status, and Receipt before editing.
+2. Starting or resuming changes only Status to `in_progress`. Update only
+   checkboxes whose implementation is real.
+3. Blocking changes Status to `blocked` and records a concrete blocker; it does
+   not create proof.
+4. Done requires a current inline Receipt with `Verification: PASS`, exact
+   Command, `Exit: 0`, runtime-bound Base/Head, non-empty fenced output, and any
+   required negative/reachability/artifact proof.
+5. Write or replace the Receipt before changing Status to `done`. Missing,
+   stale, contradictory, placeholder, failure, or zero-test evidence keeps the
+   task `in_progress` or `blocked`.
+6. Re-read the file after the surgical edit and confirm exactly one Status and
+   one Receipt section.
 
-### 3. State Audit
-Scans the `spec.json` against all physical `task-R*.md` files to detect mismatches between `task_files`, `task_registry`, and markdown task headers, then repairs them.
+`sync-finalize` is the only promotion path for `FLASH_UNVERIFIED`. It requires
+fresh canonical PASS proof, revalidates Base/Head and artifacts, clears the
+flash blocker, then derives `done`. Caller-supplied promotion booleans and a
+marker alone have no authority.
 
-**Usage:** `/hapo:sync audit <feature_name>`
-- Example: `/hapo:sync audit auth`
+## Audit
 
-## Directives
+Scan only `specs/<feature>/task-*.md` beside `plan.md`. Compare plan task rows,
+task filenames, dependencies, Status, acceptance mapping, and Receipts. Report
+missing files, unknown rows, cycles, duplicate fields, done-without-proof,
+proof-on-unfinished-task, and overlapping ownership.
 
-1. **Precision Edits:** Never overwrite the entire `spec.json` string blindly. Update only the required keys, while keeping JSON valid.
-2. **Machine + Human Sync:** Every task status update MUST modify both `spec.json.task_registry[...]` and the matching markdown task file header/status section.
-3. **Markdown Integrity:** When marking a task `done`, only then turn `[ ]` into `[x]` inside `## Steps` / `## Implementation Steps` and relevant `Completion Criteria` / `Evidence` checkboxes that have actual proof. `Task Test Plan & Verification Evidence` and legacy `Verification & Evidence` sections are supported.
-4. **Verification Receipt Rule:** `done` is illegal without a human-readable verification receipt already present in `## Evidence`, `## Task Test Plan & Verification Evidence`, or legacy `## Verification & Evidence` (commands executed, artifact/runtime proof, or equivalent concrete evidence). If proof is missing, keep the task `in_progress` or `blocked`.
-5. **Task Docs Hook:** Every time `hapo:sync` marks a task as `done`, it must flag that a task-level docs checkpoint is now due for that verified task.
-6. **Phase Prompt Rule:** When `hapo:sync` marks the final pending task in the whole feature as `done`, it should automatically prompt the user if they'd like to advance the phase, but only after the docs checkpoint for that last completed task has been considered.
+An audit writes nothing until the user confirms the named changes; then repair
+deterministic formatting drift only and never pick a winner in a semantic conflict.
+Read `references/rebind-and-audit.md` before a rebind, a bare call, or a file
+report, and `references/sync-protocols.md` for surgical update and audit rules.
 
-## References
-Read `references/sync-protocols.md` for exact Search/Replace regex patterns and JSON schema expectations before acting on the files.
+## Docs impact
+
+When a task becomes done, report `Docs impact: none|minor|major`. Create no docs
+work for `none`; update only affected existing docs for minor or major.

@@ -1,139 +1,56 @@
 ---
 title: Workflow chính
-description: Luồng CafeKit chính từ ý tưởng đến thay đổi đã verify.
+description: Luồng CafeKit chính từ intent có boundary tới change đã verify.
 ---
 
-<DocsHero
-  eyebrow="Workflow chính"
-  title="Ý tưởng chỉ thành code sau khi thành contract."
-  description="Workflow delivery của CafeKit bắt đầu từ specs: viết contract, khóa task packet, implement một boundary, verify bằng evidence thật, review đối kháng, rồi sync state."
-/>
+<DocsHero eyebrow="Main workflow" title="Intent thành code qua contract đã review." description="Khóa scope tại C1, review findings tại C2, implement từng flat task, tạo proof rồi để user đóng tại C3." />
 
 <CoreWorkflowMap />
 
-## Bản ngắn gọn
+## Main path
 
 ```text
-/hapo:specs                  # requirements, research, design, tasks
-  -> approve task packet     # contract về scope và evidence
-  -> /hapo:develop           # từng unblocked task một
-  -> /hapo:test              # command thật và runtime proof
-  -> /hapo:code-review       # spec, quality, security, regression
-  -> /hapo:sync              # task_registry và task markdown luôn khớp
+/cf:brainstorm         # optional khi intent hoặc architecture chưa rõ
+  -> /cf:specs         # C1 -> plan.md + flat tasks -> adversarial review -> C2
+  -> dừng planning
+  -> /cf:develop       # invocation mới; từng unblocked task
+  -> /cf:test          # real proof nhỏ nhất nhưng đủ
+  -> /cf:code-review   # correctness, security, regression, contract drift
+  -> /cf:sync          # chỉ observed Status và inline Receipt
+  -> C3                  # quyết định completion của user
 ```
 
-Điểm quan trọng không phải là danh sách command. Điểm quan trọng là **chat không phải source of truth**. Contract bền vững nằm trong `specs/<feature>/spec.json`, `requirements.md`, `research.md`, `design.md`, và `tasks/task-R*.md`.
+Chat không phải source of truth. New work dùng `specs/<feature>/plan.md` và flat `task-NN-*.md`.
 
-## Optional pre-spec clarification
+## Contract và execution
 
-Dùng `/hapo:brainstorm` khi request còn thô: hướng sản phẩm còn mở, architecture chưa chắc, risk chưa rõ, hoặc câu hỏi đầu tiên cần dựa vào codebase thật.
+`plan.md` ghi C1 scope, exclusions, acceptance criteria, dependencies và C2 decisions. Mỗi task có một outcome, một `Status:`, ownership, dependencies, proof command và final inline `## Receipt`.
 
-Brainstorm là scout-first và nằm trước delivery path. Phase này không viết implementation code. Output nên là bộ quyết định đủ sẵn sàng để viết spec: đang giải quyết vấn đề gì, ngoài scope là gì, architecture nào đơn giản nhất, và risk nào phải đưa vào spec.
+Develop scout entrypoints và callers thật trước mutation. Runtime-facing work chưa xong nếu chưa reachable từ route, command, UI mount, worker, service hoặc API boundary thật.
 
-Chỉ skip phase này khi request đã đủ cụ thể để chuyển thành requirements.
+Không âm thầm thay named technology hay runtime choice. Scope change phải quay lại plan và user decision.
 
-## 1. Biến request thành spec
-
-Dùng `/hapo:specs` để chuyển intent thành artifacts lưu được. Một spec khỏe có:
-
-| Artifact | Vai trò |
-|---|---|
-| `spec.json` | Status, phase, scope, task registry, và task file list ở dạng machine-readable. |
-| `requirements.md` | Functional requirements, non-functional requirements, constraints, acceptance criteria. |
-| `research.md` | Research có nguồn và quyết định kỹ thuật. |
-| `design.md` | Architecture, contracts, data flow, interfaces, invariants. |
-| `tasks/task-R*.md` | Task packet gồm objective, related files, steps, completion criteria, evidence. |
-
-Spec không phải paperwork. Nó là lớp chống drift. Nó ngăn assistant thay technology đã chốt, tự thêm scope ẩn, hoặc gọi placeholder là xong.
-
-## 2. Approve task packet
-
-CafeKit không nên bắt đầu implementation từ toàn bộ feature nằm trong đầu assistant. Nó bắt đầu từ một task packet active.
-
-Một task packet phải trả lời được:
-
-- Behavior nào chính xác nằm trong scope?
-- File hoặc surface nào liên quan?
-- Task này satisfy requirement nào?
-- Design contract nào phải giữ?
-- Evidence nào chứng minh task đã done?
-- Điều gì nên block task thay vì đoán?
-
-Nếu thiếu các câu trả lời này, quay lại `/hapo:specs` hoặc `/hapo:sync audit <feature>`. Không tự lấp gap bằng phỏng đoán implementation.
-
-## 3. Implement từng boundary
-
-Dùng `/hapo:develop <feature>` để chạy full-spec, hoặc `/hapo:develop <feature> <task-file>` để làm đúng một task.
-
-Rule implementation của CafeKit rất rõ: **một unblocked task, một scout, một implementation loop, một bộ proof**.
-
-Trước khi code, task nên chuyển sang `in_progress`. Assistant cần inspect entrypoint thật, caller thật, pattern xung quanh, output từ task trước, và blast radius. Work có ảnh hưởng runtime chưa xong nếu chưa reachable từ route, command, UI mount, worker, service, hoặc API boundary thật.
-
-Không âm thầm đổi contract đã nêu tên. Nếu spec nói Next.js route, Better Auth, Redis, Drizzle, S3, OpenCode command, hoặc runtime cụ thể khác, lựa chọn đó là contract. Placeholder local không thỏa mãn trừ khi spec nói rõ như vậy.
-
-## 4. Verify bằng evidence, không bằng cảm giác
-
-Dùng `/hapo:test <feature>` hoặc `/hapo:test --full` sau implementation. Test phase nên detect runner, chạy command thật, thu result, rồi so behavior với requirements, design contracts, task evidence, và reachability obligations.
-
-`NO_TESTS` không phải pass. Command exit `0` nhưng chạy zero tests cũng không phải pass. Build success đơn lẻ không đủ proof cho task có runtime behavior. Task cần evidence khớp completion criteria.
+## Proof stack
 
 <WorkflowProofStack />
 
-## 5. Review như thể change đang cố phá production
+Green command chưa đủ. Exact command liên quan acceptance phải chạy; zero tests và `NO_TESTS` không pass. Review finding chặn completion tới khi fix và reverify.
 
-Dùng `/hapo:code-review --pending`, feature scope, PR, hoặc commit target.
-
-Review kiểm tra ba lớp:
-
-| Lớp | Bắt lỗi gì |
-|---|---|
-| Spec compliance | Thiếu requirement, scope dư, runtime choice sai, claim task chưa verify. |
-| Code quality | YAGNI, KISS, DRY, naming, boundaries, hardcoded values, missing tests. |
-| Adversarial review | Security holes, edge cases, race conditions, false assumptions, regression paths. |
-
-Critical finding sẽ block completion. Review không phải bước polish; nó là một phần Definition of Done.
-
-## 6. Sync state và documentation
-
-Chỉ dùng `/hapo:sync <feature> <task> done` sau khi đã có proof. Dùng `/hapo:sync audit <feature>` khi nghi state drift. CafeKit kỳ vọng machine state và human state đi cùng nhau:
+## State ownership
 
 <WorkflowStateRail />
 
-Khi task thành `done`, `spec.json.task_registry` và task markdown tương ứng phải khớp. Task phải có verification receipt đọc được: command đã chạy, outcome, artifact proof, runtime proof, hoặc blocker được ghi rõ.
+Chỉ controller update task Status và canonical Receipt. Sync có thể reconcile observed state nhưng không được bịa execution, approval hay completion.
 
-Sau verified task, cân nhắc docs checkpoint. Nếu source behavior đã đổi đến mức docs hoặc onboarding sẽ sai, update docs trước release.
-
-## Khi workflow chính rẽ nhánh
-
-Core flow dùng cho planned feature delivery. Nếu loại việc khác, dùng route khác:
+## Alternate routes
 
 | Tình huống | Route |
 |---|---|
-| Existing system không có docs đáng tin | `/hapo:docs --reconstruct <scope>` trước specs. |
-| Chưa biết root cause | `/hapo:debug` trước khi sửa code. |
-| Production bug cần fix hẹp | `/hapo:hotfix` sau diagnosis có evidence. |
-| Spec/task state bị drift | `/hapo:sync audit <feature>`. |
-| Architecture cần visual artifact | `/hapo:generate-graph <request>`. |
-| Verified changes sẵn sàng publish | `/hapo:git commit` rồi `/hapo:git push`. |
+| Cần câu trả lời có evidence | `/cf:ask` |
+| Cần scoped codebase discovery | `/cf:scout` |
+| Chưa biết root cause | `/cf:debug` |
+| Bug đã diagnose cần sửa | `/cf:fix` |
+| Existing system thiếu docs tin cậy | `/cf:docs --reconstruct <scope>` |
+| Technical decision còn uncertain | `/cf:research` |
 
-## OpenCode equivalent
-
-OpenCode dùng command không có prefix, nhưng vẫn đọc cùng CafeKit skill bundle:
-
-```text
-/specs -> /develop -> /test -> /code-review
-```
-
-Contract không đổi: spec có source backing, từng task một, evidence thật, adversarial review, state đã sync.
-
-## Definition of Done
-
-Một task CafeKit chỉ done khi tất cả điều này đúng:
-
-- Approved task packet đã được implement không có hidden scope change.
-- Work có runtime behavior đã wired vào entrypoint thật.
-- Completion criteria đã satisfy.
-- Verification evidence có exact commands và outcomes.
-- Code review không có blocking correctness, security, hoặc regression issue.
-- `spec.json` và task markdown khớp.
-- Docs impact đã xử lý hoặc ghi rõ.
+Claude Code dùng `/cf:*`; Codex CLI dùng native `$cf-*`. OpenCode command chỉ còn trong ghi chú lịch sử 0.16.

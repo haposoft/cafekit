@@ -2,15 +2,15 @@ import { ArrowRight, CheckCircle2, CircleDashed, FileCheck2, GitBranch, ShieldCh
 import { cn } from '@/lib/utils';
 
 const flowSteps = [
-  ['/hapo:specs', 'Turn intent into scope, evidence, requirements, design, and task packets.'],
-  ['/hapo:develop', 'Implement one approved task packet, not the whole chat memory.'],
-  ['/hapo:test', 'Run exact evidence commands and runtime checks.'],
-  ['/hapo:code-review', 'Review for spec compliance, regressions, security, and drift.'],
-  ['/hapo:sync', 'Update task_registry and task markdown only after proof, or audit drift.'],
+  ['/cf:specs', 'Turn intent into scope, evidence, requirements, design, and task packets.'],
+  ['/cf:develop', 'Implement one approved task packet, not the whole chat memory.'],
+  ['/cf:test', 'Run exact evidence commands and runtime checks.'],
+  ['/cf:code-review', 'Review for spec compliance, regressions, security, and drift.'],
+  ['/cf:sync', 'Update process-first Status and inline Receipt only after proof, or audit drift.'],
 ];
 
 const runtimeFiles = [
-  ['skills/', '29 packaged workflows and domain capabilities'],
+  ['skills/', '30 packaged workflows and domain capabilities'],
   ['agents/', '13 specialist agents for planning, code, QA, docs, git, and deploy'],
   ['hooks/', 'Privacy, scope, state, usage, docs sync, and spec-state gates'],
   ['runtime.json', 'Runtime configuration, paths, locale, usage, and model hints'],
@@ -19,10 +19,10 @@ const runtimeFiles = [
 ];
 
 const gates = [
-  ['Scope', 'Task files and scope_lock define what may change.'],
+  ['Scope', 'Accepted C1 scope plus task Ownership define what may change.'],
   ['Evidence', 'Exact commands and runtime proof must be fresh.'],
   ['Review', 'Critical findings block task completion.'],
-  ['Sync', 'spec.json and markdown state move together.'],
+  ['Sync', 'Task Status and inline Receipt move together.'],
 ];
 
 export function DocsHero({

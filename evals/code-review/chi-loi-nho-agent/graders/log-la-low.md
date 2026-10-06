@@ -1,0 +1,6 @@
+---
+type: regex
+target: last_message
+---
+
+(?:(?:^|\n)[ \t]*(?:[-*]|\d+\.)[ \t]*(?:(?:\uD83D[\uDD34\uDD35\uDFE0\uDFE1]|❌|⚠️?|✅)[ \t]*)?\**(?:(?:\uD83D[\uDD34\uDD35\uDFE0\uDFE1]|❌|⚠️?|✅)[ \t]*)?\[?(?:Low)\]?\**(?![ \t]*(?:[Ii]ssues)?\**:?\**[ \t]*0(?!\d))[^\n]*(?:(?:src/)?checkout\.js(?::L?|#L)4(?!\d)|console\.log)|(?:^|\n)(?=[ \t]*\|)(?=[^\n]*\|[ \t]*(?:(?:\uD83D[\uDD34\uDD35\uDFE0\uDFE1]|❌|⚠️?|✅)[ \t]*)?\**\[?(?:Low)\]?\**[ \t]*\|(?![ \t]*0[ \t]*(?:\||$)))[^\n]*(?:(?:src/)?checkout\.js(?::L?|#L)4(?!\d)|console\.log)|(?:^|\n)#{2,4}[^\n]*(?:Low)[^\n]*(?:\n(?!#)[^\n]*)*?\n[ \t]*(?:[-*]|\d+\.)(?![ \t]*\**(?:[Kk]hông có|[Nn]one|N/A)(?![A-Za-z]))[^\n]*(?:(?:src/)?checkout\.js(?::L?|#L)4(?!\d)|console\.log)|(?:^|\n)[ \t]*(?:(?:\uD83D[\uDD34\uDD35\uDFE0\uDFE1]|❌|⚠️?|✅)[ \t]*)?\*\*(?:(?:(?:\uD83D[\uDD34\uDD35\uDFE0\uDFE1]|❌|⚠️?|✅)[ \t]*)?\[?(?:Low)\]?|[^\n*()]{0,40}\((?:(?:mức(?: độ)?|level|severity)[: \t]*)?(?:Low)\))(?![ \t]*(?:[Ii]ssues)?\**:?\**[ \t]*0(?!\d))[^\n]*(?:(?:(?:src/)?checkout\.js(?::L?|#L)4(?!\d)|console\.log)|(?:\n(?![ \t]*(?:#|\*\*))[^\n]*)*?\n[ \t]*(?:-|\*(?!\*)|\d+\.)(?![ \t]*\**(?:[Kk]hông có|[Nn]one|N/A)(?![A-Za-z]))[^\n]*(?:(?:src/)?checkout\.js(?::L?|#L)4(?!\d)|console\.log)))

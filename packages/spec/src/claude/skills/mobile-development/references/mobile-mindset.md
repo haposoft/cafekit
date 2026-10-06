@@ -5,7 +5,7 @@ Essential thinking patterns and decision-making frameworks for successful mobile
 ## The 10 Commandments of Mobile Development
 
 ### 1. Performance is Foundation, Not Feature
-- **Reality**: 70% users abandon apps >3s load time
+- **Reality**: Users may abandon apps when load time exceeds 3s
 - **Mindset**: Optimize from day one, not "later"
 - **Action**: Set performance budgets before writing code
 
@@ -50,7 +50,7 @@ Essential thinking patterns and decision-making frameworks for successful mobile
 - **Action**: MVVM for small apps, Clean Architecture when complexity demands
 
 ### 10. Continuous Learning is Survival
-- **Reality**: 85% developers use AI tools (2024), frameworks evolve constantly
+- **Reality**: AI tools are widely used by developers (2024), frameworks evolve constantly
 - **Mindset**: Embrace change, allocate learning time
 - **Action**: 1+ hour weekly for new tech/patterns
 
@@ -131,7 +131,7 @@ Essential thinking patterns and decision-making frameworks for successful mobile
 - "It just works" expectation = zero tolerance for crashes
 
 **Fragmentation**: LOW
-- 90%+ on iOS 16+ (2024)
+- Most users on iOS 16+ (2024)
 - Only ~50 device models to test
 - Predictable hardware specs
 
@@ -165,7 +165,7 @@ Essential thinking patterns and decision-making frameworks for successful mobile
 - Handle back button properly
 
 **When to Go Native Android:**
-- Global market focus (72% market share)
+- Global market focus (Android dominates)
 - Emerging markets (Android dominates)
 - Enterprise/B2B (customization needs)
 
@@ -177,7 +177,7 @@ Essential thinking patterns and decision-making frameworks for successful mobile
 |--------|-----------|-----------------|
 | **Launch time** | <2s | Acceptable |
 | **Launch time** | 2-3s | Noticeable delay |
-| **Launch time** | >3s | 70% abandon |
+| **Launch time** | >3s | Users may abandon |
 | **Screen load** | <1s | Instant (cached) |
 | **Screen load** | 1-3s | Acceptable (network) |
 | **Screen load** | >3s | Frustrating |
@@ -259,46 +259,44 @@ Week 2: Polish + Ship
 8. Merge to develop
 
 **CI/CD Impact:**
-- 20% reduction in development time
-- 50% fewer production bugs
-- 3x faster deployment
+- Faster development and deployment with fewer production bugs
 
 ### Common Pitfalls & Avoidance
 
 #### 1. Testing Only on Simulators
 **Problem**: Simulators don't show real performance (battery, memory, network)
 **Solution**: Real device testing mandatory before every release
-**Impact**: 40% of bugs only appear on real devices
+**Impact**: Some bugs only appear on real devices
 
 #### 2. Ignoring Platform Conventions
 **Problem**: Custom navigation confuses users
 **Solution**: Follow iOS HIG and Material Design
-**Impact**: 30% lower engagement with non-standard UIs
+**Impact**: Non-standard UIs can lower engagement
 
 #### 3. No Offline Handling
 **Problem**: Network failures = blank screens, errors
 **Solution**: Offline-first architecture, cached data
-**Impact**: 50% of users experience network issues daily
+**Impact**: Users can experience network issues daily
 
 #### 4. Poor Memory Management
 **Problem**: Memory leaks → crashes, poor performance
 **Solution**: ARC/GC understanding, profile regularly
-**Impact**: Memory issues = #1 crash cause (35%)
+**Impact**: Memory issues are a leading crash cause
 
 #### 5. Hardcoded Credentials
 **Problem**: Security vulnerability, API key exposure
 **Solution**: Environment variables, secure storage
-**Impact**: 23% of apps leak sensitive data (OWASP)
+**Impact**: Apps can leak sensitive data; follow OWASP guidance.
 
 #### 6. No Accessibility
-**Problem**: Excludes 15%+ of users (disability, situational)
+**Problem**: Excludes users with disabilities or situational needs
 **Solution**: VoiceOver/TalkBack testing, semantic labels
 **Impact**: Accessibility = 1.3B global market
 
 #### 7. Premature Optimization
 **Problem**: Wasted time optimizing non-bottlenecks
 **Solution**: Measure first, optimize biggest impact
-**Impact**: 80% of performance issues = 20% of code
+**Impact**: Many performance issues come from a small part of the code
 
 #### 8. Over-Engineering
 **Problem**: Complex architecture for simple apps
@@ -308,7 +306,7 @@ Week 2: Polish + Ship
 #### 9. Skipping Real Device Testing
 **Problem**: Missed battery drain, thermal issues
 **Solution**: Device farm in CI/CD, manual testing
-**Impact**: 25% of performance issues device-specific
+**Impact**: Some performance issues are device-specific
 
 #### 10. Not Respecting Battery
 **Problem**: Background processing drains battery
@@ -460,12 +458,12 @@ if (isLowEndDevice) {
 
 **Example Architecture:**
 ```
-React Native / Flutter (90%)
+React Native / Flutter
 ├─ UI and business logic
 ├─ Standard features
 └─ API integration
 
-Native Modules (10%)
+Native Modules
 ├─ Performance-critical (video processing)
 ├─ Platform-specific (HealthKit, Android Auto)
 └─ Third-party SDKs (payment, analytics)
@@ -535,7 +533,7 @@ v4.0: Extract microservices if justified
 - Discord (React Native, Flutter official)
 - Twitter: Follow framework creators and contributors
 
-**AI Tools (85% adoption in 2024):**
+**AI Tools (widely adopted in 2024):**
 - GitHub Copilot: Code completion, boilerplate
 - ChatGPT/Claude: Architecture questions, debugging
 - Tabnine: Context-aware suggestions

@@ -1,74 +1,57 @@
 ---
-title: Bắt đầu nhanh
-description: Chạy workflow CafeKit đầu tiên từ ý tưởng đến review.
+title: Quickstart
+description: Chạy workflow CafeKit process-first đầu tiên từ quyết định scope tới implementation đã verify.
 ---
 
-<DocsHero
-  eyebrow="First run"
-  title="Đưa một feature qua vòng verify."
-  description="Tạo spec, validate, implement một task packet, rồi test, review, và sync completion khi đã có proof."
-/>
+<DocsHero eyebrow="First run" title="Đưa một feature qua verified loop." description="Xác nhận scope, review plan, execute từng task, verify, review, sync proof rồi quyết định completion." />
 
-<Callout type="info">**Mới biết CafeKit?** Trang này dành cho người đã hiểu workflow. Nếu bạn bắt đầu từ con số 0, hãy theo [hướng dẫn từng bước](/docs/tutorial) — dắt tay từ chưa cài gì đến feature đầu tiên đã verify.</Callout>
+<Callout type="info">Mới dùng CafeKit? Xem [tutorial từng bước](/docs/tutorial).</Callout>
 
-## 1. Cài CafeKit
+## 1. Cài đặt
 
 ```bash
 npx @haposoft/cafekit
 ```
 
-Nếu idea chưa đủ rõ để viết specs, dùng `/hapo:brainstorm` trước để làm rõ scope và architecture. Delivery run chính bắt đầu từ specs.
+## 2. Tạo và review spec
 
-## 2. Tạo spec
-
-```bash
-/hapo:specs Build a meeting transcript extension with AI summaries
+```text
+/cf:specs Build a meeting transcript extension with AI summaries
 ```
 
-CafeKit tạo:
+Specs mở C1 rồi tạo:
 
 ```text
 specs/<feature>/
-├── spec.json
-├── requirements.md
-├── research.md
-├── design.md
-└── tasks/task-R0-01-*.md
+├── plan.md
+└── task-01-*.md
 ```
 
-## 3. Validate trước khi code
+Tại C2, accept findings, yêu cầu sửa hoặc KEEP một named limitation. Planning dừng sau C2.
 
-```bash
-/hapo:specs --validate <feature>
+## 3. Explicit implementation
+
+```text
+/cf:develop <feature>
 ```
 
-Validation kiểm tra requirements, design, task files, `task_files`, và `task_registry` có khớp nhau không.
+Develop chạy từng unblocked task, chạy exact planned proof và để controller ghi final inline Receipt.
 
-## 4. Implement một task packet
+## 4. Verify và review
 
-```bash
-/hapo:develop <feature> tasks/task-R0-01-project-scaffold.md
+```text
+/cf:test --full
+/cf:code-review --pending
 ```
 
-Task-by-task là default an toàn nhất: diff nhỏ hơn và evidence dễ verify hơn.
+`NO_TESTS` và zero executed tests không phải pass.
 
-## 5. Test và review
+## 5. Sync và đóng
 
-```bash
-/hapo:test --full
-/hapo:code-review --pending
+```text
+/cf:sync <feature>
 ```
 
-`NO_TESTS` không phải success. Task chỉ nên thành `done` khi implementation, evidence, tests, review, và state sync cùng đồng ý.
-
-## 6. Sync sau khi có proof
-
-```bash
-/hapo:sync <feature> task-R0-01-project-scaffold.md done
-```
-
-Command này update `spec.json.task_registry` và task markdown tương ứng. Nếu state có vẻ lệch, chạy `/hapo:sync audit <feature>` thay vì đoán.
-
-Đọc [Workflow chính](/vi/docs/core-workflow) để hiểu đầy đủ lý do sau từng gate.
+Sync chỉ state và proof đã quan sát. Tại C3, user quyết định receipts hiện tại và unresolved limitations đã đủ để đóng chưa.
 
 <QualityGate />

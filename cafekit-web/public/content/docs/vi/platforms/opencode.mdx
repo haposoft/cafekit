@@ -1,21 +1,23 @@
 ---
-title: OpenCode
-description: Runtime CafeKit self-contained cho dự án OpenCode.
+title: Lịch sử OpenCode 0.16
+description: Ghi chú migration đã đóng băng cho release CafeKit cuối cùng support OpenCode.
 ---
 
 <DocsHero
-  eyebrow="Platforms · OpenCode"
-  title="Runtime `.opencode/` self-contained với TypeScript plugins."
-  description="CafeKit cài runtime OpenCode hoàn chỉnh, không chia sẻ file với `.claude/`. Hooks được port thành plugin TypeScript có type, load lúc session start."
+  eyebrow="Legacy platform · OpenCode 0.16"
+  title="Tham chiếu runtime `.opencode/` lịch sử."
+  description="OpenCode support kết thúc từ CafeKit 0.17. Nội dung dưới đây chỉ mô tả behavior 0.16 đã đóng băng để migration, không phải installer hiện tại."
 />
+
+<Callout type="warning">Release CafeKit hiện tại support Claude Code và Codex CLI. Không dùng trang này làm hướng dẫn cài đặt hiện tại.</Callout>
 
 ## Layout sau khi cài
 
 ```
 .opencode/
 ├── skills/         # Skill packs self-contained
-├── agents/         # Subagent prompts (không có hapo: prefix)
-├── commands/       # Slash commands không có hapo: prefix
+├── agents/         # Subagent prompts (không có cf: prefix)
+├── commands/       # Slash commands không có cf: prefix
 ├── plugins/        # TypeScript plugins (xem bên dưới)
 ├── rules/          # Workflow, dev, docs, hook, state-sync rules
 ├── scripts/        # Helper scripts
@@ -47,7 +49,7 @@ OpenCode không có channel inject per-prompt, nên `rules.ts` upsert managed bl
 
 ## Commands
 
-OpenCode cố ý bỏ prefix `hapo:`:
+OpenCode cố ý bỏ prefix `cf:`:
 
 ```
 /question     /brainstorm    /specs       /develop

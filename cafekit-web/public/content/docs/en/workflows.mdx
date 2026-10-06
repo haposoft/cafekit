@@ -6,7 +6,7 @@ description: Choose the correct CafeKit command for each type of work.
 <DocsHero
   eyebrow="Command surface"
   title="Use the workflow that matches the risk."
-  description="CafeKit ships more than the happy path. It includes ideation, implementation, debugging, hotfixing, docs, review, sync, git, and visual diagram workflows."
+  description="CafeKit ships more than the happy path. It includes ideation, implementation, debugging, fixing, docs, review, sync, git, and visual diagram workflows."
 />
 
 <CommandFlow />
@@ -17,35 +17,34 @@ The main delivery path is explained in depth in [Core workflow](/docs/core-workf
 
 | Command | Use when |
 |---|---|
-| `/hapo:specs` | You need requirements, research, design, tasks, and validation. |
-| `/hapo:develop` | A spec or task file is approved and ready for implementation. |
-| `/hapo:test` | You need evidence from exact commands, build checks, tests, UI checks, or runtime reachability. |
-| `/hapo:code-review` | You need adversarial review for bugs, security, scope drift, and missing proof. |
-| `/hapo:sync` | Task status, `task_registry`, and task markdown must move after proof, or drift needs audit. |
+| `/cf:specs` | You need C1 scope, a reviewed plan, flat executable tasks, and a C2 decision. |
+| `/cf:develop` | A spec or task file is approved and ready for implementation. |
+| `/cf:test` | You need evidence from exact commands, build checks, tests, UI checks, or runtime reachability. |
+| `/cf:code-review` | You need adversarial review for bugs, security, scope drift, and missing proof. |
+| `/cf:sync` | Observed task Status or the final inline Receipt must be synchronized without inventing proof. |
 
-Use `/hapo:brainstorm` before this path only when the idea is unclear, architectural choices are open, or scope needs pressure-testing.
+Use `/cf:brainstorm` before this path only when the idea is unclear, architectural choices are open, or scope needs pressure-testing.
 
 ## Bug and incident workflow
 
 | Command | Use when |
 |---|---|
-| `/hapo:debug` | Root cause is unknown. It is diagnostic-first and should produce evidence before code changes. |
-| `/hapo:hotfix` | A bug must be fixed after diagnosis, with smallest safe change and regression checks. |
+| `/cf:debug` | Root cause is unknown. It is diagnostic-first and should produce evidence before code changes. |
+| `/cf:fix` | A bug must be fixed after diagnosis, with smallest safe change and regression checks. |
 
 ## Documentation and artifacts
 
 | Command | Use when |
 |---|---|
-| `/hapo:docs --init` | Project docs are missing. |
-| `/hapo:docs --update` | Source changed enough that broader docs should refresh. |
-| `/hapo:docs --reconstruct <scope>` | You need source-backed as-is docs for an existing system. |
-| `/hapo:generate-graph <request>` | Architecture, flow, sequence, or state diagrams would help. |
+| `/cf:docs --init` | Project docs are missing. |
+| `/cf:docs --update` | Source changed enough that broader docs should refresh. |
+| `/cf:docs --reconstruct <scope>` | You need source-backed as-is docs for an existing system. |
 
 ## Release workflow
 
 | Command | Use when |
 |---|---|
-| `/hapo:git commit` | Verified changes are ready for a focused conventional commit. |
-| `/hapo:git push` | Tests and review are clean enough to publish the branch. |
+| `/cf:git commit` | Verified changes are ready for a focused conventional commit. |
+| `/cf:git push` | Tests and review are clean enough to publish the branch. |
 
-OpenCode installs equivalent prefix-free commands such as `/specs`, `/develop`, `/test`, and `/code-review`.
+Codex CLI exposes the same public workflow as native `$cf-*` skills.

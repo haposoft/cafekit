@@ -13,9 +13,9 @@
 const fs = require('fs');
 const path = require('path');
 const packageJson = require('../../package.json');
-const { getOpenCodeCopyOptions } = require('./opencode-install');
 const { isInteractive, createUI } = require('./ui');
 const { resolveLang, createTranslator } = require('./i18n');
+const { normalizeSourcePaths } = require('./copy-utils');
 
 const INSTALL_COMMAND = `npx ${packageJson.name}@${packageJson.version}`;
 
@@ -27,6 +27,9 @@ function validateManifestV2(manifest) {
   if (!manifest || manifest.version !== 2) return false;
   if (!manifest.runtime?.files || !Array.isArray(manifest.runtime.files)) return false;
   if (!manifest.settings?.template) return false;
+  if (!Array.isArray(manifest.skills?.required)) return false;
+  if (!Array.isArray(manifest.skills?.bundles?.documentSkills)) return false;
+  if (!Array.isArray(manifest.obsolete?.skills)) return false;
   return true;
 }
 
@@ -56,11 +59,11 @@ function loadClaudeMigrationManifest() {
 const DEPENDENCY_TEMPLATES = {
   commands: {
     claude: {},
-    opencode: {}
+    codex: {}
   },
   agents: {
     claude: {},
-    opencode: {}
+    codex: {}
   }
 };
 
@@ -79,21 +82,72 @@ const PLATFORMS = {
     skillsRef: '.claude/skills',
     commandPrefix: '/',
     sourceDir: 'claude',       // Maps to src/claude/
-    sourceSubdir: 'commands'   // Source subfolder within src/claude/
+    sourceSubdir: 'commands',  // Source subfolder within src/claude/
+    backupTargets: ['.claude', 'CLAUDE.md', 'AGENTS.md'],
+    capabilities: {
+      skills: true,
+      agents: true,
+      references: true,
+      scripts: true,
+      rules: true,
+      commands: true
+    }
   },
-  opencode: {
-    id: 'opencode',
-    name: 'OpenCode',
-    description: 'OpenCode terminal AI coding agent',
-    folder: '.opencode',
-    detectFiles: ['.opencode', 'opencode.json', 'opencode.jsonc'],
-    commandsDir: '.opencode/commands',
-    skillsDir: '.opencode/skills',
-    agentsDir: '.opencode/agents',
-    skillsRef: '.opencode/skills',
-    commandPrefix: '/',
+  codex: {
+    id: 'codex',
+    name: 'Codex CLI',
+    description: 'OpenAI Codex CLI',
+    folder: '.codex',
+    detectFiles: ['.codex'],
+    commandsDir: null,
+    skillsDir: '.agents/skills',
+    agentsDir: '.codex/agents',
+    skillsRef: '.agents/skills',
+    commandPrefix: '$',
     sourceDir: 'claude',
-    sourceSubdir: 'archive-command'
+    sourceSubdir: null,
+    backupTargets: ['.codex', '.agents', 'AGENTS.md'],
+    ownership: {
+      recordRoot: '.',
+      allowedRoots: ['.codex', '.agents']
+    },
+    capabilities: {
+      skills: true,
+      agents: true,
+      references: true,
+      scripts: true,
+      rules: true,
+      commands: false
+    }
+  },
+  omp: {
+    id: 'omp',
+    name: 'Oh My Pi',
+    description: 'Oh My Pi coding agent',
+    folder: '.omp',
+    detectFiles: ['.omp'],
+    commandsDir: null,
+    // omp discovers .claude/skills and .agents/skills itself, so CafeKit copies
+    // no skill payload for it. See specs/omp-runtime-support/plan.md.
+    skillsDir: '.agents/skills',
+    agentsDir: null,
+    skillsRef: '.agents/skills',
+    commandPrefix: '$',
+    sourceDir: 'claude',
+    sourceSubdir: null,
+    backupTargets: ['.omp', 'AGENTS.md'],
+    ownership: {
+      recordRoot: '.',
+      allowedRoots: ['.omp']
+    },
+    capabilities: {
+      skills: false,
+      agents: false,
+      references: true,
+      scripts: true,
+      rules: true,
+      commands: false
+    }
   }
   // Add new platforms here:
   // cursor: {
@@ -106,6 +160,25 @@ const PLATFORMS = {
   //   sourceSubdir: 'commands'
   // }
 };
+
+/**
+ * Hosts that run another platform's install rather than one of their own.
+ *
+ * Grok CLI discovers `.claude/skills`, `.claude/rules`, `CLAUDE*.md` and the hooks in
+ * `.claude/settings.json` through its own Claude-compatibility layer, and the gate hooks
+ * normalize its envelope, so `--platform grok` provisions the Claude runtime. There is no
+ * `.grok/` payload and deliberately no detection marker: a repository that merely holds
+ * `.grok/` has not asked for a CafeKit install.
+ */
+const PLATFORM_ALIASES = Object.freeze({
+  grok: 'claude'
+});
+
+/** Resolve host aliases and drop duplicates, preserving the requested order. */
+function resolvePlatformAliases(keys = []) {
+  const resolved = keys.map((key) => PLATFORM_ALIASES[key] || key);
+  return { platforms: [...new Set(resolved)], aliased: keys.some((key) => Boolean(PLATFORM_ALIASES[key])) };
+}
 
 // ═══════════════════════════════════════════════════════════
 // DETECTION + PLATFORM HELPERS
@@ -136,35 +209,31 @@ function getPlatformKeys() {
   return Object.keys(PLATFORMS);
 }
 
-function isClaudeCompatibleRuntime(platformKey) {
-  return platformKey === 'claude' || platformKey === 'opencode';
+function hasPlatformCapability(platformKey, capability) {
+  return Boolean(PLATFORMS[platformKey]?.capabilities?.[capability]);
 }
 
 function getRuntimeSupportTargetDir(platformKey, subdir) {
   return path.join(PLATFORMS[platformKey].folder, subdir);
 }
 
-// Warn opencode-only installs when a legacy .claude/ folder remains from
-// pre-0.9.0 installs (when OpenCode shared the .claude/ runtime). We do not
-// delete anything; user must remove it explicitly to opt in.
-function warnLegacyClaudeFolder(platforms) {
-  if (!platforms.includes('opencode')) return;
-  if (platforms.includes('claude')) return;
-  if (!fs.existsSync('.claude')) return;
-
-  console.log('');
-  console.log('⚠ Legacy .claude/ folder detected.');
-  console.log('  As of CafeKit 0.9.0, OpenCode installs are self-contained under .opencode/.');
-  console.log('  The .claude/ folder from older installs is no longer used by OpenCode.');
-  console.log('  After this install finishes you can remove it: rm -rf .claude');
-  console.log('');
-}
 
 function getCopyOptions(platformKey, baseOptions = {}) {
-  if (platformKey === 'opencode') {
-    return getOpenCodeCopyOptions(baseOptions);
+  if (platformKey === 'codex') {
+    // Lazy require avoids coupling the shared registry to a runtime adapter
+    // during module initialization.
+    return require('./codex-install').getCodexCopyOptions(baseOptions);
   }
-  return baseOptions;
+  if (platformKey !== 'claude') return baseOptions;
+  return {
+    ...baseOptions,
+    transform: (content, sourcePath) => normalizeSourcePaths(
+      typeof baseOptions.transform === 'function'
+        ? baseOptions.transform(content, sourcePath)
+        : content,
+      { runtimeRoot: '.claude', skillsRoot: '.claude/skills' }
+    )
+  };
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -186,7 +255,9 @@ function parseInstallerArgs(argv) {
     dryRun: false,
     yes: false,
     withSkillsDeps: false,
-    withRtk: false
+    withDocumentSkills: false,
+    withoutDocumentSkills: false,
+    platforms: []
   };
 
   for (let i = 2; i < argv.length; i++) {
@@ -200,13 +271,23 @@ function parseInstallerArgs(argv) {
       args.yes = true;
     } else if (arg === '--with-skills-deps') {
       args.withSkillsDeps = true;
-    } else if (arg === '--with-rtk') {
-      args.withRtk = true;
+    } else if (arg === '--with-document-skills') {
+      args.withDocumentSkills = true;
+    } else if (arg === '--without-document-skills') {
+      args.withoutDocumentSkills = true;
+    } else if (arg === '--platform') {
+      args.platforms.push(...String(argv[++i] || '').split(',').filter(Boolean));
+    } else if (arg.startsWith('--platform=')) {
+      args.platforms.push(...arg.slice('--platform='.length).split(',').filter(Boolean));
     } else if (arg === '--lang') {
       args.lang = argv[++i];
     } else if (arg.startsWith('--lang=')) {
       args.lang = arg.slice('--lang='.length);
     }
+  }
+
+  if (args.withDocumentSkills && args.withoutDocumentSkills) {
+    throw new Error('--with-document-skills and --without-document-skills cannot be used together');
   }
 
   // Back-compat alias used throughout the phases.
@@ -248,11 +329,12 @@ function buildContext(argv, runId) {
   const options = parseInstallerArgs(argv);
   // Interactive only on a real TTY and not when --yes/CI forces non-interactive.
   const interactive = isInteractive() && !options.yes;
-  // Language: --lang wins; otherwise English (an interactive prompt may change it).
+  // Language: --lang wins; otherwise English for installer UI only (an interactive
+  // prompt or saved runtime locale may change both values).
   const lang = options.lang ? resolveLang(options.lang) : 'en';
-  // ctx.locale = the string that gets written to CLAUDE.md / runtime.json as the AI's response language.
-  // For known codes it mirrors lang; for "other", it's set later by setLang.
-  const locale = options.lang || 'en';
+  // A missing locale means "follow the user's language". Never persist the UI
+  // fallback as an AI response-language override on fresh installs/upgrades.
+  const locale = options.lang ? options.lang : null;
   return {
     argv,
     runId,
@@ -274,6 +356,7 @@ function buildContext(argv, runId) {
     results: createResults(),
     trackers: {},    // platformKey → ownership tracker, set per platform
     ownership: {},   // platformFolder → ownership manifest read at run start
+    documentSkills: {}, // platformKey → persisted optional-bundle selection
     cancelled: false
   };
 }
@@ -283,14 +366,15 @@ module.exports = {
   INSTALL_COMMAND,
   DEPENDENCY_TEMPLATES,
   PLATFORMS,
+  PLATFORM_ALIASES,
+  resolvePlatformAliases,
   validateManifestV2,
   loadClaudeMigrationManifest,
   detectPlatforms,
   formatPlatformList,
   getPlatformKeys,
-  isClaudeCompatibleRuntime,
+  hasPlatformCapability,
   getRuntimeSupportTargetDir,
-  warnLegacyClaudeFolder,
   getCopyOptions,
   parseInstallerArgs,
   createResults,

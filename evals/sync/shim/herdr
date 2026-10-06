@@ -1,0 +1,15 @@
+#!/bin/sh
+# Thế chỗ công cụ không được phép gọi trong bộ đo cf:sync: ghi lệnh gọi vào nhật ký mà scaffold ghim (đường dẫn tuyệt đối trong
+# box/.eval/shim.path của phòng thử; phòng thử tìm bằng dấu .sync-eval-box, đi ngược từ thư mục hiện tại, rồi $HOME/cwd) rồi thoát 127.
+# Đặt thư mục này đầu PATH bằng ĐƯỜNG DẪN TUYỆT ĐỐI: một mục PATH tương đối được tìm theo cwd của lệnh gọi và để lọt bản thật.
+d="$PWD"; log=""
+while :; do
+  if [ -f "$d/.sync-eval-box" ]; then log="$(head -n 1 "$d/box/.eval/shim.path" 2>/dev/null)"; break; fi
+  [ "$d" = "/" ] && break
+  d="$(dirname "$d")"
+done
+[ -z "$log" ] && [ -f "$HOME/cwd/.sync-eval-box" ] && log="$(head -n 1 "$HOME/cwd/box/.eval/shim.path" 2>/dev/null)"
+[ -n "$log" ] || log="${TMPDIR:-/tmp}/sync-eval-shim-orphan.log"
+mkdir -p "$(dirname "$log")" 2>/dev/null
+printf '%s %s\n' "$(basename "$0")" "$*" >> "$log"
+exit 127

@@ -35,24 +35,22 @@ Claude Code は `.claude/hooks/` の event-driven hooks を持ちます。
 | `privacy-block.cjs` | `PreToolUse` | User 承認まで sensitive path の read をブロック |
 | `inspect-block.cjs` | `PreToolUse` | 広範な inspection scan を gate |
 | `spec-state.cjs` | `PostToolUse` | Verification receipt なしの task `done` を拒否 |
-| `docs-sync.cjs` | `SessionStart` | Missing docs と sync hash drift を flag |
 | `session.cjs` | `SessionStart` | Session banner と context を inject |
-| `usage.cjs` | `UserPromptSubmit` | Token/usage hints を track |
 | `rules.cjs` | `UserPromptSubmit` | Per-prompt の dynamic rules block を inject |
 
 Hook contract の詳細は [Runtime bundle](/docs/runtime) を参照。
 
 ## Commands
 
-Claude Code は `hapo:` namespace を使います。
+Claude Code は `cf:` namespace を使います。
 
 ```
-/hapo:question    /hapo:brainstorm    /hapo:specs       /hapo:develop
-/hapo:test        /hapo:code-review   /hapo:sync        /hapo:debug
-/hapo:hotfix      /hapo:docs          /hapo:inspect     /hapo:git
+/cf:ask         /cf:brainstorm    /cf:specs       /cf:develop
+/cf:test        /cf:code-review   /cf:sync        /cf:debug
+/cf:fix      /cf:docs          /cf:scout       /cf:git
 ```
 
-加えて全ての domain skill が `/hapo:<skill>` の形式で利用可能です。
+加えて全ての domain skill が `/cf:<skill>` の形式で利用可能です。
 
 ## Detection
 

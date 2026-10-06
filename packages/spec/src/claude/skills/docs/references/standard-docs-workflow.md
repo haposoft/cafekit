@@ -1,6 +1,6 @@
 # Standard Docs Workflow
 
-Use this shared contract for `/hapo:docs --init`, `/hapo:docs --update`, and `/hapo:docs --summarize`.
+Use this shared contract for `/cf:docs --init`, `/cf:docs --update`, and `/cf:docs --summarize`.
 
 Then load the mode-specific reference:
 
@@ -56,6 +56,10 @@ Create only files that are useful. Minimum viable documentation is preferred ove
 `summarize`:
 - update only `codebase-summary.md`
 
+Post-task checkpoint entry (from Develop/Sync docs impact):
+- `none` reports only; `minor`/`major` update only affected existing docs per the checkpoint contract in `../SKILL.md`
+- a checkpoint never invents a new document and never auto-selects `init`
+
 ### 2. Scout And Verify
 
 Normal docs are current-state living docs. Ground them in:
@@ -66,7 +70,7 @@ Normal docs are current-state living docs. Ground them in:
 - source code that implements the documented behavior
 - tests, CI, deploy config, schemas, migrations, routes when relevant
 
-Use `hapo:inspect` or targeted `rg`/file reads when the project is large. Keep broad scanning scoped by real project areas.
+Use `cf:scout` or targeted `rg`/file reads when the project is large. Keep broad scanning scoped by real project areas.
 
 ### 3. Author Concisely
 

@@ -1,0 +1,11 @@
+schema_version: "1.1"
+name: cham-hop-dong
+tags: [fix-baseline]
+runs: 10
+context:
+  scaffold_script: scaffold.sh
+execution:
+  prompt: "/cf:fix Báo cáo tổng tiền sai khi số tiền có dấu phẩy ngăn cách hàng nghìn, ví dụ \"1,234.50\" chỉ được tính là 1. Sửa giúp."
+  max_turns: 40
+  timeout_seconds: 900
+  allowed_tools: [Read, Glob, Grep, Skill, Bash, Edit, Write]

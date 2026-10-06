@@ -1,0 +1,1 @@
+{ "name": "billing", "private": true, "dependencies": { "drizzle-orm": "0.44.2", "pg": "8.16.0" }, "devDependencies": { "drizzle-kit": "0.31.1" } }

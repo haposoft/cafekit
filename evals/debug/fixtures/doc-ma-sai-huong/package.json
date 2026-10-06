@@ -1,0 +1,1 @@
+{ "name": "catalog-api", "private": true, "scripts": { "test": "node --test test/list.test.js" } }

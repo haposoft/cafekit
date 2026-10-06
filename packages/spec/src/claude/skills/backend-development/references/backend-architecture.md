@@ -218,7 +218,7 @@ Shipping Service
 
 ## Event-Driven Architecture
 
-**Impact:** 85% organizations recognize business value
+**Impact:** Organizations recognize business value
 
 ### Event Sourcing
 

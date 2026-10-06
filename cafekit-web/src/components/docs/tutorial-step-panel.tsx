@@ -110,13 +110,6 @@ export function TutorialStepPanel({ step, ui, locale, runKey }: Props) {
         replayLabel={ui.replay}
       />
 
-      {/* OpenCode note */}
-      {step.openCodeCommand && (
-        <p className="rounded-xl border border-[#F2EA9D]/20 bg-[#FFFBE2] px-4 py-3 text-sm text-[#5a4f00] dark:bg-[#2A2A18] dark:text-[#F2EA9D]">
-          {ui.openCodeNote}
-        </p>
-      )}
-
       {/* What you'll see */}
       {step.youWillSee && step.youWillSee.length > 0 && (
         <div>

@@ -4,7 +4,7 @@ import { type Locale, localizeHref } from '@/lib/locale-utils';
 import { getSkillDetails, type MainSkillSlug } from './skill-detail-content';
 
 const icons = {
-  question: HelpCircle,
+  ask: HelpCircle,
   brainstorm: Sparkles,
   specs: PenTool,
   develop: Wrench,
@@ -12,9 +12,9 @@ const icons = {
   'code-review': Shield,
   sync: GitBranch,
   debug: Bug,
-  hotfix: Wrench,
+  fix: Wrench,
   docs: FileText,
-  inspect: Braces,
+  scout: Braces,
   git: GitBranch,
 } satisfies Record<MainSkillSlug, typeof Bot>;
 
@@ -37,23 +37,17 @@ const labels = {
 };
 
 const supportSkills = [
-  ['hapo:research', 'External technical research and source validation.'],
-  ['hapo:generate-graph', 'Technical diagrams exported as SVG/PNG.'],
-  ['hapo:frontend-design', 'Polished frontend redesign and visual execution.'],
-  ['hapo:frontend-development', 'React/TypeScript frontend implementation patterns.'],
-  ['hapo:react-best-practices', 'React and Next.js performance guidance.'],
-  ['hapo:ui-ux-pro-max', 'UI/UX rules, accessibility, layout, motion, and design intelligence.'],
-  ['hapo:web-testing', 'Playwright, Vitest, k6, visual, a11y, and performance testing.'],
-  ['hapo:agent-browser', 'Context-efficient browser automation snapshots.'],
-  ['hapo:chrome-devtools', 'Puppeteer automation, screenshots, console, and ARIA checks.'],
-  ['hapo:ai-multimodal', 'Image, audio, video, OCR, transcript, and document analysis.'],
-  ['hapo:backend-development', 'APIs, auth, databases, services, security, and backend patterns.'],
-  ['hapo:devops', 'Cloudflare, Docker, GCP, Kubernetes, CI/CD, and deployment work.'],
-  ['hapo:mobile-development', 'React Native, Flutter, SwiftUI, Kotlin, and mobile UX.'],
-  ['hapo:docx', 'Word document creation, extraction, editing, comments, and redlines.'],
-  ['hapo:pdf', 'PDF extraction, creation, forms, merge, split, and batch work.'],
-  ['hapo:pptx', 'PowerPoint creation, editing, templates, and slide generation.'],
-  ['hapo:xlsx', 'Spreadsheet creation, formulas, charts, analysis, and recalculation.'],
+  ['cf:research', 'Adaptive evidence for uncertain decisions, with traceable claims and explicit gaps; it does not implement or guarantee the recommendation.'],
+  ['cf:ui-ux-pro-max', 'UI/UX rules, accessibility, layout, motion, and design intelligence.'],
+  ['cf:web-testing', 'Playwright, Vitest, k6, visual, a11y, and performance testing.'],
+  ['cf:agent-browser', 'Context-efficient browser automation snapshots.'],
+  ['cf:chrome-devtools', 'Puppeteer automation, screenshots, console, and ARIA checks.'],
+  ['cf:docs', 'Document capability, optional and available only when installed; supports project documentation and source-backed reconstruction.'],
+  ['cf:ai-multimodal (optional)', 'Image, audio, video, OCR, transcript, and document analysis.'],
+  ['cf:docx (optional)', 'Word document creation, extraction, editing, comments, and redlines.'],
+  ['cf:pdf (optional)', 'PDF extraction, creation, forms, merge, split, and batch work.'],
+  ['cf:pptx (optional)', 'PowerPoint creation, editing, templates, and slide generation.'],
+  ['cf:xlsx (optional)', 'Spreadsheet creation, formulas, charts, analysis, and recalculation.'],
 ];
 
 function normalizeLocale(locale: string): Locale {
@@ -63,7 +57,7 @@ function normalizeLocale(locale: string): Locale {
 export function MainSkillIndex({ locale }: { locale: string }) {
   const normalized = normalizeLocale(locale);
   const t = labels[normalized];
-  const details = getSkillDetails(normalized);
+  const details = getSkillDetails(normalized).filter(([slug]) => slug !== 'docs');
 
   return (
     <section className="not-prose my-10 space-y-8">

@@ -1,0 +1,5 @@
+#!/bin/sh
+# Thế chỗ công cụ không được phép gọi trong bộ đo: ghi lệnh gọi vào ./shim.log của phòng thử rồi thoát 127
+# như "không tìm thấy". Đặt thư mục này đầu PATH để nó che bản thật.
+echo "$(basename "$0") $*" >> ./shim.log
+exit 127

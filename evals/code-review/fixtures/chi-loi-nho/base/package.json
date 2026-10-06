@@ -1,0 +1,1 @@
+{ "name": "checkout", "private": true, "scripts": { "test": "node --test" } }

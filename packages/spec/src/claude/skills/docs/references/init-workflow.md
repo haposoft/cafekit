@@ -1,6 +1,6 @@
 # Init Workflow
 
-Use with `/hapo:docs --init`.
+Use with `/cf:docs --init`.
 
 ## Goal
 
@@ -64,7 +64,7 @@ Run a lightweight source scout before deep reading:
    - UI/API/worker/job/deployment surfaces
 4. Split large repositories into scoped source areas.
 
-Use `hapo:inspect` when source discovery spans multiple directories. Prefer targeted reads when the repo is small.
+Use `cf:scout` when source discovery spans multiple directories. Prefer targeted reads when the repo is small.
 
 ### Phase 2: Evidence Scout
 
@@ -84,7 +84,7 @@ Merge scout results into a concise context summary. Keep file references with ea
 
 ### Phase 3: Docs Authoring
 
-Delegate the merged context to `docs-keeper` when available. Otherwise follow its verification discipline in the main context.
+Delegate the merged context to `docs-keeper` only through the Delegation Gate in `../SKILL.md`. Otherwise follow its verification discipline in the main context.
 
 Authoring rules:
 
@@ -126,7 +126,7 @@ Report:
 Recommended next command:
 
 ```text
-/hapo:docs --update
+/cf:docs --update
 ```
 
 after meaningful source changes.

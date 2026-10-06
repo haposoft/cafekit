@@ -13,7 +13,7 @@ description: Understand the installed files, hooks, state checks, and validators
 
 ## Hooks
 
-Claude Code uses CommonJS hooks under `.claude/hooks/`. OpenCode uses TypeScript plugins under `.opencode/plugins/` — see [OpenCode platform](/docs/platforms/opencode) for the plugin-to-hook mapping.
+Claude Code uses CommonJS hooks under `.claude/hooks/`. Codex CLI uses project hooks from `.codex/hooks.json` plus shared rules and scripts under `.codex/`.
 
 | Hook | Purpose |
 |---|---|
@@ -24,7 +24,6 @@ Claude Code uses CommonJS hooks under `.claude/hooks/`. OpenCode uses TypeScript
 | `docs-sync.cjs` | Detects missing or stale project docs. |
 | `state.cjs` | Persists session state and modified-file summaries. |
 | `agent.cjs` | Gives subagents lightweight path, locale, and rule context. |
-| `usage.cjs` | Fetches Claude usage limits for the statusline cache. |
 
 ## Validators
 
@@ -41,9 +40,9 @@ Use validators as hard backstops. Prompt instructions can drift; scripts should 
 
 ## State model
 
-CafeKit stores feature state in both machine and human layers:
+New process-first Specs keep human-readable state in the plan and flat tasks:
 
-- `spec.json` stores phase, status, `task_files`, and `task_registry`.
-- `tasks/task-R*.md` stores context, steps, criteria, and evidence.
+- `plan.md` stores C1 scope, acceptance criteria, exclusions, findings decisions, and the task map.
+- `task-NN-*.md` stores one `Status:`, outcome, ownership, dependencies, acceptance, proof command, and final inline `## Receipt`.
 
-Both layers must move together. Chat messages are not a source of truth.
+Only the controller synchronizes observed Status and proof. Chat messages are not a source of truth.

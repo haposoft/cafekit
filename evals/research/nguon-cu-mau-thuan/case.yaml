@@ -1,0 +1,11 @@
+schema_version: "1.1"
+name: nguon-cu-mau-thuan
+tags: [research-baseline]
+runs: 10
+context:
+  scaffold_script: scaffold.sh
+execution:
+  prompt: "/cf:research Gói Free của Tessivox Relay API có đủ cho khoảng 30 request/phút mà service notify đang gửi không?"
+  max_turns: 40
+  timeout_seconds: 900
+  allowed_tools: [Read, Glob, Grep, Skill, Bash, Agent, WebSearch, WebFetch, Edit, Write]

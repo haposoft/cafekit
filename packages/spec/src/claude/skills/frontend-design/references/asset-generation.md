@@ -95,7 +95,7 @@ python scripts/gemini_batch_process.py \
 5. Professional quality (rate 1-10)
 6. Specific weaknesses or improvements needed" \
   --output docs/assets/hero-evaluation.md \
-  --model gemini-2.5-flash
+  --model gemma-4-31b-it
 ```
 
 ### Step 5: Iterate or Integrate
@@ -311,7 +311,7 @@ python scripts/gemini_batch_process.py \
   --task analyze \
   --prompt "Rate 1-10 for aesthetic quality, color harmony, text overlay suitability" \
   --output docs/assets/analysis-1.md \
-  --model gemini-2.5-flash
+  --model gemma-4-31b-it
 
 # 3. If score ≥ 7/10, generate production version
 python scripts/gemini_batch_process.py \

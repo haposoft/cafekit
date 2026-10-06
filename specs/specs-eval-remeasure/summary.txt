@@ -1,0 +1,63 @@
+
+evals/results/specs/lean-re-dung-o-c1-sonnet  model=claude-sonnet-5-5  judge=claude-sonnet-5-5  ablation=none  started=2026-10-06T03:30:48.737Z  cost=$1.09
+  dung-o-c1 [with]  runs 10  Skill invoked 8/10  co-goi-skill 8/10  dung-truoc-khi-lam 8/10  khong-code 10/10
+    over the 8 run(s) that invoked the skill: co-goi-skill 8/8  dung-truoc-khi-lam 8/8  khong-code 8/8
+
+evals/results/specs/lean-re-dung-o-c1-opus  model=claude-opus-5-5  judge=claude-sonnet-5-5  ablation=none  started=2026-10-06T03:43:07.374Z  cost=$1.79
+  dung-o-c1 [with]  runs 10  Skill invoked 10/10  co-goi-skill 10/10  dung-truoc-khi-lam 10/10  khong-code 10/10
+    over the 10 run(s) that invoked the skill: co-goi-skill 10/10  dung-truoc-khi-lam 10/10  khong-code 10/10
+
+evals/results/specs/lean-re-export-csv-sonnet  model=claude-sonnet-5-5  judge=claude-sonnet-5-5  ablation=none  started=2026-10-06T03:36:02.379Z  cost=$1.12
+  export-csv [with]  runs 10  Skill invoked 9/10  co-goi-skill 9/10  dung-truoc-khi-lam 9/10  khong-code 10/10
+    over the 9 run(s) that invoked the skill: co-goi-skill 9/9  dung-truoc-khi-lam 9/9  khong-code 9/9
+
+evals/results/specs/lean-re-export-csv-opus  model=claude-opus-5-5  judge=claude-sonnet-5-5  ablation=none  started=2026-10-06T03:48:22.584Z  cost=$2.02
+  export-csv [with]  runs 10  Skill invoked 10/10  co-goi-skill 10/10  dung-truoc-khi-lam 10/10  khong-code 10/10
+    over the 10 run(s) that invoked the skill: co-goi-skill 10/10  dung-truoc-khi-lam 10/10  khong-code 10/10
+
+evals/results/specs/lean-re-mo-ho-c1-sonnet  model=claude-sonnet-5-5  judge=claude-sonnet-5-5  ablation=none  started=2026-10-06T03:22:39.329Z  cost=$0.94
+  mo-ho-c1 [with]  runs 10  Skill invoked 10/10  co-goi-skill 10/10  co-marker 10/10  khong-code 10/10  khong-tu-chot 9/10  mot-cau-hoi-c1 10/10
+    over the 10 run(s) that invoked the skill: co-goi-skill 10/10  co-marker 10/10  khong-code 10/10  khong-tu-chot 9/10  mot-cau-hoi-c1 10/10
+
+evals/results/specs/lean-re-mo-ho-c1-opus  model=claude-opus-5-5  judge=claude-sonnet-5-5  ablation=none  started=2026-10-06T03:31:23.933Z  cost=$2.01
+  mo-ho-c1 [with]  runs 10  Skill invoked 10/10  co-goi-skill 10/10  co-marker 10/10  khong-code 10/10  khong-tu-chot 9/10  mot-cau-hoi-c1 10/10
+    over the 10 run(s) that invoked the skill: co-goi-skill 10/10  co-marker 10/10  khong-code 10/10  khong-tu-chot 9/10  mot-cau-hoi-c1 10/10
+
+evals/results/specs/lean-re-mo-ho-du-cua-sonnet  model=claude-sonnet-5-5  judge=claude-sonnet-5-5  ablation=none  started=2026-10-06T03:26:47.060Z  cost=$0.93
+  mo-ho-du-cua [with]  runs 10  Skill invoked 0/10 (10 run(s) with no skill grader)  da-goi-brainstorm 0/10  da-goi-mot-skill 9/10  da-goi-specs 9/10  khong-code 10/10  khong-tu-chot 8/10
+
+evals/results/specs/lean-re-mo-ho-du-cua-opus  model=claude-opus-5-5  judge=claude-sonnet-5-5  ablation=none  started=2026-10-06T03:37:32.896Z  cost=$1.95
+  mo-ho-du-cua [with]  runs 10  Skill invoked 0/10 (10 run(s) with no skill grader)  da-goi-brainstorm 0/10  da-goi-mot-skill 10/10  da-goi-specs 10/10  khong-code 10/10  khong-tu-chot 9/10
+
+evals/results/specs/lean-re-sau-keep-sonnet  model=claude-sonnet-5-5  judge=claude-sonnet-5-5  ablation=none  started=2026-10-06T03:13:48.389Z  cost=$1.72
+  sau-keep [with]  runs 10  Skill invoked 10/10  co-goi-skill 10/10  co-plan 10/10  co-task 10/10  khong-sua-code 10/10  khong-viet-code 10/10  moi-ac-co-task 10/10  plan-co-decisions 10/10  plan-co-priority 10/10  task-co-failure-protocol 10/10  task-co-oracle 10/10  task-co-steps 10/10
+    over the 10 run(s) that invoked the skill: co-goi-skill 10/10  co-plan 10/10  co-task 10/10  khong-sua-code 10/10  khong-viet-code 10/10  moi-ac-co-task 10/10  plan-co-decisions 10/10  plan-co-priority 10/10  task-co-failure-protocol 10/10  task-co-oracle 10/10  task-co-steps 10/10
+
+evals/results/specs/lean-re-sau-keep-opus  model=claude-opus-5-5  judge=claude-sonnet-5-5  ablation=none  started=2026-10-06T03:13:48.958Z  cost=$5.15
+  sau-keep [with]  runs 10  Skill invoked 10/10  co-goi-skill 10/10  co-plan 10/10  co-task 10/10  khong-sua-code 10/10  khong-viet-code 10/10  moi-ac-co-task 10/10  plan-co-decisions 10/10  plan-co-priority 10/10  task-co-failure-protocol 10/10  task-co-oracle 10/10  task-co-steps 10/10
+    over the 10 run(s) that invoked the skill: co-goi-skill 10/10  co-plan 10/10  co-task 10/10  khong-sua-code 10/10  khong-viet-code 10/10  moi-ac-co-task 10/10  plan-co-decisions 10/10  plan-co-priority 10/10  task-co-failure-protocol 10/10  task-co-oracle 10/10  task-co-steps 10/10
+
+evals/results/specs/lean-re-khong-kich-hoat-sonnet  model=claude-sonnet-5-5  judge=claude-sonnet-5-5  ablation=none  started=2026-10-06T03:41:00.221Z  cost=$0.46
+  khong-kich-hoat [with]  runs 10  Skill invoked 0/10  khong-goi-specs 10/10  tra-loi-thang 10/10
+    over the 0 run(s) that invoked the skill: khong-goi-specs 0/0  tra-loi-thang 0/0
+
+evals/results/specs/lean-re-khong-kich-hoat-opus  model=claude-opus-5-5  judge=claude-sonnet-5-5  ablation=none  started=2026-10-06T03:54:06.908Z  cost=$0.85
+  khong-kich-hoat [with]  runs 10  Skill invoked 0/10  khong-goi-specs 10/10  tra-loi-thang 10/10
+    over the 0 run(s) that invoked the skill: khong-goi-specs 0/0  tra-loi-thang 0/0
+
+evals/results/specs/lean-re-sua-typo-sonnet  model=claude-sonnet-5-5  judge=claude-sonnet-5-5  ablation=none  started=2026-10-06T03:43:24.689Z  cost=$0.33
+  sua-typo [with]  runs 10  Skill invoked 0/10  khong-goi-specs 10/10  tra-loi-thang 10/10
+    over the 0 run(s) that invoked the skill: khong-goi-specs 0/0  tra-loi-thang 0/0
+
+evals/results/specs/lean-re-sua-typo-opus  model=claude-opus-5-5  judge=claude-sonnet-5-5  ablation=none  started=2026-10-06T03:57:20.204Z  cost=$0.60
+  sua-typo [with]  runs 10  Skill invoked 0/10  khong-goi-specs 10/10  tra-loi-thang 10/10
+    over the 0 run(s) that invoked the skill: khong-goi-specs 0/0  tra-loi-thang 0/0
+
+AGGREGATE over 14 directories
+  dung-o-c1 [with]  runs 20  Skill invoked 18/20  co-goi-skill 18/20  dung-truoc-khi-lam 18/20  khong-code 20/20
+  export-csv [with]  runs 20  Skill invoked 19/20  co-goi-skill 19/20  dung-truoc-khi-lam 19/20  khong-code 20/20
+  khong-kich-hoat [with]  runs 20  Skill invoked 0/20  khong-goi-specs 20/20  tra-loi-thang 20/20
+  mo-ho-c1 [with]  runs 20  Skill invoked 20/20  co-goi-skill 20/20  co-marker 20/20  khong-code 20/20  khong-tu-chot 18/20  mot-cau-hoi-c1 20/20
+  mo-ho-du-cua [with]  runs 20  Skill invoked 0/20 (20 run(s) with an unread skill count)  da-goi-brainstorm 0/20  da-goi-mot-skill 19/20  da-goi-specs 19/20  khong-code 20/20  khong-tu-chot 17/20
+  sau-keep [with]  runs 20  Skill invoked 20/20  co-goi-skill 20/20  co-plan 20/20  co-task 20/20  khong-sua-code 20/20  khong-viet-code 20/20  moi-ac-co-task 20/20  plan-co-decisions 20/20  plan-co-priority 20/20  task-co-failure-protocol 20/20  task-co-oracle 20/20  task-co-steps 20/20
+  sua-typo [with]  runs 20  Skill invoked 0/20  khong-goi-specs 20/20  tra-loi-thang 20/20

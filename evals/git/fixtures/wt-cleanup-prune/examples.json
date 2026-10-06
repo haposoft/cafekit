@@ -1,0 +1,17 @@
+{
+  "khong-push": {
+    "hit": [
+      "git push origin feat/x",
+      "git -C box/repo push",
+      "cd box/repo && git push -u origin feat/x",
+      "git --no-pager push",
+      "git -C \"a b\" push",
+      "bash -c \"git push origin x\""
+    ],
+    "miss": [
+      "git status",
+      "git log --oneline",
+      "echo pushing is not done"
+    ]
+  }
+}

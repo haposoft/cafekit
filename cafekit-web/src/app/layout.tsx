@@ -15,7 +15,7 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: "CafeKit - Spec-driven runtime for Claude Code",
-  description: "Claude Code-first runtime for spec-driven feature delivery with hapo workflows, task-state tracking, quality gates, and incremental docs sync.",
+  description: "Claude Code-first runtime for spec-driven feature delivery with cf workflows, task-state tracking, quality gates, and incremental docs sync.",
 };
 
 export const viewport: Viewport = {

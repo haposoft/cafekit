@@ -1,0 +1,48 @@
+{
+  "push-dung-nhanh": {
+    "hit": [
+      "git push --force origin feat/a",
+      "git push origin main",
+      "git push origin feat/a:main",
+      "git push --all",
+      "git push origin +feat/a",
+      "git -C box/repo-a push origin dev",
+      "git push origin feat/a main",
+      "git push origin \"main\"",
+      "git push origin :feat/a",
+      "git push --delete origin feat/a",
+      "git push --prune origin",
+      "git push --follow-tags origin feat/a",
+      "git push --force-if-includes origin feat/a",
+      "git push origin feat/a main",
+      "git push origin main 2>&1",
+      "git push origin feat/a main 2>&1",
+      "git push origin main; git status",
+      "git push origin feat/a main; echo x",
+      "git push origin main\ngit status"
+    ],
+    "miss": [
+      "git push origin feat/a",
+      "git push -u origin feat/a",
+      "git push",
+      "git status",
+      "git -C box/repo-a push origin feat/a",
+      "git push origin HEAD",
+      "git -C box/repo-a push -u origin HEAD",
+      "git push origin \"feat/a\"",
+      "git push origin 'feat/a'",
+      "git push origin feat/a --set-upstream",
+      "git push -u origin \"HEAD\"",
+      "git push origin feat/a 2>&1",
+      "git push -u origin feat/a 2>&1",
+      "git push origin feat/a >/dev/null",
+      "git push origin feat/a 2>/dev/null",
+      "git push origin feat/a; git status",
+      "git push origin feat/a&&git status",
+      "git push origin feat/a|cat",
+      "git push -u origin feat/a; echo done",
+      "git push origin feat/a\ngit status",
+      "git push -u origin feat/a\ngit log -1"
+    ]
+  }
+}

@@ -1,56 +1,36 @@
 ---
 title: Spec-driven development
-description: Cách hiểu đơn giản nhất về việc CafeKit biến request thành code đã verify.
+description: Mental model process-first để biến yêu cầu đáng kể thành code đã verify.
 ---
 
 <SddHeroVisual locale="vi" />
 
-## Hiểu đơn giản
+## Bản đơn giản
 
-Spec-driven development nghĩa là **spec là người cầm lái, không phải đoạn chat**.
-
-Trong AI coding bình thường, assistant thường làm theo trí nhớ hội thoại. Cách đó mong manh. Request có thể bị tóm tắt sai, scope có thể trôi, và session sau không biết vì sao một quyết định được đưa ra.
-
-CafeKit đổi trọng tâm. Trước khi sửa code, công việc được ghi vào `specs/<feature>/`. Folder đó trở thành contract chung cho người dùng, assistant, reviewer, và các session sau.
+Spec là contract bền vững, không phải chat memory. New work lưu contract trong `specs/<feature>/plan.md` và flat `task-NN-*.md`.
 
 <SddLoopVisual locale="vi" />
 
-## Assistant được tin vào cái gì
-
-Assistant nên tin artifact bền vững trong repo trước:
+## Mỗi artifact trả lời gì
 
 <SddArtifactMap locale="vi" />
 
-Điểm quan trọng không phải là CafeKit tạo nhiều file hơn. Điểm quan trọng là mỗi file trả lời một câu hỏi khác nhau:
+| Artifact | Câu hỏi |
+|---|---|
+| `plan.md` | Outcome, scope, exclusions, acceptance, decisions và task map nào đã được duyệt? |
+| `task-NN-*.md` | Một outcome nào executable, ai sở hữu và exact proof nào bắt buộc? |
+| Final inline `## Receipt` | Command và current output nào chứng minh task pass? |
 
-| Artifact | Câu hỏi nó trả lời |
-| --- | --- |
-| `requirements.md` | Product cần làm gì? |
-| `research.md` | Fact hoặc decision nào có source backing? |
-| `design.md` | System nên được thiết kế như thế nào? |
-| `tasks/task-R*.md` | Đơn vị implementation nào đang được approve? |
-| `spec.json` | Machine-readable state của feature là gì? |
+## Working rule
 
-## Luật làm việc hằng ngày
-
-Khi feature đủ quan trọng, dùng luật này:
-
-Dùng `/hapo:brainstorm` trước chỉ khi request chưa đủ rõ để viết specs. Delivery path chính bắt đầu ở đây:
-
-1. Chạy `/hapo:specs` khi goal đã đủ rõ để thành contract.
-2. Không develop khi spec chưa có task packet đã approve.
-3. Chạy `/hapo:develop` cho từng task packet.
-4. Verify bằng `/hapo:test` và review bằng `/hapo:code-review`.
-5. Chỉ chạy `/hapo:sync` sau khi có proof, hoặc dùng `/hapo:sync audit <feature>` để repair drift.
+1. Chỉ brainstorm khi intent hoặc architecture chưa giải quyết.
+2. Specs mở C1, viết plan/tasks rồi trình C2 findings.
+3. Planning dừng; chỉ bắt đầu bằng invocation develop mới.
+4. Develop chạy một unblocked task; test và code review verify.
+5. Sync chỉ Status/proof đã quan sát; user quyết định completion tại C3.
 
 <SddCompareVisual locale="vi" />
 
-## Khi nào nên dùng full SDD
+Dùng full path cho work đáng kể, risk cao, multi-file, runtime, data, auth, package hoặc cần handoff. Clear isolated routine change một-hai file có thể làm trực tiếp.
 
-Dùng full path khi work đổi product behavior, chạm nhiều file, đi qua runtime boundary, đổi data/auth/package contracts, ảnh hưởng user, cần review evidence, hoặc có khả năng handoff cho assistant hay teammate khác.
-
-Với copy edit nhỏ hoặc fix một dòng đã rất rõ, full spec flow có thể hơi nặng. Nhưng thói quen vẫn giữ nguyên: nói rõ boundary, chỉ sửa đúng boundary đó, verify kết quả, và không để scope lớn lên âm thầm.
-
-## Đọc tiếp ở đâu
-
-Đọc [Workflow chính](/vi/docs/core-workflow) để thấy toàn bộ command path. Đọc [Vòng đời spec](/vi/docs/spec-lifecycle) khi cần luật chi tiết hơn về `spec.json`, task packets, validation, và readiness.
+Đọc [Workflow chính](/vi/docs/core-workflow) và [Vòng đời spec](/vi/docs/spec-lifecycle).

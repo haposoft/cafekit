@@ -2,17 +2,16 @@ import { Bot, Boxes, Braces, Bug, FileSearch, GitPullRequest, Laptop, Layers3, P
 
 const skillGroups: Array<[string, string[]]> = [
   ['Core workflow', ['specs', 'develop', 'test', 'code-review', 'sync', 'git']],
-  ['Pre-spec discovery', ['question', 'brainstorm', 'inspect', 'research']],
-  ['Debug and change safety', ['debug', 'hotfix']],
-  ['Frontend and product', ['frontend-design', 'frontend-development', 'react-best-practices', 'ui-ux-pro-max', 'web-testing']],
-  ['Backend and platforms', ['backend-development', 'mobile-development', 'devops']],
-  ['Artifacts and media', ['docs', 'generate-graph', 'agent-browser', 'chrome-devtools', 'ai-multimodal', 'docx', 'pdf', 'pptx', 'xlsx']],
+  ['Pre-spec discovery', ['ask', 'brainstorm', 'scout', 'research']],
+  ['Debug and change safety', ['debug', 'fix']],
+  ['Product and browser', ['ui-ux-pro-max', 'web-testing', 'agent-browser', 'chrome-devtools']],
+  ['Documents and media — optional when installed', ['docs', 'ai-multimodal', 'docx', 'pdf', 'pptx', 'xlsx']],
 ];
 
 const agents = [
   ['brainstormer', 'Pressure-tests product and architecture choices before specs.', Sparkles],
-  ['spec-maker', 'Creates spec.json, requirements, design, research, and task files.', PenTool],
-  ['god-developer', 'Implements approved task packets as production code.', Wrench],
+  ['spec-maker', 'Creates a process-first plan and flat executable task packets.', PenTool],
+  ['implementer', 'Implements approved task packets as production code.', Wrench],
   ['test-runner', 'Runs exact verification and rejects green lies.', TestTube2],
   ['code-auditor', 'Findings-first review for security, logic, architecture, and drift.', Shield],
   ['debugger', 'Traces failures with evidence before fixes.', Bug],
@@ -20,14 +19,15 @@ const agents = [
   ['git-ops', 'Handles conventional commits, pushes, and release-safe git flow.', GitPullRequest],
   ['inspector', 'Scouts code structure and relevant files quickly.', Braces],
   ['project-manager', 'Aggregates feature progress, blockers, and release state.', Layers3],
-  ['researcher', 'Validates external technical claims with sources.', FileSearch],
+  ['researcher', 'Builds proportional, traceable evidence for uncertain technical decisions.', FileSearch],
   ['ui-ux-designer', 'Designs accessible, polished product interfaces.', Laptop],
   ['deployer', 'Coordinates deploys, checks, and rollback handoff.', Boxes],
 ];
 
 const platforms: Array<[string, string, string]> = [
   ['Claude Code', 'Primary runtime', '.claude/ skills, agents, hooks, statusline, settings'],
-  ['OpenCode', 'Supported runtime', '.opencode/ skills, agents, commands, plugins, runtime.json, AGENTS.md'],
+  ['Codex CLI', 'Supported runtime', '.agents/skills, .codex/agents, hooks, rules, runtime.json, AGENTS.md'],
+  ['OpenCode', 'Legacy 0.16 only', 'Support removed in 0.17; retained only as migration history'],
   ['Cursor', 'Future target', 'Not part of the current package runtime'],
 ];
 

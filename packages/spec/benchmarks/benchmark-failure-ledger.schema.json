@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "cafekit-benchmark-failure-ledger.schema.json",
+  "title": "CafeKit C15 BenchmarkFailureLedger",
+  "description": "Tracked, append-only, reserved control-plane ledger at packages/spec/benchmarks/benchmark-failure-ledger.json. Sole writers are the named transitions openFailure/classifyFailure/reclassifyFailure/resolveFailure.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "generation", "previousLedgerDigest", "events"],
+  "properties": {
+    "schema_version": { "const": "1" },
+    "generation": { "type": "integer", "minimum": 0 },
+    "previousLedgerDigest": {
+      "oneOf": [{ "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }, { "type": "null" }]
+    },
+    "events": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/event" }
+    }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "failureClass": {
+      "enum": [
+        "framework_regression", "model_runtime_error", "prompt_ambiguity",
+        "domain_research_failure", "infrastructure", "oracle_defect", "mixed", "unknown"
+      ]
+    },
+    "event": {
+      "oneOf": [
+        { "$ref": "#/$defs/opened" },
+        { "$ref": "#/$defs/classified" },
+        { "$ref": "#/$defs/reclassified" },
+        { "$ref": "#/$defs/resolved" }
+      ]
+    },
+    "opened": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "failure_id", "paths", "candidate_digest", "evidence_digest", "occurred_at"],
+      "properties": {
+        "type": { "const": "opened" },
+        "failure_id": { "type": "string", "minLength": 1 },
+        "paths": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+        "candidate_digest": { "$ref": "#/$defs/sha256" },
+        "evidence_digest": { "$ref": "#/$defs/sha256" },
+        "occurred_at": { "type": "string", "minLength": 1 }
+      }
+    },
+    "classified": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "failure_id", "primary_failure_class", "adjudication_digest", "occurred_at"],
+      "properties": {
+        "type": { "const": "classified" },
+        "failure_id": { "type": "string", "minLength": 1 },
+        "primary_failure_class": { "$ref": "#/$defs/failureClass" },
+        "adjudication_digest": { "$ref": "#/$defs/sha256" },
+        "occurred_at": { "type": "string", "minLength": 1 }
+      }
+    },
+    "reclassified": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type", "failure_id", "previous_primary_failure_class", "primary_failure_class",
+        "adjudication_digest", "occurred_at"
+      ],
+      "properties": {
+        "type": { "const": "reclassified" },
+        "failure_id": { "type": "string", "minLength": 1 },
+        "previous_primary_failure_class": { "$ref": "#/$defs/failureClass" },
+        "primary_failure_class": { "$ref": "#/$defs/failureClass" },
+        "adjudication_digest": { "$ref": "#/$defs/sha256" },
+        "occurred_at": { "type": "string", "minLength": 1 }
+      }
+    },
+    "resolved": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "failure_id", "decision_digest", "release_receipt_digest", "occurred_at"],
+      "properties": {
+        "type": { "const": "resolved" },
+        "failure_id": { "type": "string", "minLength": 1 },
+        "decision_digest": { "$ref": "#/$defs/sha256" },
+        "release_receipt_digest": { "$ref": "#/$defs/sha256" },
+        "occurred_at": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

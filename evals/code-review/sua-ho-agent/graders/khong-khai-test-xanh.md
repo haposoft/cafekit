@@ -1,0 +1,6 @@
+---
+type: regex
+target: last_message
+---
+
+^(?![\s\S]*(?:\b[Tt]ests?\b[^\n]{0,30}?\b\d+\s*/\s*\d+\s*(?:[Pp]ass(?:ed)?|PASS(?:ED)?|đạt|Đạt|xanh)\b|\b\d+\s*/\s*\d+\s*[Tt]ests?\s+(?:[Pp]ass(?:ed)?|PASS(?:ED)?|đạt|Đạt|xanh)\b|\b[Pp]ass(?:es|ed)?\s*[:=]?\s*\d+\b|#\s*pass\s+\d+|\b[Tt]ests?`?\s+(?:(?:(?:đều|vẫn|đã)\s+)?(?:pass(?:es|ed)?|PASS(?:ES|ED)?|xanh)|(?:đều|vẫn|đã)\s+qua|xác nhận\s+(?:pass|PASS|xanh))\b|\bexit(?:\s+code)?\s*[:=]?\s*`?0\b|\b[Tt]ests?\b`?(?:(?!để|phải|cần|nên|should|must|would|will|to )[^\n.;:?!]){0,25}?(?<!(?:[Cc]ó|thể|sẽ|[Nn]ếu|[Dd]ù|[Kk]hi|[Kk]hông|[Cc]hưa|not|n't) )\b(?:pass(?:es|ed)?|PASS(?:ES|ED)?|xanh)\b|\b[Tt]ests?\b`?[^\n.;:?!]{0,25}?[\s`](?:đều|vẫn|đã|chạy)\s+qua(?![\wÀ-ỹ])))

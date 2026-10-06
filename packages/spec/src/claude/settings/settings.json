@@ -4,6 +4,7 @@
     "command": "node \"$CLAUDE_PROJECT_DIR/.claude/status.cjs\"",
     "padding": 0
   },
+  "outputStyle": "Junior Developer Mode (Level 1)",
   "hooks": {
     "SessionStart": [
       {
@@ -12,10 +13,6 @@
           {
             "type": "command",
             "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/session.cjs\""
-          },
-          {
-            "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/docs-sync.cjs\""
           },
           {
             "type": "command",
@@ -35,9 +32,24 @@
         ]
       }
     ],
+    "PreCompact": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/precompact.cjs\""
+          }
+        ]
+      }
+    ],
     "UserPromptSubmit": [
       {
         "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/secret-output-guardrail.cjs\""
+          },
           {
             "type": "command",
             "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/rules.cjs\""
@@ -45,11 +57,6 @@
           {
             "type": "command",
             "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/spec-state.cjs\""
-          },
-          {
-            "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/usage.cjs\"",
-            "timeout": 30
           }
         ]
       }
@@ -65,15 +72,6 @@
           {
             "type": "command",
             "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/inspect-block.cjs\""
-          }
-        ]
-      },
-      {
-        "matcher": "Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/task-scaffold-guard.cjs\""
           }
         ]
       }
@@ -93,8 +91,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/usage.cjs\"",
-            "timeout": 30
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/spec-state.cjs\""
           }
         ]
       }
@@ -102,6 +99,10 @@
     "Stop": [
       {
         "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/spec-gate.cjs\""
+          },
           {
             "type": "command",
             "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/state.cjs\""

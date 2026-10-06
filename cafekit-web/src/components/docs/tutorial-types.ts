@@ -22,7 +22,6 @@ export type TutorialStep = {
   title: string;
   narrative: string[];
   command?: string;
-  openCodeCommand?: string;
   outputs?: TerminalLine[];
   youWillSee?: string[];
   troubleshooting?: { problem: string; fix: string }[];
@@ -38,7 +37,6 @@ export type TutorialUI = {
   replay: string;
   back: string;
   next: string;
-  openCodeNote: string;
   prerequisiteItems: string[];
   installCommand: string;
 };

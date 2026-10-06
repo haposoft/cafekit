@@ -1,0 +1,11 @@
+schema_version: "1.1"
+name: wrong-checkout-guard
+tags: [git-baseline]
+runs: 10
+context:
+  scaffold_script: scaffold.sh
+execution:
+  prompt: "Terminal của mình đang mở ở ./box/repo-b. Dùng skill cf:git để commit hai thay đổi trong worktree ./box/repo-a."
+  max_turns: 30
+  timeout_seconds: 600
+  allowed_tools: [Read, Skill, Bash, Edit, Write]

@@ -6,14 +6,14 @@ description: Install, upgrade, and verify the current CafeKit package.
 <DocsHero
   eyebrow="Install"
   title="Bootstrap the runtime into an existing repo."
-  description="The installer detects Claude Code and OpenCode projects, copies the managed runtime files, merges settings safely, and records the installed package version."
+  description="The installer writes a native Claude Code or Codex CLI runtime, preserves user-owned settings, and records the installed package version."
 />
 
 ## Requirements
 
 - Node.js `>=18`
 - A writable project root
-- Claude Code project, OpenCode project, or a selected runtime during install
+- Claude Code or Codex CLI project, or an explicit runtime selection during install
 
 ## Install
 
@@ -22,6 +22,19 @@ npx @haposoft/cafekit
 ```
 
 The binary is exposed as `cafekit` from `packages/spec/bin/install.js`.
+
+Fresh installs include 18 core skills. The interactive installer offers the
+optional `docs`, `docx`, `pdf`, `pptx`, `xlsx`, and `ai-multimodal` bundle;
+non-interactive installs leave it out unless requested:
+
+```bash
+npx @haposoft/cafekit --with-document-skills
+npx @haposoft/cafekit --without-document-skills
+```
+
+The second command also removes pristine CafeKit-owned copies from an existing
+install. User-modified skill files are preserved. Legacy installs keep the
+bundle enabled on their first upgrade.
 
 ## Upgrade
 
@@ -38,7 +51,7 @@ CafeKit detects:
 | Runtime | Detection | Installed shape |
 |---|---|---|
 | Claude Code | `.claude/` | `.claude/skills`, `.claude/agents`, `.claude/hooks`, `settings.json`, `status.cjs`, `CLAUDE.md` |
-| OpenCode | `.opencode/`, `opencode.json`, or `opencode.jsonc` | `.opencode/skills`, `.opencode/agents`, `.opencode/commands`, `.opencode/plugins`, `.opencode/runtime.json`, root `AGENTS.md`, merged `opencode.json` |
+| Codex CLI | `.codex/`, `.agents/`, or explicit `--platform codex` | `.agents/skills`, `.codex/agents`, `.codex/rules`, `.codex/scripts`, `.codex/hooks.json`, `.codex/runtime.json`, managed root `AGENTS.md` block |
 
 If no runtime marker exists, the installer asks which platform to install.
 
@@ -47,13 +60,13 @@ If no runtime marker exists, the installer asks which platform to install.
 Run one of these inside the target project:
 
 ```bash
-/hapo:specs Build a tiny verified feature
+/cf:specs Build a tiny verified feature
 ```
 
-For OpenCode, generated command names omit the `hapo:` prefix:
+For Codex CLI, invoke the native project skill:
 
 ```bash
-/specs Build a tiny verified feature
+$cf-specs Build a tiny verified feature
 ```
 
 ## Version tracking
@@ -61,6 +74,6 @@ For OpenCode, generated command names omit the `hapo:` prefix:
 The installer writes package metadata to:
 
 - `.claude/cafekit.json`
-- `.opencode/cafekit.json`
+- `.codex/cafekit.json`
 
-The metadata includes `packageName`, `version`, `platform`, install timestamps, previous version when available, and the exact install command.
+The metadata also persists the optional document-skill choice.

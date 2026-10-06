@@ -1,139 +1,56 @@
 ---
 title: Core workflow
-description: The main CafeKit path from idea to verified change.
+description: The main CafeKit path from bounded intent to verified change.
 ---
 
-<DocsHero
-  eyebrow="Main workflow"
-  title="Idea becomes code only after it becomes a contract."
-  description="CafeKit's delivery workflow starts at specs: write the contract, lock the task packet, implement one boundary, verify with real evidence, review adversarially, then sync state."
-/>
+<DocsHero eyebrow="Main workflow" title="Intent becomes code through a reviewed contract." description="Scope at C1, review findings at C2, implement one flat task, prove it, then let the user close at C3." />
 
 <CoreWorkflowMap />
 
-## The short version
+## Main path
 
 ```text
-/hapo:specs                  # requirements, research, design, tasks
-  -> approve task packet     # scope and evidence contract
-  -> /hapo:develop           # one unblocked task at a time
-  -> /hapo:test              # real commands and runtime proof
-  -> /hapo:code-review       # spec, quality, security, regressions
-  -> /hapo:sync              # task_registry and task markdown stay aligned
+/cf:brainstorm         # optional when intent or architecture is unresolved
+  -> /cf:specs         # C1 -> plan.md + flat tasks -> adversarial review -> C2
+  -> stop planning
+  -> /cf:develop       # new explicit invocation; one unblocked task at a time
+  -> /cf:test          # smallest adequate real proof
+  -> /cf:code-review   # correctness, security, regressions, contract drift
+  -> /cf:sync          # observed Status and inline Receipt only
+  -> C3                  # user completion decision
 ```
 
-The important idea is not the command list. The important idea is that **chat is not the source of truth**. The durable contract lives in `specs/<feature>/spec.json`, `requirements.md`, `research.md`, `design.md`, and `tasks/task-R*.md`.
+Chat is not the source of truth. New work uses `specs/<feature>/plan.md` and flat `task-NN-*.md` files.
 
-## Optional pre-spec clarification
+## Contract and execution
 
-Use `/hapo:brainstorm` when the request is still rough: product direction is open, architecture is uncertain, risks are unknown, or the first question should be grounded in repo reality.
+`plan.md` records C1 scope, exclusions, acceptance criteria, dependencies, and C2 decisions. Each task owns one outcome, one `Status:`, explicit ownership, dependencies, proof command, and a final inline `## Receipt`.
 
-Brainstorming is scout-first and sits before the delivery path. It should not write implementation code. Its output is a spec-ready decision set: what problem is being solved, what is out of scope, which architecture looks simplest, and which risks must be carried into the spec.
+Develop scouts real entrypoints and callers before mutation. Runtime-facing work is incomplete until it is reachable from the actual route, command, UI mount, worker, service, or API boundary.
 
-Skip this phase when the request is already concrete enough to become requirements.
+Do not silently replace named technologies or runtime choices. A needed scope change returns to the plan and user decision.
 
-## 1. Turn the request into a spec
-
-Use `/hapo:specs` to convert intent into persistent artifacts. A healthy spec contains:
-
-| Artifact | Job |
-|---|---|
-| `spec.json` | Machine-readable status, phase, scope, task registry, and task file list. |
-| `requirements.md` | Functional requirements, non-functional requirements, constraints, and acceptance criteria. |
-| `research.md` | Source-backed research and technical decisions. |
-| `design.md` | Architecture, contracts, data flow, interfaces, and invariants. |
-| `tasks/task-R*.md` | Task packets with objective, related files, steps, completion criteria, and evidence. |
-
-The spec is not paperwork. It is the anti-drift layer. It prevents the assistant from replacing named technology, inventing hidden scope, or calling placeholder behavior complete.
-
-## 2. Approve a task packet
-
-CafeKit implementation should not start from the whole feature in the assistant's head. It starts from one active task packet.
-
-A task packet must answer:
-
-- What exact behavior is in scope?
-- Which files or surfaces are related?
-- Which requirements does the task satisfy?
-- Which design contracts must hold?
-- What evidence will prove the task is done?
-- What should block the task instead of being guessed?
-
-If those answers are missing, route back to `/hapo:specs` or `/hapo:sync audit <feature>`. Do not fill gaps with implementation guesses.
-
-## 3. Implement one boundary at a time
-
-Use `/hapo:develop <feature>` for full-spec execution or `/hapo:develop <feature> <task-file>` for a surgical task.
-
-CafeKit's implementation rule is simple: **one unblocked task, one scout, one implementation loop, one proof set**.
-
-Before coding, the task should move to `in_progress`. The assistant should inspect real entrypoints, callers, adjacent patterns, prior task outputs, and blast radius. Runtime-facing work is incomplete until it is reachable from the actual route, command, UI mount, worker, service, or API boundary.
-
-Do not silently swap named contracts. If the spec says Next.js route, Better Auth, Redis, Drizzle, S3, OpenCode command, or another concrete runtime choice, that choice is part of the contract. A local placeholder does not satisfy it unless the spec explicitly says so.
-
-## 4. Verify with evidence, not optimism
-
-Use `/hapo:test <feature>` or `/hapo:test --full` after implementation. The test phase should detect the runner, execute real commands, collect results, and compare behavior against requirements, design contracts, task evidence, and reachability obligations.
-
-`NO_TESTS` is not a pass. A command that exits `0` while running zero tests is not a pass. Build success alone is not proof for a runtime-facing task. The task needs evidence that matches its completion criteria.
+## Proof stack
 
 <WorkflowProofStack />
 
-## 5. Review like the change is trying to break production
+A green command is not enough. Exact acceptance-relevant commands must run; zero tests and `NO_TESTS` do not pass. Review findings block completion until repaired and reverified.
 
-Use `/hapo:code-review --pending`, a feature scope, a PR, or a commit target.
-
-The review checks three layers:
-
-| Layer | What it catches |
-|---|---|
-| Spec compliance | Missing requirements, extra scope, wrong runtime choice, unverified task claims. |
-| Code quality | YAGNI, KISS, DRY, naming, boundaries, hardcoded values, missing tests. |
-| Adversarial review | Security holes, edge cases, race conditions, false assumptions, regression paths. |
-
-Critical findings block completion. Review is not a polish step; it is part of the Definition of Done.
-
-## 6. Sync state and documentation
-
-Use `/hapo:sync <feature> <task> done` only after proof exists. Use `/hapo:sync audit <feature>` when state drift is suspected. CafeKit expects machine and human state to move together:
+## State ownership
 
 <WorkflowStateRail />
 
-When a task becomes `done`, `spec.json.task_registry` and the matching task markdown should agree. The task should contain a human-readable verification receipt: commands run, outcomes, artifact proof, runtime proof, or a recorded blocker.
+The controller alone updates task Status and canonical Receipt. Sync may reconcile observed file state but cannot invent execution, approval, or completion.
 
-After verified tasks, consider the docs checkpoint. If source behavior changed enough that docs or onboarding would lie, update docs before release.
-
-## When the main workflow branches
-
-The core flow handles planned feature delivery. Use another route when the work type is different:
+## Alternate routes
 
 | Situation | Route |
 |---|---|
-| Existing system has no reliable docs | `/hapo:docs --reconstruct <scope>` before specs. |
-| Root cause is unknown | `/hapo:debug` before changing code. |
-| Production bug needs a narrow fix | `/hapo:hotfix` after evidence-first diagnosis. |
-| Spec/task state drifted | `/hapo:sync audit <feature>`. |
-| Architecture needs a visual artifact | `/hapo:generate-graph <request>`. |
-| Verified changes are ready to publish | `/hapo:git commit` then `/hapo:git push`. |
+| Need an evidence-backed answer | `/cf:ask` |
+| Need scoped codebase discovery | `/cf:scout` |
+| Root cause unknown | `/cf:debug` |
+| Diagnosed bug needs repair | `/cf:fix` |
+| Existing system lacks reliable docs | `/cf:docs --reconstruct <scope>` |
+| Uncertain technical decision | `/cf:research` |
 
-## OpenCode equivalent
-
-OpenCode uses prefix-free commands while reading the same CafeKit skill bundle:
-
-```text
-/specs -> /develop -> /test -> /code-review
-```
-
-The contract remains the same: source-backed spec, one task at a time, real evidence, adversarial review, synchronized state.
-
-## Definition of Done
-
-A CafeKit task is done only when all of this is true:
-
-- The approved task packet was implemented without hidden scope changes.
-- Runtime-facing work is wired into the real entrypoint.
-- Completion criteria are satisfied.
-- Verification evidence is recorded with exact commands and outcomes.
-- Code review found no blocking correctness, security, or regression issue.
-- `spec.json` and task markdown agree.
-- Any docs impact has been handled or explicitly recorded.
+Claude Code uses `/cf:*`; Codex CLI uses native `$cf-*` skills. OpenCode commands are historical 0.16-only compatibility notes.

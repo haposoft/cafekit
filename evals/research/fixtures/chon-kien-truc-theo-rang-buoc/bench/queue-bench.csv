@@ -1,0 +1,3 @@
+library,jobs_per_sec,machine,backend,date
+bullmq,4800,8 vCPU,redis-local,2025-11-20
+pg-boss,450,8 vCPU,postgres-local,2025-11-20

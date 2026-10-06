@@ -1,0 +1,1 @@
+{ "name": "notify", "private": true, "dependencies": { "@tessivox/relay": "4.2.0" } }

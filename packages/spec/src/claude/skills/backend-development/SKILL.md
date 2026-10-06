@@ -1,5 +1,5 @@
 ---
-name: hapo:backend-development
+name: cf:backend-development
 description: Build backends with Node.js, Python, Go (NestJS, FastAPI, Django). Use for REST/GraphQL/gRPC APIs, auth (OAuth, JWT), databases, microservices, security (OWASP), Docker/K8s.
 license: MIT
 user-invocable: true
@@ -59,13 +59,13 @@ See: `references/backend-technologies.md` for detailed comparisons
 
 ## Key Best Practices (2025)
 
-**Security:** Argon2id passwords, parameterized queries (98% SQL injection reduction), OAuth 2.1 + PKCE, rate limiting, security headers
+**Security:** Argon2id passwords, parameterized queries prevent SQL injection, OAuth 2.1 + PKCE, rate limiting, security headers
 
-**Performance:** Redis caching (90% DB load reduction), database indexing (30% I/O reduction), CDN (50%+ latency cut), connection pooling
+**Performance:** Redis caching reduces DB load, database indexing reduces I/O, CDN cuts latency, connection pooling
 
-**Testing:** 70-20-10 pyramid (unit-integration-E2E), Vitest 50% faster than Jest, contract testing for microservices, 83% migrations fail without tests
+**Testing:** 70-20-10 pyramid (unit-integration-E2E), Vitest or Jest, contract testing for microservices, migration tests
 
-**DevOps:** Blue-green/canary deployments, feature flags (90% fewer failures), Kubernetes 84% adoption, Prometheus/Grafana monitoring, OpenTelemetry tracing
+**DevOps:** Blue-green/canary deployments, feature flags can reduce failures, Kubernetes, Prometheus/Grafana monitoring, OpenTelemetry tracing
 
 ## Quick Decision Matrix
 

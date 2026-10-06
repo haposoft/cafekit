@@ -1,5 +1,5 @@
 ---
-name: hapo:agent-browser
+name: cf:agent-browser
 description: AI-optimized browser automation CLI with context-efficient snapshots. Use for long autonomous sessions, self-verifying workflows, video recording, and cloud browser testing (Browserbase).
 license: Apache-2.0
 user-invocable: true

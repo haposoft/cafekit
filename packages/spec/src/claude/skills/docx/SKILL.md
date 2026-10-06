@@ -1,5 +1,5 @@
 ---
-name: hapo:docx
+name: cf:docx
 description: Create, edit, analyze .docx Word documents. Use for document creation, tracked changes, comments, formatting preservation, text extraction, template modification.
 license: Proprietary. LICENSE.txt has complete terms
 user-invocable: true
@@ -7,7 +7,7 @@ when_to_use: "Invoke to read, create, or edit Word .docx documents."
 category: document-skills
 keywords: [docx, word, document, office]
 metadata:
-  author: haposoft
+  author: "Anthropic, PBC — adapted by Haposoft"
   version: "1.0.0"
 ---
 # DOCX creation, editing, and analysis

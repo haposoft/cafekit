@@ -1,0 +1,311 @@
+# Phong cách thị giác — luật P
+
+Nguồn duy nhất cho: nhận ra dự án đang dùng phong cách gì, phong cách đó được đè
+luật nào, và bẫy riêng của từng phong cách. Lệnh audit nằm ở `SKILL.md` câu 2,
+tầng 3. File này dạy cách **đọc** kết quả.
+
+---
+
+## Hai tầng
+
+**P1. Mặc định là flat. Dự án đã có phong cách riêng thì theo dự án. Không hỏi.**
+
+Ba ca, chọn đúng một:
+
+| Ca | Làm gì |
+| --- | --- |
+| **Người dùng tự nêu phong cách** ("làm trang giá kiểu glassmorphism") | Làm theo phong cách đó, **không hỏi lại** |
+| **Audit thấy dự án có phong cách khác flat** (`P4`) | **Theo phong cách dự án**, dựng luôn, báo một dòng lúc giao (mẫu bên dưới) |
+| **Dự án flat hoặc trống**, người dùng không nêu gì | Flat (`P6`). Không hỏi về phong cách. Có màu (`P12`) chỉ khi người dùng tự xin trong đề; hai chế độ dựng lại: dòng Có màu (`V1d`), không chọn sẵn. Wireframe không còn nấc Có màu |
+
+Vì sao theo dự án chứ không theo flat: một màn flat giữa app glass là màn lạc
+loài, người dùng thấy ngay. Nhất quán thắng gu.
+
+Mẫu dòng báo lúc giao:
+
+> Dự án đang dùng **glass** (thấy ở 7 file: card, modal, sidebar), màn này làm
+> glass cho khớp. Muốn flat theo mặc định của skill thì nói, mình đổi.
+
+Người dùng đã chọn thì giữ cho các màn sau trong cùng dự án.
+
+**Chọn phong cách nào thì cũng không theo lỗi của dự án.** Phong cách với lỗi là
+hai thứ khác nhau. Dự án làm trang giá ba cột, mỗi cột một nút một màu (tím,
+trắng, xanh), mà người dùng chọn theo phong cách dự án thì:
+
+- **Theo:** gradient tím, bo góc lớn, nền tối. Đó là phong cách.
+- **Không theo:** ba nút ba màu cùng nặng như nhau. Đó là lỗi `I3`. Chỉ một nút được là nút chính, dù phong cách là gì.
+
+Phép thử: *bỏ thứ này đi thì màn hình trông **khác**, hay trông **tệ hơn**?*
+Khác là phong cách, cứ theo. Tệ hơn là nguyên tắc, không được bỏ.
+
+**P2. Luật nào phong cách được đè, luật nào không.**
+
+| Loại | Luật | Phong cách đã chọn theo `P1` được đè không |
+| --- | --- | --- |
+| **Gu flat** | `M1` nền xám nhạt · `M2` tỉ lệ 95/5 · `M12` không gradient · `M13` tách bằng viền · `M15` bóng chỉ cho lớp nổi · `M20` mặc định sáng · `M23` tối là navy · `M29` card một mình không viền · `F19` không glass · `F20` không phát sáng · `F22` không animate hình khối | **Được**, theo đúng khối của phong cách đó bên dưới |
+| **Nguyên tắc** | Toàn bộ `N` `S` `T` `I` `R` · `M3` một màu nhấn · `M4` màu báo trạng thái (ngoại lệ hẹp: `P12` công thức B đè chỉ ở ô icon card số liệu, ô icon đầu dòng theo loại và chuỗi biểu đồ) · `M11` ba sắc độ chữ · `M19` bo lồng · `M24`–`M28` token · `M30` hai sắc đỏ · bố cục `F1`–`F18`, `F21`, `F23`–`F25` · **`P3` tương phản** | **Không bao giờ** |
+
+Mỗi luật gu flat có dòng *"Gu flat"* ngay tại chỗ. Thấy dòng đó mà phong cách
+đã chọn không phải flat thì quay về đây.
+
+**P3. Tương phản chữ: con số cứng, ở mọi phong cách.**
+
+| Thứ | Tối thiểu |
+| --- | --- |
+| Chữ thường | **4.5 : 1** so với nền ngay phía sau |
+| Chữ lớn (từ 24px, hoặc từ 18.66px đậm) | **3 : 1** |
+| Icon mang nghĩa; viền **ô nhập, checkbox, radio chưa chọn** | **3 : 1** so với nền kề bên. Nút có nhãn chữ **không** cần viền đạt 3:1 (WCAG 1.4.11: chữ đã nhận diện được nút) |
+
+Token mặc định:
+
+| Token | Nền sáng | Nền tối | Đạt |
+| --- | --- | --- | --- |
+| `--muted` (chữ phụ, placeholder) | 4.95 : 1 trên card, 4.51 : 1 trên nền trang | 6.1 : 1 | ✅ 4.5 |
+| `--border-focus` | 16.8 : 1 | 3.6 : 1 | ✅ 3 |
+| **Viền ô nhập, select, nút outline, checkbox, radio** (`--border-strong`) | ~1.2 : 1 | ~1.5 : 1 | ❌ 3 |
+| **Track công tắc lúc tắt** (`muted/40`) | ~1.6 : 1 | | ❌ 3 |
+
+**`--muted` chỉ đạt trên ba nền sáng nhất**: card `--surface`, `--surface-hover`, nền trang
+`--background`. Trên nền xám đậm hơn nó trượt: `--secondary` 4.04, `--background-hover`
+4.01, lớp phủ `foreground/5` trên nền trang 4.12, `foreground/8` trên dòng đang rê 4.05.
+Chữ phụ nằm trên những nền đó (số đếm trong tab đang chọn, chữ trong ô sửa tại chỗ lúc rê)
+thì dùng **`text-foreground/70`**: lớp phủ theo màu chữ nên đậm theo nền, đạt từ 4.82 : 1
+trên mọi nền xám của skill. Đừng nhạt hơn `/70`: `/65` đã trượt trên `--secondary` (4.17).
+Icon phụ `text-muted` thì cứ giữ, icon chỉ cần 3 : 1.
+
+⚠️ **Viền điều khiển KHÔNG đạt 3 : 1, và đó là đánh đổi có chủ ý.** Đạt thì cần viền
+xám cỡ `#8a8a91`; chủ dự án thấy đậm và xấu, bác.
+`#f2f2f2` (1.1:1) thì lại mờ quá, radio chưa chọn gần như vô hình; `#e4e4e7` (1.27:1) thì
+đường kẻ sidebar đậm. Chốt `#eaeaea` (~1.2:1). Đừng đổi mà không hỏi. Skill
+bù bằng ba thứ khác để người dùng nhận ra ô nhập: nhãn luôn hiện phía trên
+(`I26`), placeholder, và viền + ring khi focus.
+
+Dự án **phải đạt WCAG AA đầy đủ** (cơ quan nhà nước, y tế, ngân hàng) thì thêm
+token riêng cho viền điều khiển (`--border-control: #8a8a91`, nền tối `#5e6578`)
+và đổi class của ô nhập, select, checkbox, radio sang nó (nút outline thì không cần); track
+công tắc lúc tắt lên `muted/75`. **Đừng** đổi thẳng
+`--border-strong`: đường kẻ sidebar, tab, badge dùng chung token đó sẽ đậm theo.
+
+Flat hiếm khi trượt con số của chữ, vì chữ đậm nằm trên nền trắng đặc. Glass,
+gradient và tối thì **trượt đầu tiên**. Nên luật này được viết ở đây, cạnh các
+phong cách làm nó trượt.
+
+**Đo ở chỗ tệ nhất**, không đo ở giữa:
+
+- Trên gradient, đo ở **đầu gần màu chữ nhất**.
+- Trên glass, đo ở chỗ phía sau **gây bất lợi nhất**: chữ trắng thì đo trên vùng ảnh sáng nhất phía sau, chữ đen thì đo trên vùng tối nhất.
+- Placeholder và chữ phụ cũng tính. Chữ phụ `text-white/50` trên nền kính thường là thứ trượt trước tiên.
+
+---
+
+## Nhận diện
+
+**P4. Tự tìm phong cách của dự án, để biết có theo hay không. Một phong
+cách chỉ là "của dự án" khi nó có mặt trên bề mặt chính.**
+
+Chạy lệnh tầng 3 ở `SKILL.md` câu 2, rồi đọc số:
+
+| Kết quả | Kết luận |
+| --- | --- |
+| Tín hiệu có ở **từ 3 file component trở lên**, trên card, modal, header, sidebar | Đó là phong cách của dự án → **theo**, báo theo mẫu `P1` |
+| Chỉ 1–2 file | Ngoại lệ cục bộ: một banner, một trang quảng bá. **Không** tính là phong cách của dự án, làm flat |
+| Có token riêng cho nó (`--glass-bg`, `--gradient-*`, `--shadow-card`) | Tính là phong cách của dự án **dù đếm file ra ít**, vì có token là có chủ đích → **theo** |
+| **Tối**: layout gốc có nền tối | Tính là phong cách của dự án **chỉ với một file đó**, vì nền tối chỉ nằm ở gốc → **theo** |
+| **Màu**: nền, viền, chữ có sắc (chip tô màu nhấn nhạt, khối nền xanh nhạt, pill màu) ở **từ 3 file trở lên** | Dự án có ngôn ngữ màu → **theo**: màn mới dùng đúng những cách tô đó, không rút về xám (nguyên tắc "dự án đã có ngôn ngữ màu" ở đầu `principles.md`). Luật về nghĩa và đọc được vẫn giữ |
+| Có token thang màu biểu đồ (`--chart-1`…) | Biểu đồ phân loại dùng thang đó (`components/charts.md`) |
+| Không tín hiệu nào đáng kể | Flat hoặc dự án trống → flat (`P6`) |
+
+Đếm ra để **quyết định theo dự án hay flat**. Ngưỡng 3 file là để một banner lẻ
+không kéo cả màn sang phong cách khác.
+
+Người dùng gửi **ảnh tham chiếu** thì đó là ca "tự nêu phong cách" của `P1`: nhận
+diện bằng mắt theo dòng "Nhận ra từ ảnh" ở từng khối bên dưới, rồi làm theo luôn,
+không hỏi. Có ảnh thì ảnh thắng code.
+
+**P5. Phong cách chồng nhau thì áp cả hai khối. Codebase lẫn lộn thì theo phần
+mới nhất.**
+
+- **Glass + tối** là cặp rất hay gặp. Áp cả `P8` lẫn `P10`.
+- **Nổi + gradient ở một điểm**: card nổi, chỉ gói đề xuất có gradient. Áp `P7`, còn `P9` chỉ áp cho đúng điểm đó.
+- **Codebase lẫn lộn** (trang cũ flat, trang mới glass): theo phần **mới nhất** (xem ngày sửa file trong git), vì đó thường là hướng dự án đang đi tới. Lúc giao nói rõ khu nào đang dùng gì và mình đã theo bên nào.
+
+---
+
+## Từng phong cách
+
+Mỗi khối có bốn phần: nhận ra, luật được đè, công thức, bẫy.
+
+### P6. Flat đường tóc — mặc định của skill
+
+**Luôn là mặc định**, trừ khi người dùng chọn khác theo `P1`. Toàn bộ các luật
+`M` và `F` viết cho phong cách này. Không đè gì cả.
+
+- **Nhận ra từ code:** không có `backdrop-blur`, không có gradient trên bề mặt, bóng không vượt `shadow-sm`, card có `border`.
+- **Nhận ra từ ảnh:** nền xám nhạt, card trắng viền rất mảnh, gần như không có bóng.
+
+### P7. Nổi — thứ bậc bằng bóng
+
+- **Nhận ra từ code:** `shadow-md` trở lên trên card thường, card ít hoặc không có `border`.
+- **Nhận ra từ ảnh:** card nổi lên khỏi nền bằng bóng mềm, gói đề xuất nổi cao hơn các gói còn lại.
+- **Được đè:** `M13`, `M15`, `M29`. `F22` được đè một phần: card bấm được thì hover **tăng bóng** một bậc, vẫn không `scale`.
+
+```html
+<div class="rounded-2xl bg-surface shadow-sm ring-1 ring-black/5 hover:shadow-md">
+```
+
+**Thang bóng, mỗi tầng một bậc, không hai tầng trùng nhau:**
+
+| Tầng | Bóng |
+| --- | --- |
+| Card | `shadow-sm` |
+| Card bấm được, khi hover | `shadow-md` |
+| Dropdown, popover | `shadow-popover` (= `shadow-lg`, `M15`) |
+| Modal, panel trượt, **gồm sidebar trượt ở màn hẹp** | `shadow-modal` (= `shadow-xl`) |
+
+**Bẫy**
+
+- **Card với modal cùng bóng thì modal không còn nổi.** Thang trên tồn tại để lớp cao hơn luôn nổi hơn. Tăng bóng card lên `shadow-lg` là modal phải lên theo, và dropdown cũng vậy.
+- **Bộ token bóng đủ bốn bậc, kể cả khi trang chưa có modal.** Sidebar trượt dưới `lg` là tầng modal, và nó chỉ hiện ở màn hẹp nên hay bị quên. Chỉ định ba token (card, card khi rê, popover) thì sidebar trượt nằm phẳng trên lớp phủ, không bóng, thấp hơn cả card phía sau. Probe báo "Panel, modal mở ra không nổi hơn trang".
+- **`ring-1 ring-black/5` đi cùng bóng là hợp lệ ở đây.** Nó vạch mép card cho sắc nét trên nền trắng. Đây là chỗ đè `M29`: ở flat thì viền với bóng không đi cùng nhau, ở phong cách nổi thì được.
+- **Ở nền tối, bóng một mình khó thấy.** Dự án nổi mà có dark mode thì ở chế độ tối giữ thang bóng, đậm hơn, thêm viền 1px (`ring-1 ring-white/10`), và bề mặt sáng dần theo tầng (`M21`, `M23`). Ba thứ đi cùng nhau; đừng chỉ tăng bóng lên cho bằng được.
+- `scale-105` khi hover làm chữ bị mờ trong lúc chuyển động. Chỉ tăng bóng, không phóng to.
+
+### P8. Glass — kính mờ
+
+- **Nhận ra từ code:** `backdrop-blur`, `backdrop-filter`, nền bán trong suốt `bg-white/10`, `bg-black/20`, viền `border-white/10`.
+- **Nhận ra từ ảnh:** bề mặt trong mờ, thấy thấp thoáng màu hoặc ảnh phía sau, mép có một đường sáng mảnh.
+- **Được đè:** `F19`, `M13` (viền chuyển thành viền trắng mờ), `M15`, `M1`.
+
+```html
+<!-- Nền tối -->
+<div class="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl">
+
+<!-- Nền sáng -->
+<div class="rounded-2xl border border-white/50 bg-white/60 shadow-sm backdrop-blur-xl">
+
+<!-- Trình duyệt không hỗ trợ blur thì rơi về nền gần đặc -->
+<div class="bg-white/90 supports-[backdrop-filter]:bg-white/60 supports-[backdrop-filter]:backdrop-blur-xl">
+```
+
+**Bẫy**
+
+- **Kính mà phía sau không có gì thì chỉ là một card xám.** Đây là phần của `F19` vẫn còn nguyên giá trị: blur chỉ có nghĩa khi phía sau có ảnh, gradient hay nội dung cuộn qua. Dự án glass mà màn mới có nền trơn thì **phải có thứ gì đó phía sau**, thường là lớp gradient nền của dự án. Đừng đặt kính lên nền phẳng.
+- **Tương phản trượt theo thứ nằm phía sau** (`P3`). Kính của mình có thể đạt chuẩn trên nền tối nhưng trượt khi người dùng cuộn qua một ảnh sáng. Đo ở chỗ tệ nhất. Không đạt thì tăng độ đục của nền kính, đừng tăng độ đậm chữ.
+- **Blur tốn GPU, nhất là trên mobile.** Chi phí tăng theo diện tích nhân với số lớp chồng nhau. Dùng cho header, sidebar, modal, và một đến ba card nổi bật. **Không** dùng cho từng dòng trong một danh sách dài đang cuộn, vì trang sẽ giật.
+- **Luôn có fallback** như dòng thứ ba ở trên. Không hỗ trợ blur mà nền vẫn `/5` thì chữ nằm trên nền gần như trong suốt.
+- Viền trắng mờ là **bắt buộc**. Thiếu nó thì mép kính tan vào nền và khối không có hình.
+
+### P9. Gradient và màu thương hiệu đặc
+
+- **Nhận ra từ code:** `bg-gradient-*`, `bg-linear-*` (Tailwind v4), `linear-gradient`, `radial-gradient` trên card hay nút; hoặc cả card đổ màu thương hiệu đặc.
+- **Nhận ra từ ảnh:** gói đề xuất đổ gradient hoặc màu thương hiệu cả khối, nút có chuyển màu.
+- **Được đè:** `M12`, và tỉ lệ `M2`.
+
+**Không đè `M3`.** Gradient vẫn đi từ **màu nhấn của dự án**. Ba gói ba gradient
+ba màu là ba màu nhấn, tức là trượt `M3` và `I3` cùng lúc.
+
+```html
+<!-- Gói đề xuất: đổ màu cả khối, nút đảo màu -->
+<div class="rounded-2xl bg-linear-to-br from-primary to-primary-hover text-primary-foreground">
+  <button class="bg-surface text-foreground">Chọn gói này</button>
+</div>
+```
+
+**Bẫy**
+
+- **Gradient ở mọi nơi thì không nơi nào nổi.** Gradient là cách nói "chỗ này quan trọng nhất". Dùng cho **một** loại bề mặt: gói đề xuất, hoặc nút chính. Không phải cả hai, và không phải mọi card. Đây là phần của `M2` vẫn còn nguyên.
+- **Gradient không `transition` được.** `transition-colors` không nội suy được `background-image`, nên hover sẽ nhảy cái rụp hoặc không đổi gì. Làm hover bằng `hover:brightness-110` kèm `transition-[filter]`, hoặc bằng một lớp phủ đổi độ đục.
+- **Chữ trên gradient đo ở đầu nhạt nhất** (`P3`). Đạt ở giữa không có nghĩa là đạt ở góc.
+- **Nút nằm trên khối đã đổ màu thì đảo màu**: nền `--surface`, chữ `--foreground`. Nút màu nhấn đặt trên nền màu nhấn thì biến mất.
+- Gradient trải trên diện tích lớn dễ bị **sọc** (banding). Giữ hai điểm màu gần nhau, hoặc thu vùng gradient nhỏ lại.
+
+### P10. Tối là chính
+
+- **Nhận ra từ code:** nền gốc tối (`bg-zinc-950`, `bg-black`, `bg-neutral-900`) trên `body` hoặc layout, ít hoặc không có biến thể `dark:`, hoặc có `color-scheme: dark`.
+- **Nhận ra từ ảnh:** nền đen hoặc gần đen là mặc định, không phải một chế độ bật lên.
+- **Được đè:** `M1`, `M20`, `M23`. Dự án dùng xám kẽm thì giữ xám kẽm, đừng đổi sang navy.
+- **Vẫn áp:** `M21`, `M22`. Hai luật đó viết cho nền tối, và nền tối ở đây là nền chính.
+
+**Bẫy**
+
+- **Đừng đen tuyệt đối với trắng tuyệt đối.** `#000` với `#fff` chênh nhau quá gắt, chữ bị nhoè sáng khi đọc lâu. Dùng nền gần đen (`zinc-950`) và chữ gần trắng (`zinc-100`).
+- **Độ đậm chữ giữ nguyên như bản sáng.** Thứ bậc chữ ở nền tối đi bằng **độ sáng**: chữ chính gần trắng, chữ phụ xám sáng hơn tỉ lệ so với bản sáng (`--muted` tối `#8b93a7`, 6.6:1). Không bộ thiết kế lớn nào hạ độ đậm ở nền tối; font nào trông dày quá thì đo bằng mắt trên chính font đó, không hạ theo luật.
+- **Thứ bậc bằng bề mặt sáng dần theo tầng, cộng viền và bóng.** Nền trang tối nhất, card sáng hơn một bậc, lớp nổi sáng hơn nữa (`M21`). Bóng vẫn giữ nhưng đậm hơn và đi cặp viền 1px, vì một mình bóng ở nền tối khó thấy (`M23`).
+- Viền `border-white/10` gánh việc tách khối (`M23`), vì các bề mặt tối chênh nhau quá ít.
+- Vùng tô (nút phụ, mục đang chọn, nền rê) là trắng phủ mờ, sáng hơn card (`M21`).
+- Ảnh và avatar cần `ring-1 ring-white/10`. Thiếu nó thì ảnh tối tan vào nền.
+
+### P11. Neumorphism và 3D — nhận ra, theo, nhưng vá tương phản
+
+- **Nhận ra neumorphism:** mỗi khối có **hai** bóng ngược hướng (một sáng một tối) trên nền **cùng màu** với chính nó.
+- **Nhận ra 3D:** icon và minh hoạ dựng hình khối, kiểu clay, có ánh sáng và đổ bóng.
+
+**Neumorphism trượt `P3` theo cấu trúc.** Khối cùng màu với nền nên nút gần như
+vô hình, và trạng thái bấm với không bấm khó phân biệt. Theo phong cách của họ,
+nhưng **nút chính phải có màu nhấn hoặc viền đạt 3 : 1**, và trạng thái đang
+chọn phải khác bằng một thứ ngoài bóng.
+
+**3D thường nằm ở minh hoạ, không phải ở khung giao diện.** Coi icon 3D như ảnh,
+cùng lý do với ngoại lệ avatar của `M12`. Khung (card, nút, ô nhập) theo phong
+cách nền của dự án. Đừng tự dựng nút 3D vì thấy dự án có icon 3D.
+
+---
+
+### P12. Có màu — hai công thức: trang lướt để chọn, và dashboard
+
+Flat thuần đọc ra "buồn màu" ở hai chỗ: trang người dùng cuối lướt để chọn (tìm việc, tìm
+phòng, sản phẩm, khoá học), trang nào cũng như trang quản trị (chủ dự án thấy); và dashboard dự án mới chưa có brand, màu nhấn
+gần đen nên chọn "Màu" vẫn trắng đen. Hai chế độ dựng lại đưa nó thành dòng Có màu
+(`review.md`, `V1d`); người dùng tự xin trong đề thì dựng theo công thức dưới; ngoài hai chỗ đó thì
+theo `P1`. Wireframe không có nấc Có màu (`design-process.md`, `U3`).
+
+- **Nhận ra từ ảnh:** đầu trang là một dải màu đậm (đặc hoặc chuyển màu) ôm header và ô tìm,
+  chân trang cùng màu; vài mục trong danh sách có nền nhạt màu nhấn kèm nhãn "Gấp", "Hot";
+  tiêu đề mục đậm.
+- **Được đè:** `M2` (tỉ lệ 95/5), `M12` (chỉ ở dải), `M4` (chỉ ô icon và chuỗi biểu đồ của
+  công thức B). Nguyên tắc `P2` giữ nguyên, nhất là `M3` một màu nhấn cho hành động và `P3`
+  tương phản.
+
+**Công thức A, trang lướt để chọn**, đúng năm chỗ, không thêm chỗ thứ sáu:
+
+| Chỗ | Làm gì |
+| --- | --- |
+| Dải đầu trang | Khối bọc header + ô tìm (hay hàng tên trang) nền màu nhấn đậm: `bg-primary`, hoặc `bg-linear-to-r from-primary to-primary-hover` (hai điểm gần nhau, `P9`). Chữ, link header trắng; ô tìm nền trắng; nút Tìm đảo màu (`bg-surface text-foreground`, `P9`). Dải hết ở dưới hàng tìm, nội dung bắt đầu trên nền trang như cũ, không kéo card lấn lên dải bằng số âm (`N11`) |
+| Chân trang | Cùng màu dải, chữ trắng. Trang không có chân thì bỏ |
+| Mục nổi bật | **Chỉ khi dữ liệu có trường đó** (gấp, hot, được tài trợ): nền `bg-primary/5`, viền `border-primary/25`, nhãn đặc `bg-primary text-primary-foreground` ở góc. Không có trường thì không bịa, lúc giao ghi "cần trường … để làm mục nổi bật" |
+| Chữ | Tiêu đề mục `font-semibold`; tên trang giữ `text-xl` (luật đã chốt 11) mà lên `font-semibold`, từ khoá hay con số trong tên trang tô `text-primary`; tiêu đề khối trong panel chi tiết `text-lg font-semibold`. Giá, lương giữ `font-semibold` như cũ |
+| Điểm nhỏ | Chấm đầu dòng danh sách trong chi tiết `marker:text-primary`; ô chữ viết tắt thay logo nền `bg-primary/10 text-primary` thay cho xám |
+
+**Công thức B, dashboard và trang làm việc trong app**: không dải màu, không mục "hot" (lạc loài
+ở trang báo cáo). Đè thêm `M4` (màu để phân loại) **chỉ ở ô icon và chuỗi biểu đồ**:
+
+| Chỗ | Làm gì |
+| --- | --- |
+| Ô icon card số liệu | Ô `size-8 rounded-lg`, icon lucide `size-4`; mỗi card một sắc nhạt (`bg-indigo-50 text-indigo-600`, `bg-teal-50 text-teal-600`, `bg-violet-50 text-violet-600`, `bg-sky-50 text-sky-600`), tối đa bốn sắc một màn. Con số vẫn `text-foreground`, không tô |
+| Ô icon đầu dòng theo loại | Bộ phận, nhà cung cấp, loại giao dịch: cùng bộ sắc nhạt, **một loại một sắc cố định** trên mọi màn (Kỹ thuật luôn teal). Không có loại thì không ô |
+| Biểu đồ | Chuỗi chính màu nhấn; nhiều chuỗi thì lấy bộ sắc trên theo cùng thứ tự; kỳ chưa trọn nét đứt hay gạch (`charts.md`) |
+| Trạng thái | Như nấc Màu: `M4` trên thanh tiến độ, số vượt, quá hạn. Sắc phân loại không trùng sắc trạng thái trên cùng một thứ (thanh ngân sách không tô teal vì bộ phận là teal) |
+| Badge trạng thái (người dùng xin "badge có màu") | Đỏ, hổ phách, xanh lá giữ nghĩa `M7`. Các trạng thái xám (đang chạy đúng luồng) mới được lấy sắc phân loại, và **các sắc trong một bảng trạng thái cách nhau từ ~45° trên vòng màu**, không lấy hai sắc kề nhau: `sky`–`blue` (~23°), `blue`–`indigo`, `indigo`–`violet`, `emerald`–`teal`. Không trùng sắc màu nhấn (nút chính teal thì không badge teal). Không đủ sắc cách xa thì trạng thái nhiều dòng nhất (thường là bước bình thường nhất, vd "Đã xác nhận") giữ xám: một danh sách toàn một màu badge là mảng màu, không còn phân biệt. Sai: "Đã xác nhận" `sky-700` cạnh "Đang khám" `blue-700`, liếc ra một màu xanh |
+
+**Bẫy**
+
+- **Sắc phân loại không mang nghĩa trạng thái**: đỏ, hổ phách, xanh lá để dành cho `M4`. Ô icon
+  "Chờ duyệt" không tô hổ phách chỉ vì "chờ"; tô theo bộ sắc phân loại.
+- **Chip lọc đang chọn không đặc màu nhấn** khi đã có dải: sáu chip đặc cam dưới một dải cam là
+  hai mảng cùng nặng tranh nhau. Chip theo `layouts/overlay.md` (nền `foreground/10` + `inset-ring`).
+- **Nổi bật tối đa khoảng một phần năm danh sách.** Mục nào cũng hot thì không mục nào hot (`M2`).
+- **Mục nổi bật vẫn khác mục đang chọn**: đang chọn giữ nền của `I10`, không trùng `bg-primary/5`.
+- Tương phản chữ trắng trên dải đo ở đầu nhạt nhất (`P3`); màu nhấn nhạt (vàng, cam sáng) thì dải
+  dùng `primary-hover` hay một bậc đậm hơn, chữ vẫn trắng.
+
+## Không có trong bảng
+
+Gặp phong cách không khớp khối nào (brutalism, retro, skeuomorphism...):
+
+1. **Đo trước khi đoán.** Mở ba component chính (card, nút, ô nhập) ra đọc class thật, đừng suy từ tên file hay từ một ảnh.
+2. **Theo những gì đo được**, đè đúng những luật gu flat mà phong cách đó chạm vào.
+3. **Giữ nguyên toàn bộ cột "Nguyên tắc" của `P2`.** Phong cách lạ đến đâu cũng không đè được `I3`, `P3`, hay 375px.
+4. **Báo trong dòng `Audit:`** rằng đây là phong cách ngoài bảng, và mình đã đè những luật nào.
+
+Phong cách ngoài bảng mà người dùng **chưa chọn** thì vẫn theo `P1`: dự án có
+thì theo dự án, không thì flat; báo lúc giao.

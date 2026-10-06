@@ -19,7 +19,7 @@ python scripts/gemini_batch_process.py \
   --task analyze \
   --prompt "[see analysis-prompts.md for detailed prompt]" \
   --output docs/assets/analysis-report.md \
-  --model gemini-2.5-flash
+  --model gemma-4-31b-it
 ```
 
 ### Compare Multiple Variations
@@ -29,7 +29,7 @@ python scripts/gemini_batch_process.py \
   --task analyze \
   --prompt "[see analysis-prompts.md for comparison prompt]" \
   --output docs/assets/comparison-analysis.md \
-  --model gemini-2.5-flash
+  --model gemma-4-31b-it
 ```
 
 ### Extract Color Palette
@@ -39,7 +39,7 @@ python scripts/gemini_batch_process.py \
   --task analyze \
   --prompt "Extract 5-8 dominant colors with hex codes. Classify as primary/accent/neutral. Suggest CSS variable names." \
   --output docs/assets/color-palette.md \
-  --model gemini-2.5-flash
+  --model gemma-4-31b-it
 ```
 
 ## Decision Framework

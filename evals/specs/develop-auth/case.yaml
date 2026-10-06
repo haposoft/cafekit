@@ -1,0 +1,13 @@
+schema_version: "1.1"
+name: develop-auth
+tags: [single-turn]
+runs: 3
+context:
+  scaffold_script: scaffold.sh
+execution:
+  # An accepted auth packet, invoked explicitly: the specs description's "do not implement it yourself"
+  # must not stop this. Turn and time caps follow evals/develop/mot-task-sach.
+  prompt: "/cf:develop google-login"
+  max_turns: 30
+  timeout_seconds: 1200
+  allowed_tools: [Read, Glob, Grep, Skill, Write, Edit, Bash]

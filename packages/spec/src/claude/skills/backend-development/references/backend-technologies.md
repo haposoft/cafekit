@@ -22,7 +22,7 @@ Core technologies, frameworks, databases, and message queues for modern backend 
 **When to Choose:** Team already using JavaScript/TypeScript, real-time features needed, rapid development priority
 
 ### Python
-**Market Position:** FastAPI adoption surge - 73% migrating from Flask
+**Market Position:** FastAPI adoption is increasing among Flask users
 
 **Best For:**
 - Data-heavy applications
@@ -54,7 +54,7 @@ Core technologies, frameworks, databases, and message queues for modern backend 
 **When to Choose:** Microservices, high concurrency needs, DevOps tooling, simple deployment (single binary)
 
 ### Rust
-**Market Position:** 72% most admired language, 1.5x faster than Go
+**Market Position:** Highly admired language, faster than Go
 
 **Best For:**
 - Performance-critical systems
@@ -129,7 +129,7 @@ Core technologies, frameworks, databases, and message queues for modern backend 
 - Rate limiting
 - Real-time leaderboards
 - Job queues (Bull, BullMQ)
-- Caching layer (90% DB load reduction)
+- Caching layer (reduces DB load)
 
 **When to Choose:** Need sub-millisecond latency, caching layer, session management
 
@@ -242,9 +242,9 @@ Millions msg/sec? → Yes → Kafka
 
 1. **Choosing NoSQL for relational data** - Use PostgreSQL if data has clear relationships
 2. **Not using connection pooling** - Implement pooling for 5-10x performance boost
-3. **Ignoring indexes** - Add indexes to frequently queried columns (30% I/O reduction)
+3. **Ignoring indexes** - Add indexes to frequently queried columns (reduces I/O)
 4. **Over-engineering with microservices** - Start monolith, split when needed
-5. **Not caching** - Redis caching provides 90% DB load reduction
+5. **Not caching** - Redis caching reduces DB load
 
 ## Resources
 

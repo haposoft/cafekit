@@ -1,300 +1,68 @@
 ---
 title: Vòng đời spec
-description: Hiểu cách CafeKit triển khai specification-driven development từ ý tưởng đến implementation đã verify.
+description: Luồng process-first từ intent tới plan đã review, task đã verify và quyết định hoàn tất của user.
 ---
 
 <DocsHero
-  eyebrow="Specification-driven development"
-  title="SDD là lớp contract giữa ý định và code."
-  description="CafeKit biến feature idea thành requirements có nguồn, design contracts, task packets, verification evidence, và machine state đã sync trước khi implementation được phép chạy."
+  eyebrow="Process-first specifications"
+  title="Plan là contract bền vững giữa intent và code."
+  description="CafeKit xác nhận scope tại C1, viết plan.md cùng flat tasks, review findings tại C2 và để user quyết định completion tại C3."
 />
 
 <SpecLifecycleMap />
 
-## SDD trong CafeKit là gì
-
-Specification-driven development trong CafeKit không phải nghi thức viết tài liệu dài. Nó là hệ thống kiểm soát cho AI coding.
-
-Assistant chỉ nên code khi công việc đã có contract bền vững:
-
-- vấn đề nào nằm trong scope
-- điều gì nằm ngoài scope
-- requirement nào phải satisfy
-- design contract nào không được âm thầm đổi
-- task packet nào đang active
-- command và runtime proof nào chứng minh task done
-- state file nào phải sync sau khi có proof
-
-Điểm mấu chốt: chat memory mềm, spec thì cứng. Chat có thể quên, tóm tắt sai, hoặc tự hợp lý hóa. `specs/<feature>/` là source of truth để assistant kế tiếp, reviewer, hoặc teammate đọc lại mà không cần tin vào context hội thoại cũ.
-
-## Luồng một dòng
+## Lifecycle
 
 ```text
-/hapo:specs
-  -> validate spec artifacts
-  -> /hapo:develop one task packet
-  -> /hapo:test + /hapo:code-review
-  -> /hapo:sync after proof
+request
+  -> C1: xác nhận outcome, scope, exclusions, constraints
+  -> plan.md + flat task-NN-*.md
+  -> adversarial review
+  -> C2: accept, revise, hoặc KEEP named findings
+  -> dừng planning
+  -> invocation /cf:develop mới và rõ ràng
+  -> exact verification + final inline Receipt
+  -> C3: user quyết định proof và limitations đã đủ chưa
 ```
 
-Đây là delivery loop chính của SDD. Request còn mơ hồ, architecture còn tranh luận, acceptance criteria chưa rõ, hoặc thay đổi chạm nhiều subsystem thì dùng `/hapo:brainstorm` như bước pre-spec tùy chọn trước khi loop này bắt đầu.
+Planning không tự chạy implementation. Command, hook, reviewer hay host state không được bịa C1, C2, C3 hoặc execution proof.
 
 ## Artifact contract
 
-CafeKit lưu spec theo cấu trúc:
-
 ```text
 specs/<feature>/
-├── spec.json
-├── requirements.md
-├── research.md
-├── design.md
-├── tasks/
-│   ├── task-R0-01-<foundation>.md
-│   ├── task-R1-01-<feature-step>.md
-│   └── task-R2-01-<feature-step>.md
-└── reports/
-    └── red-team-report.md
+├── plan.md
+├── task-01-<slug>.md
+└── task-NN-<slug>.md
 ```
 
-<SpecArtifactGrid />
+`plan.md` ghi quyết định C1, acceptance criteria, exclusions, findings decisions, dependencies và task map. Mỗi flat task sở hữu một outcome và đúng một `Status:`.
 
-Artifact legacy bị cấm:
+Mỗi task cần có:
 
-- `init.json`
-- `spec-state.json`
-- `hydration.md`
+- outcome và boundary rõ
+- files hoặc surfaces được sở hữu
+- dependencies và blockers
+- acceptance criteria map về plan
+- exact planned verification command
+- final inline `## Receipt`
 
-Task hydration có thể xảy ra trong UI của assistant, nhưng task files vẫn là source of truth. Hydration không được ghi thành markdown artifact.
+## Ba quyết định của user
 
-## Flow theo từng phase
-
-### 1. Phân tích intent
-
-`/hapo:specs <feature-description>` trước tiên quyết định request đã đủ sẵn sàng để viết spec chưa.
-
-Nó nên route sang `/hapo:brainstorm` khi output còn mơ hồ, architecture còn nhiều lựa chọn, scope boundary chưa rõ, acceptance criteria thiếu, hoặc work trải qua nhiều subsystem độc lập.
-
-Với thay đổi rất nhỏ một file, CafeKit có thể cảnh báo rằng spec đầy đủ không cần thiết. SDD nên nghiêm cho feature work có rủi ro, không biến mọi typo thành ceremony.
-
-### 2. Scan spec đang tồn tại và dependency
-
-Trước khi tạo artifact mới, CafeKit scan `specs/` để tìm spec chưa xong và scope overlap.
-
-Mục tiêu là tránh hai spec cùng đụng một file, contract, migration, command, hoặc runtime surface. Nếu có dependency, quan hệ đó nên được ghi trong `spec.json` để thứ tự implementation rõ ràng.
-
-### 3. Đánh giá complexity và khóa scope
-
-CafeKit đánh giá request qua intent, giả thuyết implementation, gap size, risk, và blast radius.
-
-Output là `scope_lock`:
-
-| Scope lock field | Ý nghĩa |
-|---|---|
-| `source` | Request gốc hoặc approved design summary. |
-| `in_scope` | Behavior spec được phép deliver. |
-| `out_of_scope` | Behavior assistant không được tự thêm. |
-| `expansion_policy` | Thường là `requires-user-approval`. |
-
-Sau khi scope đã chốt, assistant không được âm thầm mở rộng, thu hẹp, hoặc diễn giải lại. Nếu cần đổi scope, phải update spec trước, không xử lý lén trong implementation.
-
-### 4. Tạo `spec.json`
-
-`spec.json` là machine-readable state file. Nó theo dõi status, current phase, approvals, scope, design context, task files, task registry, timestamps, và readiness.
-
-Field quan trọng:
-
-| Field | Vì sao quan trọng |
-|---|---|
-| `status` | Canonical values gồm `in_progress`, `blocked`, `done`, `archived`. Spec mới không nên emit legacy `in-progress`. |
-| `current_phase` | Cho biết spec đang ở `init`, `requirements`, `design`, `tasks`, `develop`, `test`, hoặc `review`. |
-| `scope_lock` | Chặn hidden scope change trong specs và implementation. |
-| `task_files` | Phải khớp chính xác file thật dưới `tasks/`. |
-| `task_registry` | Machine state cho từng task file. |
-| `ready_for_implementation` | Hard gate; chỉ true khi approvals, registry sync, validation, và task readiness đều pass. |
-
-### 5. Viết evidence trước requirements cuối cùng
-
-Với spec không trivial, `research.md` phải tồn tại trước khi finalize requirements, design, hoặc tasks.
-
-Evidence có thể là:
-
-- targeted codebase scout findings
-- official/current external docs
-- constraint từ package/runtime files
-- skip rationale rõ ràng cho docs-only hoặc work cô lập
-
-Evidence Summary nên ghi:
-
-- codebase scout result
-- external research result hoặc skip rationale
-- selected decision
-- rejected alternatives
-- remaining gaps
-- downstream task/test implications
-
-Mục tiêu là không viết requirements bằng trí nhớ khi repo hoặc upstream docs có thể trả lời.
-
-### 6. Viết requirements
-
-`requirements.md` biến intent thành behavior testable. Requirement nên dùng numeric IDs và acceptance criteria đủ rõ để verify.
-
-Requirement tốt cần:
-
-- singular
-- unambiguous
-- testable
-- map được sang task
-- nêu rõ non-functional needs như security, performance, reliability, accessibility, migration, rollback
-
-Nếu một requirement không verify được, nó chưa sẵn sàng để thành implementation work.
-
-### 7. Viết design contracts
-
-`design.md` giải thích feature sẽ được build thế nào. Nó không chỉ nói "implement feature"; nó phải khóa các quyết định mà implementation sau này phải giữ.
-
-Với auth, session, transport, persistence, schemas, generated artifacts, commands, package exports, hoặc runtime-sensitive work, design phải có canonical contracts và invariants. Đây là những rule `/hapo:develop` không được âm thầm thay thế.
-
-| Contract type | Cần nêu rõ |
-|---|---|
-| Runtime entrypoint | route, command, worker, provider, hook, API boundary, UI mount. |
-| Persistence | schema, migration, datastore, deletion/retention policy. |
-| Transport | request/response shape, event contract, queue topic, CLI args. |
-| Integration | output từ task trước phải được import, mount, register, invoke thế nào. |
-| Testing | unit, integration, E2E, visual, accessibility, smoke, security, performance proof. |
-
-### 8. Chia thành task packets
-
-CafeKit không đưa cho `/hapo:develop` một feature mơ hồ. Nó đưa task packets.
-
-Task file dùng naming:
-
-```text
-tasks/task-R{N}-{SEQ}-<slug>.md
-```
-
-`R0` dành cho shared foundation. `R1+` là feature clusters. Sequence phải có hai chữ số.
-
-Mỗi task phải tự đủ context:
-
-| Task section | Vai trò |
-|---|---|
-| `Context` | Vì sao task tồn tại và target outcome là gì. |
-| `Constraints` | MUST, SHOULD, MUST NOT, scope guardrails. |
-| `Steps` | Checklist implementation đủ chi tiết để làm. |
-| `Requirements` | Requirement IDs và acceptance criteria được cover. |
-| `Related Files` | Path chính xác khi biết; nếu chưa biết thì scout trước khi finalize. |
-| `Completion Criteria` | Check quan sát được để chứng minh complete. |
-| `Evidence` | Command, artifact proof, runtime proof, negative-path proof, reachability proof. |
-| `Risk Assessment` | Risk, severity, mitigation. |
-
-Task vague là invalid. Junior developer hoặc AI coding agent phải có thể làm task mà không đoán.
-
-### 9. Build `task_registry`
-
-`spec.json.task_registry` được keyed bằng task file path.
-
-Status values:
-
-- `pending`
-- `in_progress`
-- `blocked`
-- `done`
-
-Mỗi registry entry cần:
-
-- `id`
-- `title`
-- `status`
-- `dependencies`
-- `blocker`
-- `started_at`
-- `completed_at`
-- `last_updated_at`
-
-`done` là illegal nếu thiếu verification evidence mới. Nếu thiếu proof, task giữ `pending`, `in_progress`, hoặc `blocked`.
-
-### 10. Validate readiness
-
-Trước implementation, chạy:
-
-```bash
-node .claude/scripts/validate-spec-output.cjs specs/<feature>
-```
-
-Validator kiểm tra artifact shape, forbidden files, task path naming, required task sections, requirement coverage, task file inventory, `task_registry`, và readiness consistency.
-
-<SpecReadinessGrid />
-
-`ready_for_implementation = true` chỉ hợp lệ khi spec structurally valid, approvals xong, task files và registry khớp disk, validation requirements thỏa, và tasks có evidence expectations executable.
-
-## `/hapo:develop` dùng spec thế nào
-
-`/hapo:develop` không phải "bắt đầu code từ toàn bộ ý tưởng". Nó là task executor.
-
-Hai mode:
-
-| Mode | Command | Behavior |
+| Gate | Câu hỏi | Tác dụng |
 |---|---|---|
-| Specific-task mode | `/hapo:develop <feature> <task-file>` | Load đúng một task packet, implement, verify, sync, rồi dừng. |
-| Full-spec mode | `/hapo:develop <feature>` | Build queue từ `task_registry`, chọn next pending unblocked task, chạy full loop, rồi đọc lại state. |
+| C1 | Chúng ta sẽ plan chính xác điều gì? | Khóa outcome, scope, exclusions, constraints và lựa chọn chưa giải quyết. |
+| C2 | Plan còn gap hoặc risk quan trọng nào? | User accept, yêu cầu sửa hoặc KEEP limitation có tên. |
+| C3 | Kết quả hiện tại đủ tốt để đóng chưa? | User xem receipts hiện tại và unresolved limitations. |
 
-Trước khi code, develop phải extract:
+## Execution và proof
 
-- objective và constraints
-- related files
-- completion criteria
-- evidence commands
-- requirement IDs
-- named technologies và runtime choices
-- design contracts và invariants
-- prior task outputs cần consume
+`/cf:develop <feature>` chọn một unblocked task, scout integration path thật, chỉ implement boundary đó và chạy exact proof command. Controller là bên duy nhất ghi state và proof.
 
-Sau đó nó scout entrypoint và caller thật. Runtime-facing code chưa done nếu chỉ là orphan file. Nó phải được import, mount, register, invoke, hoặc reachable từ runtime boundary thật.
+Task `done` cần final inline Receipt hiện tại gồm exact command, `Exit: 0`, `Verification: PASS`, runtime-derived `Base`/`Head` và fenced current output không rỗng.
 
-## Quality gate sau implementation
+`NO_TESTS`, zero executed tests, stale output hoặc green command không liên quan acceptance đều không pass.
 
-Một task chỉ complete khi bốn lớp proof đều pass:
+## Sync boundary
 
-| Layer | Điều phải đúng |
-|---|---|
-| Automated verification | Compile/typecheck/build và exact task evidence commands pass. |
-| Spec compliance | Scoped requirements và design contracts đã implement, không thiếu, không dư. |
-| Code review | Không có blocking correctness, security, architecture, hoặc regression findings. |
-| Task evidence | Runtime/artifact proof, reachability, negative paths khớp Evidence section. |
-
-`NO_TESTS` không phải pass. Command exit `0` nhưng zero tests cũng không phải pass. Build success đơn lẻ không đủ proof cho user-facing hoặc runtime-facing work.
-
-## Routine SDD thực tế
-
-```bash
-/hapo:specs <approved idea>
-node .claude/scripts/validate-spec-output.cjs specs/<feature>
-/hapo:develop <feature> <task-file>
-/hapo:test <feature>
-/hapo:code-review --pending
-/hapo:sync <feature> <task-file> done
-```
-
-Dùng `/hapo:brainstorm <idea>` trước routine này chỉ khi idea chưa đủ rõ để viết specs.
-
-Với spec lớn, ưu tiên mỗi session một task. Diff nhỏ giúp evidence, review, và rollback dễ hơn.
-
-## Khi nào nên dùng SDD
-
-Dùng full SDD path khi work đổi product behavior, chạm nhiều file, đi qua runtime boundary, update auth/data/schema/package contracts, ảnh hưởng user, cần review evidence, hoặc sẽ handoff giữa người/assistant/session.
-
-Skip hoặc rút gọn khi change thật sự trivial: typo, copy edit cô lập, config một dòng, hoặc emergency fix thuộc `/hapo:hotfix`.
-
-## Ý tưởng cốt lõi
-
-CafeKit SDD là forcing function:
-
-- intent thành scope
-- scope thành requirements
-- requirements thành design contracts
-- design thành task packets
-- task packets thành verified code
-- verified code thành synchronized state
-
-Đó là trọng tâm của CafeKit. Assistant không thành công vì code nhanh. Assistant thành công khi code khớp approved spec, reachable trong hệ thống thật, có evidence, pass review, và để lại state chính xác cho lần chạy tiếp theo.
+`/cf:sync` chỉ update Status và inline Receipt đã quan sát. Nó không bịa execution, approval, readiness hay completion.

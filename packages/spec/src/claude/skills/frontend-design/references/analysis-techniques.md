@@ -23,7 +23,7 @@ python scripts/gemini_batch_process.py \
   --task analyze \
   --prompt "Rank these variations 1-3 with scores. Identify winner." \
   --output docs/assets/batch-analysis.md \
-  --model gemini-2.5-flash
+  --model gemma-4-31b-it
 ```
 
 ## Contextual Testing
@@ -46,7 +46,7 @@ python scripts/gemini_batch_process.py \
 4. Overall visual hierarchy effectiveness
 Provide WCAG contrast ratio estimates." \
   --output docs/assets/ui-integration-test.md \
-  --model gemini-2.5-flash
+  --model gemma-4-31b-it
 ```
 
 ## A/B Testing Analysis
@@ -71,7 +71,7 @@ Compare for:
 
 Recommend which to A/B test in production and why." \
   --output docs/assets/ab-test-analysis.md \
-  --model gemini-2.5-flash
+  --model gemma-4-31b-it
 ```
 
 ## Iteration Strategy

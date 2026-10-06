@@ -1,9 +1,8 @@
 /**
  * Phase: write platform version metadata + install manifest.
  *
- * cafekit.json keeps pure version metadata (schemaVersion, version, platform,
- * timestamps, previousVersion). The ownership baseline is written separately by
- * the run's manifest tracker. Both are skipped in dry-run.
+ * cafekit.json keeps version metadata and persisted installer choices. The
+ * ownership baseline is written separately by the run's manifest tracker.
  */
 
 const fs = require('fs');
@@ -22,14 +21,18 @@ function writePlatformVersionMetadata(ctx, platformKey) {
     : null;
 
   const metadata = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     packageName: packageJson.name,
     version: packageJson.version,
     platform: platform.id,
     platformName: platform.name,
     installedAt: existingMetadata.installedAt || now,
     lastInstalledAt: now,
-    installCommand: INSTALL_COMMAND
+    installCommand: INSTALL_COMMAND,
+    documentSkills: ctx.documentSkills?.[platformKey] || {
+      enabled: false,
+      selectionSource: 'default-fresh'
+    }
   };
 
   if (previousVersion && previousVersion !== packageJson.version) {

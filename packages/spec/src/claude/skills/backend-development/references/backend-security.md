@@ -11,7 +11,7 @@ Security best practices, OWASP Top 10 mitigation, and modern security standards 
 ### Top Vulnerabilities & Mitigation
 
 #### 1. Broken Access Control
-**Risk:** Users access unauthorized resources (28% of vulnerabilities)
+**Risk:** Users access unauthorized resources
 
 **Mitigation:**
 - Implement RBAC (Role-Based Access Control)
@@ -52,7 +52,7 @@ ph.verify(hash, "password123")  # Verify password
 #### 3. Injection Attacks
 **Risk:** SQL injection, NoSQL injection, command injection (6x increase 2020-2024)
 
-**Mitigation (98% vulnerability reduction):**
+**Mitigation:** Parameterized queries prevent SQL injection.
 - Use parameterized queries ALWAYS
 - Input validation with allow-lists
 - Escape special characters
@@ -156,7 +156,7 @@ pip-audit --fix
 - Network segmentation
 - Disable unnecessary protocols (file://, gopher://)
 
-## Input Validation (Prevents 70%+ Vulnerabilities)
+## Input Validation (Prevents Vulnerabilities)
 
 ### Validation Strategies
 
@@ -256,6 +256,58 @@ app.use('/api/', limiter);
 const dbPassword = process.env.DB_PASSWORD;
 if (!dbPassword) throw new Error('DB_PASSWORD not set');
 ```
+
+## Critical Security Invariants (apply only when the task touches these surfaces)
+
+These invariants are lane-aware: enforce them for Critical tasks that touch the
+named surface; for Direct/Standard tasks that happen to touch it, apply the same
+checks with proportional evidence (targeted unit test + diff self-check for Direct,
+bounded suite for Standard). Do not impose a fixed heavy ceremony on every task.
+
+### Logging & Secret Redaction
+
+- Match secret names by exact token boundaries, not broad substrings. Never redact
+  by substring inside safe identifiers — e.g. names ending in `_file`, `_path`,
+  `_hint`, `_label` or containing `tokenizer` must stay intact. Preserve the
+  field/key name, replace only the value with `[REDACTED]` (use `[REDACTED-PEM]`
+  for PEM blocks, keeping the surrounding structure).
+- Leave public URLs and credential-free strings untouched. URL redaction applies
+  only when a credential is present in the URL (e.g. `user:pass@host`).
+- Authorization redaction is quote-aware and delimiter-safe: match schemes
+  `Bearer`/`Basic` case-insensitively, redact only the credential that follows,
+  preserve surrounding quotes and trailing delimiters (`,`, `;`, whitespace) outside
+  the redacted value, and never drop the closing quote.
+- Idempotence: `redact(redact(x)) === redact(x)`. The markers `[REDACTED]` /
+  `[REDACTED-PEM]` are stable and not re-wrapped or corrupted.
+- Verification guidance: cover true-positive credential cases, false-positive
+  safe-identifier and public-URL cases, quoted `Bearer`/`Basic` with trailing
+  delimiters, multi-line/PEM cases when relevant, and an idempotence round-trip.
+  Assert that no secret appears in error messages or completion reports and that
+  safe values are byte-identical after redaction.
+
+### Filesystem Write Boundary
+
+- Require an existing real directory as root. Reject before any mutation when
+  `targetPath` is empty or whitespace-only, contains a URI scheme, is absolute,
+  escapes via `..` segments, or escapes via sibling-prefix (`root` vs
+  `root-evil`).
+- Containment needs two checks: lexical containment of the resolved path
+  (`path.resolve(root, target)` inside root) **and** `realpath` containment of
+  the deepest existing parent directory. This blocks symlink-pointing-outside
+  and traversal that lexical check alone would miss. Never follow or overwrite a
+  symlink at the final target; never create parent directories outside root.
+- Perform atomic same-directory write: create a temporary file in the target
+  directory, write fully, then `rename` into place. Remove the temp file on any
+  error. Rejections must happen before creating or modifying anything outside root.
+- Return the canonical `realpath` of the target on success (e.g. macOS
+  `/var` → `/private/var` alias must resolve). Keep the public API otherwise
+  unchanged.
+- Verification guidance: nested success, traversal / absolute / URI / sibling-prefix
+  rejection, parent-symlink rejection, final-symlink rejection (do not follow or
+  overwrite), no-outside-mutation assertion (filesystem outside root unchanged on
+  failure), atomic temp cleanup, and canonical return-path equality. Critical runs
+  the full project suite; Direct/Standard use proportional lane evidence (targeted
+  unit test + diff self-check for Direct, bounded suite for Standard).
 
 ## API Security Checklist
 

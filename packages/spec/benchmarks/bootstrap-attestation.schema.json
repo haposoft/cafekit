@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "cafekit-bootstrap-attestation.schema.json",
+  "title": "CafeKit C14 BootstrapAttestation",
+  "description": "One-time, caller-supplied input to bootstrapBaseline only; never persisted verbatim and never referenced again once generation 0 is written. Has no treeDigest field: baseCommit already pins the exact tree state.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["baseCommit", "headCommit", "bootstrapReviewDigest", "packageVersion"],
+  "properties": {
+    "baseCommit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "headCommit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "bootstrapReviewDigest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "packageVersion": { "type": "string", "minLength": 1 }
+  }
+}

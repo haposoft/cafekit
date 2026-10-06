@@ -8,7 +8,7 @@ Performance optimization strategies, caching patterns, and scalability best prac
 
 #### Indexing Strategies
 
-**Impact:** 30% disk I/O reduction, 10-100x query speedup
+**Impact:** Reduced disk I/O and faster queries
 
 ```sql
 -- Create index on frequently queried columns
@@ -88,7 +88,7 @@ const posts = await Post.findAll({
 
 ### Redis Caching
 
-**Impact:** 90% DB load reduction, 10-100x faster response
+**Impact:** Reduced DB load and faster responses
 
 #### Cache-Aside Pattern (Lazy Loading)
 
@@ -140,7 +140,7 @@ await redis.keys('user:*').then(keys => redis.del(...keys));
 
 ```
 Client
-  → CDN Cache (static assets, 50%+ latency reduction)
+  → CDN Cache (static assets, reduced latency)
   → API Gateway Cache (public endpoints)
   → Application Cache (Redis)
   → Database Query Cache
@@ -236,7 +236,7 @@ emailQueue.process('send-welcome', async (job) => {
 
 ## CDN (Content Delivery Network)
 
-**Impact:** 50%+ latency reduction for global users
+**Impact:** Reduced latency for global users
 
 ### Configuration
 
@@ -302,7 +302,7 @@ const users = await replicaDb.users.findAll();
 ```
 
 **Use Cases:**
-- Read-heavy workloads (90%+ reads)
+- Read-heavy workloads
 - Analytics queries
 - Reporting dashboards
 

@@ -1,6 +1,6 @@
 # Side-Effect Gate
 
-Use this before claiming a fix is complete. A bug can be fixed locally and still create a regression nearby.
+Debug designs this sweep; `cf:fix` and the canonical test owner execute it after implementation. A local symptom can disappear while a nearby contract regresses.
 
 ## Gate Questions
 
@@ -44,5 +44,7 @@ Use this before claiming a fix is complete. A bug can be fixed locally and still
 - Contract changes:
 - Runtime checks:
 - Security/privacy:
+- Recurrence invariant:
+- Observability/alerting gap:
 - Residual risk:
 ```

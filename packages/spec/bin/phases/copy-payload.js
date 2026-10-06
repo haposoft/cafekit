@@ -11,22 +11,21 @@ const path = require('path');
 const {
   PLATFORMS,
   DEPENDENCY_TEMPLATES,
-  isClaudeCompatibleRuntime,
+  hasPlatformCapability,
   getRuntimeSupportTargetDir,
   getCopyOptions
 } = require('../lib/context');
 const { writeManagedFile, copyManagedTree } = require('../lib/managed-writer');
 const { report, treeAction } = require('./report');
 const {
-  convertOpenCodeAgentContent,
-  convertOpenCodeCommandContent
-} = require('../lib/opencode-install');
+  codexAgentName,
+  convertCodexAgentContent
+} = require('../lib/codex-install');
 
 const SRC = path.join(__dirname, '../../src');
 
 /**
- * Spec command files installed for a platform. Claude ships spec-* commands;
- * OpenCode generates its own command wrappers elsewhere.
+ * Spec command files installed for a platform. Claude ships spec-* commands.
  */
 function getPlatformSpecFiles(platformKey, ctx) {
   if (platformKey === 'claude') {
@@ -53,6 +52,7 @@ function getPlatformSpecFiles(platformKey, ctx) {
 function ensureWorkflowDependencies(ctx, platformKey) {
   const platform = PLATFORMS[platformKey];
   const tracker = ctx.trackers[platformKey];
+  if (!platform.commandsDir) return;
   const commandTemplates = DEPENDENCY_TEMPLATES.commands[platformKey] || {};
   Object.entries(commandTemplates).forEach(([fileName, content]) => {
     if (!content) return;
@@ -71,21 +71,18 @@ function copyPlatformFiles(ctx, platformKey) {
   const tracker = ctx.trackers[platformKey];
   const platformFolder = platform.folder;
 
-  // For OpenCode, text bodies are path-normalized (.claude → .opencode, etc.).
-  const bodyTransform = platformKey === 'opencode'
-    ? getCopyOptions('opencode', {}).transform
-    : undefined;
+  const bodyTransform = getCopyOptions(platformKey, {}).transform;
 
   const skillsSourceDir = path.join(SRC, 'claude/skills');
   const agentsSourceDir = path.join(SRC, platform.sourceDir, 'agents');
 
   if (!ctx.dryRun) {
-    fs.mkdirSync(platform.skillsDir, { recursive: true });
-    fs.mkdirSync(platform.agentsDir, { recursive: true });
+    if (platform.skillsDir) fs.mkdirSync(platform.skillsDir, { recursive: true });
+    if (platform.agentsDir) fs.mkdirSync(platform.agentsDir, { recursive: true });
   }
 
   // ── Skills ──────────────────────────────────────────────
-  if (fs.existsSync(skillsSourceDir)) {
+  if (hasPlatformCapability(platformKey, 'skills') && fs.existsSync(skillsSourceDir)) {
     const specSkillSource = path.join(skillsSourceDir, 'specs');
     const specSkillDest = path.join(platform.skillsDir, 'specs');
 
@@ -98,9 +95,9 @@ function copyPlatformFiles(ctx, platformKey) {
     }
 
     // Keep spec templates in sync (Claude command runtime reads these).
-    if (platformKey === 'claude') {
+    if (platformKey === 'claude' || platformKey === 'codex') {
       const legacyInitTemplate = path.join(platform.skillsDir, 'specs', 'templates', 'init.json');
-      if (fs.existsSync(legacyInitTemplate)) {
+      if (platformKey === 'claude' && fs.existsSync(legacyInitTemplate)) {
         if (!ctx.dryRun) fs.rmSync(legacyInitTemplate, { force: true });
         ctx.ui.detail(`  ↻ ${ctx.dryRun ? '[dry-run] ' : ''}Removed legacy template: ${legacyInitTemplate}`);
         ctx.results.updated++;
@@ -118,17 +115,30 @@ function copyPlatformFiles(ctx, platformKey) {
       specTemplates.forEach((fileName) => {
         const src = path.join(specSkillSource, 'templates', fileName);
         const dest = path.join(platform.skillsDir, 'specs', 'templates', fileName);
-        const { action } = writeManagedFile({ src, dest, platformFolder, ctx, tracker });
+        const { action } = writeManagedFile({
+          src,
+          dest,
+          platformFolder,
+          ctx,
+          tracker,
+          transform: bodyTransform
+        });
         report(ctx, action, `template: ${fileName}`);
       });
     }
 
-    // Additional required skills.
+    // Core skills plus the optional document bundle selected for this runtime.
     let requiredSkills = [];
-    if (isClaudeCompatibleRuntime(platformKey)) {
+    if (hasPlatformCapability(platformKey, 'skills')) {
       requiredSkills = ctx.manifest?.skills?.required || [];
+      if (ctx.documentSkills?.[platformKey]?.enabled) {
+        requiredSkills = [
+          ...requiredSkills,
+          ...(ctx.manifest?.skills?.bundles?.documentSkills || [])
+        ];
+      }
     }
-    requiredSkills
+    [...new Set(requiredSkills)]
       .filter((skillName) => skillName !== 'specs')
       .forEach((skillName) => {
         const skillSource = path.join(skillsSourceDir, skillName);
@@ -146,18 +156,22 @@ function copyPlatformFiles(ctx, platformKey) {
   }
 
   // ── Agents + references + scripts ───────────────────────
-  if (isClaudeCompatibleRuntime(platformKey)) {
+  if (hasPlatformCapability(platformKey, 'agents')) {
     if (fs.existsSync(agentsSourceDir)) {
       const requiredAgents = ctx.manifest?.agents?.required || [
         'tester.md', 'code-reviewer.md', 'fullstack-developer.md', 'debugger.md'
       ];
-      const agentTransform = platformKey === 'opencode'
-        ? (content, src) => convertOpenCodeAgentContent(content, path.basename(src))
-        : undefined;
+      let agentTransform;
+      if (platformKey === 'codex') {
+        agentTransform = (content, src) => convertCodexAgentContent(content, path.basename(src));
+      }
 
       requiredAgents.forEach((fileName) => {
         const src = path.join(agentsSourceDir, fileName);
-        const dest = path.join(platform.agentsDir, fileName);
+        const destName = platformKey === 'codex'
+          ? `${codexAgentName(fileName)}.toml`
+          : fileName;
+        const dest = path.join(platform.agentsDir, destName);
         const { action } = writeManagedFile({
           src, dest, platformFolder, ctx, tracker, transform: agentTransform
         });
@@ -175,7 +189,14 @@ function copyPlatformFiles(ctx, platformKey) {
     } else {
       report(ctx, 'missing', `agents: ${platform.agentsDir}`);
     }
+  }
 
+  // ── Scripts ─────────────────────────────────────────────
+  // Gated on its own capability. This block used to sit inside the agents guard,
+  // so a platform with agents: false and scripts: true (omp) never received
+  // .omp/scripts/, and every Stop-time gate that requires ../scripts/*.cjs answered
+  // "Completion gate unavailable" on each session_stop.
+  if (hasPlatformCapability(platformKey, 'scripts')) {
     const scriptsSourceDir = path.join(SRC, 'claude/scripts');
     if (fs.existsSync(scriptsSourceDir)) {
       const scriptsDest = getRuntimeSupportTargetDir(platformKey, 'scripts');
@@ -189,6 +210,10 @@ function copyPlatformFiles(ctx, platformKey) {
   ensureWorkflowDependencies(ctx, platformKey);
 
   // ── Commands ────────────────────────────────────────────
+  if (!hasPlatformCapability(platformKey, 'commands') || !platform.commandsDir) {
+    return ctx;
+  }
+
   const sourceSubdir = platform.sourceSubdir || 'commands';
   const commandsSourceDir = path.join(SRC, platform.sourceDir, sourceSubdir);
   const specFiles = getPlatformSpecFiles(platformKey, ctx);
@@ -202,11 +227,7 @@ function copyPlatformFiles(ctx, platformKey) {
       return;
     }
     const cmdTransform = (content, s) => {
-      let c = content.replace(/\{\{SKILLS_DIR\}\}/g, platform.skillsRef);
-      if (platformKey === 'opencode') {
-        c = convertOpenCodeCommandContent(c, path.basename(s));
-      }
-      return c;
+      return content.replace(/\{\{SKILLS_DIR\}\}/g, platform.skillsRef);
     };
     const { action } = writeManagedFile({
       src, dest, platformFolder, ctx, tracker, transform: cmdTransform

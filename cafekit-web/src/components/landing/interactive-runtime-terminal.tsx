@@ -29,31 +29,31 @@ const steps: TerminalStep[] = [
   {
     id: "specs",
     label: "Create spec",
-    command: "/hapo:specs Build a meeting transcript extension",
+    command: "/cf:specs Build a meeting transcript extension",
     outputs: [
-      { kind: "output", text: "specs/meet-transcript-mvp/spec.json created" },
-      { kind: "success", text: "task_registry: 12 pending  |  ready_for_implementation: false" },
+      { kind: "output", text: "C1 scope confirmed  |  plan.md created" },
+      { kind: "success", text: "flat tasks created  |  C2 findings ready" },
     ],
   },
   {
     id: "validate",
-    label: "Validate",
-    command: "/hapo:specs --validate meet-transcript-mvp",
-    outputs: [{ kind: "success", text: "validation.status: completed" }],
+    label: "Approve C2",
+    command: "Accept all",
+    outputs: [{ kind: "success", text: "C2 decisions recorded  |  planning stops" }],
   },
   {
     id: "develop",
     label: "Develop",
-    command: "/hapo:develop meet-transcript-mvp task-R0-02-auth-setup-dual-mode.md",
+    command: "/cf:develop meet-transcript-mvp",
     outputs: [
       { kind: "output", text: "quality gate -> build, evidence, review" },
-      { kind: "success", text: "docs impact: minor  |  sync task_registry" },
+      { kind: "success", text: "task Status: done  |  inline Receipt current" },
     ],
   },
   {
     id: "test",
     label: "Test",
-    command: "/hapo:test --full",
+    command: "/cf:test --full",
     outputs: [{ kind: "success", text: "precheck first  |  exact task commands verified" }],
   },
 ];

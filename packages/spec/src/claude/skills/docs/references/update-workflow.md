@@ -1,6 +1,6 @@
 # Update Workflow
 
-Use with `/hapo:docs --update`.
+Use with `/cf:docs --update`.
 
 ## Goal
 
@@ -20,11 +20,11 @@ Refresh existing living docs after code or project-state changes without rewriti
 
 1. Read repo instructions and docs root.
 2. Verify the docs root exists.
-3. If the docs root does not exist, switch to `init` or explain that no docs baseline exists.
+3. If the docs root does not exist, switch to `init` or explain that no docs baseline exists. A post-task checkpoint entry never switches to `init`; it reports the gap and recommends an explicit `/cf:docs --init` invocation instead.
 4. Identify update focus:
    - user-named module or doc
    - recent source diff
-   - docs-sync stale hash signal
+   - docs-sync stale hash signal (run `echo '{}' | node .claude/hooks/docs-sync.cjs` from the project root)
    - a full docs refresh only when user asks for it
 
 ### Phase 1: Source Change Scout
@@ -39,7 +39,7 @@ Scout source areas that can affect docs:
    - design/code standards
    - roadmap/changelog state
 3. Run targeted source reads for evidence.
-4. Use `hapo:inspect` only when the affected scope is unclear or broad.
+4. Use `cf:scout` only when the affected scope is unclear or broad.
 
 Do not treat commit messages as sufficient evidence. Verify changed behavior in code, tests, config, or schemas.
 
@@ -52,8 +52,10 @@ Use document count and file size to decide reading strategy:
 | Docs set | Reading strategy |
 |---|---|
 | 1-3 markdown files | Read directly |
-| 4-6 markdown files | Split across 2-3 readers when delegation is available |
-| 7+ markdown files | Split across up to 5 readers by LOC and topic |
+| 4-6 markdown files | Split across 2-3 readers only when the Delegation Gate in `../SKILL.md` is open |
+| 7+ markdown files | Split across up to 5 readers by LOC and topic through the same open gate |
+
+When the gate is closed, read the set sequentially in the main agent.
 
 Each reading pass extracts:
 
@@ -67,7 +69,7 @@ Merge source scout and docs readings before writing.
 
 ### Phase 2: Surgical Docs Update
 
-Delegate to `docs-keeper` when available. The update must stay surgical:
+Delegate to `docs-keeper` only through the Delegation Gate in `../SKILL.md`; when the gate is closed, apply the same discipline in the main agent. The update must stay surgical:
 
 1. Edit only affected docs and sections.
 2. Remove or rewrite stale claims when source evidence contradicts docs.
@@ -119,5 +121,5 @@ Report:
 If a requested change belongs to future behavior rather than current project docs, recommend:
 
 ```text
-/hapo:specs <change request>
+/cf:specs <change request>
 ```

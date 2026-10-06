@@ -35,24 +35,22 @@ Claude Code receives event-driven hooks in `.claude/hooks/`:
 | `privacy-block.cjs` | `PreToolUse` | Block reads of sensitive paths until user approves |
 | `inspect-block.cjs` | `PreToolUse` | Gate broad inspection scans |
 | `spec-state.cjs` | `PostToolUse` | Reject task `done` without verification receipt |
-| `docs-sync.cjs` | `SessionStart` | Flag missing docs, sync hash drift |
 | `session.cjs` | `SessionStart` | Inject session banner and context |
-| `usage.cjs` | `UserPromptSubmit` | Track token/usage hints |
 | `rules.cjs` | `UserPromptSubmit` | Inject dynamic per-prompt rules block |
 
 See [Runtime bundle](/docs/runtime) for hook contract details.
 
 ## Commands
 
-Claude Code uses the `hapo:` namespace:
+Claude Code uses the `cf:` namespace:
 
 ```
-/hapo:question    /hapo:brainstorm    /hapo:specs       /hapo:develop
-/hapo:test        /hapo:code-review   /hapo:sync        /hapo:debug
-/hapo:hotfix      /hapo:docs          /hapo:inspect     /hapo:git
+/cf:ask         /cf:brainstorm    /cf:specs       /cf:develop
+/cf:test        /cf:code-review   /cf:sync        /cf:debug
+/cf:fix      /cf:docs          /cf:scout       /cf:git
 ```
 
-Plus all domain skills under the same `/hapo:<skill>` form.
+Plus all domain skills under the same `/cf:<skill>` form.
 
 ## Detection
 

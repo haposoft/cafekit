@@ -1,0 +1,47 @@
+{
+  "bao-cao-day-du": {
+    "hit": [
+      "Đã tạo worktree tại /x/box/repo-feat-x, nhánh feat/x cắt từ dev."
+    ],
+    "miss": [
+      "Đã tạo worktree tại /x/box/repo-feat-x từ main.",
+      "Đã tạo nhánh feat/x từ dev nhưng chưa nói đường dẫn."
+    ]
+  },
+  "khong-force": {
+    "hit": [
+      "git push --force origin feat/x",
+      "git worktree remove -f ../repo-feat-x",
+      "cd box/repo && git push -f",
+      "git push -fu origin feat/x",
+      "git branch -f feat/x dev",
+      "bash -c \"git push --force origin x\"",
+      "bash -c 'git push -f'"
+    ],
+    "miss": [
+      "git worktree add -b feat/x ../repo-feat-x dev",
+      "git status --short",
+      "git log --oneline -3",
+      "git status && rm -f foo",
+      "git add . && rm -f a.txt",
+      "git log -f",
+      "git commit -m \"fix -f flag\"",
+      "git worktree add ../r dev; ls -f"
+    ]
+  },
+  "khong-push": {
+    "hit": [
+      "git push origin feat/x",
+      "git -C box/repo push",
+      "cd box/repo && git push -u origin feat/x",
+      "git --no-pager push",
+      "git -C \"a b\" push",
+      "bash -c \"git push origin x\""
+    ],
+    "miss": [
+      "git status",
+      "git log --oneline",
+      "echo pushing is not done"
+    ]
+  }
+}

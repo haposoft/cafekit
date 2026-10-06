@@ -1,74 +1,57 @@
 ---
 title: Quickstart
-description: Run a first CafeKit workflow from idea to reviewed implementation.
+description: Run a first process-first CafeKit workflow from scope decision to verified implementation.
 ---
 
-<DocsHero
-  eyebrow="First run"
-  title="Move one feature through the verified loop."
-  description="Generate a spec, validate it, implement one task packet, then test, review, and sync completion with proof."
-/>
+<DocsHero eyebrow="First run" title="Move one feature through the verified loop." description="Confirm scope, review the plan, execute one task, verify, review, sync proof, then decide completion." />
 
-<Callout type="info">**New to CafeKit?** This page is a quick reference for people who already know the workflow. If you are starting from scratch, the [step-by-step tutorial](/docs/tutorial) walks you through from zero install to your first verified feature.</Callout>
+<Callout type="info">New to CafeKit? Use the [step-by-step tutorial](/docs/tutorial) for the guided version.</Callout>
 
-## 1. Install CafeKit
+## 1. Install
 
 ```bash
 npx @haposoft/cafekit
 ```
 
-If the idea is not ready for specs, use `/hapo:brainstorm` first to clarify scope and architecture. The main delivery run starts with specs.
+## 2. Create and review the spec
 
-## 2. Create a spec
-
-```bash
-/hapo:specs Build a meeting transcript extension with AI summaries
+```text
+/cf:specs Build a meeting transcript extension with AI summaries
 ```
 
-CafeKit creates:
+Specs opens C1, then creates:
 
 ```text
 specs/<feature>/
-├── spec.json
-├── requirements.md
-├── research.md
-├── design.md
-└── tasks/task-R0-01-*.md
+├── plan.md
+└── task-01-*.md
 ```
 
-## 3. Validate before code
+At C2, accept findings, request revisions, or KEEP a named limitation. Planning stops after C2.
 
-```bash
-/hapo:specs --validate <feature>
+## 3. Implement explicitly
+
+```text
+/cf:develop <feature>
 ```
 
-Validation checks that requirements, design, task files, `task_files`, and `task_registry` agree.
+Develop executes one unblocked task at a time. It runs the exact planned proof and writes the task's final inline Receipt through the controller.
 
-## 4. Implement one task packet
+## 4. Verify and review
 
-```bash
-/hapo:develop <feature> tasks/task-R0-01-project-scaffold.md
+```text
+/cf:test --full
+/cf:code-review --pending
 ```
 
-Task-by-task work is the safest default. It keeps diffs smaller and makes evidence easier to verify.
+`NO_TESTS` and zero executed tests are not a pass.
 
-## 5. Test and review
+## 5. Sync and close
 
-```bash
-/hapo:test --full
-/hapo:code-review --pending
+```text
+/cf:sync <feature>
 ```
 
-`NO_TESTS` is not success. A task should not become `done` until implementation, evidence, tests, review, and state sync all agree.
-
-## 6. Sync after proof
-
-```bash
-/hapo:sync <feature> task-R0-01-project-scaffold.md done
-```
-
-This updates `spec.json.task_registry` and the matching task markdown. If state looks inconsistent, run `/hapo:sync audit <feature>` instead of guessing.
-
-Read [Core workflow](/docs/core-workflow) for the full reasoning behind each gate.
+Sync only observed Status and proof. At C3, the user decides whether current receipts and unresolved limitations are sufficient to close.
 
 <QualityGate />

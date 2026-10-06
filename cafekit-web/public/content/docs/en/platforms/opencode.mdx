@@ -1,21 +1,23 @@
 ---
-title: OpenCode
-description: Self-contained CafeKit runtime for OpenCode projects.
+title: OpenCode 0.16 history
+description: Frozen historical migration notes for the last OpenCode-supported CafeKit release.
 ---
 
 <DocsHero
-  eyebrow="Platforms · OpenCode"
-  title="Self-contained `.opencode/` runtime with TypeScript plugins."
-  description="CafeKit installs a complete OpenCode runtime that does not share files with `.claude/`. Hooks become typed plugins loaded by OpenCode at session start."
+  eyebrow="Legacy platform · OpenCode 0.16"
+  title="Historical `.opencode/` runtime reference."
+  description="OpenCode support ended in CafeKit 0.17. Everything below describes frozen 0.16 behavior for migration only, not the current installer."
 />
+
+<Callout type="warning">Current CafeKit releases support Claude Code and Codex CLI. Do not use this page as current installation guidance.</Callout>
 
 ## Installed layout
 
 ```
 .opencode/
 ├── skills/         # Self-contained skill packs
-├── agents/         # Subagent prompts (no hapo: prefix)
-├── commands/       # Slash commands without hapo: prefix
+├── agents/         # Subagent prompts (no cf: prefix)
+├── commands/       # Slash commands without cf: prefix
 ├── plugins/        # TypeScript plugins (see below)
 ├── rules/          # Workflow, dev, docs, hook, state-sync rules
 ├── scripts/        # Helper scripts
@@ -47,7 +49,7 @@ OpenCode lacks a per-prompt injection channel, so `rules.ts` upserts a managed b
 
 ## Commands
 
-OpenCode intentionally drops the `hapo:` prefix:
+OpenCode intentionally drops the `cf:` prefix:
 
 ```
 /question     /brainstorm    /specs       /develop

@@ -54,39 +54,49 @@ Use [Keep a Changelog](https://keepachangelog.com/) convention:
 
 ---
 
-## Specification & Execution Tracker (Hapo Protocol)
+## Process-first specification and execution tracker
 
-### Where Specs Live
-Hapo does not use chaotic plan folders. Requirements and architecture are centralized into a machine-readable Specification structure via `specs`.
+### Where plans live
 
-All specifications exist strictly in `./specs/<feature-slug>/`.
+Keep every new feature packet in one direct child of `./specs/`. The Markdown
+files are the durable state and must remain readable without a compiler or a
+generated index.
 
-### Directory Layout
+### Primary directory layout
+
 ```text
 specs/
 └── user-auth/
-    ├── spec.json               # System state machine & global status
-    ├── design.md               # Architecture, requirements, and data flows
-    └── tasks/
-        ├── task-R0-01-setup.md  # Actionable granular steps for development
-        └── task-R1-01-api.md    # Next requirement-driven task
+    ├── plan.md
+    ├── task-01-setup.md
+    └── task-02-api.md
 ```
 
-### The State Machine (`spec.json`)
-The `spec.json` is the sole source of truth for the Project State. 
-When creating or updating a spec, it must accurately reflect the overall progress.
+Task files are direct children beside `plan.md`; do not place them in a task
+subdirectory.
+The plan records the GATE-SCOPE scope decision, explicit exclusions, acceptance
+criteria, and task mapping. Each task owns one usable outcome, bounded paths,
+dependencies, acceptance, and a runnable Verification Plan.
 
-### Architecture Document (`design.md`)
-This blueprint covers:
-- **Context & Overview:** The "Why" of the feature.
-- **Data Flow:** Mandatory Mermaid Data Flow Diagram detailing state transitions, DB interactions, and API payloads.
-- **Risk Assessment:** Pre-identified failure points and mitigations.
+### Gates and execution handoff
 
-### Execution Checklists (`tasks/task-R*.md`)
-Work is decomposed into requirement-driven markdown task files.
-Each task file contains:
-- **Prerequisites:** Blockers that must clear before this stage begins. (Task N+1 cannot start without Task N defining its payload).
-- **Execution Checklist:** Granular `[ ]` markdown items for agents to toggle `[x]` as they implement code.
-- **Success Criteria:** Strict definition of "Done".
+- GATE-SCOPE: the user chooses EXPAND, KEEP, or CUT before the plan is written.
+- GATE-REVIEW: the user accepts, rejects, or revises deduplicated adversarial findings.
+- Specs stops after planning; implementation begins only through a new explicit
+  Develop invocation.
+- GATE-DONE: after execution, current receipts and limitations are shown and the user
+  decides whether the feature is complete.
+
+### Task state and proof
+
+Each task contains exactly one `Status:` field. The final inline `## Receipt`
+is canonical proof and must contain the exact command, `Exit: 0`,
+`Verification: PASS`, runtime-derived Base and Head values, and non-empty
+fenced current output before the task becomes done.
+
+Sync only observed state with surgical edits. Re-read the changed task after
+every update; never infer missing proof, approval, or readiness. When a done
+task changes user-facing behavior, architecture, API contracts, operations, or
+project status, classify docs impact and update only affected existing docs.
 
 Comply with the overarching rules in `./rules/ai-dev-rules.md`.

@@ -1,0 +1,1 @@
+{ "name": "ledger", "private": true, "scripts": { "test": "node --test" } }

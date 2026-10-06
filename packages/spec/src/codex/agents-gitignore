@@ -1,0 +1,11 @@
+# CafeKit skill-local secrets and generated dependencies
+skills/**/.env
+skills/**/.env.*
+!skills/**/.env.example
+!skills/**/.env.sample
+!skills/**/.env.template
+
+skills/**/.venv/
+skills/**/node_modules/
+skills/**/__pycache__/
+skills/**/*.pyc

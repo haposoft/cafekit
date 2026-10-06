@@ -105,7 +105,7 @@ const users = await db.query(`
 
 ### Technical Debt Management
 
-**20-40% productivity increase** from addressing technical debt properly
+**Productivity increase** from addressing technical debt properly
 
 **Debt Quadrants:**
 1. **Reckless + Deliberate:** "We don't have time for design"
@@ -264,7 +264,7 @@ async function getUsers(limit?: number) {
 
 ### Testing Mindset (TDD/BDD)
 
-**70% happy-path tests drafted by AI, humans focus on edge cases**
+**AI drafts happy-path tests, humans focus on edge cases**
 
 **Test-Driven Development (TDD):**
 ```
@@ -287,7 +287,7 @@ Feature: User Registration
 
 ### Observability and Debugging Approach
 
-**100% median ROI, $500k average return** from observability investments
+**Positive ROI** from observability investments
 
 **Three Questions:**
 1. **Is it slow?** → Check metrics (response time, DB queries)

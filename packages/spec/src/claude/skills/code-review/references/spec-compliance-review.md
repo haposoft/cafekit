@@ -1,6 +1,6 @@
 ---
 name: spec-compliance-review
-description: Hapo native protocol for verifying core implementation requirements using multimodal visual validation via ai-multimodal.
+description: Hapo native protocol for verifying core implementation requirements, using multimodal visual validation when available.
 ---
 
 # Spec Compliance Review (Stage 1)
@@ -19,14 +19,20 @@ Do not attempt a standard text-based review if the project includes Visual Specs
 
 **Spec Detection Algorithm:**
 1. Check if the `.specs/` directory, user instructions, or Jira tickets contain attached Image files (`.png`, `.jpg`, `.svg`) or Documents (`.pdf`).
-2. If YES: IMMEDIATELY halt static code analysis. Delegate the generated Frontend code / Logic code along with the Image/PDF to the **`hapo:ai-multimodal` analysis gateway**.
-   - *Prompt:* "Hey `hapo:ai-multimodal`, please look at this design mockup/document and compare it with the layout/logic described in this Code. Are there any discrepancies?"
+2. If YES: use **`cf:ai-multimodal` when installed**, or the runtime's available multimodal capability. If neither is available, mark visual comparison `UNPROVEN` and continue the non-visual review.
 3. If NO (Markdown Spec only): Read the spec directly and extract:
    - requirement bullets
-   - task `Completion Criteria`
-   - task `Evidence` (or `Task Test Plan & Verification Evidence` / legacy `Verification & Evidence`)
+   - task `Outcome`, `Scope`, `Anchors and Ownership`, `Changes`, `Acceptance`,
+     `Dependencies`, and `Verification Plan`
+   - typed `coordination.boundaries` as the only ownership/DAG/proof/parallel authority
+   - task `Verification Plan`
    - canonical contracts/invariants from `design.md`
    Then verify the changed files against those concrete obligations.
+
+Execution proof is separate from the task plan. Consume
+`receipts/<task-basename>.md` first and legacy `## Evidence` only as fallback;
+conflicting proof identities fail closed. Review never creates a receipt and
+never treats a receipt as approval, readiness, audit status, or semantic judgment.
 
 ## 3. Verdict Scale
 
@@ -34,7 +40,7 @@ Each Requirement in the Spec must return 1 of 3 states:
 - `[PASS]` Fully implemented. Proceed to Code Quality Review.
 - `[MISSING]` Forgotten feature. Force the Developer to add it immediately (BLOCK MERGE).
 - `[EXTRA]` The code has bloated with spontaneous features not in the spec card. If unjustified -> FAIL.
-- `[VISUAL_MISMATCH]` (For UI Design): The report from `ai-multimodal` indicates this screen will break layout or violate the Design System.
+- `[VISUAL_MISMATCH]` (For UI Design): Available multimodal evidence indicates this screen will break layout or violate the Design System.
 - `[UNPROVEN]` Required artifact/runtime behavior or verification evidence is missing, so completion cannot be trusted.
 
 ## 4. Red Flags

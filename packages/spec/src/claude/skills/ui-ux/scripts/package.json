@@ -1,0 +1,9 @@
+{
+  "name": "cafekit-skill-ui-ux",
+  "version": "0.3.13",
+  "private": true,
+  "description": "Node dependencies for the CafeKit ui-ux skill (probe.mjs).",
+  "dependencies": {
+    "playwright": "^1.40.0"
+  }
+}

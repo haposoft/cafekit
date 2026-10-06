@@ -48,7 +48,6 @@ yarn-error.log*
 # package manager
 package-lock.json
 yarn.lock
-pnpm-lock.yaml
 
 # semantic-release
 .nyc_output
@@ -105,8 +104,10 @@ apps/go-gateway/main
 .claude_cc/
 
 # CafeKit / Ecosystem
-plans/
+plans/*
+!plans/*.md
 !plans/templates/
+!plans/templates/**
 .env*.local
 .sync_hash
 .cafekit-backup/
@@ -114,3 +115,8 @@ plans/
 .claude
 .agents
 .codex
+.opencode/
+.omp/
+
+# claude plugin eval run outputs (any depth)
+evals/**/results/

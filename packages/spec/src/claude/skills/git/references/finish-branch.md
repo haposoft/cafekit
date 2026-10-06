@@ -1,6 +1,6 @@
 # Finish Branch Protocol
 
-Use this protocol for `hapo:git finish`.
+Use this protocol for `cf:git finish`.
 
 ## Goal
 

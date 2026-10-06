@@ -4,5 +4,5 @@
 {{PROJECT_DESCRIPTION}}
 
 ## Requirements
-<!-- Will be generated during the hapo:specs requirements phase -->
+<!-- Will be generated during the cf:specs requirements phase -->
 

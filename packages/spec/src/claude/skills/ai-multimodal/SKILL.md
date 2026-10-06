@@ -1,5 +1,5 @@
 ---
-name: hapo:ai-multimodal
+name: cf:ai-multimodal
 description: Analyze images/audio/video/documentation with Gemini API. Use for vision analysis, transcription, OCR, design extraction, and deep multimodal understanding.
 license: MIT
 user-invocable: true
@@ -36,14 +36,14 @@ export GEMINI_API_KEY_2="key2"  # auto-rotates on rate limit
 
 **Verify setup**: `python scripts/check_setup.py`
 **Analyze media**: `python scripts/gemini_batch_process.py --files <file> --task <analyze|transcribe|extract>`
-  - TIP: When you're asked to analyze an image, check if `gemini` command is available, then use `echo "<prompt to analyze image>" | gemini -y -m <gemini.model>` command (read model from `.claude/runtime.json`: `gemini.model`). If `gemini` command is not available, use `python scripts/gemini_batch_process.py --files <file> --task analyze` command.
+  - TIP: When you're asked to analyze an image, check if `gemini` command is available, then use `echo "<prompt to analyze image>" | gemini -y -m "${GEMINI_MODEL:-gemma-4-31b-it}"`. If `gemini` command is not available, use `python scripts/gemini_batch_process.py --files <file> --task analyze` command.
 
 > **Stdin support**: Pipe files via stdin for Gemini analysis (auto-detects PNG/JPG/PDF/WAV/MP3).
 
 ## Models
 
 ### Google Gemini
-- **Analysis**: `gemma-4-31b-it` (recommended), `gemini-2.5-pro` (advanced)
+- **Analysis**: `gemma-4-31b-it` (recommended), `gemma-4-31b-it` (advanced)
 
 ## Scripts
 
@@ -66,7 +66,7 @@ Load for detailed guidance:
 
 ## Limits
 
-**Formats**: Audio (WAV/MP3/AAC, 9.5h), Images (PNG/JPEG/WEBP, 3.6k), Video (MP4/MOV, 6h), PDF (1k pages)
+**Formats**: Audio (WAV/MP3/AAC, 9 hours 30 minutes), Images (PNG/JPEG/WEBP, 3.6k), Video (MP4/MOV, 6h), PDF (1k pages)
 **Size**: 20MB inline, 2GB File API
 **Important:** 
 - If you are going to generate a transcript of the audio, and the audio length is longer than 15 minutes, the transcript often gets truncated due to output token limits in the Gemini API response. To get the full transcript, you need to split the audio into smaller chunks (max 15 minutes per chunk) and transcribe each segment for a complete transcript.

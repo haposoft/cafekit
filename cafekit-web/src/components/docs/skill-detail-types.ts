@@ -1,5 +1,5 @@
 export const mainSkillSlugs = [
-  'question',
+  'ask',
   'brainstorm',
   'specs',
   'develop',
@@ -7,9 +7,9 @@ export const mainSkillSlugs = [
   'code-review',
   'sync',
   'debug',
-  'hotfix',
+  'fix',
   'docs',
-  'inspect',
+  'scout',
   'git',
 ] as const;
 

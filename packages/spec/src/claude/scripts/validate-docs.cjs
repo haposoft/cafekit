@@ -53,17 +53,14 @@ function main() {
 
   const linkIssues = checkBrokenLinks(docsDir);
   if (linkIssues.length > 0) {
-    console.warn('\n⚠️ WARNING: CRITICAL HYPERLINK CORRUPTION DETECTED IN DOCUMENTATION MATRIX!');
+    console.error(`\n❌ FAIL: ${linkIssues.length} broken relative link(s) found:`);
     linkIssues.forEach(issue => {
-      console.warn(`- Compromised File: ${path.relative(process.cwd(), issue.file)} -> Links externally to Missing Null Pointer: ./${issue.brokenLink}`);
+      console.error(`- ${path.relative(process.cwd(), issue.file)} -> ./${issue.brokenLink} (target missing)`);
     });
-  } else {
-    console.log('✅ Validation verified! Zero broken integrity links detected across the system.');
+    process.exit(1);
   }
 
-  // Structural Note: To honor Execution Velocity patterns inherent to Architecture,
-  // aggressive deep-code grepping functions (function tracing) have been stripped.
-  // This ensures document validation pipeline triggers definitively under < 1s (Zero-latency verification).
+  console.log('✅ PASS: no broken relative links detected.');
 }
 
 main();

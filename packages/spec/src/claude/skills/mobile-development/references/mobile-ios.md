@@ -53,7 +53,7 @@ actor UserCache {
 ✅ Declarative UI preferred
 ✅ Fast iteration needed
 ✅ Cross-platform (macOS, watchOS, tvOS)
-✅ 40% less code vs UIKit
+✅ Less code vs UIKit
 
 ### When to Use UIKit
 ✅ Legacy app maintenance

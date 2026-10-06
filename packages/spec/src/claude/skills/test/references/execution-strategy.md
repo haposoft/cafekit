@@ -1,365 +1,295 @@
-# Execution Strategy
+# Execution strategy
 
-Detailed instructions for how `hapo:test` and the `test-runner` agent execute
-each test type. Referenced by `SKILL.md` during Phase 2.
+Load this reference when Test needs packet routing, proof construction, blast
+radius selection, UI safety, or report details.
 
----
+## 1. Classify the target before execution
 
-## Phase A: Blast Radius Scoping (Default Mode)
+Inspect current filesystem entries with `lstat`; a broken link is still a
+marker. Resolve all accepted paths inside the target feature directory.
 
-When `--full` is NOT specified, narrow the test scope to only what changed:
+### Process-first markers
 
-```
-1. git diff --name-only HEAD
-   → List all modified files since last commit
+- Flat markers are direct-child `plan.md` and `task-NN-*.md` entries.
+- The plan must be a regular file whose second line is exactly
+  `Specs-Contract: process-first-ready-v1`.
+- At least one task must be a regular direct child. Each task has one unique
+  identity, exactly one `Status:`, one `## Verification Plan`, a nonempty exact
+  `Command`, and nonempty exact unique `Named probes`.
+- A flat task without a plan, a plan without tasks, wrong/missing process
+  marker, malformed or duplicate task fields, symlink, directory, device, or
+  other nonregular flat marker returns `BLOCKED`.
 
-2. For each changed file:
-   a. Look for co-located test file:
-      src/auth/login.ts → src/auth/login.test.ts (same dir)
-   b. If not found, grep reverse import:
-      grep -r "from.*login" tests/ --include="*.test.*" -l
-   c. If changed file is a config (tsconfig, jest.config, package.json, .env):
-      → Escalate to full suite immediately
+### Legacy markers
 
-3. Count mapped tests vs total tests:
-   If mapped > 60% of total → run full suite (not worth the diff overhead)
+- Legacy markers are `spec.json`, nested legacy tasks, or separate legacy
+  receipts. Detect them even when orphaned or broken.
+- Legacy is selected only when a regular schema-valid `spec.json` has one
+  consistent identity and registry resolving every contained nested task and
+  receipt, and no flat marker exists.
+- Orphan nested tasks/receipts, absent or schema-invalid root, conflicting
+  identities, symlinks, nonregular markers, or unresolved/out-of-root entries
+  return `BLOCKED`.
 
-4. Run only mapped tests.
-   Report: "Blast-radius mode: N changed files → M test files mapped"
+### Precedence truth table
 
-5. Flag any changed file with NO matching test:
-   "[!] No tests found for `src/utils/parser.ts` — consider adding tests"
-```
+| Flat state | Legacy state | Result |
+|---|---|---|
+| valid | absent | process-first |
+| absent | valid | legacy adapter |
+| absent | absent | ordinary non-Spec scope |
+| any marker | any marker | `BLOCKED` mixed state |
+| invalid | absent | `BLOCKED` |
+| absent | invalid | `BLOCKED` |
 
----
+Do not infer that an invalid marker is absent. Testing never repairs, migrates,
+renames, deletes, or chooses between conflicting packet identities.
 
-## Phase B: Code Test Execution
+## 2. Select the smallest adequate proof
 
-### Pre-flight Checks (always run first)
+For process-first work, read current plan and active task bytes. The exact task
+Verification Plan is authoritative for command, named probes, reachability,
+oracle, counterexample, proof level, and artifacts. Run every required named
+probe exactly once unless the command's runner legitimately reports multiple
+executions; preserve those counts without deduplicating output.
 
-Catch compile errors before spending time on tests.
-**HARD RULE:** Do NOT auto-install missing tooling during verification. If a required pre-flight tool (like `eslint`, `flake8`, `tsc`) is missing, stop and report it as an environment gap or missing project setup.
+For ordinary scope, derive commands from current project files. Map changed
+files to co-located tests, reverse imports, entrypoints, consumers, configuration,
+and runtime surfaces. Escalate to a wider suite when configuration or shared
+infrastructure changes, mapped scope exceeds roughly 60 percent, or a required
+surface cannot be isolated. `--full` widens selection; it does not loosen proof.
 
-```bash
-# JavaScript / TypeScript
-npx tsc --noEmit          # Type check
-npx eslint . --max-warnings 0  # Lint
+Before an Ordinary non-Spec `PASS` or `PASS_WITH_WARNINGS`, read the tests that
+cover the target or changed code (every test file when the suite is small). A
+nondeterministic source in an assertion or its pass condition is `FAIL`, naming
+the source, even when every run passes. A source only in setup means rerunning
+just the suspect tests at least twice more; any differing outcome is `FAIL` as
+flaky (`failure-triage.md`). A process-first Named probe still runs exactly once.
 
-# Python
-python -m py_compile src/  # Syntax check
-flake8 src/                # Lint
+Run cheap project-provided prechecks before expensive tests. Do not auto-install
+missing runners, packages, browsers, or linters. A missing prerequisite is
+`BLOCKED`; a precheck that actually runs and fails is `FAIL`.
 
-# Go
-go vet ./...
+An exit-zero command with zero executed tests, any required skip/todo/cancel,
+or a required named probe that did not execute is not `PASS`.
 
-# Rust
-cargo check
+## 3. Side-effect boundary
 
-# Flutter
-flutter analyze
-```
+Before proof, record:
 
-If pre-flight fails or a required tool is missing → report `Compile Error` / `Environment Gap`, do NOT proceed to test execution.
+- runtime Base and Head;
+- tracked and untracked state;
+- ignored project paths relevant to the command;
+- absence or SHA-256 of `.hapo/test-memory.json`;
+- absence or bytes of any known Test-owned report, cache, or auth-state path.
 
-### Test Execution by Language
+Use a Test-owned temporary directory outside the project only when the command
+needs an ephemeral output location. Record contained artifacts before cleanup,
+then remove only that exact Test-owned temporary directory. Never clean project
+drift or overwrite user-owned files.
 
-```bash
-# JavaScript / TypeScript
-npm test                        # Auto-detect npm/yarn/pnpm/bun
-npm run test:coverage           # With coverage
-npx vitest run --coverage       # Vitest
-npx jest --coverage             # Jest
+After proof, compare all observations. Report project-command tracked,
+untracked, and ignored drift separately from runtime Head. A command may
+legitimately change project bytes, but Test must surface that drift; it cannot
+silently delete it, hide it, or call unchanged Head sufficient evidence.
 
-# Python
-pytest                          # Basic
-pytest --cov=src --cov-report=term-missing  # With coverage
+Test-owned memory, reports, caches, lazy installs, and auth state must remain
+byte-for-byte absent/unchanged. Any mutation makes required proof `FAIL`.
 
-# Go
-go test ./... -cover -coverprofile=coverage.out
+## 4. `test-proof-v1` schema
 
-# Rust
-cargo test
+Return canonical UTF-8 JSON with exactly these top-level keys and no others:
 
-# Flutter
-flutter test --coverage
-```
-
-After each command, parse the runner output for executed test count. A successful
-exit with 0 executed tests is `NO_TESTS`, not `PASS`.
-
-### Coverage Thresholds
-
-| Metric    | Minimum | Focus Areas                        |
-|-----------|---------|------------------------------------|
-| Lines     | 80%     | All business logic                 |
-| Branches  | 70%     | Error paths, conditionals          |
-| Functions | 80%     | Public API surfaces                |
-| Priority  | —       | Auth, payment, data mutation paths |
-
-### Build Verification (after tests pass)
-
-```bash
-npm run build          # JS/TS
-go build ./...         # Go
-cargo build --release  # Rust
-flutter build          # Flutter
-```
-
-Check for: unresolved deps, deprecation warnings, missing env vars.
-
----
-
-## Phase C: UI Verification via chrome-devtools Scripts
-
-**Script directory:** `packages/spec/src/claude/skills/chrome-devtools/scripts/`
-
-### Execution Model: Parallel Subagents
-
-UI verification is split across multiple `test-runner` subagents running **in parallel** to reduce total test time. Each subagent owns a distinct scope:
-
-```
-Caller (hapo:test)
-  │
-  ├─ Spawn simultaneously:
-  │   ├─ test-runner #1 → Phase C-pre + C-0 + C-1 + C-2 + C-3 (Auth, Smoke, Console, Network)
-  │   ├─ test-runner #2 → Phase C-4 + C-5 (Performance + Screenshots)
-  │   ├─ test-runner #3 → Phase C-6 + C-7 (Accessibility + SEO)
-  │   ├─ test-runner #4 → Phase C-8 (Security)
-  │   └─ test-runner #5 → Phase C-5b (User Flow, only if --ui-flow specified)
-  │
-  └─ Collect all verdicts → merge into single UI Results section
+```text
+schema_version, target, verdict, command, exit, counts, provenance,
+proof_level, expected, observed, reachability, artifacts, branches,
+raw_output, redactions, payload_sha256
 ```
 
-Each subagent must run **Phase C-pre (Lazy Install)** first before executing its assigned phases.
+Validate every nested object against a closed shape:
 
----
+- `schema_version`: exactly `test-proof-v1`.
+- `target`: exact keys `{feature, task_path}`. Both are nonempty strings;
+  `task_path` is a contained regular flat task path.
+- `verdict`: exactly `PASS | PASS_WITH_WARNINGS | FAIL | BLOCKED`.
+- `command`: exact task command string; nullable only for pre-execution
+  `BLOCKED`.
+- `exit`: integer; nullable only for pre-execution `BLOCKED`.
+- `counts`: exact keys `{executed, passed, failed, skipped}` with nonnegative
+  integers and `passed + failed + skipped === executed`.
+- `provenance`: exact keys `{base, head}`. Values are lowercase canonical Git
+  SHAs matching current runtime anchors; the whole field is nullable only for
+  pre-execution `BLOCKED` before repository identity is available.
+- `proof_level`: exactly `source | installed | live`; never promote one level
+  into another.
+- `expected`, `observed`, `raw_output`: nonempty redacted strings after any
+  attempted execution. For pre-execution `BLOCKED`, `observed` and `raw_output`
+  name the changed prerequisite and `expected` remains nonempty.
+- `reachability`: exact keys `{status, evidence}` where status is
+  `PASS | FAIL | BLOCKED` and evidence is an array of unique nonempty strings.
+- `artifacts`: sorted array of exact `{path, sha256}` rows. Every path is
+  contained and every digest is lowercase SHA-256.
+- `redactions`: unique sorted labels drawn only from `authorization`, `cookie`,
+  `set-cookie`, `credential`, `session-token`, `pii`; never include secret values.
+- `payload_sha256`: lowercase SHA-256 of canonical stable JSON after removing
+  only `payload_sha256`. The controller recomputes it.
 
-### Phase C-pre: Dependency Lazy Installation
+`branches` is a nonempty sorted array. Each row has exact keys:
 
-Chrome-devtools scripts require Puppeteer & Chromium. Installed strictly on first use.
-
-1. Check if `node_modules` exists:
-   `test -d packages/spec/src/claude/skills/chrome-devtools/scripts/node_modules`
-2. If NOT found:
-   Log: *"Preparing UI Testing environment (first-time setup)..."*
-   Run: `cd packages/spec/src/claude/skills/chrome-devtools/scripts && npm install`
-   *(Downloads Puppeteer & Chromium — may take 1-2 minutes.)*
-3. Proceed after successful installation.
-
----
-
-### Phase C-0: Auth Injection (only for `--ui-auth`)
-
-Ask user to log in manually and provide credentials. Then inject:
-
-```bash
-# Option A — Cookies
-node inject-auth.js --url <url> \
-  --cookies '[{"name":"session","value":"abc123","domain":".example.com"}]'
-
-# Option B — Bearer token
-node inject-auth.js --url <url> \
-  --token "Bearer eyJhbGci..." --header Authorization
-
-# Option C — localStorage
-node inject-auth.js --url <url> \
-  --local-storage '{"auth_token":"xyz","user_id":"123"}'
+```text
+id, required, verdict, command, exit, counts, proof_level
 ```
 
----
+- IDs equal the Verification Plan's exact unique Named probes, one row each.
+- `required` is exactly `true`; branch verdict and proof level use the same
+  closed enums.
+- `command` equals the task's exact command; `exit` is an integer; branch counts
+  use the same closed shape. Execution fields may be null only for a required
+  pre-execution `BLOCKED` branch, whose counts are all zero.
+- Reject unknown nested keys, duplicate/missing/extra branch IDs, contradictory
+  aggregate counts, command drift, proof-level promotion, and unsorted rows.
 
-### Phase C-0.5: Multi-page Discovery
+Payload counts cover required Named-probe executions only, not unrelated support
+tests reported by the same suite. Attribute each required execution to exactly
+one branch with no overlap or omission. Payload `executed`, `passed`, `failed`,
+and `skipped` each equal the element-wise sum of that field across every branch;
+any unattributed, multiply attributed, or unequal count is contradictory and
+returns `BLOCKED`.
 
-Before individual phase tests, crawl the site to discover all pages to test:
+A pre-execution `BLOCKED` payload for a task with two Named probes, when the
+packet failed classification after the repository had a commit:
 
-```bash
-# Navigate root URL, collect all internal links via evaluate.js
-node navigate.js --url <url> --wait-until networkidle2
-node evaluate.js --script "
-  Array.from(document.querySelectorAll('a[href]'))
-    .map(a => a.href)
-    .filter(h => h.startsWith(window.location.origin))
-    .filter((v,i,a) => a.indexOf(v) === i)
-" --output discovered-pages.json
+```json
+{
+  "schema_version": "test-proof-v1",
+  "target": {
+    "feature": "user-auth",
+    "task_path": "specs/user-auth/task-01-login.md"
+  },
+  "verdict": "BLOCKED",
+  "command": null,
+  "exit": null,
+  "counts": {
+    "executed": 0,
+    "passed": 0,
+    "failed": 0,
+    "skipped": 0
+  },
+  "provenance": {
+    "base": "4f2a9c0e7b1d3a5f6e8c9b0a1d2e3f4a5b6c7d8e",
+    "head": "9e8d7c6b5a4f3e2d1c0b9a8f7e6d5c4b3a2f1e0d"
+  },
+  "proof_level": "source",
+  "expected": "both Named probes pass under `node --test test/login.test.js`",
+  "observed": "BLOCKED before execution: specs/user-auth also holds spec.json, a legacy marker",
+  "reachability": {
+    "status": "BLOCKED",
+    "evidence": [
+      "not executed: the packet failed classification"
+    ]
+  },
+  "artifacts": [],
+  "branches": [
+    {
+      "id": "login accepts a valid password",
+      "required": true,
+      "verdict": "BLOCKED",
+      "command": null,
+      "exit": null,
+      "counts": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "proof_level": "source"
+    },
+    {
+      "id": "login rejects a wrong password",
+      "required": true,
+      "verdict": "BLOCKED",
+      "command": null,
+      "exit": null,
+      "counts": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "proof_level": "source"
+    }
+  ],
+  "raw_output": "not executed: the packet failed classification",
+  "redactions": [],
+  "payload_sha256": "b62c65f70d9cba41c4ab92c7dfb5a7db371aff609095525cc10a8adf147631f7"
+}
 ```
 
-Collects: list of all internal URLs on the site.
-If discovered pages > 20: sample top 10 by depth + priority pages (homepage, auth, key flows).
-Pass discovered URL list to subsequent phases — run checks on ALL discovered pages, not just the entry URL.
+`FAIL` variants: a branch with a nonzero exit or a failed count is `FAIL` and
+makes the payload `FAIL`; a reachability `FAIL` with every branch passing keeps
+the branches `PASS` and makes the payload `FAIL`.
 
----
+## 5. Aggregation and integrity
 
-### Phase C-1: Smoke Test (navigate.js)
+Aggregate required branches in strict order:
 
-```bash
-node navigate.js --url <url> --wait-until networkidle2
-```
+1. Any attempted required `FAIL` branch makes the payload `FAIL`.
+2. Any missing, invalid, unknown, or pre-execution blocked required branch makes
+   it `BLOCKED` unless a required attempted failure already exists.
+3. Any warning branch makes it `PASS_WITH_WARNINGS` unless a stronger result
+   exists.
+4. Only every required branch at literal `PASS` can reach payload `PASS`.
 
-Collects: `{success, url, title}`
-Fail if: `success: false` or unexpected redirect (e.g. to login page).
+Attempted `FAIL` has at least one of: nonzero exit, failed count, or
+`reachability.status: FAIL`. A payload may be `PASS` only with the exact command,
+exit 0, executed > 0, failed 0, skipped 0, matching current provenance, every
+branch `PASS`, reachability `PASS`, valid artifacts, safe redaction, and a valid
+digest. A contradictory payload returns `BLOCKED`; never repair it by guessing.
 
----
+## 6. Authenticated UI proof
 
-### Phase C-2: Console Error Audit (console.js)
+Use UI proof only for a reachable UI requirement.
 
-```bash
-node console.js --url <url> --types error,warn --duration 3000
-```
+1. Confirm the exact target is HTTPS or localhost, expected environment, and
+   safe origin before opening auth state.
+2. Prefer the project's native test login/helper. Otherwise require an
+   explicitly selected user-controlled browser profile.
+3. Confirm profile identity, permissions, tenant/environment, and allowed action
+   scope without exposing credentials.
+4. Bind approval to the confirmed origin. Stop on cross-origin redirects,
+   unexpected identity/permission, or auth challenges.
+5. Obtain fresh consent before a destructive production action. If consent or
+   safe isolation is unavailable, return `BLOCKED`.
+6. Never ask the user to paste credentials, cookies, bearer tokens, session
+   tokens, or local-storage auth; never export or persist them.
 
-Collects: `{messages[], messageCount}`
-Flag as `UI Console Error` if any `type: "error"` or `type: "pageerror"` found.
+Redact Authorization, Cookie, Set-Cookie, session tokens, credentials, and
+scoped PII from commands, request/response headers and bodies, console/network
+logs, screenshots, filenames, artifact metadata, raw output, and reports. If a
+required assertion cannot be shown without disclosure, return `BLOCKED`.
 
----
+UI depth is proportional: smoke/navigation first; add console/network,
+interaction flow, viewport/visual, accessibility, performance, SEO, or security
+only when the Verification Plan, behavior, or risk requires them. Multiple
+workers may own disjoint phases, but their outputs aggregate into one proof and
+must not write project state.
 
-### Phase C-3: Network Error Audit (network.js)
+## 7. Human report versus machine proof
 
-```bash
-node network.js --url <url> --types xhr,fetch
-```
+Return the validated `test-proof-v1` handoff to the controller and a separate
+concise report containing only verdict, scope, exact redacted command, exit,
+counts, reachability, proof level, project-command drift, and next action.
+Place the handoff as `SKILL.md` "Verdict and report" says: after the concise
+report, under `### Machine handoff (test-proof-v1)`, one fenced `json` block
+that follows the report and is not part of it.
 
-Collects: request/response pairs.
-Flag as `UI Network Error` if any response status is `4xx` or `5xx`.
+Do not paste verbose raw output, full JSON, credentials, PII, or screenshots into
+the report. Do not write a report file during proof. Process-first Status and
+inline `## Receipt` remain controller-only.
 
----
+## Legacy workflow compatibility
 
-### Phase C-4: Performance Metrics (performance.js)
-
-```bash
-node performance.js --url <url> --metrics
-```
-
-Collects Core Web Vitals: `LCP`, `FID`, `CLS`, `FCP`, `TTFB`, `JSHeapUsedSize`.
-
-| Metric       | Good    | Needs Work | Poor (BLOCK) |
-|--------------|---------|------------|--------------|
-| LCP          | < 2.5s  | 2.5–4s     | > 4s         |
-| CLS          | < 0.1   | 0.1–0.25   | > 0.25       |
-| FCP          | < 1.8s  | 1.8–3s     | > 3s         |
-| TTFB         | < 800ms | 800ms–1.8s | > 1.8s       |
-| JSHeapUsedSize | < 50MB | 50–100MB  | > 100MB (memory leak flag) |
-
----
-
-### Phase C-5: Responsive Screenshots (screenshot.js & gemini_batch_process.py)
-
-```bash
-# Capture screenshots
-node screenshot.js --url <url> --output screenshots/mobile-375.png --full-page true
-node screenshot.js --url <url> --output screenshots/desktop-1440.png --full-page true
-
-# AI Visual Analysis (Delegate to hapo:ai-multimodal Hub)
-pushd ../../ai-multimodal/scripts
-python gemini_batch_process.py --files "../../chrome-devtools/scripts/screenshots/mobile-375.png" --task analyze --prompt "Check for layout overlap"
-python gemini_batch_process.py --files "../../chrome-devtools/scripts/screenshots/desktop-1440.png" --task analyze --prompt "Check for layout overlap"
-popd
-```
-
-Flag as `UI Visual Error` if the AI analysis output reports any of the following:
-- Overlapping/overflowing elements (layout broken)
-- Text cut off or unreadable
-- Images not loading (broken img placeholders)
-
----
-
-### Phase C-5b: User Flow Testing (click.js + fill.js) — `--ui-flow` only
-
-Test critical user journeys (login, form submission, checkout flow):
-
-```bash
-# Step 1: Navigate to form page
-node navigate.js --url <url>/login
-
-# Step 2: Fill in form fields
-node fill.js --selector "#email" --value "test@example.com"
-node fill.js --selector "#password" --value "testpassword123"
-
-# Step 3: Click submit
-node click.js --selector "button[type=submit]"
-
-# Step 4: Verify success state
-node navigate.js --url <url>/dashboard  # Expect redirect to dashboard
-node screenshot.js --output screenshots/after-login.png
-node console.js --url <url>/dashboard --types error  # Should be 0 errors
-```
-
-Common flows to test:
-- **Auth flow**: Login → Dashboard → Logout
-- **Form submission**: Fill → Submit → Success/Error state
-- **CRUD flow**: Create → Read → Update → Delete (if applicable)
-
-Flag as `User Flow Error` if: redirect fails, form shows error, or console errors appear post-submit.
-
----
-
-### Phase C-6: Accessibility Snapshot (aria-snapshot.js)
-
-```bash
-node aria-snapshot.js --url <url> --output snapshots/aria.yaml
-```
-
-Flag as `Accessibility Error` if:
-- Interactive elements have no accessible name (`aria-label`, `aria-labelledby`, or visible text)
-- Form inputs lack associated `<label>` elements
-- Images missing `alt` text (role `img` with no name)
-
----
-
-### Phase C-7: SEO Audit (evaluate.js)
-
-Check SEO meta tags and structure via in-page JavaScript:
-
-```bash
-node evaluate.js --script "({
-  title: document.title,
-  description: document.querySelector('meta[name=description]')?.content,
-  og_title: document.querySelector('meta[property=\"og:title\"]')?.content,
-  og_image: document.querySelector('meta[property=\"og:image\"]')?.content,
-  canonical: document.querySelector('link[rel=canonical]')?.href,
-  h1_count: document.querySelectorAll('h1').length,
-  robots: document.querySelector('meta[name=robots]')?.content,
-  structured_data: !!document.querySelector('script[type=\"application/ld+json\"]')
-})"
-```
-
-Flag as `SEO Error` if:
-- `title` is empty or > 60 characters
-- `description` is missing or > 160 characters
-- `h1_count` is 0 (no H1) or > 1 (multiple H1)
-- `canonical` is missing
-- `og:title` or `og:image` is missing (important for social sharing)
-
-Also check `robots.txt` and `sitemap.xml` exist:
-```bash
-node navigate.js --url <url>/robots.txt
-node navigate.js --url <url>/sitemap.xml
-```
-
----
-
-### Phase C-8: Security Check (network.js + evaluate.js)
-
-Basic client-side security checks:
-
-```bash
-# Check response headers for security headers
-node network.js --url <url>
-
-# Check for visible secrets in page source
-node evaluate.js --script "
-  const src = document.documentElement.innerHTML;
-  const patterns = [
-    /api[_-]?key\s*=\s*['\"][a-zA-Z0-9]{20,}/i,
-    /secret[_-]?key\s*=\s*['\"][a-zA-Z0-9]{20,}/i,
-    /Bearer\s+[a-zA-Z0-9\-_]+\.[a-zA-Z0-9\-_]+\.[a-zA-Z0-9\-_]+/,
-    /password\s*=\s*['\"][^'\"]{6,}/i
-  ];
-  patterns.map(p => ({pattern: p.source, found: p.test(src)}))
-    .filter(r => r.found)
-"
-```
-
-Flag as `Security Warning` if:
-- Missing security headers: `X-Content-Type-Options`, `X-Frame-Options`, `Content-Security-Policy`
-- API keys, secrets, or JWT tokens visible in page HTML
-- Mixed content (HTTP resources on HTTPS page) detected via network audit
-- `autocomplete="off"` missing on password fields
+After a valid legacy route, preserve its v2.1 task/receipt adapter and existing
+proof rules. Separate legacy receipts remain legacy-only. Never search for or
+create a separate receipt for a process-first task, and never copy a legacy
+receipt into a flat task.

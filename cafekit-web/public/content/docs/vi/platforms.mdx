@@ -1,32 +1,21 @@
 ---
 title: Platforms
-description: Tổng quan runtime support cho Claude Code và OpenCode.
+description: Tổng quan runtime support cho Claude Code và Codex CLI.
 ---
 
 <DocsHero
   eyebrow="Platforms"
-  title="Claude Code và OpenCode đều có runtime self-contained riêng."
-  description="Installer detect target platform từ project markers và ghi runtime đầy đủ, độc lập. Chọn platform bên dưới để xem layout, hooks, plugins, commands chi tiết."
+  title="Claude Code và Codex CLI đều có runtime native."
+  description="Installer ghi đúng project surfaces của từng runtime nhưng giữ cùng shared CafeKit contract."
 />
 
 <PlatformMatrix />
 
-## Chọn platform
+## Current support
 
-- [Claude Code](/docs/platforms/claude) — `.claude/` skills, agents, hooks, runtime, và `CLAUDE.md`.
-- [OpenCode](/docs/platforms/opencode) — `.opencode/` skills, agents, plugins, runtime, và `AGENTS.md`.
+- [Claude Code](/docs/platforms/claude) — `.claude/` skills, agents, hooks, runtime và `CLAUDE.md`.
+- **Codex CLI** — `.agents/skills`, `.codex/agents`, rules, scripts, hooks, runtime và managed `AGENTS.md` block.
 
-Mỗi platform self-contained: OpenCode không depend vào file `.claude/`, Claude Code cũng không depend vào file `.opencode/`.
+Physical package dirs có thể giữ legacy internal names; public skill names vẫn là `ask`, `scout`, `fix`.
 
-## Detection
-
-| Platform | Markers |
-|---|---|
-| Claude Code | `.claude/`, `CLAUDE.md`, `.mcp.json` |
-| OpenCode | `.opencode/`, `AGENTS.md`, `opencode.json`, `opencode.jsonc` |
-
-Nếu detect cả hai, installer cho chọn từng target. Marker rỗng (vd `opencode.json: {}`) vẫn được coi là project marker hợp lệ.
-
-## Future platforms
-
-Cursor chưa phải runtime target trong installer hiện tại.
+OpenCode support kết thúc từ CafeKit 0.17. [Ghi chú OpenCode 0.16](/docs/platforms/opencode) chỉ còn cho migration lịch sử. Cursor chưa phải current packaged target.

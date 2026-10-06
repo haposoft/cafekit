@@ -1,296 +1,68 @@
 ---
 title: Spec lifecycle
-description: CafeKit の specification-driven development を intent から verified implementation まで理解します。
+description: Intent から reviewed plan、verified tasks、human completion までの process-first flow。
 ---
 
 <DocsHero
-  eyebrow="Specification-driven development"
-  title="SDD は intent と code の間にある contract layer。"
-  description="CafeKit は feature idea を source-backed requirements、design contracts、task packets、verification evidence、同期された machine state に変換してから implementation を進めます。"
+  eyebrow="Process-first specifications"
+  title="Plan は intent と code の durable contract。"
+  description="CafeKit は C1 で scope を確認し、plan.md と flat tasks を作成、C2 で findings を review、C3 の completion decision を user に残します。"
 />
 
 <SpecLifecycleMap />
 
-## CafeKit における SDD
-
-CafeKit の specification-driven development は、長い planning ceremony ではありません。AI coding を制御するための仕組みです。
-
-Assistant が code を書く前に、次の contract が永続化されている必要があります。
-
-- 何が in scope か
-- 何が out of scope か
-- どの requirements を満たす必要があるか
-- どの design contract を勝手に変更してはいけないか
-- 今 active な task packet は何か
-- done を証明する command と runtime proof は何か
-- proof 後にどの state file を同期するか
-
-重要なのは、chat memory は弱く、spec は強いという点です。Chat は忘れたり、要約を間違えたり、後から正当化したりします。`specs/<feature>/` は、次の assistant、reviewer、teammate が古い会話 context を信頼せず読める durable source of truth です。
-
-## Lifecycle at a glance
+## Lifecycle
 
 ```text
-/hapo:specs
-  -> validate spec artifacts
-  -> /hapo:develop one task packet
-  -> /hapo:test + /hapo:code-review
-  -> /hapo:sync after proof
+request
+  -> C1: outcome、scope、exclusions、constraints を確認
+  -> plan.md + flat task-NN-*.md
+  -> adversarial review
+  -> C2: accept、revise、または named finding を KEEP
+  -> planning stop
+  -> 新しい explicit /cf:develop invocation
+  -> exact verification + final inline Receipt
+  -> C3: proof と limitations が十分か user が決定
 ```
 
-これは SDD の main delivery loop です。Request が曖昧、architecture が未決、acceptance criteria が不明、複数 subsystem にまたがる場合は、この loop の前に optional pre-spec step として `/hapo:brainstorm` を使います。
+Planning は implementation を開始しません。Command、hook、reviewer、host state は C1/C2/C3 や execution proof を捏造できません。
 
 ## Artifact contract
 
-CafeKit specs は次の形で保存されます。
-
 ```text
 specs/<feature>/
-├── spec.json
-├── requirements.md
-├── research.md
-├── design.md
-├── tasks/
-│   ├── task-R0-01-<foundation>.md
-│   ├── task-R1-01-<feature-step>.md
-│   └── task-R2-01-<feature-step>.md
-└── reports/
-    └── red-team-report.md
+├── plan.md
+├── task-01-<slug>.md
+└── task-NN-<slug>.md
 ```
 
-<SpecArtifactGrid />
+`plan.md` は C1 decision、acceptance criteria、exclusions、findings decisions、dependencies、task map を保持します。各 flat task は one outcome と exactly one `Status:` を持ちます。
 
-Forbidden legacy artifacts:
+Task に必要な内容:
 
-- `init.json`
-- `spec-state.json`
-- `hydration.md`
+- outcome と explicit boundaries
+- owned files または surfaces
+- dependencies と blockers
+- plan に map された acceptance criteria
+- exact planned verification command
+- final inline `## Receipt`
 
-Task hydration は assistant UI 内で行われることがありますが、task files が source of truth です。Hydration を markdown artifact として書いてはいけません。
+## Human decisions
 
-## Phase-by-phase flow
-
-### 1. Intent を分析する
-
-`/hapo:specs <feature-description>` は、まず request が spec-ready か判断します。
-
-Output が曖昧、architecture choices が残っている、scope boundary が不明、acceptance criteria がない、複数 subsystem にまたがる場合は `/hapo:brainstorm` に route します。
-
-小さな one-file change なら、full spec は不要かもしれないと警告できます。SDD は意味のある feature work に厳しく使うもので、typo 修正を ceremony にするものではありません。
-
-### 2. Existing specs と dependencies を scan する
-
-新しい artifact を作る前に、CafeKit は `specs/` 内の incomplete specs と overlapping scope を確認します。
-
-同じ files、contracts、migrations、commands、runtime surfaces を複数 spec が同時に変更しないようにするためです。Dependency がある場合は `spec.json` に記録し、implementation order を見える状態にします。
-
-### 3. Complexity を評価し scope を lock する
-
-CafeKit は intent、implementation hypothesis、gap size、risk、blast radius を確認します。
-
-結果は `scope_lock` です。
-
-| Scope lock field | Meaning |
-|---|---|
-| `source` | Original request または approved design summary。 |
-| `in_scope` | Spec が deliver してよい behavior。 |
-| `out_of_scope` | Assistant が勝手に追加してはいけない behavior。 |
-| `expansion_policy` | 通常は `requires-user-approval`。 |
-
-Scope が確定した後、assistant は silent expansion、silent shrink、reinterpretation をしてはいけません。Scope change が必要なら、implementation shortcut ではなく spec update です。
-
-### 4. `spec.json` を作る
-
-`spec.json` は machine-readable state file です。status、current phase、approvals、scope、design context、task files、task registry、timestamps、readiness を管理します。
-
-| Field | Why it matters |
-|---|---|
-| `status` | Canonical values は `in_progress`, `blocked`, `done`, `archived`。New specs は legacy `in-progress` を出さない。 |
-| `current_phase` | `init`, `requirements`, `design`, `tasks`, `develop`, `test`, `review` のどこかを示す。 |
-| `scope_lock` | specs と implementation の hidden scope change を防ぐ。 |
-| `task_files` | Disk 上の `tasks/` files と完全一致する必要がある。 |
-| `task_registry` | 各 task file の machine state。 |
-| `ready_for_implementation` | Hard gate。approvals、registry sync、validation、task readiness がそろうまで true にしない。 |
-
-### 5. Requirements 前に evidence を書く
-
-Non-trivial spec では、requirements、design、tasks を finalize する前に `research.md` が必要です。
-
-Evidence の例:
-
-- targeted codebase scout findings
-- official/current external docs
-- package/runtime files からの constraints
-- trivial docs-only / isolated work の explicit skip rationale
-
-Evidence Summary には次を記録します。
-
-- codebase scout result
-- external research result または skip rationale
-- selected decision
-- rejected alternatives
-- remaining gaps
-- downstream task/test implications
-
-目的は、repo や upstream docs が答えられることを memory だけで requirements 化しないことです。
-
-### 6. Requirements を書く
-
-`requirements.md` は intent を testable behavior にします。Requirements は numeric IDs と verify 可能な acceptance criteria を持つべきです。
-
-Good requirements:
-
-- singular
-- unambiguous
-- testable
-- later tasks に map できる
-- security, performance, reliability, accessibility, migration, rollback などの NFR を明示する
-
-Verify できない requirement は implementation-ready ではありません。
-
-### 7. Design contracts を書く
-
-`design.md` は feature の作り方を説明します。単に "implement feature" と書く場所ではなく、後続 implementation が守る decisions を lock する場所です。
-
-Auth、session、transport、persistence、schemas、generated artifacts、commands、package exports、runtime-sensitive work では canonical contracts と invariants が必要です。これは `/hapo:develop` が勝手に差し替えてはいけない rules です。
-
-| Contract type | Must be explicit |
-|---|---|
-| Runtime entrypoint | route, command, worker, provider, hook, API boundary, UI mount. |
-| Persistence | schema, migration, datastore, deletion/retention policy. |
-| Transport | request/response shape, event contract, queue topic, CLI args. |
-| Integration | prior task output を import, mount, register, invoke する方法。 |
-| Testing | unit, integration, E2E, visual, accessibility, smoke, security, performance proof. |
-
-### 8. Task packets に分解する
-
-CafeKit は `/hapo:develop` に曖昧な feature を渡しません。Task packets を渡します。
-
-Task file naming:
-
-```text
-tasks/task-R{N}-{SEQ}-<slug>.md
-```
-
-`R0` は shared foundation、`R1+` は feature clusters です。Sequence は two digits です。
-
-Each task must contain:
-
-| Task section | Role |
-|---|---|
-| `Context` | なぜ task が存在し、どの outcome を目指すか。 |
-| `Constraints` | MUST, SHOULD, MUST NOT, scope guardrails. |
-| `Steps` | 実装可能な checklist。 |
-| `Requirements` | Covered requirement IDs and acceptance criteria. |
-| `Related Files` | Known exact paths。未確定なら finalize 前に scout。 |
-| `Completion Criteria` | Complete を証明する observable checks。 |
-| `Evidence` | Commands, artifact proof, runtime proof, negative-path proof, reachability proof. |
-| `Risk Assessment` | Risks, severity, mitigations. |
-
-Vague task files are invalid. Junior developer or AI coding agent should be able to execute without guessing.
-
-### 9. `task_registry` を作る
-
-`spec.json.task_registry` は task file path を key にします。
-
-Status values:
-
-- `pending`
-- `in_progress`
-- `blocked`
-- `done`
-
-Each registry entry needs:
-
-- `id`
-- `title`
-- `status`
-- `dependencies`
-- `blocker`
-- `started_at`
-- `completed_at`
-- `last_updated_at`
-
-Fresh verification evidence がない `done` は無効です。Proof がない場合、task は `pending`, `in_progress`, or `blocked` のままです。
-
-### 10. Readiness を validate する
-
-Implementation の前に実行します。
-
-```bash
-node .claude/scripts/validate-spec-output.cjs specs/<feature>
-```
-
-Validator は artifact shape、forbidden files、task path naming、required task sections、requirement coverage、task file inventory、`task_registry`、readiness consistency を確認します。
-
-<SpecReadinessGrid />
-
-`ready_for_implementation = true` は、spec structure、approvals、task files と registry の disk sync、validation requirements、task evidence expectations がそろった時だけ有効です。
-
-## How `/hapo:develop` uses the spec
-
-`/hapo:develop` は "whole idea から coding" ではありません。Task executor です。
-
-| Mode | Command | Behavior |
+| Gate | Question | Effect |
 |---|---|---|
-| Specific-task mode | `/hapo:develop <feature> <task-file>` | Exactly one task packet を load し、implement、verify、sync して stop。 |
-| Full-spec mode | `/hapo:develop <feature>` | `task_registry` から queue を作り、next pending unblocked task を処理し、state を reread。 |
+| C1 | 何を planning するか? | Outcome、scope、exclusions、constraints、未解決 choices を lock。 |
+| C2 | Material gaps または risks は何か? | User が accept、revision request、または named limitation を KEEP。 |
+| C3 | Current result は close に十分か? | User が current receipts と unresolved limitations を評価。 |
 
-Before coding, develop extracts:
+## Execution and proof
 
-- objective and constraints
-- related files
-- completion criteria
-- evidence commands
-- requirement IDs
-- named technologies and runtime choices
-- design contracts and invariants
-- prior task outputs that must be consumed
+`/cf:develop <feature>` は one unblocked task を選び、real integration path を scout、task boundary だけを実装し、exact proof command を実行します。Controller だけが task state と proof を書きます。
 
-Then it scouts real entrypoints and callers. Runtime-facing code is not done if it is only an orphan file. It must be imported, mounted, registered, invoked, or reachable from the real runtime boundary.
+Done task は exact command、`Exit: 0`、`Verification: PASS`、runtime-derived `Base`/`Head`、non-empty fenced current output を持つ current final inline Receipt が必要です。
 
-## Quality gate after implementation
+`NO_TESTS`、zero executed tests、stale output、acceptance と無関係な green command は pass しません。
 
-A task is complete only when all proof layers pass:
+## Sync boundary
 
-| Layer | Required truth |
-|---|---|
-| Automated verification | Compile/typecheck/build and exact task evidence commands pass. |
-| Spec compliance | Scoped requirements and design contracts are implemented with no hidden extras. |
-| Code review | No blocking correctness, security, architecture, or regression findings. |
-| Task evidence | Runtime/artifact proof, reachability, and negative paths match the Evidence section. |
-
-`NO_TESTS` is not a pass. A command exiting `0` with zero tests is not a pass. Build success alone is not enough proof for user-facing or runtime-facing work.
-
-## Practical SDD routine
-
-```bash
-/hapo:specs <approved idea>
-node .claude/scripts/validate-spec-output.cjs specs/<feature>
-/hapo:develop <feature> <task-file>
-/hapo:test <feature>
-/hapo:code-review --pending
-/hapo:sync <feature> <task-file> done
-```
-
-Idea が specs に入れるほど明確でない場合だけ、この routine の前に `/hapo:brainstorm <idea>` を使います。
-
-For larger specs, prefer one task per implementation session. Smaller diffs make evidence, review, and rollback easier.
-
-## When SDD is worth it
-
-Use the full SDD path when the work changes product behavior, touches multiple files, crosses runtime boundaries, updates auth/data/schema/package contracts, affects users, needs review evidence, or will be handed between people or assistant sessions.
-
-Skip or shorten it for truly trivial changes: typo, isolated copy edit, one-line config, or an emergency fix that belongs in `/hapo:hotfix`.
-
-## Core idea
-
-CafeKit SDD is a forcing function:
-
-- intent becomes scope
-- scope becomes requirements
-- requirements become design contracts
-- design becomes task packets
-- task packets become verified code
-- verified code becomes synchronized state
-
-That is the center of CafeKit. The assistant is successful only when the code matches the approved spec, is reachable in the real system, has evidence, passes review, and leaves accurate state for the next run.
+`/cf:sync` は observed task Status と inline Receipt だけを surgical update します。Execution、approval、readiness、completion は捏造しません。

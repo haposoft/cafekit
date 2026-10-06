@@ -31,4 +31,4 @@ Each requirement records current behavior only.
 ## Open Review Notes
 
 - Replace template examples with source-backed requirements.
-- Move requested future changes to `/hapo:specs`, not this file.
+- Move requested future changes to `/cf:specs`, not this file.

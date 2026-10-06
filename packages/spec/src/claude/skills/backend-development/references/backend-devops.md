@@ -50,7 +50,7 @@ kubectl rollout resume deployment/api
 
 ### Feature Flags (Progressive Delivery)
 
-**Impact:** 90% fewer deployment failures when combined with canary
+**Impact:** Fewer deployment failures when combined with canary
 
 ```typescript
 import { LaunchDarkly } from 'launchdarkly-node-server-sdk';
@@ -105,7 +105,7 @@ CMD ["node", "dist/main.js"]
 ```
 
 **Benefits:**
-- Smaller image size (50-90% reduction)
+- Smaller image size
 - Faster deployments
 - Reduced attack surface
 

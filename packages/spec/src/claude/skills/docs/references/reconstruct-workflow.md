@@ -1,6 +1,6 @@
 # Reconstruct Workflow
 
-Use this reference for `/hapo:docs --reconstruct <scope>`.
+Use this reference for `/cf:docs --reconstruct <scope>`.
 
 ## Goal
 
@@ -11,7 +11,7 @@ This is useful for:
 - existing systems with weak or missing documentation
 - legacy system modernization discovery
 - sales demos showing source-code-to-docs capability
-- preparing a reviewed baseline before `/hapo:specs` creates modernization/change specs
+- preparing a reviewed baseline before `/cf:specs` creates modernization/change specs
 
 ## Non-Goal
 
@@ -87,7 +87,7 @@ Use line numbers when available from reads. If exact line numbers are not availa
 Reconstruction is written for two readers:
 
 1. a domain reviewer who can confirm or reject recovered behavior
-2. a future `hapo:specs` run that needs an approved as-is baseline before change design
+2. a future `cf:specs` run that needs an approved as-is baseline before change design
 
 Write each document so those readers can separate:
 
@@ -144,7 +144,7 @@ Never silently reconstruct a large system as one flat document.
 
 ### 2. Structure And Source Scout
 
-Use `hapo:inspect` patterns or targeted reads to identify:
+Use `cf:scout` patterns or targeted reads to identify:
 
 - project type and language/framework
 - relevant screens/pages/routes
@@ -374,14 +374,14 @@ End with a clear review prompt:
 - answer unknowns
 - add business rules that are not present in code
 
-Do not recommend `/hapo:develop`.
+Do not recommend `/cf:develop`.
 
 Do not call the output approved until human review has resolved high-impact inferred and unknown behavior.
 
 Recommended handoff after review:
 
 ```text
-/hapo:specs <modernization/change request based on approved docs/as-is/<scope-slug>>
+/cf:specs <modernization/change request based on approved docs/as-is/<scope-slug>>
 ```
 
 ## Guardrails

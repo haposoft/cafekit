@@ -1,0 +1,12 @@
+# CafeKit local Codex runtime
+.env
+.env.*
+!.env.example
+!.env.sample
+!.env.template
+
+hooks/.logs/
+hooks/.privacy/
+session-state/
+.cafekit-update-cache.json
+*.tmp

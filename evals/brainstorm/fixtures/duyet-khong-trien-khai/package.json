@@ -1,0 +1,7 @@
+{
+  "name": "hodlite",
+  "version": "0.3.0",
+  "description": "Bảng điều khiển cục bộ cho các agent đang chạy",
+  "bin": { "hodlite": "bin/hodlite.js" },
+  "license": "MIT"
+}

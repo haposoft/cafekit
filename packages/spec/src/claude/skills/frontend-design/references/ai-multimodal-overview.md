@@ -79,7 +79,7 @@ Extract design systems systematically from high-quality references:
 4. Extract color palettes with hex codes
 5. Test integration with UI elements
 
-**Model**: gemini-2.5-flash (vision understanding)
+**Model**: gemma-4-31b-it (vision understanding)
 
 ### For Design Extraction
 **See**: `design-extraction.md`
@@ -90,7 +90,7 @@ Extract design systems systematically from high-quality references:
 4. Extract motion guidelines from videos (if applicable)
 5. Document actionably with CSS-ready specifications
 
-**Model**: gemini-2.5-flash (vision understanding)
+**Model**: gemma-4-31b-it (vision understanding)
 
 ## Integration with Other Skills
 
@@ -139,7 +139,7 @@ python scripts/gemini_batch_process.py \
   --task analyze \
   --prompt "[evaluation criteria]" \
   --output docs/assets/analysis.md \
-  --model gemini-2.5-flash
+  --model gemma-4-31b-it
 ```
 
 **Extract design guidelines**:
@@ -149,7 +149,7 @@ python scripts/gemini_batch_process.py \
   --task analyze \
   --prompt "[extraction criteria from design-extraction.md]" \
   --output docs/design-guidelines/extracted.md \
-  --model gemini-2.5-flash
+  --model gemma-4-31b-it
 ```
 
 ## Remember

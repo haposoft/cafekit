@@ -7,8 +7,8 @@ Comprehensive guide to mobile development frameworks: React Native, Flutter, and
 ### React Native
 - **Language**: JavaScript/TypeScript
 - **Stars**: 121,000+ on GitHub
-- **Adoption**: 35% of mobile developers, 67% familiarity
-- **Performance**: 80-90% native performance
+- **Adoption**: Broad adoption and familiarity among mobile developers
+- **Performance**: Near-native performance
 - **Architecture**: Bridge-based (legacy) → New Architecture (JSI, Fabric, Codegen)
 - **Rendering**: Native components
 - **Hot Reload**: Yes
@@ -17,8 +17,8 @@ Comprehensive guide to mobile development frameworks: React Native, Flutter, and
 ### Flutter
 - **Language**: Dart
 - **Stars**: 170,000+ on GitHub (fastest-growing)
-- **Adoption**: 46% of mobile developers
-- **Performance**: 85-95% native performance
+- **Adoption**: Broad adoption among mobile developers
+- **Performance**: Near-native performance
 - **Architecture**: "Everything is a widget"
 - **Rendering**: Custom Impeller rendering engine (eliminates jank)
 - **Hot Reload**: Yes (fastest in industry)
@@ -26,7 +26,7 @@ Comprehensive guide to mobile development frameworks: React Native, Flutter, and
 
 ### Native iOS (Swift/SwiftUI)
 - **Language**: Swift
-- **Performance**: 100% native
+- **Performance**: Native performance
 - **UI Framework**: SwiftUI (declarative) or UIKit (imperative)
 - **Latest**: Swift 6 with compile-time data race detection
 - **Tooling**: Xcode 16, Swift Package Manager
@@ -34,7 +34,7 @@ Comprehensive guide to mobile development frameworks: React Native, Flutter, and
 
 ### Native Android (Kotlin/Jetpack Compose)
 - **Language**: Kotlin
-- **Performance**: 100% native
+- **Performance**: Native performance
 - **UI Framework**: Jetpack Compose (declarative) or Views (imperative)
 - **Latest**: Kotlin 2.1, Compose 1.7
 - **Tooling**: Android Studio Hedgehog+
@@ -51,7 +51,7 @@ Comprehensive guide to mobile development frameworks: React Native, Flutter, and
 - **Turbo Modules**: Lazy-loaded native modules
 
 **Performance Optimizations**
-- **Hermes Engine**: 30-40% faster startup, reduced memory
+- **Hermes Engine**: Faster startup, reduced memory
 - **Native Driver Animations**: Offloaded to UI thread (60 FPS)
 - **FlatList Virtualization**: Renders only visible items
 - **Image Optimization**: FastImage library, progressive loading
@@ -81,14 +81,14 @@ src/
 4. **Context API**: Simple apps, avoid prop drilling
 
 **Navigation**
-- **React Navigation**: Industry standard, 80%+ adoption
+- **React Navigation**: Industry standard
 - Type-safe navigation with TypeScript
 - Deep linking configuration
 - Tab, stack, drawer navigators
 
 **TypeScript Adoption**
-- 85%+ of new React Native projects use TypeScript
-- Type safety prevents 15% of runtime errors
+- TypeScript is common in new React Native projects
+- Type safety helps prevent runtime errors
 - Better IDE support and autocomplete
 
 ### Testing Strategy
@@ -130,7 +130,7 @@ test('login button should be enabled when form is valid', async () => {
 - Rapid prototyping and MVPs
 - Strong community support needed
 - npm ecosystem integration
-- Commercial apps (12.57% market share)
+- Commercial apps
 
 **❌ Not Ideal For:**
 - Heavy graphics/gaming (use native or Unity)
@@ -254,7 +254,7 @@ testWidgets('Counter increments', (WidgetTester test-runner) async {
 - Move semantics for performance
 
 **SwiftUI vs UIKit**
-- **SwiftUI**: Declarative, 40% less code, iOS 13+, modern approach
+- **SwiftUI**: Declarative, less code, iOS 13+, modern approach
 - **UIKit**: Imperative, fine-grained control, legacy support, complex customizations
 - Both work together in same project
 
@@ -318,7 +318,7 @@ struct LoginView: View {
 
 **Jetpack Compose**
 - Declarative UI (like SwiftUI/React)
-- 60% adoption in top 1,000 apps
+- Widely adopted in top 1,000 apps
 - Material Design 3 integration
 - Compose compiler with Kotlin 2.0+
 

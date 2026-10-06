@@ -1,7 +1,7 @@
 {
   "name": "@haposoft/cafekit",
-  "version": "0.13.2",
-  "description": "Claude Code-first spec-driven workflow for AI coding assistants. Bundles CafeKit hapo: skills, runtime hooks, agents, and installer scaffolding.",
+  "version": "0.16.8",
+  "description": "Native spec-driven workflows for Claude Code and Codex CLI. Bundles CafeKit skills, runtime hooks, agents, and installer scaffolding.",
   "author": "Haposoft <nghialt@haposoft.com>",
   "license": "MIT",
   "private": false,
@@ -9,15 +9,32 @@
     "cafekit": "bin/install.js"
   },
   "scripts": {
-    "test": "node scripts/run-skill-self-tests.mjs"
+    "test": "node scripts/run-skill-self-tests.mjs",
+    "test:package": "node --test bin/__tests__/package-inventory.test.js",
+    "test:secrets": "node --test bin/__tests__/secret-scanner.test.js",
+    "test:policy": "node --test bin/__tests__/develop-contract.test.js",
+    "release:freeze": "node scripts/benchmark-workflow.mjs freeze"
   },
   "files": [
     "bin",
     "src",
     "README.md",
+    "!src/**/.logs/**",
+    "!src/**/*.log",
     "!src/**/.coverage",
-    "!src/**/__pycache__",
-    "!src/**/*.pyc"
+    "!src/**/.coverage/**",
+    "!src/**/__pycache__/**",
+    "!src/**/*.pyc",
+    "!src/**/.cache/**",
+    "!src/**/.state/**",
+    "!src/**/.tmp/**",
+    "!src/.codex/**",
+    "!src/claude/skills/backend-development/**",
+    "!src/claude/skills/frontend-development/**",
+    "!src/claude/skills/frontend-design/**",
+    "!src/claude/skills/mobile-development/**",
+    "!src/claude/skills/devops/**",
+    "!src/claude/skills/react-best-practices/**"
   ],
   "repository": {
     "type": "git",
@@ -34,6 +51,7 @@
     "spec-driven",
     "workflow",
     "claude-code",
+    "codex-cli",
     "ai-coding",
     "specification",
     "requirements",
@@ -44,11 +62,8 @@
   "engines": {
     "node": ">=18.0.0"
   },
-  "devDependencies": {
-    "@opencode-ai/plugin": "1.15.11"
-  },
   "dependencies": {
-    "@clack/prompts": "^1.5.0",
+    "@clack/prompts": "0.11.0",
     "picocolors": "^1.1.1"
   }
 }

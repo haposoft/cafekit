@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "cafekit-b1-config.example.json",
+  "title": "CafeKit B1 frozen experiment config (template only)",
+  "description": "Example/template only. Values are placeholders and must be replaced by a real freeze before validation or any run.",
+  "schema_version": "b1.v1",
+  "status": "example_template",
+  "experiment_id": "example-template-not-a-live-run",
+  "arm": "baseline",
+  "model": {
+    "name": "<model-name>",
+    "version": "<model-version>"
+  },
+  "reasoning_effort": "<reasoning-effort>",
+  "repo": {
+    "identifier": "<repo-or-sample-identifier>",
+    "commit": "<clean-commit-sha>",
+    "clean_initial_tree_sha": "sha256:<64-hex-clean-tree-digest>"
+  },
+  "permissions_fingerprint": "sha256:<64-hex-permissions-fingerprint>",
+  "tool_availability_fingerprint": "sha256:<64-hex-tool-availability-fingerprint>",
+  "corpus_sha256": "sha256:<64-hex-corpus-digest>",
+  "config_sha256": "sha256:<64-hex-config-digest-excluding-this-field>",
+  "repeat_policy": {
+    "repeats_per_task": 2,
+    "context_isolated": true,
+    "notes": "Choose repeats before execution; one repeat is exploratory only."
+  },
+  "input_usd_per_1k": 0,
+  "output_usd_per_1k": 0,
+  "live_run": false,
+  "template_notice": "FIXTURE/TEMPLATE ONLY: no baseline or treatment result is present."
+}

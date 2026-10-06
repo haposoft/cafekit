@@ -1,88 +1,31 @@
 # Skill Workflow Routing
 
-Use this rule instead of automatic prompt routing. Read the user's intent, choose the primary CafeKit workflow, then load the relevant `.claude/skills/<skill>/SKILL.md`.
+Use native semantic selection, not an automatic prompt-scoring hook. The live
+catalog is descriptive evidence only; it never grants authority or forces a
+workflow.
 
-Do not inject or force a skill when the user explicitly asks for a direct answer, a specific command, or a different workflow.
+## Proportional selection
 
-## Core Specification Workflow
+1. If the user names a valid installed skill, use it directly.
+2. If one obvious low-risk installed skill covers the intent, use it directly.
+3. For direct factual conversation, answer directly or use the installed
+   evidence-answer capability; do not spawn agents for ceremony.
+4. For ambiguous, multi-step, multi-domain, or elevated/high-risk work, classify
+   it yourself and compose the shortest valid chain below.
 
-```text
-/hapo:question -> /hapo:brainstorm -> /hapo:specs -> /hapo:develop -> /hapo:test -> /hapo:code-review -> /hapo:git
-```
+Resolve every abstract link against the current runtime catalog. An absent,
+invalid, folder-mismatched, duplicate, or retired entry is not routable. Continue
+inline when safe or name the gap; never fabricate a skill or agent.
 
-| User intent | Suggested start |
-|---|---|
-| ask about source code, docs, specs, config, dependencies, or external/current technical facts | `/hapo:question` |
-| vague request, missing acceptance criteria, unclear scope, stakeholder questions | ask one clarification or use `/hapo:brainstorm` |
-| unclear idea, possible approaches, scope tradeoffs | `/hapo:brainstorm` |
-| create requirements, design, task breakdown, validate spec | `/hapo:specs` |
-| implement an approved spec or a specific task file | `/hapo:develop` |
-| run tests, QA, runtime verification | `/hapo:test` |
-| review code quality, security, regressions, maintainability | `/hapo:code-review` |
-| commit, tag, push, branch, release prep | `/hapo:git` |
-
-## Bug And Incident Workflow
+## Chain shape
 
 ```text
-/hapo:debug -> /hapo:hotfix -> /hapo:test -> /hapo:code-review
+understand -> decide -> execute -> verify -> deliver
 ```
 
-| User intent | Suggested start |
-|---|---|
-| diagnose why something fails, find root cause, inspect CI/logs | `/hapo:debug` |
-| fix a known bug after diagnosis, urgent regression, production issue | `/hapo:hotfix` |
-| verify the fix and affected behavior | `/hapo:test` |
-| check side effects before closeout | `/hapo:code-review` |
+Collapse links whose output is already current and evidenced. Preserve one
+owner, entry condition, and observable exit per retained link. Diagnosis does
+not authorize repair; implementation does not authorize commit, push, deploy,
+publish, or release; no route expands the user's existing authority.
 
-`/hapo:debug` is diagnostic-only. Do not edit product code there. Use `/hapo:hotfix` when the user asks to fix.
-
-## Existing System Documentation Workflow
-
-```text
-/hapo:inspect -> /hapo:docs --reconstruct -> human review -> /hapo:specs -> /hapo:develop
-```
-
-| User intent | Suggested start |
-|---|---|
-| understand source structure or locate implementation areas | `/hapo:inspect` |
-| rebuild as-is docs/requirements from a legacy codebase | `/hapo:docs --reconstruct <scope>` |
-| update normal project docs | `/hapo:docs --update` |
-| initialize missing docs | `/hapo:docs --init` |
-| summarize a codebase without full docs work | `/hapo:docs --summarize` |
-
-Do not turn reconstructed docs directly into implementation. Human review must approve the as-is docs before `/hapo:specs` defines future changes.
-
-## Research And Analysis Workflow
-
-```text
-/hapo:inspect -> /hapo:impact-analysis -> /hapo:research
-```
-
-| User intent | Suggested start |
-|---|---|
-| file discovery, codebase structure, source scouting | `/hapo:inspect` |
-| affected files, blast radius, dependency impact, side effects | `/hapo:impact-analysis` |
-| external best practices, tool comparison, technical investigation | `/hapo:research` |
-
-Use `/hapo:research` for external knowledge. Use `/hapo:inspect` for local source truth.
-
-## Output Artifact Workflow
-
-| User intent | Suggested skill |
-|---|---|
-| diagrams, architecture maps, Mermaid/SVG/PNG graph output | `/hapo:generate-graph` |
-| PowerPoint or slide deck creation/editing | `/hapo:pptx` |
-| Word documents | `/hapo:docx` |
-| PDF processing | `/hapo:pdf` |
-| spreadsheets | `/hapo:xlsx` |
-| screenshots, images, audio, video, OCR, multimodal understanding | `/hapo:ai-multimodal` |
-
-## Selection Rules
-
-- Pick one primary workflow first.
-- Add a secondary skill only when it materially changes execution.
-- Prefer explicit user commands over this table.
-- If two workflows conflict, ask one concise clarification.
-- If the user asks a factual or project question before workflow selection, use `/hapo:question`.
-- If missing information blocks workflow selection, ask one concise clarification or use `/hapo:brainstorm`.
-- If the user asks to "fix" and root cause is unknown, start with `/hapo:debug` unless the issue is trivial and local.
+Use `skill-domain-routing.md` to resolve domain capability slots.

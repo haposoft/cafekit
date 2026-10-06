@@ -1,0 +1,14 @@
+schema_version: "1.1"
+name: rebind-base-moved
+tags: [sync-eval]
+runs: 20
+context:
+  scaffold_script: scaffold.sh
+execution:
+  # Câu gọi nêu tên skill, không bắt đầu bằng "/" (plan D-06): plugin tạm tên cafekit-sync nên /cf:sync không tồn tại trong eval.
+  # Hai ca rebind dùng CÙNG một câu; khác biệt duy nhất là lỗi cấy trong scaffold (task-02 fail ở rebind-verify-fails).
+  prompt: "Repo của mình ở ./box. Dùng skill cf:sync: receipt của gói specs/doi-ten đã cũ vì Base đã dời (có commit ngoài specs/) và hai file task bị sửa sau đó. Rebind lại receipt cho các task đã done."
+  # Đặt tay (plan D-07): mặc định 10 turn/300s của harness cắt ngang một lượt rebind hai task.
+  max_turns: 40
+  timeout_seconds: 1200
+  allowed_tools: [Read, Glob, Grep, Skill, Write, Edit, Bash]

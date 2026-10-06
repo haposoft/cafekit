@@ -12,7 +12,7 @@
  *   Stop          → persist full session state and archive
  *   SubagentStop  → append agent completion note to current state
  *
- * Storage: .claude/session-state/latest.md (+ archive/)
+ * Storage: <runtime>/session-state/latest.md (+ archive/)
  * Exit: 0 always (fail-open)
  */
 
@@ -23,6 +23,7 @@ try {
   const crypto = require('crypto');
   const { execSync } = require('child_process');
   const { parseTranscript } = require('./lib/parser.cjs');
+  const { runtimeDirName, runtimeDir, runtimePath } = require('./lib/runtime-dir.cjs');
 
   const EXPIRY_DAYS = 7;
   const MAX_ARCHIVES = 5;
@@ -32,8 +33,8 @@ try {
 
   function stateDir(cwd) {
     try {
-      const local = path.join(cwd, '.claude', 'session-state');
-      if (fs.existsSync(path.join(cwd, '.claude'))) {
+      const local = runtimePath(cwd, 'session-state');
+      if (fs.existsSync(runtimeDir(cwd))) {
         if (!fs.existsSync(local)) fs.mkdirSync(local, { recursive: true });
         return local;
       }
@@ -120,21 +121,46 @@ try {
       }
     }
 
+    const changed = [];
     try {
       const diff = execSync('git diff --name-only HEAD', {
         encoding: 'utf8',
         timeout: 3000,
         stdio: ['pipe', 'pipe', 'pipe']
       }).trim();
+      if (diff) changed.push(...diff.split('\n'));
+    } catch {
+      // A repository without HEAD can still report untracked files below.
+    }
 
-      if (diff) {
-        data.modifiedFiles = diff.split('\n').slice(0, MAX_MODIFIED_FILES_DISPLAY);
-      }
+    try {
+      const untracked = execSync('git ls-files --others --exclude-standard', {
+        encoding: 'utf8',
+        timeout: 3000,
+        stdio: ['pipe', 'pipe', 'pipe']
+      }).trim();
+      if (untracked) changed.push(...untracked.split('\n'));
     } catch {
       // fail-open
     }
+    data.modifiedFiles = [...new Set(changed)].slice(0, MAX_MODIFIED_FILES_DISPLAY);
 
     return data;
+  }
+
+  /**
+   * True when latest.md holds something beyond the filler this hook writes itself:
+   * headings, HTML comments, the three placeholder bullets and timestamp-only agent results.
+   */
+  function hasPriorContent(text) {
+    const filler = [
+      /^#{1,6}\s/,
+      /^<!--.*-->$/,
+      /^- \((No completed tasks recorded|All tasks completed|No file changes detected)\)$/,
+      /^- Completed at \d{2}:\d{2}:\d{2}$/,
+    ];
+    return text.split('\n').map((line) => line.trim())
+      .some((line) => line && !filler.some((pattern) => pattern.test(line)));
   }
 
   function buildStateContent(data) {
@@ -214,14 +240,19 @@ try {
     const stdin = fs.readFileSync(0, 'utf8').trim();
     if (!stdin) process.exit(0);
 
-    const data = JSON.parse(stdin);
+    const { normalizeHookPayload } = require('./lib/hook-payload.cjs');
+    const rawPayload = JSON.parse(stdin);
+    const data = normalizeHookPayload(rawPayload);
     const event = data.hook_event_name || '';
     const cwd = data.cwd || process.cwd();
     const dir = stateDir(cwd);
 
     if (event === 'SessionStart') {
       const previous = loadLatest(cwd);
-      if (previous) {
+      // Claude only: grok (camelCase sessionId), omp and Codex keep printing the block.
+      const claudeSession = runtimeDirName() === '.claude'
+        && typeof rawPayload.session_id === 'string' && rawPayload.session_id.length > 0;
+      if (previous && (!claudeSession || hasPriorContent(previous))) {
         console.log('\n=== Prior Execution Context ===');
         console.log(previous.trim());
         console.log('=== End of Prior Context ===\n');
@@ -270,7 +301,7 @@ try {
   try {
     const fs = require('fs');
     const path = require('path');
-    const logDir = path.join(__dirname, '.logs');
+    const logDir = require('./lib/hook-state-dir.cjs').hookStateDir();
     if (!fs.existsSync(logDir)) fs.mkdirSync(logDir, { recursive: true });
     fs.appendFileSync(
       path.join(logDir, 'hook-log.jsonl'),

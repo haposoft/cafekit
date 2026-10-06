@@ -4,7 +4,7 @@
  * Reads each platform's cafekit.json to compare the installed version with the
  * incoming one and decides whether to proceed:
  *
- *   same    → info + exit 0 (unless --force-overwrite)
+ *   same    → selective refresh (or full reset with --force-overwrite)
  *   newer   → normal update
  *   older   → downgrade warning + confirm (interactive) or abort (non-interactive)
  *   missing → fresh install, no check needed
@@ -43,7 +43,7 @@ function getInstalledVersion(platformKey) {
 
 /**
  * Check versions for all selected platforms and decide whether to proceed.
- * Sets ctx.cancelled on same-version (without --force) or unconfirmed downgrade.
+ * Sets ctx.cancelled on a skipped same-version refresh or unconfirmed downgrade.
  * Sets ctx.isUpdate = true when upgrading from an older version.
  * Shows interactive prompt when version differs, asking user what to do.
  */
@@ -65,18 +65,32 @@ async function checkVersions(ctx) {
     ctx.isUpdate = false;
     return ctx;
   }
+  const hasFreshPlatform = platformsWithInstall.length < ctx.platforms.length;
 
   // Get unique versions across all platforms
   const uniqueVersions = [...new Set(platformsWithInstall.map(p => p.installed))];
   const installedVersion = uniqueVersions.length === 1 ? uniqueVersions[0] : `${uniqueVersions.join(', ')}`;
 
-  // Determine overall comparison (assuming same version across platforms)
-  const firstPlatform = platformsWithInstall[0];
-  const cmp = cmpVersion(firstPlatform.installed, incoming);
+  const compared = platformsWithInstall.map((platform) => ({
+    ...platform,
+    cmp: cmpVersion(platform.installed, incoming)
+  }));
+  // Any downgrade risk takes precedence. Otherwise update every stale runtime
+  // even when the first selected runtime already matches the incoming version.
+  const firstPlatform = compared.find((platform) => platform.cmp > 0)
+    || compared.find((platform) => platform.cmp < 0)
+    || compared[0];
+  const cmp = compared.some((platform) => platform.cmp > 0)
+    ? 1
+    : compared.some((platform) => platform.cmp < 0) ? -1 : 0;
 
   // ── Same version ───────────────────────────────────────────────────────────
   if (cmp === 0) {
     ctx.isUpdate = false;
+
+    // A same-version runtime must not prevent adding another selected platform
+    // (for example, adding Codex to an existing Claude-only installation).
+    if (hasFreshPlatform) return ctx;
 
     if (ctx.options.forceOverwrite) {
       ctx.ui.info(ctx.t ? ctx.t('versionForceReinstall', { v: installedVersion }) : `Reinstalling CafeKit ${installedVersion} (--force-overwrite)...`);
@@ -84,14 +98,15 @@ async function checkVersions(ctx) {
     }
 
     if (!ctx.interactive) {
-      ctx.ui.info(ctx.t ? ctx.t('versionUpToDate', { v: installedVersion }) : `CafeKit ${installedVersion} is already up to date. Use --force-overwrite to reinstall.`);
-      ctx.cancelled = true;
+      ctx.ui.info(ctx.t
+        ? ctx.t('versionRefreshing', { v: installedVersion })
+        : `Refreshing CafeKit ${installedVersion}; user-modified files will be preserved.`);
       return ctx;
     }
 
     // Show current vs new and ask what to do
     const options = [
-      { value: 'reinstall', label: ctx.t ? ctx.t('reinstallOption') : 'Reinstall (overwrite managed files)' },
+      { value: 'refresh', label: ctx.t ? ctx.t('refreshOption') : 'Refresh managed files (preserve your edits)' },
       { value: 'skip', label: ctx.t ? ctx.t('skipOption') : 'Skip (exit)' }
     ];
 
@@ -105,10 +120,6 @@ async function checkVersions(ctx) {
     if (ctx.ui.isCancel(answer) || answer === 'skip') {
       ctx.cancelled = true;
       return ctx;
-    }
-
-    if (answer === 'reinstall') {
-      ctx.options.forceOverwrite = true;
     }
 
     return ctx;
@@ -193,6 +204,8 @@ async function checkVersions(ctx) {
     const msg = ctx.t
       ? ctx.t('versionDowngrade', { from: firstPlatform.installed, to: incoming })
       : `Downgrading ${firstPlatform.installed} → ${incoming}. This may remove features.`;
+
+    if (ctx.options.forceOverwrite) return ctx;
 
     if (!ctx.interactive) {
       ctx.ui.warn ? ctx.ui.warn(msg + ' Downgrade aborted in non-interactive mode. Use --force-overwrite to proceed.') : console.warn(msg);

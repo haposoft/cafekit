@@ -13,7 +13,7 @@ description: installed files、hooks、state checks、validators を理解しま
 
 ## Hooks
 
-Claude Code は `.claude/hooks/` の CommonJS hooks を使います。OpenCode は `.opencode/plugins/` の TypeScript plugins を使います。Plugin と hook の対応は [OpenCode platform](/docs/platforms/opencode) を参照してください。
+Claude Code は `.claude/hooks/` の CommonJS hooks を使います。Codex CLI は `.codex/hooks.json` の project hooks と `.codex/` の rules、scripts を使います。
 
 | Hook | Purpose |
 |---|---|
@@ -24,7 +24,6 @@ Claude Code は `.claude/hooks/` の CommonJS hooks を使います。OpenCode �
 | `docs-sync.cjs` | missing/stale project docs を検出します。 |
 | `state.cjs` | session state と modified-file summaries を保存します。 |
 | `agent.cjs` | subagent に path、locale、rule context を渡します。 |
-| `usage.cjs` | statusline cache 用に Claude usage limits を fetch します。 |
 
 ## Validators
 
@@ -39,7 +38,7 @@ validators は hard backstop です。prompt instructions は drift しますが
 
 ## State model
 
-- `spec.json` は phase、status、`task_files`、`task_registry` を保持します。
-- `tasks/task-R*.md` は context、steps、criteria、evidence を保持します。
+- `plan.md` は C1 scope、acceptance criteria、exclusions、C2 decisions、task map を保持します。
+- `task-NN-*.md` は one `Status:`、outcome、ownership、dependencies、proof command、final inline `## Receipt` を保持します。
 
-2つの layer は一緒に動く必要があります。chat は source of truth ではありません。
+Controller は observed state と proof だけを sync します。Chat は source of truth ではありません。

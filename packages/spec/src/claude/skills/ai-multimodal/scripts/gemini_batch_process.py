@@ -8,8 +8,8 @@ Supports all Gemini modalities:
 - Video: Summarization, Q&A, scene detection
 - Document: PDF extraction, structured output
 - Generation: Image creation via Imagen 4 or Nano Banana (Gemini native)
-  - Nano Banana 2 (gemini-3.1-flash-image-preview): Fastest, 95% Pro quality (default)
-  - Nano Banana Pro (gemini-3-pro-image-preview): Quality/4K text/reasoning
+  - Nano Banana 2 (gemma-4-31b-it-image): Fastest, 95% Pro quality (default)
+  - Nano Banana Pro (gemma-4-31b-it-image-preview): Quality/4K text/reasoning
   - Imagen 4 (imagen-4.0-*): Production-grade generation
 """
 
@@ -60,10 +60,10 @@ except ImportError:
 
 
 # Image generation model configuration
-# Default: gemini-3.1-flash-image-preview (Nano Banana 2 - 3-5x faster, 95% Pro quality)
+# Default: gemma-4-31b-it-image (Nano Banana 2 - 3-5x faster, 95% Pro quality)
 # Alternative: imagen-4.0-generate-001 (production quality)
 # All image generation requires billing - no completely free option exists
-IMAGE_MODEL_DEFAULT = 'gemini-3.1-flash-image-preview'  # Nano Banana 2 (fastest, near-Pro quality)
+IMAGE_MODEL_DEFAULT = 'gemma-4-31b-it-image'  # Nano Banana 2 (fastest, near-Pro quality)
 IMAGE_MODEL_FALLBACK = 'gemma-4-31b-it-image'  # Fallback if Nano Banana 2 fails
 IMAGEN_MODELS = {
     'imagen-4.0-generate-001',
@@ -138,7 +138,7 @@ def get_default_model(task: str) -> str:
             return model
         # Default to Nano Banana 2 (fastest, near-Pro quality)
         # Alternative: imagen-4.0-generate-001 for production quality
-        return 'gemini-3.1-flash-image-preview'
+        return 'gemma-4-31b-it-image'
 
     elif task == 'generate-video':
         model = os.getenv('VIDEO_GEN_MODEL')
@@ -180,8 +180,6 @@ def validate_model_task_combination(model: str, task: str) -> None:
             'imagen-4.0-generate-001',
             'imagen-4.0-ultra-generate-001',
             'imagen-4.0-fast-generate-001',
-            'gemini-3.1-flash-image-preview',
-            'gemini-3-pro-image-preview',
             'gemma-4-31b-it-image',
             'gemma-4-31b-it-image-preview',
         ]
@@ -1093,7 +1091,7 @@ Examples:
 
   # Generate images with Nano Banana Pro (4K text, reasoning)
   %(prog)s --task generate --prompt "Travel poster with text 'EXPLORE'" \\
-    --model gemini-3-pro-image-preview --aspect-ratio 3:4 --size 4K
+    --model gemma-4-31b-it-image-preview --aspect-ratio 3:4 --size 4K
 
   # Generate images with Imagen 4 (production quality)
   %(prog)s --task generate --prompt "Product photo of coffee mug" \\
@@ -1119,7 +1117,7 @@ Examples:
                        help='Aspect ratio for image/video generation')
     parser.add_argument('--num-images', type=int, default=1,
                        help='Number of images to generate (1-4, default: 1)')
-    # 4K available for Nano Banana Pro (gemini-3-pro-image-preview)
+    # 4K available for Nano Banana Pro (gemma-4-31b-it-image-preview)
     # Note: Not all models support --size, only use when needed
     parser.add_argument('--size', choices=['1K', '2K', '4K'], default=None,
                        help='Image size - 1K/2K for Imagen 4, 1K/2K/4K for Nano Banana (optional)')

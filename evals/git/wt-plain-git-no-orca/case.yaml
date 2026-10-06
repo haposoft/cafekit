@@ -1,0 +1,11 @@
+schema_version: "1.1"
+name: wt-plain-git-no-orca
+tags: [git-baseline]
+runs: 10
+context:
+  scaffold_script: scaffold.sh
+execution:
+  prompt: "Dùng skill cf:git để mở một worktree mới cho nhánh feat/x, mình muốn làm song song với nhánh đang làm. Repo nằm ở ./box/repo."
+  max_turns: 30
+  timeout_seconds: 600
+  allowed_tools: [Read, Glob, Grep, Skill, Bash, Edit, Write]

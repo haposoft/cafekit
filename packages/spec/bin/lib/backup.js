@@ -12,16 +12,54 @@
 
 const fs = require('fs');
 const path = require('path');
+const { assertNoSymlinkPath } = require('./path-safety');
 
 const BACKUP_ROOT = '.cafekit-backup';
+const SNAPSHOT_METADATA = 'snapshot.json';
+const SNAPSHOT_DATA = 'data';
+
+function validateTarget(target) {
+  if (typeof target !== 'string' || !target || target.includes('\0')) {
+    throw new Error('Backup target must be a non-empty relative path');
+  }
+
+  // Validate both separator styles so a snapshot created on one platform
+  // cannot become unsafe when restored on another.
+  const portable = target.replace(/\\/g, '/');
+  const parts = portable.split('/');
+  if (path.isAbsolute(target) || portable.startsWith('/') || parts.includes('..') || parts.includes('')) {
+    throw new Error(`Unsafe backup target: ${target}`);
+  }
+  if (portable === '.' || portable === BACKUP_ROOT || portable.startsWith(`${BACKUP_ROOT}/`)) {
+    throw new Error(`Unsafe backup target: ${target}`);
+  }
+  return parts.join(path.sep);
+}
+
+function validateRunId(runId) {
+  if (typeof runId !== 'string' || !runId || runId === '.' || runId === '..' || /[\\/]/.test(runId)) {
+    throw new Error('Backup runId must be a single path segment');
+  }
+  return runId;
+}
 
 /**
  * Recursively copy a directory tree (verbatim, no transforms). Used for
  * snapshot and restore. Skips if the source does not exist.
  */
 function copyTree(src, dest) {
-  if (!fs.existsSync(src)) return;
-  const stat = fs.statSync(src);
+  let stat;
+  try {
+    stat = fs.lstatSync(src);
+  } catch (error) {
+    if (error.code === 'ENOENT') return;
+    throw error;
+  }
+  if (stat.isSymbolicLink()) {
+    fs.mkdirSync(path.dirname(dest), { recursive: true });
+    fs.symlinkSync(fs.readlinkSync(src), dest);
+    return;
+  }
   if (stat.isDirectory()) {
     fs.mkdirSync(dest, { recursive: true });
     for (const entry of fs.readdirSync(src)) {
@@ -40,42 +78,68 @@ function copyTree(src, dest) {
 }
 
 /**
- * Snapshot the given platform folders (relative to cwd, e.g. ['.claude']).
- * Only existing folders are captured. Returns the backup directory path, or
- * null if nothing existed to back up (fresh install → no rollback target).
+ * Snapshot explicit targets (relative to cwd, e.g. ['.claude', 'CLAUDE.md']).
+ * Every target is recorded, including targets absent before the run.
  *
  * @param {string[]} folders
  * @param {string} runId  unique id for this run (timestamp-based)
  */
 function snapshot(folders, runId) {
-  const existing = folders.filter((f) => fs.existsSync(f));
-  if (existing.length === 0) return null;
-
-  const backupDir = path.join(BACKUP_ROOT, runId);
+  const targets = [...new Set(folders.map(validateTarget))];
+  const backupDir = path.join(BACKUP_ROOT, validateRunId(runId));
+  const dataDir = path.join(backupDir, SNAPSHOT_DATA);
+  assertNoSymlinkPath(BACKUP_ROOT);
   fs.mkdirSync(backupDir, { recursive: true });
 
-  for (const folder of existing) {
-    copyTree(folder, path.join(backupDir, folder));
+  const records = [];
+  for (const target of targets) {
+    assertNoSymlinkPath(target);
+    const existed = fs.existsSync(target);
+    records.push({ target, existed });
+    if (existed) copyTree(target, path.join(dataDir, target));
   }
+  fs.writeFileSync(
+    path.join(backupDir, SNAPSHOT_METADATA),
+    `${JSON.stringify({ schemaVersion: 1, targets: records }, null, 2)}\n`,
+    'utf8'
+  );
 
   return backupDir;
 }
 
 /**
- * Restore a snapshot back over the working tree. For each captured folder we
- * remove the current (possibly half-written) copy and replace it with the
- * snapshot, returning the tree to its pre-run state.
+ * Restore every explicit target to its pre-run state. Existing targets are
+ * replaced from backup; targets absent before the run are removed.
  *
  * @param {string} backupDir  path returned by snapshot()
  */
 function restore(backupDir) {
   if (!backupDir || !fs.existsSync(backupDir)) return;
 
-  for (const folder of fs.readdirSync(backupDir)) {
-    const target = folder; // backup mirrors cwd-relative folder names
-    const source = path.join(backupDir, folder);
+  const metadataPath = path.join(backupDir, SNAPSHOT_METADATA);
+  const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
+  if (metadata?.schemaVersion !== 1 || !Array.isArray(metadata.targets)) {
+    throw new Error(`Invalid backup metadata: ${metadataPath}`);
+  }
+
+  for (const record of metadata.targets) {
+    if (!record || typeof record.existed !== 'boolean') {
+      throw new Error(`Invalid backup target metadata: ${metadataPath}`);
+    }
+    const target = validateTarget(record.target);
+    const source = path.join(backupDir, SNAPSHOT_DATA, target);
+    let sourceExists = true;
+    try {
+      fs.lstatSync(source);
+    } catch (error) {
+      if (error.code === 'ENOENT') sourceExists = false;
+      else throw error;
+    }
+    if (record.existed && !sourceExists) {
+      throw new Error(`Backup data missing for target: ${target}`);
+    }
     fs.rmSync(target, { recursive: true, force: true });
-    copyTree(source, target);
+    if (record.existed) copyTree(source, target);
   }
 }
 

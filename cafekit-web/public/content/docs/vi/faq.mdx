@@ -9,13 +9,13 @@ description: Câu hỏi thường gặp về runtime và workflow của CafeKit.
   description="Lỗi CafeKit thường đến từ việc bỏ scope, bỏ validation, hoặc coi chat là state. Trang này làm rõ các edge case thường gặp."
 />
 
-## OpenCode đã supported chưa?
+## OpenCode hiện còn supported không?
 
-Có. Installer ghi runtime `.opencode/` self-contained với skills, agents, commands, rules, references, scripts, `runtime.json`, và TypeScript plugins trong `.opencode/plugins/`. Cũng ghi root `AGENTS.md` và merge `opencode.json`. OpenCode không chia sẻ file với `.claude/`.
+Không. Release hiện tại support Claude Code và Codex CLI. OpenCode support kết thúc từ CafeKit 0.17; site chỉ giữ command map 0.16 cho migration lịch sử.
 
-## Task nào cũng cần `/hapo:specs`?
+## Task nào cũng cần `/cf:specs`?
 
-Không. Dùng specs cho feature work có ý nghĩa. Dùng `/hapo:debug` và `/hapo:hotfix` cho bugs. Fix nhỏ local có thể không cần full spec.
+Không. Dùng specs cho feature work có ý nghĩa. Dùng `/cf:debug` và `/cf:fix` cho bugs. Fix nhỏ local có thể không cần full spec.
 
 ## Vì sao CafeKit cần task files?
 
@@ -27,8 +27,8 @@ Không. Nó chỉ nói rằng chưa có test suite thật nào chạy. Build hea
 
 ## Có thể mark `done` từ chat không?
 
-Không. `done` cần state sync vật lý trong `spec.json` và task markdown sau verify mới.
+Không. `done` cần fresh verification và final inline Receipt hiện tại trong task. C3 vẫn là quyết định completion của user.
 
 ## Production bug thì dùng gì?
 
-Bắt đầu bằng `/hapo:debug` khi chưa biết root cause. Dùng `/hapo:hotfix` sau diagnosis hoặc khi bug và target fix đã rõ.
+Bắt đầu bằng `/cf:debug` khi chưa biết root cause. Dùng `/cf:fix` sau diagnosis hoặc khi bug và target fix đã rõ.

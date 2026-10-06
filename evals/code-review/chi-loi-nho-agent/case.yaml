@@ -1,0 +1,11 @@
+schema_version: "1.1"
+name: chi-loi-nho-agent
+tags: [code-review-baseline]
+runs: 10
+context:
+  scaffold_script: scaffold.sh
+execution:
+  prompt: "Nhờ agent code-auditor review commit cuối giúp mình, chỉ là đổi tên biến cho rõ."
+  max_turns: 40
+  timeout_seconds: 900
+  allowed_tools: [Read, Glob, Grep, Skill, Bash, Edit, Write, Agent]

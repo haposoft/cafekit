@@ -23,22 +23,38 @@ description: Commands, package facts, files, và state values.
 
 ## Command cheatsheet
 
-| Claude Code command | OpenCode command | Purpose |
-|---|---|---|
-| `/hapo:question` | `/question` | Trả lời câu hỏi về project và kỹ thuật bằng source evidence trước. |
-| `/hapo:brainstorm` | `/brainstorm` | Làm rõ idea trước khi spec. |
-| `/hapo:specs` | `/specs` | Create, resume, validate, approve specs. |
-| `/hapo:develop` | `/develop` | Implement approved task packets. |
-| `/hapo:test` | `/test` | Task-aware verification. |
-| `/hapo:code-review` | `/code-review` | Review regressions và security. |
-| `/hapo:sync` | — | Sync task status, `task_registry`, task markdown, phase, hoặc audit drift. |
-| `/hapo:debug` | `/debug` | Diagnose trước khi fix. |
-| `/hapo:hotfix` | `/hotfix` | Narrow diagnosed fixes. |
-| `/hapo:docs` | `/docs` | Create, update, summarize, reconstruct docs. |
-| `/hapo:inspect` | `/inspect` | Scout source files và structure. |
-| `/hapo:generate-graph` | `/generate-graph` | Generate technical diagrams. |
+Cột thứ hai chỉ ghi lại command surface OpenCode 0.16 đã đóng băng để phục vụ
+migration lịch sử. OpenCode không còn là runtime hiện tại và các entry này
+không phải alias cho command Claude hoặc Codex hiện tại.
 
-OpenCode hiện có generated slash commands cho surface implementation chính. Skill `sync` vẫn được ship trong shared skill bundle, nhưng installer hiện chưa tạo wrapper `/sync` cho OpenCode.
+| Claude Code command | Legacy OpenCode 0.16 command | Purpose |
+|---|---|---|
+| `/cf:ask` | `/question` | Trả lời câu hỏi về project và kỹ thuật bằng source evidence trước. |
+| `/cf:brainstorm` | `/brainstorm` | Làm rõ idea trước khi spec. |
+| `/cf:specs` | `/specs` | Tạo process-first plan và flat tasks qua C1/C2. |
+| `/cf:develop` | `/develop` | Execute từng approved flat task. |
+| `/cf:test` | `/test` | Task-aware verification. |
+| `/cf:code-review` | `/code-review` | Review regressions và security. |
+| `/cf:sync` | — | Sync observed task Status và final inline Receipt. |
+| `/cf:debug` | `/debug` | Diagnose trước khi fix. |
+| `/cf:fix` | `/hotfix` | Narrow diagnosed fixes. |
+| `/cf:docs` | `/docs` | Bundle tuỳ chọn: create, update, summarize, reconstruct docs. |
+| `/cf:scout` | `/inspect` | Scout source files và structure. |
+
+Với bản cài OpenCode 0.16 lịch sử, installer từng tạo slash commands cho surface implementation chính. Skill `sync` được ship trong shared skill bundle, nhưng installer không tạo wrapper `/sync` cho OpenCode.
+
+## Chọn và nạp skill
+
+Native selection dùng progressive disclosure: metadata của live catalog xác
+định candidate, `SKILL.md` đã chọn định nghĩa contract, rồi chỉ các references
+liên quan mới được đọc. Với yêu cầu explicit hoặc low-risk rõ ràng, invoke trực
+tiếp installed skill. Chỉ ghép chuỗi ngắn khi yêu cầu mơ hồ, nhiều bước, nhiều
+domain, hoặc risk cao. Nếu skill hay agent không có, tiếp tục inline khi an toàn
+hoặc báo rõ gap; document skills tuỳ chọn chỉ dùng khi đã cài.
+
+Hooks không phải router và không tự chọn capability. Source và installed
+projection parity đã được test, nhưng live-model adherence vẫn `UNPROVEN`; lựa
+chọn ngữ nghĩa không tất định và không được đảm bảo.
 
 ## Claude file structure
 

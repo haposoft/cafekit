@@ -27,7 +27,7 @@ python scripts/gemini_batch_process.py \
   --task analyze \
   --prompt "[see extraction-prompts.md for detailed prompt]" \
   --output docs/design-guidelines/extracted-design-system.md \
-  --model gemini-2.5-flash
+  --model gemma-4-31b-it
 ```
 
 ### Multi-Screen System Extraction
@@ -37,7 +37,7 @@ python scripts/gemini_batch_process.py \
   --task analyze \
   --prompt "[see extraction-prompts.md for multi-screen prompt]" \
   --output docs/design-guidelines/complete-design-system.md \
-  --model gemini-2.5-flash
+  --model gemma-4-31b-it
 ```
 
 ### Video Motion Analysis
@@ -47,7 +47,7 @@ python scripts/gemini_batch_process.py \
   --task analyze \
   --prompt "[see extraction-prompts.md for motion prompt]" \
   --output docs/design-guidelines/motion-system.md \
-  --model gemini-2.5-flash
+  --model gemma-4-31b-it
 ```
 
 ### Competitive Analysis
@@ -57,7 +57,7 @@ python scripts/gemini_batch_process.py \
   --task analyze \
   --prompt "[see extraction-prompts.md for competitive prompt]" \
   --output docs/design-guidelines/competitive-analysis.md \
-  --model gemini-2.5-flash
+  --model gemma-4-31b-it
 ```
 
 ## Detailed References

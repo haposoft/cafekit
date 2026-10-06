@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "cafekit-change-firewall-freeze.schema.json",
+  "title": "CafeKit C9 FreezeManifest",
+  "description": "Mutable, non-tracked candidate freeze at packages/spec/.cafekit-release/change-firewall-freeze.json. Sole canonical, exact field-list authority for candidateDigest's binding.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "baselineAuthorityDigest", "baselineGeneration", "baselineCommit",
+    "failureLedgerDigest", "failureLedgerGeneration", "remediatedFailureIds",
+    "changeKind", "proposalDigest", "treeDigest", "changedPaths",
+    "packageVersion", "candidateDigest"
+  ],
+  "properties": {
+    "baselineAuthorityDigest": { "$ref": "#/$defs/sha256" },
+    "baselineGeneration": { "type": "integer", "minimum": 0 },
+    "baselineCommit": { "$ref": "#/$defs/commit" },
+    "failureLedgerDigest": { "$ref": "#/$defs/sha256" },
+    "failureLedgerGeneration": { "oneOf": [{ "type": "integer", "minimum": 0 }, { "type": "null" }] },
+    "remediatedFailureIds": {
+      "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 }
+    },
+    "changeKind": { "enum": ["protected_change", "no_protected_change"] },
+    "proposalDigest": { "$ref": "#/$defs/sha256" },
+    "treeDigest": { "$ref": "#/$defs/sha256" },
+    "changedPaths": {
+      "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 }
+    },
+    "packageVersion": { "type": "string", "minLength": 1 },
+    "candidateDigest": { "$ref": "#/$defs/sha256" }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" }
+  }
+}

@@ -1,7 +1,7 @@
 /**
  * Phase: post-install runtime configuration.
  *
- * OpenCode model + addressing config. Interactive prompts use ctx.ui (clack);
+ * Addressing config. Interactive prompts use ctx.ui (clack);
  * in non-interactive/dry-run they are skipped via fallbacks so spawned/CI runs
  * never hang.
  *
@@ -15,7 +15,59 @@ const fs = require('fs');
 const path = require('path');
 const { PLATFORMS } = require('../lib/context');
 const { LANGUAGE_LABELS } = require('../lib/i18n');
-const { setupOpenCodeModel } = require('../lib/opencode-install');
+const { transformManagedCodexContent } = require('../lib/codex-install');
+const { transformManagedClaudeContent } = require('./claude-runtime');
+const { transformManagedCoreContent } = require('../lib/instruction-blocks');
+const ASSISTANT_NAMES = {
+  claude: 'Claude Code',
+  codex: 'Codex CLI'
+};
+const LANGUAGE_LABEL_BY_CODE = {
+  vi: 'Vietnamese',
+  ja: 'Japanese',
+  en: 'English'
+};
+
+function readManagedBody(filePath, transformManagedContent) {
+  const content = fs.readFileSync(filePath, 'utf8');
+  let body = '';
+  transformManagedContent(content, (managed) => {
+    body = managed;
+    return managed;
+  });
+  return body;
+}
+
+function instructionTargets(ctx) {
+  const targets = {
+    claude: {
+      file: path.join(process.cwd(), 'CLAUDE.md'),
+      transform: transformManagedClaudeContent
+    },
+    codex: {
+      file: path.join(process.cwd(), 'AGENTS.md'),
+      transform: transformManagedCodexContent
+    },
+  };
+  return Object.keys(targets)
+    .filter((key) => ctx.platforms.includes(key))
+    .map((key) => ({ key, ...targets[key] }));
+}
+
+function updateInstructionTarget(target, updateManaged) {
+  if (!fs.existsSync(target.file)) return false;
+  const content = fs.readFileSync(target.file, 'utf8');
+  const next = target.transform(content, updateManaged);
+  if (next === content) return false;
+  fs.writeFileSync(target.file, next, 'utf8');
+  return true;
+}
+
+function trackerOwnsPath(tracker, filePath) {
+  if (!tracker?.keyFor) return false;
+  const trackedKey = tracker.keyFor(filePath);
+  return tracker.recorded(trackedKey) !== null;
+}
 
 /** Write `"language"` field into .claude/settings.json so it's visible at a glance. */
 function patchSettingsLanguage(ctx) {
@@ -31,54 +83,46 @@ function patchSettingsLanguage(ctx) {
   }
 
   // Use locale (freeform label) so "Korean" shows correctly, not just "en".
-  const label = ctx.locale || LANGUAGE_LABELS[ctx.lang] || ctx.lang;
-  if (settings.language === label) return;
+  const label = ctx.locale;
+  if (!label) return;
   settings.language = label;
   fs.writeFileSync(settingsPath, `${JSON.stringify(settings, null, 2)}\n`, 'utf8');
 }
 
 /**
- * Patch the "## Language Consistency" section in CLAUDE.md with the chosen
- * language so every AI session knows which language to respond in — without
- * relying on hooks reading runtime.json.
- *
- * The section is identified by a stable marker comment so subsequent installs
- * can update it idempotently.
+ * Patch the "## Language Consistency" section in the shared AGENTS.md core
+ * block so every installed platform uses the chosen response language.
  */
 function patchLanguageSection(ctx) {
-  if (!ctx.platforms.includes('claude')) return;
-  // Skip when locale is English (default — no override needed in CLAUDE.md).
-  const locale = ctx.locale || ctx.lang;
+  // No explicit/saved locale means follow the user's language; do not inject an
+  // English override into the shared core block.
+  const locale = ctx.locale;
   if (!locale || locale === 'en' || locale === 'English') return;
 
-  const claudeMdFile = path.join(process.cwd(), 'CLAUDE.md');
-  if (!fs.existsSync(claudeMdFile)) return;
-
-  const LANG_LABEL = { vi: 'Vietnamese', ja: 'Japanese', en: 'English' };
   // Use locale directly when set (e.g. "Korean"), or map from lang code.
-  const label = locale in LANG_LABEL ? LANG_LABEL[locale] : locale;
-
+  const label = locale in LANGUAGE_LABEL_BY_CODE ? LANGUAGE_LABEL_BY_CODE[locale] : locale;
   const newSection = `## Language Consistency <!-- cafekit:lang -->
 
-Always respond in **${label}**. Technical terms, code identifiers, and file paths may remain in English, but all explanations, comments directed at the user, and structured output (specs, docs, reports) must be in ${label}.
+Always respond in **${label}**. Technical terms, code identifiers, and file paths may remain in English, but explanations, comments directed at the user, and structured output must be in ${label}.
 
 `;
-
-  let content = fs.readFileSync(claudeMdFile, 'utf8');
-  // Replace if marker present, else replace the generic section.
   const markerRe = /## Language Consistency <!-- cafekit:lang -->[\s\S]*?(?=\n##|\n*$)/;
   const genericRe = /## Language Consistency\n[\s\S]*?(?=\n##|\n*$)/;
+  const target = path.join(process.cwd(), 'AGENTS.md');
 
-  if (markerRe.test(content)) {
-    content = content.replace(markerRe, newSection);
-  } else if (genericRe.test(content)) {
-    content = content.replace(genericRe, newSection);
-  } else {
-    content += `\n${newSection}\n`;
-  }
-
-  fs.writeFileSync(claudeMdFile, content, 'utf8');
+  updateInstructionTarget(
+    {
+      file: target,
+      transform: transformManagedCoreContent
+    },
+    (managed) => {
+      if (markerRe.test(managed)) return managed.replace(markerRe, newSection);
+      if (genericRe.test(managed)) return managed.replace(genericRe, newSection);
+      return `${managed.trimEnd()}\n\n${newSection}\n`;
+    }
+  );
 }
+
 function patchRuntimeLocale(ctx) {
   for (const key of ctx.platforms) {
     const rtPath = path.join(PLATFORMS[key].folder, 'runtime.json');
@@ -91,53 +135,63 @@ function patchRuntimeLocale(ctx) {
     }
     data.locale = data.locale || {};
     // Use locale (freeform label) so custom languages propagate to the AI hook.
-    const locale = ctx.locale || ctx.lang;
+    // A null locale intentionally leaves the runtime's current value untouched.
+    const locale = ctx.locale;
+    if (!locale) continue;
     if (data.locale.responseLanguage === locale) continue;
+    // Hardening: never downgrade an existing configured label to a bare default
+    // code when this run never made an explicit language choice (ctx.locale
+    // empty). Protects user config on any code path that skips selectLanguage.
+    if (!ctx.locale && data.locale.responseLanguage) continue;
     data.locale.responseLanguage = locale;
     fs.writeFileSync(rtPath, `${JSON.stringify(data, null, 2)}\n`, 'utf8');
-    if (ctx.trackers[key]) ctx.trackers[key].record(rtPath);
+    // A preserved user-created/user-modified runtime was deliberately not
+    // recorded by managed-writer. Updating its explicit locale must not turn
+    // the whole user file into a pristine CafeKit ownership baseline.
+    const tracker = ctx.trackers[key];
+    if (trackerOwnsPath(tracker, rtPath)) tracker.record(rtPath);
   }
 }
 
 /** Human assistant name for the active platform(s). */
-function assistantName(ctx) {
-  return ctx.platforms.includes('claude') ? 'Claude Code' : 'OpenCode';
+function assistantName(platformKey) {
+  return ASSISTANT_NAMES[platformKey] || platformKey;
 }
 
 function configureAddressing(ctx, userAddress) {
-  const claudeMdFile = path.join(process.cwd(), 'CLAUDE.md');
-  if (!fs.existsSync(claudeMdFile)) {
-    ctx.ui.warn('CLAUDE.md not found at project root; skipped addressing');
-    return;
-  }
-
-  const name = assistantName(ctx);
-  let content = fs.readFileSync(claudeMdFile, 'utf8');
-  const addressingSection = `## Addressing (Context Overflow Indicator)
+  let found = false;
+  for (const target of instructionTargets(ctx)) {
+    if (!fs.existsSync(target.file)) continue;
+    found = true;
+    const name = assistantName(target.key);
+    const addressingSection = `## Addressing (Context Overflow Indicator)
 
 ${name} always addresses the user as "${userAddress}" throughout the conversation. If it stops doing so, it is a sign the context has been compacted/truncated — tell the user to consider \`/clear\`.`;
 
-  // Idempotent: replace existing section (shared marker) or append.
-  const regex = /##[^\n]*Context Overflow Indicator[^\n]*[\s\S]*?(?=\n##|\n*$)/;
-  content = regex.test(content)
-    ? content.replace(regex, addressingSection)
-    : `${content.endsWith('\n') ? content : `${content}\n`}\n${addressingSection}\n`;
-
-  fs.writeFileSync(claudeMdFile, content, 'utf8');
-  ctx.ui.success(ctx.t('addressingSet', { name, addr: userAddress }));
+    const regex = /##[^\n]*Context Overflow Indicator[^\n]*[\s\S]*?(?=\n##|\n*$)/;
+    const changed = updateInstructionTarget(target, (managed) => (
+      regex.test(managed)
+        ? managed.replace(regex, addressingSection)
+        : `${managed.endsWith('\n') ? managed : `${managed}\n`}\n${addressingSection}\n`
+    ));
+    if (changed) {
+      ctx.ui.success(ctx.t('addressingSet', { name, addr: userAddress }));
+    }
+  }
+  if (!found) ctx.ui.warn('Project instruction file not found; skipped addressing');
 }
 
 async function setupAddressing(ctx) {
-  if (!ctx.platforms.includes('claude')) return;
+  if (!ctx.platforms.some((key) => key === 'claude' || key === 'codex')) return;
 
-  // Check if there's already an addressing section in CLAUDE.md
-  const claudeMdFile = path.join(process.cwd(), 'CLAUDE.md');
   let existingName = null;
-  if (fs.existsSync(claudeMdFile)) {
-    const content = fs.readFileSync(claudeMdFile, 'utf8');
+  for (const target of instructionTargets(ctx)) {
+    if (!fs.existsSync(target.file)) continue;
+    const content = readManagedBody(target.file, target.transform);
     const match = content.match(/##[^\n]*Context Overflow Indicator[^\n]*[\s\S]*?always addresses the user as "([^"]+)"/);
     if (match) {
       existingName = match[1];
+      break;
     }
   }
 
@@ -177,20 +231,14 @@ async function setupAddressing(ctx) {
 /** Run the post-install configuration sequence. */
 async function runPostInstall(ctx) {
   if (ctx.dryRun) {
-    ctx.ui.info('[dry-run] Skipping OpenCode model / addressing setup');
+    ctx.ui.info('[dry-run] Skipping addressing setup');
     return ctx;
   }
 
-  // OpenCode model uses its own readline; only run it when it won't block:
-  // interactive, or an env override is present (which it reads without prompting).
-  const hasModelEnv = Boolean(process.env.OPENCODE_MODEL || process.env.OPENCODE_DEFAULT_MODEL);
-  if (ctx.platforms.includes('opencode') && (ctx.interactive || hasModelEnv)) {
-    await setupOpenCodeModel(ctx.platforms, ctx.results);
-  }
 
   await setupAddressing(ctx);
 
-  // Patch Language Consistency section in CLAUDE.md so AI responds in the chosen language.
+  // Patch Language Consistency section in the shared AGENTS.md core block.
   patchLanguageSection(ctx);
 
   // Persist chosen language into each platform's runtime.json (records in tracker).
@@ -199,15 +247,12 @@ async function runPostInstall(ctx) {
   // Write "language" field into .claude/settings.json for visibility.
   patchSettingsLanguage(ctx);
 
-  // Re-record post-write baselines so installer-managed files stay "pristine",
-  // then flush each touched platform tracker.
-  if (ctx.platforms.includes('claude') && ctx.trackers.claude && fs.existsSync('CLAUDE.md')) {
-    ctx.trackers.claude.record('CLAUDE.md');
-  }
+  // Flush touched platform trackers. Root CLAUDE.md is block-managed and must
+  // never regain a whole-file ownership record.
   for (const key of ctx.platforms) {
     if (ctx.trackers[key]) ctx.trackers[key].write();
   }
   return ctx;
 }
 
-module.exports = { configureAddressing, runPostInstall };
+module.exports = { configureAddressing, patchRuntimeLocale, runPostInstall };

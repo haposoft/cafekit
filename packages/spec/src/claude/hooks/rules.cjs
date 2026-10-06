@@ -5,45 +5,43 @@
  * UserPromptSubmit Hook — rules.cjs
  * Implements: https://docs.anthropic.com/en/docs/claude-code/hooks
  *
- * Injects a lightweight rules reminder into Claude's context on each prompt.
- * Uses a per-session cooldown (5 min) to avoid repeating on every message.
+ * Injects project-specific rules once per session.
  *
  * Exit: 0 always (fail-open)
  */
 
 try {
+  const crypto = require('crypto');
   const fs   = require('fs');
   const os   = require('os');
   const path = require('path');
 
-  const COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
-
+  const { runtimeDirName, runtimeDir, runtimePath } = require('./lib/runtime-dir.cjs');
   function readRuntime(cwd) {
     try {
-      const p = path.join(cwd, '.claude', 'runtime.json');
-      return fs.existsSync(p) ? JSON.parse(fs.readFileSync(p, 'utf8')) : {};
-    } catch { return {}; }
+      const p = runtimePath(cwd, 'runtime.json');
+      return fs.existsSync(p) ? JSON.parse(fs.readFileSync(p, 'utf8')) : null;
+    } catch { return null; }
   }
 
-  /** Check cooldown via temp file — returns true if injection was recent */
-  function recentlyInjected(sessionId) {
-    if (!sessionId) return false;
+  /** Reserve one injection slot per session. Returns null on reservation errors. */
+  function reserveSession(sessionId) {
+    if (!sessionId) return null;
     try {
-      const f = path.join(os.tmpdir(), `cafekit-rules-${sessionId}.json`);
-      if (!fs.existsSync(f)) return false;
-      const { ts } = JSON.parse(fs.readFileSync(f, 'utf8'));
-      return (Date.now() - ts) < COOLDOWN_MS;
-    } catch { return false; }
-  }
-
-  function markInjected(sessionId) {
-    if (!sessionId) return;
-    try {
-      fs.writeFileSync(
-        path.join(os.tmpdir(), `cafekit-rules-${sessionId}.json`),
-        JSON.stringify({ ts: Date.now() })
-      );
-    } catch { /* fail-open */ }
+      const key = crypto.createHash('sha256')
+        .update(String(sessionId))
+        .digest('hex')
+        .slice(0, 16);
+      const file = path.join(os.tmpdir(), `cafekit-rules-${key}.json`);
+      fs.writeFileSync(file, JSON.stringify({ sessionId: String(sessionId) }), {
+        encoding: 'utf8',
+        flag: 'wx',
+        mode: 0o600
+      });
+      return true;
+    } catch (error) {
+      return error.code === 'EEXIST' ? false : null;
+    }
   }
 
   // ── Main ──────────────────────────────────────────────────────────────────
@@ -51,13 +49,17 @@ try {
   const stdin = fs.readFileSync(0, 'utf8').trim();
   if (!stdin) process.exit(0);
 
-  const payload   = JSON.parse(stdin);
+  const { normalizeHookPayload } = require('./lib/hook-payload.cjs');
+  const payload   = normalizeHookPayload(JSON.parse(stdin));
   const sessionId = payload.session_id || null;
-  const cwd       = payload.cwd || process.cwd();
+  const payloadCwd = typeof payload.cwd === 'string' ? payload.cwd.trim() : '';
+  const cwd       = payloadCwd || process.env.PROJECT_ROOT || process.cwd();
 
-  if (recentlyInjected(sessionId)) process.exit(0);
+  // No session identity or reservation means no injection. Fail open.
+  if (reserveSession(sessionId) !== true) process.exit(0);
 
   const runtime = readRuntime(cwd);
+  if (runtime === null) process.exit(0);
 
   // Language
   const thinkLang   = runtime.locale?.thinkingLanguage || '';
@@ -65,14 +67,13 @@ try {
   const effectThink = thinkLang || (respondLang ? 'en' : '');
 
   // Paths
-  const baseDir   = process.env.PROJECT_ROOT || cwd;
+  const baseDir   = cwd;
   const plansPath = path.join(baseDir, runtime.paths?.plans || 'plans');
   const docsPath  = path.join(baseDir, runtime.paths?.docs  || 'docs');
   const maxLoc    = runtime.docs?.maxLoc || 800;
 
   const lines = [];
 
-  // Language reminder
   const hasThink = effectThink && effectThink !== respondLang;
   if (hasThink || respondLang) {
     lines.push('## Language');
@@ -81,39 +82,20 @@ try {
     lines.push('');
   }
 
-  // Rules reminder
-  lines.push('## Rules');
-  lines.push(`- Markdown files: Plans → "${plansPath}/" | Docs → "${docsPath}/"`);
-  lines.push(`- **DO NOT** create markdown files outside of those directories unless explicitly asked.`);
-  lines.push(`- docs.maxLoc: ${maxLoc} lines max per doc file`);
-  lines.push('- Follow **YAGNI · KISS · DRY** principles');
-  lines.push('- Sacrifice grammar for concision in reports. List unresolved Qs at end.');
-  lines.push('- Ensure token efficiency while maintaining high quality.');
-  lines.push('');
-
-  // Skill routing: advisory rule docs, no automatic prompt router.
-  lines.push('## Skill Routing');
-  lines.push('- Choose skills from intent using `.claude/rules/skill-workflow-routing.md` and `.claude/rules/skill-domain-routing.md`.');
-  lines.push('- If needed, run `node .claude/scripts/generate-skill-catalog.cjs --skills` to inspect installed skills.');
-  lines.push('- Explicit user commands and direct-answer requests override routing suggestions.');
-  lines.push('');
-
-  // Modularization
-  lines.push('## [IMPORTANT] Consider Modularization:');
-  lines.push('- If a file exceeds 200 lines, consider splitting it');
-  lines.push('- Check existing modules before creating new ones');
-  lines.push('- Prefer kebab-case (JS/TS/Python/shell); PascalCase (C#/Java); snake_case (Go/Rust)');
-  lines.push('- Write descriptive code comments');
-  lines.push('- Skip modularization for: markdown, plain text, bash scripts, config files, .env files');
+  lines.push(
+    '## Rules',
+    `- Markdown files: Plans → "${plansPath}/" | Docs → "${docsPath}/"`,
+    '- **DO NOT** create markdown files outside of those directories unless explicitly asked.',
+    `- docs.maxLoc: ${maxLoc} lines max per doc file`
+  );
 
   console.log(lines.join('\n'));
-  markInjected(sessionId);
   process.exit(0);
 
 } catch (e) {
   try {
     const fs = require('fs'), p = require('path');
-    const d = p.join(__dirname, '.logs');
+    const d = require('./lib/hook-state-dir.cjs').hookStateDir();
     if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
     fs.appendFileSync(p.join(d, 'hook-log.jsonl'),
       JSON.stringify({ ts: new Date().toISOString(), hook: 'rules', status: 'crash', error: e.message }) + '\n');

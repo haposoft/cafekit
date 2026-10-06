@@ -16,14 +16,13 @@ interface DecisionTreeProps {
 }
 
 const commands: Command[] = [
-  { id: 'docs-init', label: '/hapo:docs --init', href: '/docs/workflows', category: 'docs' },
-  { id: 'docs-update', label: '/hapo:docs --update', href: '/docs/workflows', category: 'docs' },
-  { id: 'specs', label: '/hapo:specs', href: '/docs/workflows', category: 'workflow' },
-  { id: 'develop', label: '/hapo:develop', href: '/docs/workflows', category: 'workflow' },
-  { id: 'test', label: '/hapo:test', href: '/docs/workflows', category: 'workflow' },
-  { id: 'review', label: '/hapo:code-review', href: '/docs/workflows', category: 'workflow' },
-  { id: 'sync', label: '/hapo:sync', href: '/docs/workflows', category: 'state' },
-  { id: 'graph', label: '/hapo:generate-graph', href: '/docs/workflows', category: 'workflow' },
+  { id: 'docs-init', label: '/cf:docs --init', href: '/docs/workflows', category: 'docs' },
+  { id: 'docs-update', label: '/cf:docs --update', href: '/docs/workflows', category: 'docs' },
+  { id: 'specs', label: '/cf:specs', href: '/docs/workflows', category: 'workflow' },
+  { id: 'develop', label: '/cf:develop', href: '/docs/workflows', category: 'workflow' },
+  { id: 'test', label: '/cf:test', href: '/docs/workflows', category: 'workflow' },
+  { id: 'review', label: '/cf:code-review', href: '/docs/workflows', category: 'workflow' },
+  { id: 'sync', label: '/cf:sync', href: '/docs/workflows', category: 'state' },
 ];
 
 const categoryStyles = {
@@ -38,10 +37,10 @@ const translations = {
     description: 'Use this as a quick map for the current CafeKit runtime surface.',
     groups: [
       { title: 'Need project docs baseline?', command: '/docs init' },
-      { title: 'Have a new feature idea?', command: '/hapo:specs' },
-      { title: 'Spec approved and validated?', command: '/hapo:develop' },
-      { title: 'Need verification and review?', command: '/hapo:test → /hapo:code-review' },
-      { title: 'Task state drifted?', command: '/hapo:sync' },
+      { title: 'Have a new feature idea?', command: '/cf:specs' },
+      { title: 'Spec approved and validated?', command: '/cf:develop' },
+      { title: 'Need verification and review?', command: '/cf:test → /cf:code-review' },
+      { title: 'Task state drifted?', command: '/cf:sync' },
     ],
   },
   vi: {
@@ -49,10 +48,10 @@ const translations = {
     description: 'Bản đồ nhanh cho command surface hiện tại của CafeKit.',
     groups: [
       { title: 'Thiếu baseline docs dự án?', command: '/docs init' },
-      { title: 'Có ý tưởng feature mới?', command: '/hapo:specs' },
-      { title: 'Spec đã duyệt và validate?', command: '/hapo:develop' },
-      { title: 'Cần verify và review?', command: '/hapo:test → /hapo:code-review' },
-      { title: 'Task state bị lệch?', command: '/hapo:sync' },
+      { title: 'Có ý tưởng feature mới?', command: '/cf:specs' },
+      { title: 'Spec đã duyệt và validate?', command: '/cf:develop' },
+      { title: 'Cần verify và review?', command: '/cf:test → /cf:code-review' },
+      { title: 'Task state bị lệch?', command: '/cf:sync' },
     ],
   },
   ja: {
@@ -60,10 +59,10 @@ const translations = {
     description: '現在の CafeKit runtime surface を素早く確認するためのマップです。',
     groups: [
       { title: 'プロジェクト docs baseline が必要？', command: '/docs init' },
-      { title: '新しい feature アイデアがある？', command: '/hapo:specs' },
-      { title: 'Spec が承認・検証済み？', command: '/hapo:develop' },
-      { title: '検証と review が必要？', command: '/hapo:test → /hapo:code-review' },
-      { title: 'Task state がずれた？', command: '/hapo:sync' },
+      { title: '新しい feature アイデアがある？', command: '/cf:specs' },
+      { title: 'Spec が承認・検証済み？', command: '/cf:develop' },
+      { title: '検証と review が必要？', command: '/cf:test → /cf:code-review' },
+      { title: 'Task state がずれた？', command: '/cf:sync' },
     ],
   },
 };

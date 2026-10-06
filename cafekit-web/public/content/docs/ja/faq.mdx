@@ -9,13 +9,13 @@ description: CafeKit runtime と workflow のよくある質問。
   description="CafeKit の失敗は scope、validation、または chat を state として扱うことから起きます。このページは common edge cases を整理します。"
 />
 
-## OpenCode は supported ですか？
+## OpenCode は current support ですか？
 
-はい。Installer は self-contained な `.opencode/` runtime（skills、agents、commands、rules、references、scripts、`runtime.json`、`.opencode/plugins/` 配下の TypeScript plugins を含む）を書き出します。root `AGENTS.md` も書き、`opencode.json` を merge します。OpenCode は `.claude/` とファイルを共有しません。
+いいえ。Current releases は Claude Code と Codex CLI を support します。OpenCode support は CafeKit 0.17 で終了し、0.16 command map は historical migration 用だけに残ります。
 
-## すべての task に `/hapo:specs` が必要ですか？
+## すべての task に `/cf:specs` が必要ですか？
 
-いいえ。meaningful feature work には specs を使います。bugs には `/hapo:debug` と `/hapo:hotfix` を使います。小さな local fix は full spec を必要としない場合があります。
+いいえ。meaningful feature work には specs を使います。bugs には `/cf:debug` と `/cf:fix` を使います。小さな local fix は full spec を必要としない場合があります。
 
 ## なぜ task files が重要ですか？
 
@@ -27,8 +27,8 @@ task files は scope、steps、completion criteria、evidence を保存します
 
 ## chat だけで `done` にできますか？
 
-できません。fresh verification 後に `spec.json` と task markdown の物理 state sync が必要です。
+できません。Done には fresh verification と task 内の current final inline Receipt が必要です。C3 は user の completion decision です。
 
 ## production bug は何を使いますか？
 
-root cause が不明なら `/hapo:debug` から始めます。diagnosis 後、または bug と target fix が明確なら `/hapo:hotfix` を使います。
+root cause が不明なら `/cf:debug` から始めます。diagnosis 後、または bug と target fix が明確なら `/cf:fix` を使います。

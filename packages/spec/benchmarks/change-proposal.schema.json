@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "cafekit-change-proposal.schema.json",
+  "title": "CafeKit C1 ChangeProposal",
+  "description": "Tagged change-intent gating an edit to a D1 protected path. benchmark_remediation carries failure_ids for a currently open C15 ledger entry; authorized_evolution carries no failure_ids and is gated on a fresh durable spec plus the latest accepted independent PASS in that spec's lineage. Neither variant may embed release-candidate lifecycle binding digests (those are C9's sole responsibility).",
+  "oneOf": [
+    { "$ref": "#/$defs/benchmarkRemediation" },
+    { "$ref": "#/$defs/authorizedEvolution" }
+  ],
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "repoPath": { "type": "string", "minLength": 1, "pattern": "^[^\\0]+$" },
+    "sortedPathArray": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/repoPath" }
+    },
+    "benchmarkRemediation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "change_intent", "proposal_id", "invariant_id", "hypothesis", "owner_layer",
+        "primary_failure_class", "paths", "failure_ids", "evidence",
+        "true_positive_family", "negative_control_family", "rollback_condition"
+      ],
+      "properties": {
+        "change_intent": { "const": "benchmark_remediation" },
+        "proposal_id": { "type": "string", "minLength": 1 },
+        "invariant_id": { "type": "string", "minLength": 1 },
+        "hypothesis": { "type": "string", "minLength": 1 },
+        "owner_layer": {
+          "enum": [
+            "authoring_kernel", "structural_compiler", "semantic_reviewer",
+            "readiness_finalizer", "benchmark_controller", "independent_adjudicator",
+            "release_process"
+          ]
+        },
+        "primary_failure_class": {
+          "enum": [
+            "framework_regression", "model_runtime_error", "prompt_ambiguity",
+            "domain_research_failure", "infrastructure", "oracle_defect", "mixed", "unknown"
+          ]
+        },
+        "paths": { "$ref": "#/$defs/sortedPathArray" },
+        "failure_ids": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "evidence": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+        "true_positive_family": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+        "negative_control_family": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+        "rollback_condition": { "type": "string", "minLength": 1 },
+        "held_out_result": { "type": "string" },
+        "ceremony_delta": { "type": "string" }
+      },
+      "not": {
+        "anyOf": [
+          { "required": ["treeDigest"] }, { "required": ["baselineCommit"] },
+          { "required": ["packageVersion"] }, { "required": ["candidateDigest"] },
+          { "required": ["baselineAuthorityDigest"] }, { "required": ["baselineGeneration"] }
+        ]
+      }
+    },
+    "authorizedEvolution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "change_intent", "proposal_id", "spec_ref", "spec_semantic_digest",
+        "independent_pass_receipt_digest", "planned_write_set", "rollback_condition",
+        "negative_control_family"
+      ],
+      "properties": {
+        "change_intent": { "const": "authorized_evolution" },
+        "proposal_id": { "type": "string", "minLength": 1 },
+        "spec_ref": { "type": "string", "minLength": 1 },
+        "spec_semantic_digest": { "$ref": "#/$defs/sha256" },
+        "independent_pass_receipt_digest": { "$ref": "#/$defs/sha256" },
+        "planned_write_set": { "$ref": "#/$defs/sortedPathArray" },
+        "rollback_condition": { "type": "string", "minLength": 1 },
+        "negative_control_family": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }
+      },
+      "not": {
+        "anyOf": [
+          { "required": ["failure_ids"] }, { "required": ["treeDigest"] }, { "required": ["baselineCommit"] },
+          { "required": ["packageVersion"] }, { "required": ["candidateDigest"] },
+          { "required": ["baselineAuthorityDigest"] }, { "required": ["baselineGeneration"] }
+        ]
+      }
+    }
+  }
+}

@@ -1,5 +1,5 @@
 ---
-name: hapo:frontend-development
+name: cf:frontend-development
 description: Build React/TypeScript frontends with modern patterns. Use for components, Suspense, lazy loading, useSuspenseQuery, MUI v7 styling, TanStack Router, performance optimization.
 user-invocable: true
 when_to_use: "Invoke to build React/TS components with best practices."

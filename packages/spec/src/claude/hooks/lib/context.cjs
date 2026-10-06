@@ -2,7 +2,7 @@
 /**
  * context.cjs - Context/reminder building for session injection
  *
- * Extracted from hooks for reuse in both Claude hooks and OpenCode plugins.
+ * Extracted from hooks for reuse across runtime adapters.
  * Builds session context, rules, paths, and plan information.
  *
  * @module context
@@ -13,8 +13,6 @@ const os = require('os');
 const path = require('path');
 const { execSync } = require('child_process');
 
-// Usage cache file path (written by usage.cjs hook)
-const USAGE_CACHE_FILE = path.join(os.tmpdir(), 'ck-usage-limits-cache.json');
 const WARN_THRESHOLD = 70;
 const CRITICAL_THRESHOLD = 90;
 const {
@@ -215,51 +213,6 @@ function buildSessionSection(staticEnv = {}) {
 }
 
 /**
- * Read usage limits from cache file (written by usage.cjs)
- * @returns {Object|null} Usage data or null if unavailable
- */
-function readUsageCache() {
-  try {
-    if (fs.existsSync(USAGE_CACHE_FILE)) {
-      const cache = JSON.parse(fs.readFileSync(USAGE_CACHE_FILE, 'utf-8'));
-      // Cache is valid for 5 minutes for injection purposes
-      if (Date.now() - cache.timestamp < 300000 && cache.data) {
-        return cache.data;
-      }
-    }
-  } catch { }
-  return null;
-}
-
-/**
- * Format time until reset
- * @param {string} resetAt - ISO timestamp
- * @returns {string|null} Formatted time or null
- */
-function formatTimeUntilReset(resetAt) {
-  if (!resetAt) return null;
-  const resetTime = new Date(resetAt);
-  const remaining = Math.floor(resetTime.getTime() / 1000) - Math.floor(Date.now() / 1000);
-  if (remaining <= 0 || remaining > 18000) return null; // Only show if < 5 hours
-  const hours = Math.floor(remaining / 3600);
-  const mins = Math.floor((remaining % 3600) / 60);
-  return `${hours}h ${mins}m`;
-}
-
-/**
- * Format percentage with warning level
- * @param {number} value - Percentage value
- * @param {string} label - Label prefix
- * @returns {string} Formatted string with warning if applicable
- */
-function formatUsagePercent(value, label) {
-  const pct = Math.round(value);
-  if (pct >= CRITICAL_THRESHOLD) return `${label}: ${pct}% [CRITICAL]`;
-  if (pct >= WARN_THRESHOLD) return `${label}: ${pct}% [WARNING]`;
-  return `${label}: ${pct}%`;
-}
-
-/**
  * Build context window section from statusline cache
  * @param {string} sessionId - Session ID
  * @returns {string[]} Lines for context section
@@ -295,43 +248,6 @@ function buildContextSection(sessionId) {
   } catch {
     return [];
   }
-}
-
-/**
- * Build usage section from cache
- * @returns {string[]} Lines for usage section
- */
-function buildUsageSection() {
-  const usage = readUsageCache();
-  if (!usage) return [];
-
-  const lines = [];
-  const parts = [];
-
-  // 5-hour limit
-  if (usage.five_hour) {
-    const util = usage.five_hour.utilization;
-    if (typeof util === 'number') {
-      parts.push(formatUsagePercent(util, '5h'));
-    }
-    const timeLeft = formatTimeUntilReset(usage.five_hour.resets_at);
-    if (timeLeft) {
-      parts.push(`resets in ${timeLeft}`);
-    }
-  }
-
-  // 7-day limit
-  if (usage.seven_day?.utilization != null) {
-    parts.push(formatUsagePercent(usage.seven_day.utilization, '7d'));
-  }
-
-  if (parts.length > 0) {
-    lines.push(`## Usage Limits`);
-    lines.push(`- ${parts.join(' | ')}`);
-    lines.push(``);
-  }
-
-  return lines;
 }
 
 /**
@@ -489,13 +405,11 @@ function buildReminder(params) {
   // Respect hooks config — skip sections when their corresponding hook is disabled
   const hooksConfig = hooks || {};
   const contextEnabled = hooksConfig['context-tracking'] !== false;
-  const usageEnabled = hooksConfig['usage'] !== false;
 
   return [
     ...buildLanguageSection({ thinkingLanguage, responseLanguage }),
     ...buildSessionSection(staticEnv),
     ...(contextEnabled ? buildContextSection(sessionId) : []),
-    ...(usageEnabled ? buildUsageSection() : []),
     ...buildRulesSection({ devRulesPath, catalogScript, skillsVenv, plansPath, docsPath }),
     ...buildModularizationSection(),
     ...buildPathsSection({ reportsPath, plansPath, docsPath, docsMaxLoc }),
@@ -564,7 +478,6 @@ function buildReminderContext({ sessionId, config, staticEnv, configDirName = '.
   // Respect hooks config for sections object too
   const hooksConfig = cfg.hooks || {};
   const contextEnabled = hooksConfig['context-tracking'] !== false;
-  const usageEnabled = hooksConfig['usage'] !== false;
 
   return {
     content: lines.join('\n'),
@@ -573,7 +486,6 @@ function buildReminderContext({ sessionId, config, staticEnv, configDirName = '.
       language: buildLanguageSection({ thinkingLanguage: params.thinkingLanguage, responseLanguage: params.responseLanguage }),
       session: buildSessionSection(staticEnv),
       context: contextEnabled ? buildContextSection(sessionId) : [],
-      usage: usageEnabled ? buildUsageSection() : [],
       rules: buildRulesSection({ devRulesPath, catalogScript, skillsVenv, plansPath: params.plansPath, docsPath: params.docsPath }),
       modularization: buildModularizationSection(),
       paths: buildPathsSection({ reportsPath: params.reportsPath, plansPath: params.plansPath, docsPath: params.docsPath, docsMaxLoc: params.docsMaxLoc }),
@@ -596,7 +508,6 @@ module.exports = {
   buildLanguageSection,
   buildSessionSection,
   buildContextSection,
-  buildUsageSection,
   buildRulesSection,
   buildModularizationSection,
   buildPathsSection,

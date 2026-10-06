@@ -1,0 +1,362 @@
+/* Bộ token khởi đầu. Đặt trong globals.css hoặc index.css.
+
+   ĐỔI THƯƠNG HIỆU: màu nhấn có HAI chỗ phải sửa, font chỉ có MỘT dòng.
+   Ngoài các khối đánh dấu bên dưới, không rải mã màu ở bất kỳ đâu.
+
+   `.force-light` / `.force-dark`: vùng khoá theme (trang chia sẻ luôn sáng, khối hero luôn tối).
+   Đặt class lên khung ngoài cùng của vùng, mọi component con đọc lại bộ token đó. Luật M33. */
+
+:root,
+.force-light {
+  /* Thanh cuộn gốc, ô chọn ngày, autofill, <select> của trình duyệt vẽ theo theme. Luật M31. */
+  color-scheme: light;
+
+  /* ===== FONT, KHAI MỘT LẦN, DÙNG CHUNG CHO CẢ SÁNG LẪN TỐI =====
+     Một font cho cả app. Phân vai bằng weight, không bằng font thứ hai:
+     heading 600, body 400, nhãn phụ 500. tracking-tight chỉ cho chữ có dấu từ
+     text-3xl trở lên, xem T2 trong rules-type.md. */
+  --app-font: "Inter", ui-sans-serif, system-ui, sans-serif;  /* Tailwind đọc qua --font-sans, khối @theme bên dưới */
+  /* ============================================================== */
+
+  /* ===== MÀU NHẤN, CHỖ 1 TRONG 2: NỀN SÁNG ===== */
+  --primary: #181818;          /* mặc định gần đen. Màu riêng thì thay vào đây */
+  --primary-hover: #2e2e2e;    /* lệch về phía NỀN một bậc (1.31:1 với --primary): nền sáng thì nhạt đi */
+  --primary-foreground: #ffffff;  /* màu chữ ĐỨNG TRÊN nền nhấn. Bắt buộc phải
+                                     có, vì ở nền tối màu nhấn thành gần trắng,
+                                     lúc đó viết cứng `text-white` là mất chữ. */
+  --primary-light: #1818180d;  /* CHỈ dùng khi --primary có sắc.
+                                  Màu nhấn trung tính như mặc định thì biến này
+                                  ra xám bẩn gần như vô hình, badge phải dùng
+                                  --background làm nền và --foreground làm chữ. */
+  /* ============================================= */
+
+  --background: #f4f4f6;   /* nền trang, xám nhạt, không bao giờ trắng */
+  --surface: #ffffff;      /* nền card, input, header */
+  --foreground: #2c2c2c;   /* chữ chính */
+  --muted: #707070;        /* chữ phụ, label, placeholder, icon phụ. Xám trung tính
+                              nhạt nhất còn qua WCAG AA 4.5 trên cả hai nền: 4.95:1
+                              trên --surface, 4.51:1 trên --background */
+  /* Đường tóc trang trí: viền card, viền khung dropdown, đường chia trong danh
+     sách và trong menu. Nhạt đến mức chỉ đủ vạch ranh giới. Xem luật M13, M14. */
+  --border: #f7f7f8;
+  /* Đậm hơn ĐÚNG một bậc. Cho viền Ô NHẬP và NÚT OUTLINE (viền là thứ duy nhất
+     báo "đây là chỗ gõ / chỗ bấm", vì cả hai cùng nền trắng với card), đường kẻ
+     khung app và viền card khi hover. Đây là token viền thứ hai và cũng là token
+     cuối, xem luật M14, M16. ~1.2:1 với nền trắng: đánh đổi thẩm mỹ có chủ ý,
+     xem P3 trong styles.md. */
+  --border-strong: #eaeaea;   /* #f2f2f2 (1.1:1) mờ quá, radio gần như vô hình;
+                                 #e4e4e7 (1.27:1) thì đường kẻ sidebar đậm. Chốt ở giữa. */
+
+  /* Lớp nổi nhỏ: dropdown, popover, menu, select, toast, command palette. Nền sáng bằng card;
+     nền tối sáng hơn card một bậc (M21). Đi cùng `border border-border` + `shadow-popover`.
+     Modal, panel trượt giữ --surface (+ viền + `shadow-modal`): bên trong có header dính, tab
+     dính, card trắng trên thân --background, đều ăn theo --surface; đổi nền khung là lệch từng mảnh. */
+  --surface-overlay: #ffffff;
+  /* Bóng lớp nổi, hai bậc: popover (dropdown, menu, toast) < modal. Bằng shadow-lg / shadow-xl
+     của Tailwind ở nền sáng; nền tối đậm hơn, xem khối .dark (M15, M23). Class `shadow-popover`,
+     `shadow-modal`. Không đặt tên --shadow-*: trùng namespace Tailwind (W3). */
+  --elevation-popover: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --elevation-modal: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+
+  /* Vùng tô (nút phụ, mục đang chọn, nền rê) là LỚP PHỦ trên nền phía sau: nền sáng tối đi,
+     nền tối sáng lên. Thứ giữ qua hai theme là độ chênh với nền, không phải chiều (M21). */
+  /* Vùng tô nhạt nhất. Nền rê của mục thụt vào: mục menu, link sidebar, nút cây thư mục, dòng
+     danh sách trong widget (I10); mục đang sáng trong select / bảng lệnh; dải giữa khoảng ngày, dải
+     chọn giờ (components/choice-controls.md). Nền sáng bằng đúng --background; nền tối là trắng phủ mờ, vì --background
+     tối hơn card nên rê vào sẽ chìm xuống gần như không thấy (1.07:1). */
+  --item-hover: #f4f4f6;
+
+  /* Mảng dữ liệu của biểu đồ (cột, vùng tô, phần donut). Nền sáng bằng --primary; nền tối hạ
+     còn 70%, xem khối .dark. Thang nhiều chuỗi viết `bg-chart-fill/45`… (components/charts.md).
+     Thanh mảnh (thanh tiến độ) vẫn `bg-primary`. */
+  --chart-fill: var(--primary);
+
+  /* Bề mặt của nút phụ, mục sidebar / tab đang chọn. Đậm hơn --item-hover một bậc. */
+  --secondary: #e7e8ec;
+  --secondary-hover: #dbdce2;
+
+  /* Nền của ô trạng thái nhỏ nằm trong hàng có hover: ô ngày, ô vuông chuỗi, ô
+     rỗng. Đừng dùng --background cho chúng, vì hàng hover cũng về --item-hover (= --background) thì
+     con tan vào nền. Không phải hover của nút phụ (--secondary-hover) hay của dòng
+     (--background, --surface-hover, luật I10). Xem luật M18. */
+  --background-hover: #e7e7ea;
+
+  /* Hover và dòng đang chọn của BẢNG / danh sách tràn hết bề ngang khung trắng.
+     Không dùng --background ở đây: dòng chạm hai mép khung mà tô đúng màu nền
+     trang thì trông như khung bị khoét một lỗ. Chỉ nhỉnh
+     hơn --surface một chút. Xem luật I10. */
+  --surface-hover: #f8f8fa;
+
+  /* Hover của nút viền (outline): CHỈ đổi nền, viền giữ nguyên (chủ dự án chốt).
+     Màu ĐẶC, và **theo nền ngay sau nút**, không một màu cho mọi chỗ:
+     - trên card trắng (--button-hover-surface #f1f1f3): thấy rõ, viền vẫn còn;
+     - thẳng trên nền trang, hoặc trong dòng đang rê (dòng chìm về #f4f4f6)
+       (--button-hover-page #e4e4e7): #f1f1f3 ở đây chỉ lệch nền 3 mức, nút như tan vào trang.
+     Biến đổi tự động bằng khối "NỀN RÊ CỦA NÚT VIỀN" bên dưới, class vẫn là
+     `hover:bg-button-hover`. Không dùng --surface-hover (#f8f8fa: trên card gần như không đổi),
+     không dùng lớp phủ foreground/5 (trong suốt, trên nền trang ra #e9e9eb trùng viền). */
+  --button-hover-surface: #f1f1f3;
+  --button-hover-page: #e4e4e7;   /* đậm hơn viền #eaeaea 6 mức: #e7e7ea chỉ 3 mức, nút thành mảng không viền */
+  --button-hover: var(--button-hover-page);
+
+  /* Tab segmented dạng phím nổi: rãnh CHÌM (bóng trong), ô đang chọn NỔI (bóng
+     ngoài rất mờ + viền tóc). Ngoại lệ có tên của luật M15, chỉ dùng ở đây.
+     Xem "Thanh tab" trong components/small-controls.md. */
+  --shadow-segment-track: inset 0 0 0 1px rgb(0 0 0 / 0.05), inset 0 1px 2px rgb(0 0 0 / 0.04);
+  --shadow-segment-thumb: 0 0 0 1px rgb(0 0 0 / 0.04), 0 1px 2px rgb(0 0 0 / 0.06), 0 2px 6px -2px rgb(0 0 0 / 0.08);
+
+  /* Ring rất mờ theo màu nhấn, dày 2px (ring-2). Cho ô điền lúc focus (input, textarea,
+     select) và ô chọn dạng card đang chọn, đi cùng viền --border-focus. Nút,
+     menu, tab KHÔNG dùng, và không có vòng focus. Luật I13. */
+  --ring-focus: rgba(24, 24, 24, 0.1);
+
+  /* Viền lúc focus. Ở nền sáng thì chính là màu nhấn. Ở nền tối thì KHÔNG
+     dùng màu nhấn đặc, xem khối .dark bên dưới. */
+  --border-focus: var(--primary);
+
+  /* ===== MÀU MANG NGHĨA: nguy hiểm, lỗi, trạng thái. Luật M7, M30, I4. =====
+     Có Tailwind thì cứ viết class (`text-rose-700`...), mã ở đây là CHÍNH các
+     class đó của Tailwind v4 đổi ra hex, nên hai cách cho ra cùng một màu.
+     Không có Tailwind thì dùng var(--danger)... Bảng đối chiếu class ↔ token nằm
+     ngay trong bảng M7 và M30 của rules-color.md. Không thêm sắc thứ ba (M30). */
+
+  /* Nguy hiểm — xoá, huỷ tài khoản, đăng xuất: lời nhắc TRƯỚC khi bấm. Không viền, không banner. */
+  --danger: #c70036;                       /* rose-700: chữ + icon. 5.2:1 trên --danger-bg */
+  --danger-bg: rgb(255 32 86 / 0.1);       /* rose-500/10 */
+  --danger-bg-hover: rgb(255 32 86 / 0.15);/* rose-500/15, chỉ cho nút đứng riêng */
+
+  /* Lỗi — chuyện ĐÃ xảy ra: ô nhập sai, câu lỗi, banner, badge "Đã huỷ". */
+  --error: #fb2c36;                        /* red-500: viền ô nhập. KHÔNG cho chữ, 3.8:1 */
+  --error-ring: rgb(251 44 54 / 0.1);      /* red-500/10 quanh ô nhập */
+  --error-text: #e7000b;                   /* red-600: câu lỗi dưới ô, trên nền trắng 4.8:1 */
+  --error-bg: #fef2f2;                     /* red-50: nền banner, nền badge đỏ */
+  --error-border: #ffc9c9;                 /* red-200: viền banner */
+  --error-strong: #c10007;                 /* red-700: chữ trên --error-bg, 5.9:1 */
+
+  /* Badge trạng thái (M7): nền nhạt + chữ -700 cùng sắc. Tông đỏ lấy cặp
+     --error-bg / --error-strong ở trên. */
+  --success-bg: #ecfdf5;                   /* emerald-50 */
+  --success: #007a55;                      /* emerald-700, 5.1:1 */
+  --warning-bg: #fffbeb;                   /* amber-50 */
+  --warning: #bb4d00;                      /* amber-700, 4.9:1 */
+  --neutral-bg: #f4f4f5;                   /* zinc-100: chờ, nháp, trung lập */
+  --neutral: #52525c;                      /* zinc-600, 7.0:1 */
+  /* ======================================================================= */
+
+  /* Bo mặc định 12px = rounded-xl, cho mọi phần tử cao từ 40px. Luật F1. */
+  --radius: 0.75rem;
+}
+
+/* Dark mode mặc định của skill là navy rất tối: đây là GU, không phải quy ước. Dự án đã có
+   bảng tối riêng (xám kẽm, xám trung tính) thì theo dự án (M23).
+   Viền là rgba mờ chứ không phải màu đặc, nếu không sẽ thành lưới kẻ ô.
+   Màu tối không phải màu sáng đảo ngược: mỗi token khai giá trị riêng.
+
+   Khối này chỉ cần khi sản phẩm thật sự có dark mode. Không làm thì xoá đi. */
+.dark,
+.force-dark {
+  color-scheme: dark;
+
+  /* ===== MÀU NHẤN, CHỖ 2 TRONG 2: NỀN TỐI =====
+     BẮT BUỘC khai lại. Màu nhấn của nền sáng đem nguyên sang nền tối là
+     tàng hình, và mọi nút nhấn sẽ phải đảo thành trắng, mất sạch thứ bậc.
+     Màu gần đen thì bản tối là gần trắng. Màu có sắc thì lấy bản sáng hơn
+     khoảng hai bậc của chính nó. */
+  --primary: #e9edf5;
+  /* Lệch về phía NỀN một bậc như bản sáng, tức TỐI đi (1.26:1 với --primary). Không sáng lên
+     #ffffff: trắng tuyệt đối là khối chói nhất màn tối, trái M23. Chữ trên nó 13.7:1. */
+  --primary-hover: #cfd5e0;
+  --primary-foreground: #05060f;  /* nền nhấn giờ gần trắng, chữ phải đảo lại */
+  --primary-light: rgba(233, 237, 245, 0.1);
+  /* ============================================ */
+
+  --background: #05060f;
+  /* Cột biểu đồ màu nhấn gần trắng 100% là khối chói nhất màn tối, nặng hơn tên trang và hàng
+     số (chủ dự án chọn 70%). M32. */
+  --chart-fill: color-mix(in srgb, var(--primary) 70%, transparent);
+
+  /* Tầng nổi sáng dần: nền trang < card < lớp nổi, mỗi bậc ~1.07–1.09:1 (M21). */
+  --surface-overlay: #171a26;
+  /* Bóng đậm gấp ~5 bản sáng: bóng 10% trên nền gần đen là không thấy. Thứ thật sự tách lớp
+     nổi khỏi trang là viền 1px (`border border-border` của lớp nổi) + nền sáng hơn (M23). */
+  --elevation-popover: 0 10px 15px -3px rgb(0 0 0 / 0.5), 0 4px 6px -4px rgb(0 0 0 / 0.5);
+  --elevation-modal: 0 20px 25px -5px rgb(0 0 0 / 0.6), 0 8px 10px -6px rgb(0 0 0 / 0.6);
+
+  /* Vùng tô là trắng phủ mờ, SÁNG hơn card (M21). Phủ mờ nên đặt trên nền trang, card hay
+     lớp nổi đều giữ được độ chênh, không phải khai một màu cho từng nền. Độ chênh ngang bản
+     sáng (đo trên card #0f111a):
+     - --item-hover 5%   → 1.12:1 (bản sáng #f4f4f6 trên trắng 1.10:1);
+     - --secondary  8%   → 1.22:1 (bản sáng #e7e8ec trên trắng 1.22:1), đậm hơn rê một bậc.
+     Đừng dùng màu đặc tối hơn nền trang (#010207): gần như không tách khỏi nền. */
+  --item-hover: rgb(255 255 255 / 0.05);
+  --secondary: rgb(255 255 255 / 0.08);
+  /* Rê vào đậm thêm 5%: chênh 12 mức như bản sáng (#e7e8ec → #dbdce2). 0.11 chỉ chênh 7 mức, nút
+     "Xem tất cả", "Huỷ" rê vào gần như không đổi. */
+  --secondary-hover: rgb(255 255 255 / 0.13);
+
+  --background-hover: #171a26;
+  --surface-hover: #141722;  /* sáng hơn --surface một chút, luật I10 */
+  /* Nền rê nút viền: phủ mờ, nên một giá trị đúng cho cả nền trang, card lẫn lớp nổi. Bản
+     sáng phải đặc vì phủ đen mờ trên nền trang ra trùng màu viền; ở nền tối viền là ánh xanh
+     mờ, không trùng. */
+  --button-hover-surface: rgb(255 255 255 / 0.08);
+  --button-hover-page: rgb(255 255 255 / 0.08);
+  /* Bóng đen khó thấy trên nền tối: ô nổi nhờ viền và vệt sáng mép trên. */
+  --shadow-segment-track: inset 0 0 0 1px var(--border), inset 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-segment-thumb: 0 0 0 1px var(--border-strong), inset 0 1px 0 rgb(255 255 255 / 0.06), 0 1px 2px rgb(0 0 0 / 0.5);
+  --ring-focus: rgba(233, 237, 245, 0.12);
+
+  /* Màu nhấn ở nền tối là gần trắng. Dùng làm NỀN thì đẹp, dùng làm ĐƯỜNG MẢNH
+     thì thành sợi trắng đặc, cắt vào mắt. Viền focus lấy chính màu đó nhưng hạ
+     độ đục xuống, vừa đủ 3:1 (WCAG). Xem luật M22. */
+  --border-focus: rgba(233, 237, 245, 0.42);  /* 3.6:1, WCAG 3:1 */
+  --surface: #0f111a;
+  --foreground: #e9edf5;
+  --muted: #8b93a7;
+  /* Ở nền tối viền ĐẢO VAI: #0f111a với #05060f chênh nhau quá ít nên viền
+     trở thành thứ chính để tách khối; bóng vẫn giữ nhưng chỉ phụ. Xem luật M23.
+     Hai vai như bản sáng (M14), đo trên card: --border 1.23:1, --border-strong
+     1.33:1 (bản sáng 1.2:1). Ô nhập ở nền tối GIỮ viền --border-strong, không bỏ (M32).
+     Đừng lên 0.2 (1.47:1): đường kẻ dòng bảng đậm hơn hẳn bản sáng, bảng thành
+     lưới kẻ ô (chủ dự án duyệt 0.16); ô nhập, checkbox ở 0.16 vẫn đọc ra. */
+  --border: rgba(160, 180, 220, 0.12);
+  --border-strong: rgba(160, 180, 220, 0.16);
+
+  /* Màu mang nghĩa ở nền tối: chữ SÁNG lên (-400), nền là màu -500 phủ mờ.
+     Nền -50 của bản sáng đem sang đây là ra khối trắng giữa màn tối.
+     Tương phản đo trên --surface. */
+  --danger: #ff637e;                       /* rose-400, 6.2:1 */
+  --danger-bg: rgb(255 32 86 / 0.1);
+  --danger-bg-hover: rgb(255 32 86 / 0.15);
+
+  --error: #fb2c36;
+  --error-ring: rgb(251 44 54 / 0.15);
+  --error-text: #ff6467;                   /* red-400, 6.5:1 */
+  --error-bg: rgb(251 44 54 / 0.1);
+  --error-border: rgb(251 44 54 / 0.3);
+  --error-strong: #ff6467;                 /* red-400, 6.0:1 trên --error-bg */
+
+  --success-bg: rgb(0 188 125 / 0.15);
+  --success: #00d492;                      /* emerald-400, 7.8:1 */
+  --warning-bg: rgb(254 154 0 / 0.15);
+  /* orange-400, KHÔNG amber-400: thang amber trôi từ cam sang vàng khi sáng lên (OKLCH: amber-700 49°,
+     amber-400 84°), chữ "Quá hạn" cam ở bản sáng thành vàng ở bản tối.
+     orange-400 56°, lệch 7°. 7.9:1 trên card, 6.2:1 trên --warning-bg. M7. */
+  --warning: #ff8904;
+  --neutral-bg: rgb(113 113 123 / 0.15);
+  --neutral: #9f9fa9;                      /* zinc-400, 6.2:1 */
+}
+
+/* ===== MAP TOKEN SANG CLASS CỦA TAILWIND V4 =====
+   Thiếu khối này thì `bg-surface`, `text-muted`, `border-border-strong`, `bg-primary/8`…
+   không sinh ra class nào, màn chép từ skill mất màu mà không báo lỗi. Đặt sau
+   `@import "tailwindcss"`. `inline` để class đọc thẳng biến ở :root / .dark, đổi theme
+   là class đổi theo. Tên bên trái KHÁC tên bên phải, không trỏ vào chính nó (W2).
+   Không dùng Tailwind thì xoá khối này; Tailwind v3 thì khai cùng bộ tên trong
+   `theme.extend.colors` của tailwind.config. Màu mang nghĩa không map: viết thẳng
+   class `rose-*`, `red-*`… như khối màu mang nghĩa ở trên. */
+@theme inline {
+  --font-sans: var(--app-font);
+
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-light: var(--primary-light);
+
+  --color-background: var(--background);
+  --color-background-hover: var(--background-hover);
+  --color-surface: var(--surface);
+  --color-surface-hover: var(--surface-hover);
+  --color-surface-overlay: var(--surface-overlay);
+  --color-item-hover: var(--item-hover);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-chart-fill: var(--chart-fill);
+  --color-secondary: var(--secondary);
+  --color-secondary-hover: var(--secondary-hover);
+  --color-button-hover: var(--button-hover);
+
+  /* `border-focus` và `ring-focus` là hai màu khác nhau (viền đặc, ring 10%). Một
+     --color-focus thì hai class đọc chung một màu, nên tách theo namespace riêng
+     của từng loại: border-* đọc --border-color-* trước, ring-* đọc --ring-color-* trước. */
+  --border-color-focus: var(--border-focus);
+  --ring-color-focus: var(--ring-focus);
+
+  --shadow-popover: var(--elevation-popover);
+  --shadow-modal: var(--elevation-modal);
+}
+
+/* Tailwind v4 mặc định cho `dark:` chạy theo `prefers-color-scheme` của máy, KHÔNG theo class.
+   Token đổi theo `.dark` mà `dark:` đổi theo máy thì bấm nút Tối trên máy đang sáng ra nửa nọ
+   nửa kia. Dòng này cho `dark:` theo class, và không ăn vào vùng `.force-light` (M33).
+   `:where` giữ độ ưu tiên bằng 0, nên `dark:` không tự thắng class khác. Không Tailwind thì xoá. */
+@custom-variant dark (&:where(.dark, .dark *, .force-dark, .force-dark *):not(:where(.force-light, .force-light *)));
+/* ================================================= */
+
+/* ===== NỀN RÊ CỦA NÚT VIỀN THEO NỀN PHÍA SAU =====
+   Mặc định (nền trang) là --button-hover-page. Mọi thứ nằm trong khối trắng lấy
+   --button-hover-surface; khối nền trang lồng trong card, và dòng đang rê chìm về nền
+   trang, lấy lại --button-hover-page. Chỉ đặt biến, không đặt màu, nên không đè utility.
+   Chọn con cháu (`*`), không đặt trên chính `.bg-surface`: nút viền cũng mang `bg-surface`,
+   đặt trên chính nó thì nút nào cũng thành bản của card.
+   Dòng dùng hover khác `hover:bg-item-hover` thì thêm selector của nó vào dòng thứ hai.
+   Nền tối hai biến cùng một giá trị phủ mờ, khối này không đổi gì. */
+.bg-surface *,
+.bg-surface-overlay * { --button-hover: var(--button-hover-surface); }
+.bg-surface .bg-background *,
+[class~="hover:bg-item-hover"]:hover * { --button-hover: var(--button-hover-page); }
+/* ================================================= */
+
+/* ===== THANH CUỘN TỰ ẨN, ÁP CHO CẢ APP. Luật I18. =====
+   Đứng yên thì trong suốt; rê chuột vào vùng cuộn thì hiện mờ; đang cuộn thì
+   đậm hơn (class .is-scrolling do component ScrollbarAutohide gắn vào ĐÚNG phần
+   tử đang cuộn). Ẩn bằng MÀU TRONG SUỐT chứ không bằng `scrollbar-width: none`:
+   bề rộng 4px vẫn giữ chỗ, nên lúc thanh hiện ra nội dung không bị đẩy ngang.
+   Màu lấy từ --foreground nên nền tối tự đảo, không cần khai lại.
+   Nguồn: dự án thật, chủ dự án chốt.
+
+   ⚠️ Màu thumb đi qua BIẾN --scrollbar-thumb đặt trên chính khung cuộn, không
+   viết `*:hover::-webkit-scrollbar-thumb`. Chrome không vẽ lại thumb khi selector
+   :hover nằm trước pseudo thanh cuộn: rê vào không hiện, phải cuộn mới hiện. Đổi
+   biến trên phần tử thì Chrome vẽ lại ngay. `* { --scrollbar-thumb: transparent }` đặt lại trên TỪNG phần tử, để
+   khung cha đang được rê không truyền biến xuống khung cuộn con bên cạnh.
+   KHÔNG thêm `transition` vào rule `*` này: CSS nằm ngoài @layer thắng mọi
+   utility của Tailwind v4, một dòng `* { transition }` là xoá hết `transition-*`
+   trong app. Thanh cuộn hiện tức thì là đủ. */
+* { --scrollbar-thumb: transparent; }
+*:hover { --scrollbar-thumb: color-mix(in srgb, var(--foreground) 16%, transparent); }
+.is-scrolling { --scrollbar-thumb: color-mix(in srgb, var(--foreground) 28%, transparent); }
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--foreground) 40%, transparent); }
+
+/* Firefox. ⚠️ PHẢI nằm trong @supports: từ Chrome 121, phần tử có
+   scrollbar-width/scrollbar-color là Chrome BỎ QUA toàn bộ ::-webkit-scrollbar
+   và vẽ thanh "thin" gốc ~8-11px chiếm chỗ. Để trần thì bản 4px ở trên chỉ còn
+   chạy trên Safari. */
+@supports not selector(::-webkit-scrollbar) {
+  * { scrollbar-width: thin; scrollbar-color: transparent transparent; }
+  *:hover { scrollbar-color: color-mix(in srgb, var(--foreground) 18%, transparent) transparent; }
+  .is-scrolling { scrollbar-color: color-mix(in srgb, var(--foreground) 28%, transparent) transparent; }
+}
+/* ===================================================== */
+
+/* Ẩn HẲN, không bao giờ hiện: chỉ cho hàng chip / tab cuộn ngang, nơi thanh
+   cuộn dưới đáy hàng trông như lỗi. Máy có chuột thì hàng đó phải có nút mũi
+   tên hai đầu (responsive.md, sau R10). Vùng cuộn dọc (sidebar, danh sách, modal)
+   thì KHÔNG dùng, để thanh tự ẩn ở trên lo. */
+.scrollbar-clean {
+  scrollbar-width: none;
+}
+.scrollbar-clean::-webkit-scrollbar {
+  display: none;
+}
+
+/* Chữ mảnh và sạch hơn. Một dòng, đặt một lần cho cả trang. Xem luật T1. */
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}

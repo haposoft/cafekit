@@ -85,7 +85,7 @@ python scripts/gemini_batch_process.py \
 - All animation timings
 Output as CSS variables ready for implementation." \
   --output docs/design-guidelines/brand-design-system.md \
-  --model gemini-2.5-flash
+  --model gemma-4-31b-it
 ```
 
 ### Trend Analysis
@@ -103,7 +103,7 @@ python scripts/gemini_batch_process.py \
 5. Animation patterns
 Identify what's trending in 2024 web design." \
   --output docs/design-guidelines/trend-analysis.md \
-  --model gemini-2.5-flash
+  --model gemma-4-31b-it
 ```
 
 ### Historical Evolution
@@ -119,7 +119,7 @@ python scripts/gemini_batch_process.py \
 3. How trends influenced changes
 4. Lessons for our design evolution" \
   --output docs/design-guidelines/evolution-analysis.md \
-  --model gemini-2.5-flash
+  --model gemma-4-31b-it
 ```
 
 ## Common Pitfalls

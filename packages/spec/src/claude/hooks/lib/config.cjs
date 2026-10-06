@@ -9,7 +9,10 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const RUNTIME_CONFIG_PATH = '.claude/runtime.json';
+const { runtimeDirName } = require('./runtime-dir.cjs');
+
+// Derived from this library's own location so an install under .omp/ or .codex/ reads its own file.
+const RUNTIME_CONFIG_PATH = `${runtimeDirName()}/runtime.json`;
 
 const CONFIG_PATH = RUNTIME_CONFIG_PATH;
 
@@ -51,11 +54,6 @@ const DEFAULT_CONFIG = {
     type: 'auto',
     packageManager: 'auto',
     framework: 'auto'
-  },
-  skills: {
-    research: {
-      useGemini: true  // Toggle Gemini CLI usage in research skill
-    }
   },
   assertions: [],
   statusline: 'full',
@@ -466,7 +464,7 @@ function sanitizeConfig(config, projectRoot) {
  *
  * Resolution order (each layer overrides the previous):
  *   1. DEFAULT_CONFIG (hardcoded defaults)
- *   2. Runtime config (./.claude/runtime.json) - installed CafeKit runtime config
+ *   2. Runtime config (<runtime-dir>/runtime.json, derived by lib/runtime-dir.cjs) - installed CafeKit runtime config
  *
  * @param {Object} options - Options for config loading
  * @param {boolean} options.includeProject - Include project section (default: true)
@@ -525,6 +523,9 @@ function loadConfig(options = {}) {
     // Statusline mode
     result.statusline = merged.statusline || 'full';
     result.statuslineColors = merged.statuslineColors !== false;
+    if (merged.statuslineLayout && typeof merged.statuslineLayout === 'object') {
+      result.statuslineLayout = merged.statuslineLayout;
+    }
 
     return sanitizeConfig(result, projectRoot);
   } catch (e) {

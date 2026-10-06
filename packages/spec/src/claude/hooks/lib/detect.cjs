@@ -2,7 +2,7 @@
 /**
  * detect.cjs - Project and environment detection logic
  *
- * Extracted from session.cjs for reuse in both Claude hooks and OpenCode plugins.
+ * Extracted from session.cjs for reuse across runtime adapters.
  * Detects project type, package manager, framework, and runtime versions.
  *
  * @module detect

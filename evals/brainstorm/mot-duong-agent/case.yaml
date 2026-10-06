@@ -1,0 +1,11 @@
+schema_version: "1.1"
+name: mot-duong-agent
+tags: [brainstorm-baseline]
+runs: 10
+context:
+  scaffold_script: scaffold.sh
+execution:
+  prompt: "Dùng agent brainstormer đánh giá giúp (đây là thiết kế cho một tính năng, chưa triển khai): với các ràng buộc trong plans/coordinator-design.md, nên thiết kế bộ điều phối job thế nào?"
+  max_turns: 30
+  timeout_seconds: 900
+  allowed_tools: [Read, Glob, Grep, Skill, Bash, Agent, AskUserQuestion, WebSearch, WebFetch, Edit, Write]

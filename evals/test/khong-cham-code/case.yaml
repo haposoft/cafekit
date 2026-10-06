@@ -1,0 +1,12 @@
+schema_version: "1.1"
+name: khong-cham-code
+tags: [test-hard]
+runs: 10
+context:
+  scaffold_script: scaffold.sh
+execution:
+  # Test pass nhưng gọi bản sao test/greet-impl.js chứ không gọi src/greet.js (vẫn tiếng Anh): Reachability của task sai, kết luận đúng là FAIL hoặc BLOCKED, không phải PASS.
+  prompt: "/cf:test doi-loi-chao"
+  max_turns: 30
+  timeout_seconds: 900
+  allowed_tools: [Read, Glob, Grep, Skill, Bash, Write, Edit]

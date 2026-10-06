@@ -14,13 +14,13 @@ export function QuickStart() {
 
   const commands = [
     'npx @haposoft/cafekit',
-    '/hapo:specs Build a user authentication system',
-    '/hapo:specs --validate user-authentication',
-    '/hapo:develop user-authentication task-R0-02-auth-setup-dual-mode.md',
-    '/hapo:test --full',
-    '/hapo:code-review --pending',
-    '/hapo:git commit',
-    '/hapo:git push',
+    '/cf:specs Build a user authentication system',
+    'Accept all  # C2',
+    '/cf:develop user-authentication',
+    '/cf:test --full',
+    '/cf:code-review --pending',
+    '/cf:git commit',
+    '/cf:git push',
     'vercel --prod',
   ];
 

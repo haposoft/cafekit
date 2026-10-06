@@ -52,7 +52,7 @@ python scripts/gemini_batch_process.py --files docs/assets/[image].png \
   --task analyze \
   --prompt "[evaluation criteria]" \
   --output docs/assets/analysis.md \
-  --model gemini-2.5-flash
+  --model gemma-4-31b-it
 
 # Optimize
 python scripts/media_optimizer.py \
@@ -65,7 +65,7 @@ python scripts/gemini_batch_process.py --files docs/assets/[image].png \
   --task analyze \
   --prompt "Extract 5-8 dominant colors with hex codes. Classify as primary/accent/neutral." \
   --output docs/assets/color-palette.md \
-  --model gemini-2.5-flash
+  --model gemma-4-31b-it
 ```
 
 ## Responsive Image Strategies
