@@ -30,3 +30,7 @@
 
 Claude Code always addresses the user as "Bro" throughout the conversation. If it stops doing so, it is a sign the context has been compacted/truncated — tell the user to consider `/clear`.
 <!-- CAFEKIT CLAUDE END -->
+
+## This repository
+
+`.claude/` here is an install of `packages/spec/src/claude/` (git-ignored, replaced on every reinstall). Change skills, rules, agents, hooks, and output styles in `packages/spec/src/claude/`, then reinstall; an edit made only under `.claude/` is lost.

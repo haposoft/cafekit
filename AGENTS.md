@@ -52,3 +52,16 @@ Always respond in **Tiếng Việt**. Technical terms, code identifiers, and fil
 
 
 <!-- CAFEKIT CORE END -->
+
+## This repository
+
+### Commands
+- Self-tests: `pnpm --dir packages/spec test`
+- Node tests: `node --test packages/spec/bin/__tests__/*.test.js packages/spec/src/claude/hooks/__tests__/*.test.js`
+
+### Do not touch
+- `.claude/` is install output of `packages/spec/src/claude/`; edit the source.
+- `evals/results/` holds paid run artifacts (git-ignored); do not delete them.
+
+### Slow or expensive
+- `evals/run.sh <skill> …` runs paid model evaluations; plan the run count and budget first. `evals/run.sh <skill> --validate` costs nothing.

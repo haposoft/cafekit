@@ -6,7 +6,7 @@ Use the CafeKit loop: **Understand -> Plan -> Execute -> Verify -> Sync**.
 
 - Read `./README.md` before feature planning or coding.
 - Read the active spec/task file when one exists.
-- Read and activate any CafeKit skill that likely applies before taking action.
+- Use a CafeKit skill when its description matches the request; how to choose is in `skill-workflow-routing.md`.
 - Inspect only the code needed to understand the affected area.
 - Use `cf:scout` or focused search when structure is unclear.
 

@@ -34,8 +34,7 @@ Keep implementation simple, scoped, and verifiable.
 
 ## Skill And Tooling Use
 
-- Activate relevant skills before specialized work.
-- If a skill plausibly matches the task, prefer its workflow and references over an ad hoc plan.
+- When a skill covers the task, follow its workflow and references instead of an ad hoc plan.
 - Use documentation lookup when current external docs matter.
 - Use `gh` for GitHub workflows and `psql` for Postgres inspection when needed.
 - Use multimodal/image/document skills for visual or document-heavy tasks.
