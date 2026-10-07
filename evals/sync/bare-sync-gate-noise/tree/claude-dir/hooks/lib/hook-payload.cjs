@@ -54,8 +54,8 @@ const EVENT_NAMES = Object.freeze({
  * Grok's registry and matcher aliases come first, then omp's lowercase registry. Where
  * both hosts use a spelling (`write`, `grep`) they agree on the destination. `write` is
  * grok's file-creating tool and maps to `Write`, while `search_replace` edits an existing
- * file and maps to `Edit`; conflating them would make the scaffold guard reject ordinary
- * edits. `delete_file` maps to `Write` so a delete is gated like any other file write.
+ * file and maps to `Edit`, which keeps grok's file creation distinct from an edit.
+ * `delete_file` maps to `Write` so a delete is gated like any other file write.
  */
 const TOOL_ALIASES = Object.freeze({
   // grok — every spelling that reaches a Bash matcher

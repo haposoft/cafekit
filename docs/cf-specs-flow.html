@@ -307,7 +307,7 @@
     <a href="#trace">Trace criteria → task</a>
     <a href="#receipt">Receipt + Stop gate</a>
     <a href="#sync">Develop + Sync</a>
-    <a href="#legacy">Legacy compatibility</a>
+    <a href="#legacy">Gói cũ (spec.json)</a>
   </aside>
 
   <main>
@@ -512,39 +512,15 @@ Tests: 3 passed, 3 total
       </article>
     </section>
 
-    <h2>Legacy compatibility</h2>
+    <h2>Gói cũ (spec.json)</h2>
     <section class="card" id="legacy">
-      <p style="margin:0 0 10px;color:var(--muted)">
-        Phần này giữ các thuật ngữ cũ cho packet đã cài sẵn. Nó chỉ là nhánh
-        tương thích, không phải đường chính cho v3.
+      <p style="margin:0">
+        CafeKit không còn đọc gói cũ dùng <code>spec.json</code>, <code>task_registry</code> hay
+        task lồng <code>tasks/task-R*.md</code>. Thư mục gói có <code>spec.json</code> mà không có
+        <code>plan.md</code> không bao giờ chặn Stop; hook đầu lượt nhắc một dòng mỗi phiên để
+        chuyển việc sang gói <code>plan.md</code>. Thư mục có cả hai file được đọc như gói
+        process-first.
       </p>
-      <table>
-        <tr>
-          <th>Legacy item</th>
-          <th>Ở đâu</th>
-          <th>Ghi chú</th>
-        </tr>
-        <tr>
-          <td><code>spec.json</code></td>
-          <td>Legacy adapter</td>
-          <td>Machine state cũ của packet đã tồn tại.</td>
-        </tr>
-        <tr>
-          <td><code>task_registry</code></td>
-          <td>Legacy adapter</td>
-          <td>Chỉ dùng cho packet cũ có registry.</td>
-        </tr>
-        <tr>
-          <td><code>planning_depth</code>, <code>assurance_level</code>, <code>lane</code>, <code>execution_tier</code>, <code>semantic_model</code></td>
-          <td>Legacy adapter</td>
-          <td>Giữ để tương thích, không author vào packet v3 mới.</td>
-        </tr>
-        <tr>
-          <td><code>tasks/task-R*.md</code></td>
-          <td>Legacy adapter</td>
-          <td>Nested layout cũ; packet mới dùng task phẳng cạnh plan.md.</td>
-        </tr>
-      </table>
     </section>
 
     <footer>
