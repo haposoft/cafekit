@@ -33,17 +33,11 @@ Do the work yourself when it takes a handful of tool calls. Delegate genuinely i
 - Runtime-specific instructions live in that runtime's own managed block, not in `CORE`.
 - In a combined install, consume `CORE` plus your native block only. Ignore managed blocks not owned by your runtime. If ownership is unclear, treat the file as `CORE`-only (fail-safe).
 
-## Commands
+## Project notes
 
-<!-- Add project-specific install, test, lint, and build commands here. Keep commands executable. -->
-
-## Do not touch
-
-<!-- List files, directories, generated artifacts, or secrets that tasks must leave unchanged. -->
-
-## Slow or expensive
-
-<!-- Note commands, environments, or operations that need explicit planning before running. -->
+Write project-specific commands, files tasks must leave unchanged, and slow or
+expensive operations after the `CAFEKIT CORE END` marker. Everything between the
+CafeKit markers is replaced on every install.
 
 ## Language Consistency <!-- cafekit:lang -->
 

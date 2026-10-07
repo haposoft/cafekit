@@ -24,16 +24,19 @@ const CODEX_OWN_RUNTIME = [
 ];
 
 /**
- * Delete hooks and scripts the manifest marks obsolete. Codex tracker keys are project-relative
+ * Delete hooks, scripts and skill files the manifest marks obsolete. Codex tracker keys are project-relative
  * (`.codex/hooks/…`), so the record is pruned through keyFor, and always: a record whose
  * file is already gone must still leave the manifest.
  */
 function removeObsoleteCodexHooks(ctx, platformKey) {
   const platform = PLATFORMS[platformKey];
   const tracker = ctx.trackers && ctx.trackers[platformKey];
-  const obsoleteHooks = (ctx.manifest?.obsolete?.runtimeFiles || []).filter((rel) => rel.startsWith('hooks/') || rel.startsWith('scripts/'));
+  const obsoleteHooks = (ctx.manifest?.obsolete?.runtimeFiles || []).filter((rel) => rel.startsWith('hooks/') || rel.startsWith('scripts/') || rel.startsWith('skills/'));
   for (const rel of obsoleteHooks) {
-    const target = path.join(platform.folder, rel);
+    // Skill files live in the shared skills directory, not under the runtime folder.
+    const target = rel.startsWith('skills/')
+      ? path.join(platform.skillsDir, rel.slice('skills/'.length))
+      : path.join(platform.folder, rel);
     const exists = fs.existsSync(target);
     if (!ctx.dryRun) {
       if (exists) fs.rmSync(target, { force: true, recursive: fs.statSync(target).isDirectory() });

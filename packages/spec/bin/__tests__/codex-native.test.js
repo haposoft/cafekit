@@ -2248,7 +2248,7 @@ test('Codex installed Specs and spec-maker reject adaptive coverage mutations', 
     const questionSkill = path.join(root, '.agents', 'skills', 'ask', 'SKILL.md');
     fs.appendFileSync(questionSkill, '\nUSER-CODEX-SENTINEL\n');
     // Fresh installs are exact. Refresh/upgrade intentionally documents the
-    // current Codex limitation: removed skill paths are not pruned.
+    // A skill file the manifest lists as obsolete is removed on refresh; edited skills stay.
     const obsoleteSpecsRule = path.join(
       root, '.agents', 'skills', 'specs', 'rules', 'design-principles.md'
     );
@@ -2261,14 +2261,15 @@ test('Codex installed Specs and spec-maker reject adaptive coverage mutations', 
     assert.match(fs.readFileSync(questionSkill, 'utf8'), /USER-CODEX-SENTINEL/);
     assert.equal(
       fs.existsSync(obsoleteSpecsRule),
-      true,
-      'known limitation: Codex refresh does not prune obsolete skill files'
+      false,
+      'Codex refresh removes obsolete skill files'
     );
 
     const metadataPath = path.join(root, '.codex', 'cafekit.json');
     const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
     metadata.version = '0.14.1';
     fs.writeFileSync(metadataPath, `${JSON.stringify(metadata, null, 2)}\n`);
+    fs.writeFileSync(obsoleteSpecsRule, 'LEGACY-CODEX-ORPHAN\n');
 
     const upgrade = install(root);
     assert.equal(upgrade.status, 0, `${upgrade.stdout}\n${upgrade.stderr}`);
@@ -2276,8 +2277,8 @@ test('Codex installed Specs and spec-maker reject adaptive coverage mutations', 
     assert.match(fs.readFileSync(questionSkill, 'utf8'), /USER-CODEX-SENTINEL/);
     assert.equal(
       fs.existsSync(obsoleteSpecsRule),
-      true,
-      'known limitation: Codex upgrade does not prune obsolete skill files'
+      false,
+      'Codex upgrade removes obsolete skill files'
     );
     assert.ok(fs.readFileSync(path.join(root, 'AGENTS.md'), 'utf8').startsWith(userInstructions));
 
@@ -3078,7 +3079,7 @@ test('Codex installed code_auditor carries no Strict attestation marker', () => 
   });
 });
 
-test('reinstall removes obsolete scripts from Codex and omp installs', () => {
+test('reinstall removes obsolete scripts and skill files from Codex and omp installs', () => {
   inTempProject((root) => {
     const first = installPlatforms(root, ['codex', 'omp']);
     assert.equal(first.status, 0, `${first.stdout}\n${first.stderr}`);
@@ -3086,8 +3087,14 @@ test('reinstall removes obsolete scripts from Codex and omp installs', () => {
     for (const runtime of ['.codex', '.omp']) {
       for (const name of retired) fs.writeFileSync(path.join(root, runtime, 'scripts', name), 'legacy\n');
     }
+    const retiredSkillFiles = ['code-review/references/verification-gate.md', 'specs/references/archive-workflow.md'];
+    for (const rel of retiredSkillFiles) fs.writeFileSync(path.join(root, '.agents', 'skills', rel), 'legacy\n');
     const again = installPlatforms(root, ['codex', 'omp'], ['--force-overwrite']);
     assert.equal(again.status, 0, `${again.stdout}\n${again.stderr}`);
+    for (const rel of retiredSkillFiles) {
+      assert.equal(fs.existsSync(path.join(root, '.agents', 'skills', rel)), false, `.agents/skills/${rel} must be removed`);
+    }
+    assert.equal(fs.existsSync(path.join(root, '.agents', 'skills', 'code-review', 'SKILL.md')), true, 'the code-review skill stays');
     for (const runtime of ['.codex', '.omp']) {
       for (const name of retired) {
         assert.equal(fs.existsSync(path.join(root, runtime, 'scripts', name)), false, `${runtime}/scripts/${name} must be removed`);
