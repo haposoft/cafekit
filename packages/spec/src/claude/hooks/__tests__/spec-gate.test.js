@@ -20,7 +20,7 @@ const CACHE = path.join(hookStateDir(), 'spec-gate-last.json');
 const PROVENANCE = require(path.join(__dirname, '..', '..', 'scripts', 'provenance.cjs'));
 const POLICY = require(path.join(__dirname, '..', '..', 'scripts', 'workflow-policy.cjs'));
 const FEATURE = 'demo';
-const TASK_REL = 'tasks/task-R0-01-x.md';
+const TASK_REL = 'task-01-x.md';
 const VALID_BASE = '0123456789abcdef0123456789abcdef01234567';
 const VALID_HEAD = '89abcdef0123456789abcdef0123456789abcdef';
 const FIXTURE_ARTIFACT = Buffer.from('cafekit claude fixture artifact\n');
@@ -29,11 +29,6 @@ const FIXTURE_ARTIFACT_DIGEST = crypto.createHash('sha256').update(FIXTURE_ARTIF
 function runHook(payload, cwd) {
   const projectRoot = cwd || payload.cwd;
   const specsRoot = path.join(projectRoot, 'specs');
-  if (fs.existsSync(specsRoot)) {
-    for (const featureName of fs.readdirSync(specsRoot)) {
-      installFeatureReceipt(projectRoot, featureName, payload.session_id || 'test');
-    }
-  }
   // PROJECT_ROOT wins over cwd in the hook; pin it to the fixture so a host
   // monorepo's real specs/ cannot leak into the test (e.g. active rtk-* specs).
   const env = { ...process.env, PROJECT_ROOT: projectRoot };
@@ -69,7 +64,7 @@ function runtimeContext(dir) {
   return PROVENANCE.deriveRuntimeContext({
     projectRoot: dir,
     specsRoot: path.join(dir, 'specs'),
-    specFile: path.join(dir, 'specs', FEATURE, 'spec.json'),
+    specFile: path.join(dir, 'specs', FEATURE, 'plan.md'),
     featureName: FEATURE,
     runtimeSession: 'test',
   });
@@ -118,38 +113,6 @@ function makeWorkflowFixture(receiptLines = [], plannedCommand = 'node --test') 
   return dir;
 }
 
-function installFeatureReceipt(dir, featureName = FEATURE, session = 'test') {
-  const featureDir = path.join(dir, 'specs', featureName);
-  const specFile = path.join(featureDir, 'spec.json');
-  if (!fs.existsSync(specFile)) return;
-  let spec;
-  try { spec = JSON.parse(fs.readFileSync(specFile, 'utf8')); } catch { return; }
-  const lifecyclePhase = spec.current_phase || spec.phase;
-  const explicitCloseout = ['completed', 'complete'].includes(spec.status)
-    || ['closeout', 'completion', 'completed', 'complete'].includes(lifecyclePhase);
-  if (!explicitCloseout) return;
-  const tasks = Object.values(spec.task_registry || {});
-  if (tasks.length === 0 || tasks.some((task) => task.status !== 'done')) return;
-  const context = PROVENANCE.deriveRuntimeContext({
-    projectRoot: dir,
-    specsRoot: path.join(dir, 'specs'),
-    specFile,
-    featureName,
-    runtimeSession: session,
-  });
-  fs.writeFileSync(path.join(featureDir, 'feature-receipt.md'), [
-    `Feature: ${featureName}`,
-    'Expected: final integration verification passes',
-    'Observed: final integration verification passed',
-    'Verification: PASS',
-    'Command: node --test',
-    'Exit: 0',
-    `Base: ${context.base}`,
-    `Head: ${context.head}`,
-    '',
-  ].join('\n'));
-}
-
 function clearCache() {
   try { fs.unlinkSync(CACHE); } catch { /* absent */ }
 }
@@ -164,52 +127,32 @@ function readCache() {
 }
 
 /**
- * Build a minimal active-spec fixture under dir.
+ * Build a minimal process-first packet under dir: plan.md plus one flat task
+ * whose Verification Plan runs `npm test` and whose inline Receipt varies.
  * @param {object} opts
  * @param {string} [opts.taskStatus='done']
- * @param {string|null} [opts.completed_at='2026-07-01T00:00:00Z']
- * @param {string} [opts.mdStatus='done']
- * @param {'valid'|'legacy-valid'|'failed'|'fence-only'|'missing-evidence'|'placeholder'|'none'} [opts.evidence='valid']
+ * @param {'valid'|'failed'|'fence-only'|'missing-evidence'|'placeholder'|'none'} [opts.evidence='valid']
  * @param {object|null} [opts.runtime] — if set, write .claude/runtime.json
- * @param {object|null} [opts.workflowPolicy] — if set, persist completion obligations
- * @param {string} [opts.phase='closeout'] — persisted lifecycle boundary
  */
 function makeFixture(opts = {}) {
   const {
     taskStatus = 'done',
-    completed_at = '2026-07-01T00:00:00Z',
-    mdStatus = 'done',
     evidence = 'valid',
     runtime = null,
-    workflowPolicy = null,
-    phase = 'closeout',
   } = opts;
   const dir = tmpDir();
   const featureDir = path.join(dir, 'specs', FEATURE);
-  const tasksDir = path.join(featureDir, 'tasks');
-  fs.mkdirSync(tasksDir, { recursive: true });
+  fs.mkdirSync(featureDir, { recursive: true });
+  fs.writeFileSync(path.join(featureDir, 'plan.md'), '# Demo plan\nSpecs-Contract: process-first-ready-v1\n');
 
-  const entry = { status: taskStatus };
-  if (completed_at !== null) entry.completed_at = completed_at;
-
-  const spec = {
-    status: 'in_progress',
-    feature_name: FEATURE,
-    current_phase: phase,
-    task_registry: { [TASK_REL]: entry },
-  };
-  if (workflowPolicy) spec.workflow_policy = workflowPolicy;
-  fs.writeFileSync(path.join(featureDir, 'spec.json'), JSON.stringify(spec));
-
-  let evidenceBlock = '';
+  let receiptBlock = '';
   if (evidence === 'valid') {
-    evidenceBlock = [
-      '## Evidence',
+    receiptBlock = [
+      '## Receipt',
       '',
       'Verification: PASS',
       'Command: npm test',
       'Exit: 0',
-      'Result: PASS',
       `Base: ${VALID_BASE}`,
       `Head: ${VALID_HEAD}`,
       `Artifact: output/bundle.js (sha256:${FIXTURE_ARTIFACT_DIGEST})`,
@@ -219,34 +162,38 @@ function makeFixture(opts = {}) {
       '```',
       '',
     ].join('\n');
-  } else if (evidence === 'legacy-valid') {
-    evidenceBlock = `## Evidence\n\nVerification: PASS\nCommand: npm test\nExit: 0\nBase: ${VALID_BASE}\nHead: ${VALID_HEAD}\nnpm test — passed, exit code 0\n`;
   } else if (evidence === 'failed') {
-    evidenceBlock = '## Evidence\n\nVerification: PASS\n\nFAIL: tests failed, exit code 1\n';
+    receiptBlock = '## Receipt\n\nVerification: PASS\n\nFAIL: tests failed, exit code 1\n';
   } else if (evidence === 'fence-only') {
-    evidenceBlock = '## Evidence\n\n```\nnpm test\n```\n';
+    receiptBlock = '## Receipt\n\n```\nnpm test\n```\n';
   } else if (evidence === 'placeholder') {
-    evidenceBlock = [
-      '## Evidence',
+    receiptBlock = [
+      '## Receipt',
       '',
       'Command: `{{TYPECHECK / TEST COMMAND}}`',
       'Expected: {{What proves success}}',
       '',
     ].join('\n');
   } else if (evidence === 'missing-evidence') {
-    evidenceBlock = '## Risk Assessment\n\nNone.\n';
-  } else {
-    evidenceBlock = '';
+    receiptBlock = '## Risk Assessment\n\nNone.\n';
   }
 
   fs.writeFileSync(
-    path.join(dir, 'specs', FEATURE, TASK_REL),
+    path.join(featureDir, TASK_REL),
     [
-      `# Task R0-01: example`,
+      '# Task 01: example',
       '',
-      `**Status:** ${mdStatus}`,
+      `Status: ${taskStatus}`,
       '',
-      evidenceBlock,
+      '## Dependencies',
+      '',
+      '- none',
+      '',
+      '## Verification Plan',
+      '',
+      '- Command: npm test',
+      '',
+      receiptBlock,
     ].join('\n'),
   );
 
@@ -261,9 +208,7 @@ function makeFixture(opts = {}) {
   if (evidence === 'valid') {
     fs.mkdirSync(path.join(dir, 'output'), { recursive: true });
     fs.writeFileSync(path.join(dir, 'output', 'bundle.js'), FIXTURE_ARTIFACT);
-  }
-  if (evidence === 'valid' || evidence === 'legacy-valid') {
-    const taskFile = path.join(dir, 'specs', FEATURE, TASK_REL);
+    const taskFile = path.join(featureDir, TASK_REL);
     fs.writeFileSync(taskFile, bindFixtureReceipt(dir, fs.readFileSync(taskFile, 'utf8')));
   }
 
@@ -295,7 +240,7 @@ function installClaudeGate(root, policyMode = 'valid') {
     path.join(__dirname, '..', 'lib', 'hook-state-dir.cjs'),
     path.join(hooks, 'lib', 'hook-state-dir.cjs'),
   );
-  for (const name of ['spec-resolver.cjs', 'spec-receipt.cjs', 'spec-final-state.cjs']) {
+  for (const name of ['spec-resolver.cjs', 'spec-receipt.cjs']) {
     fs.copyFileSync(path.join(__dirname, '..', '..', 'scripts', name), path.join(scripts, name));
   }
   if (policyMode === 'valid') {
@@ -401,31 +346,21 @@ test('Claude adapter requires canonical SHA-256 only for a declared task artifac
     const dir = tmpDir();
     const gate = installClaudeGate(dir);
     const featureDir = path.join(dir, 'specs', FEATURE);
+    fs.mkdirSync(featureDir, { recursive: true });
+    fs.writeFileSync(path.join(featureDir, 'plan.md'), '# Demo plan\n');
     fs.mkdirSync(path.join(featureDir, 'tasks'), { recursive: true });
     fs.mkdirSync(path.join(dir, 'output'), { recursive: true });
     fs.writeFileSync(path.join(dir, 'output', 'bundle.js'), FIXTURE_ARTIFACT);
-    fs.writeFileSync(path.join(featureDir, 'spec.json'), JSON.stringify({
-      status: 'in_progress',
-      current_phase: 'closeout',
-      feature_name: FEATURE,
-      task_registry: {
-        [TASK_REL]: {
-          status: 'done',
-          completed_at: '2026-08-11T00:00:00.000Z',
-          artifacts: ['output/bundle.js'],
-        },
-      },
-    }));
     fs.writeFileSync(path.join(featureDir, TASK_REL), [
-      '# Task', '', '**Status:** done', '', '## Evidence', '',
+      '# Task', '', 'Status: done', '', '## Dependencies', '', '- none', '', '## Verification Plan', '', '- Command: node --test', '', '## Receipt', '',
       'Verification: PASS', 'Command: node --test', 'Exit: 0', `Base: ${VALID_BASE}`, `Head: ${VALID_HEAD}`,
       'Artifact: output/bundle.js', suffix,
+      '```', 'node --test', 'ok 1', '```',
     ].join('\n'));
     fs.writeFileSync(
       path.join(featureDir, TASK_REL),
       bindFixtureReceipt(dir, fs.readFileSync(path.join(featureDir, TASK_REL), 'utf8')),
     );
-    installFeatureReceipt(dir);
     try {
       const result = spawnSync(process.execPath, [gate], {
         cwd: dir,
@@ -455,6 +390,8 @@ test('Claude artifact verification rejects traversal and symlink paths', () => {
   for (const { artifactPath, symlink } of cases) {
     const dir = tmpDir();
     const featureDir = path.join(dir, 'specs', FEATURE);
+    fs.mkdirSync(featureDir, { recursive: true });
+    fs.writeFileSync(path.join(featureDir, 'plan.md'), '# Demo plan\n');
     const artifactBytes = Buffer.from(`artifact-${artifactPath}\n`);
     const digest = crypto.createHash('sha256').update(artifactBytes).digest('hex');
     fs.mkdirSync(path.join(featureDir, 'tasks'), { recursive: true });
@@ -466,20 +403,8 @@ test('Claude artifact verification rejects traversal and symlink paths', () => {
     } else {
       fs.writeFileSync(path.join(dir, 'outside.js'), artifactBytes);
     }
-    fs.writeFileSync(path.join(featureDir, 'spec.json'), JSON.stringify({
-      status: 'in_progress',
-      current_phase: 'closeout',
-      feature_name: FEATURE,
-      task_registry: {
-        [TASK_REL]: {
-          status: 'done',
-          completed_at: '2026-08-11T00:00:00.000Z',
-          artifacts: [artifactPath],
-        },
-      },
-    }));
     fs.writeFileSync(path.join(featureDir, TASK_REL), bindFixtureReceipt(dir, [
-      '# Task', '', '**Status:** done', '', '## Evidence', '',
+      '# Task', '', 'Status: done', '', '## Dependencies', '', '- none', '', '## Verification Plan', '', '- Command: node --test', '', '## Receipt', '',
       'Verification: PASS', 'Command: node --test', 'Exit: 0',
       `Base: ${VALID_BASE}`, `Head: ${VALID_HEAD}`,
       `Artifact: ${artifactPath} (sha256:${digest})`,
@@ -625,27 +550,6 @@ test('empty or malformed Claude hook payload fails closed', () => {
   }
 });
 
-test('explicit Strict completion ignores worker-writable proof strings and remains blocked', () => {
-  const dir = makeFixture({
-    workflowPolicy: POLICY.workflowPolicySnapshot({ riskSignals: { auth: true }, assurance_level: 'Strict' }),
-  });
-  try {
-    const specPath = path.join(dir, 'specs', FEATURE, 'spec.json');
-    const spec = JSON.parse(fs.readFileSync(specPath, 'utf8'));
-    spec.proofs = {
-      needsInspection: 'inspection completed',
-      needsIndependentAudit: 'PASS',
-      needsResearchGrounding: 'research completed',
-    };
-    fs.writeFileSync(specPath, JSON.stringify(spec));
-    const body = parseBlock(runHook({}, dir).stdout);
-    assert.equal(body?.decision, 'block');
-    assert.match(body.reason, /needsInspection|needsIndependentAudit|needsResearchGrounding/);
-  } finally {
-    fs.rmSync(dir, { recursive: true, force: true });
-  }
-});
-
 test('7. Evidence with {{...}} placeholder → blocked (placeholder)', () => {
   const dir = makeFixture({ evidence: 'placeholder' });
   try {
@@ -686,70 +590,20 @@ test('9. a code fence alone is not verification proof', () => {
   }
 });
 
-test('10. completed_at must be a valid ISO timestamp', () => {
-  const dir = makeFixture({ completed_at: 'yesterday' });
-  try {
-    seedCache({ [FEATURE]: { [TASK_REL]: 'pending' } });
-    const body = parseBlock(runHook({}, dir).stdout);
-    assert.ok(body);
-    assert.match(body.reason, /\bcompleted_at\b/);
-  } finally {
-    fs.rmSync(dir, { recursive: true, force: true });
-  }
-});
-
-test('11. done → pending cache transition is persisted and explicit closeout gates re-completion', () => {
-  const dir = makeFixture({ taskStatus: 'pending', mdStatus: 'pending', phase: 'implementation' });
-  try {
-    seedCache({ [FEATURE]: { [TASK_REL]: 'done' } });
-    assert.strictEqual(runHook({}, dir).stdout, '');
-    assert.strictEqual(readCache()[FEATURE][TASK_REL], 'pending');
-
-    const specFile = path.join(dir, 'specs', FEATURE, 'spec.json');
-    const spec = JSON.parse(fs.readFileSync(specFile, 'utf8'));
-    spec.task_registry[TASK_REL] = {
-      status: 'done',
-      completed_at: '2026-07-01T00:00:00Z',
-    };
-    spec.current_phase = 'closeout';
-    fs.writeFileSync(specFile, JSON.stringify(spec));
-    const taskFile = path.join(dir, 'specs', FEATURE, TASK_REL);
-    fs.writeFileSync(taskFile, '# Task\n\n**Status:** done\n\n## Evidence\n\nFAIL: tests failed\n');
-
-    assert.ok(parseBlock(runHook({}, dir).stdout), 're-completed failing task must be gated');
-  } finally {
-    fs.rmSync(dir, { recursive: true, force: true });
-  }
-});
-
-test('12. legacy successful receipt remains read-compatible', () => {
-  const dir = makeFixture({ evidence: 'legacy-valid' });
-  try {
-    seedCache({ [FEATURE]: { [TASK_REL]: 'pending' } });
-    assert.strictEqual(runHook({}, dir).stdout, '');
-  } finally {
-    fs.rmSync(dir, { recursive: true, force: true });
-  }
-});
-
 test('13. provenance requires both Base and Head - only Base fails', () => {
   const dir = tmpDir();
   const featureDir = path.join(dir, 'specs', FEATURE);
+  fs.mkdirSync(featureDir, { recursive: true });
+  fs.writeFileSync(path.join(featureDir, 'plan.md'), '# Demo plan\n');
   const tasksDir = path.join(featureDir, 'tasks');
   fs.mkdirSync(tasksDir, { recursive: true });
-  fs.writeFileSync(path.join(featureDir, 'spec.json'), JSON.stringify({
-    status: 'in_progress',
-    feature_name: FEATURE,
-    current_phase: 'closeout',
-    task_registry: { [TASK_REL]: { status: 'done', completed_at: '2026-07-01T00:00:00Z' } },
-  }));
   // Only Base, missing Head
   fs.writeFileSync(path.join(dir, 'specs', FEATURE, TASK_REL), bindFixtureReceipt(dir, [
     '# Task',
     '',
-    '**Status:** done',
+    'Status: done',
     '',
-    '## Evidence',
+    '## Dependencies', '', '- none', '', '## Verification Plan', '', '- Command: npm test', '', '## Receipt',
     '',
     'Verification: PASS',
     'Command: npm test',
@@ -773,21 +627,17 @@ test('13. provenance requires both Base and Head - only Base fails', () => {
 test('14. provenance requires both Base and Head - only Head fails', () => {
   const dir = tmpDir();
   const featureDir = path.join(dir, 'specs', FEATURE);
+  fs.mkdirSync(featureDir, { recursive: true });
+  fs.writeFileSync(path.join(featureDir, 'plan.md'), '# Demo plan\n');
   const tasksDir = path.join(featureDir, 'tasks');
   fs.mkdirSync(tasksDir, { recursive: true });
-  fs.writeFileSync(path.join(featureDir, 'spec.json'), JSON.stringify({
-    status: 'in_progress',
-    feature_name: FEATURE,
-    current_phase: 'closeout',
-    task_registry: { [TASK_REL]: { status: 'done', completed_at: '2026-07-01T00:00:00Z' } },
-  }));
   // Only Head, missing Base
   fs.writeFileSync(path.join(dir, 'specs', FEATURE, TASK_REL), [
     '# Task',
     '',
-    '**Status:** done',
+    'Status: done',
     '',
-    '## Evidence',
+    '## Dependencies', '', '- none', '', '## Verification Plan', '', '- Command: npm test', '', '## Receipt',
     '',
     'Verification: PASS',
     'Command: npm test',
@@ -811,20 +661,16 @@ test('14. provenance requires both Base and Head - only Head fails', () => {
 test('15. provenance with both Base and Head passes', () => {
   const dir = tmpDir();
   const featureDir = path.join(dir, 'specs', FEATURE);
+  fs.mkdirSync(featureDir, { recursive: true });
+  fs.writeFileSync(path.join(featureDir, 'plan.md'), '# Demo plan\n');
   const tasksDir = path.join(featureDir, 'tasks');
   fs.mkdirSync(tasksDir, { recursive: true });
-  fs.writeFileSync(path.join(featureDir, 'spec.json'), JSON.stringify({
-    status: 'in_progress',
-    feature_name: FEATURE,
-    current_phase: 'closeout',
-    task_registry: { [TASK_REL]: { status: 'done', completed_at: '2026-07-01T00:00:00Z' } },
-  }));
   fs.writeFileSync(path.join(dir, 'specs', FEATURE, TASK_REL), bindFixtureReceipt(dir, [
     '# Task',
     '',
-    '**Status:** done',
+    'Status: done',
     '',
-    '## Evidence',
+    '## Dependencies', '', '- none', '', '## Verification Plan', '', '- Command: npm test', '', '## Receipt',
     '',
     'Verification: PASS',
     'Command: npm test',
@@ -844,57 +690,6 @@ test('15. provenance with both Base and Head passes', () => {
   }
 });
 
-test('16. registry task path with ../ escape or sibling-prefix is rejected (check a)', () => {
-  const dir = tmpDir();
-  const featureDir = path.join(dir, 'specs', FEATURE);
-  const evilFeature = path.join(dir, 'specs', `${FEATURE}-evil`);
-  const maliciousRel = `../${FEATURE}-evil/tasks/task.md`;
-  const maliciousAbs = path.join(evilFeature, 'tasks/task.md');
-  // Prepare evil file with valid receipt outside feature (should be ignored due to path traversal)
-  fs.mkdirSync(path.join(featureDir, 'tasks'), { recursive: true });
-  fs.mkdirSync(path.join(evilFeature, 'tasks'), { recursive: true });
-  fs.writeFileSync(maliciousAbs, [
-    '# Task',
-    '',
-    '**Status:** done',
-    '',
-    '## Evidence',
-    '',
-    'Verification: PASS',
-    'Command: npm test',
-    'Exit: 0',
-    `Base: ${VALID_BASE}`,
-    `Head: ${VALID_HEAD}`,
-    '```',
-    'pass',
-    '```',
-  ].join('\n'));
-  // Also create sibling-prefix style path: tasks/../../demo-evil/tasks/task.md
-  const siblingPrefixRel = `tasks/../../${FEATURE}-evil/tasks/task.md`;
-  fs.writeFileSync(path.join(featureDir, 'spec.json'), JSON.stringify({
-    status: 'in_progress',
-    feature_name: FEATURE,
-    current_phase: 'closeout',
-    task_registry: {
-      [maliciousRel]: { status: 'done', completed_at: '2026-07-01T00:00:00Z' },
-      [siblingPrefixRel]: { status: 'done', completed_at: '2026-07-01T00:00:00Z' },
-      [path.resolve(featureDir, maliciousRel)]: { status: 'done', completed_at: '2026-07-01T00:00:00Z' },
-    },
-  }));
-  try {
-    seedCache({ [FEATURE]: { [maliciousRel]: 'pending', [siblingPrefixRel]: 'pending', [path.resolve(featureDir, maliciousRel)]: 'pending' } });
-    const body = parseBlock(runHook({}, dir).stdout);
-    assert.ok(body, 'traversal path should block');
-    assert.strictEqual(body.decision, 'block');
-    // Must fail check a (file + Status)
-    assert.match(body.reason, /\ba\b/);
-    // Ensure malicious path is named in reason
-    assert.ok(body.reason.includes(maliciousRel) || body.reason.includes(siblingPrefixRel));
-  } finally {
-    fs.rmSync(dir, { recursive: true, force: true });
-  }
-});
-
 test('17. empty or bare provenance fails — Base:/Head: require non-empty same-line values', () => {
   const cases = [
     { evidence: ['Verification: PASS','Command: npm test','Exit: 0','Base:','Head: def456'].join('\n'), desc: 'empty Base:' },
@@ -908,14 +703,10 @@ test('17. empty or bare provenance fails — Base:/Head: require non-empty same-
   for (const { evidence, desc } of cases) {
     const dir = tmpDir();
     const featureDir = path.join(dir, 'specs', FEATURE);
+    fs.mkdirSync(featureDir, { recursive: true });
+    fs.writeFileSync(path.join(featureDir, 'plan.md'), '# Demo plan\n');
     fs.mkdirSync(path.join(featureDir, 'tasks'), { recursive: true });
-    fs.writeFileSync(path.join(featureDir, 'spec.json'), JSON.stringify({
-    status: 'in_progress',
-    feature_name: FEATURE,
-    current_phase: 'closeout',
-      task_registry: { [TASK_REL]: { status: 'done', completed_at: '2026-07-01T00:00:00Z' } },
-    }));
-    fs.writeFileSync(path.join(dir, 'specs', FEATURE, TASK_REL), ['# Task','','**Status:** done','','## Evidence','','' + evidence,'```','pass','```'].join('\n'));
+    fs.writeFileSync(path.join(dir, 'specs', FEATURE, TASK_REL), ['# Task','','Status: done','','## Dependencies', '', '- none', '', '## Verification Plan', '', '- Command: npm test', '', '## Receipt','','' + evidence,'```','pass','```'].join('\n'));
     seedCache({ [FEATURE]: { [TASK_REL]: 'pending' } });
     const body = parseBlock(runHook({}, dir).stdout);
     assert.ok(body, `empty/bare provenance should block for ${desc}`);
@@ -934,15 +725,17 @@ test('18. valid non-empty Base: value and base_sha: value pass', () => {
   for (const { evidence, shouldPass } of validCases) {
     const dir = tmpDir();
     const featureDir = path.join(dir, 'specs', FEATURE);
+    fs.mkdirSync(featureDir, { recursive: true });
+    fs.writeFileSync(path.join(featureDir, 'plan.md'), '# Demo plan\n');
     fs.mkdirSync(path.join(featureDir, 'tasks'), { recursive: true });
-    fs.writeFileSync(path.join(featureDir, 'spec.json'), JSON.stringify({
-      status: 'in_progress',
-      feature_name: FEATURE,
-      current_phase: 'closeout',
-      task_registry: { [TASK_REL]: { status: 'done', completed_at: '2026-07-01T00:00:00Z' } },
-    }));
-    const boundEvidence = shouldPass ? bindFixtureReceipt(dir, evidence) : evidence;
-    fs.writeFileSync(path.join(dir, 'specs', FEATURE, TASK_REL), ['# Task','','**Status:** done','','## Evidence','','' + boundEvidence,'```','pass','```'].join('\n'));
+    const taskFile = path.join(dir, 'specs', FEATURE, TASK_REL);
+    const taskText = (receipt) => ['# Task','','Status: done','','## Dependencies', '', '- none', '', '## Verification Plan', '', '- Command: ' + ((evidence.match(/^Command: (.*)$/m) || [])[1] || 'npm test'), '', '## Receipt','','' + receipt,'```','pass','```'].join('\n');
+    // Base and Head bind to the live tree only for a committed task file that has since
+    // changed, so every case commits the receipt and then edits it: a pass case rebinds
+    // to the runtime-derived pair, a fail case keeps its arbitrary values.
+    fs.writeFileSync(taskFile, taskText(evidence));
+    commitAll(dir, 'receipt');
+    fs.writeFileSync(taskFile, shouldPass ? taskText(bindFixtureReceipt(dir, evidence)) : `${taskText(evidence)}\n`);
     seedCache({ [FEATURE]: { [TASK_REL]: 'pending' } });
     const result = runHook({}, dir);
     if (shouldPass) assert.strictEqual(result.stdout, '', `valid provenance should not block: ${evidence.slice(0,40)}`);
@@ -979,8 +772,8 @@ test('20. cache-hit: receipt mutation (removed Verification/Command) blocks even
     // mutate: strip Verification: PASS and Command — keep file as done
     const taskFile = path.join(dir, 'specs', FEATURE, TASK_REL);
     fs.writeFileSync(taskFile, [
-      '# Task', '', '**Status:** done', '',
-      '## Evidence', '',
+      '# Task', '', 'Status: done', '',
+      '## Dependencies', '', '- none', '', '## Verification Plan', '', '- Command: npm test', '', '## Receipt', '',
       'Exit: 0', `Base: ${VALID_BASE}`, `Head: ${VALID_HEAD}`,
       '```', 'pass', '```',
     ].join('\n'));
@@ -1004,8 +797,8 @@ test('21. cache-hit: provenance mutation (removed Head / changed to stale) block
     // mutate: remove Head, leave only Base
     const taskFile = path.join(dir, 'specs', FEATURE, TASK_REL);
     fs.writeFileSync(taskFile, [
-      '# Task', '', '**Status:** done', '',
-      '## Evidence', '', 'Verification: PASS', 'Command: npm test', 'Exit: 0', `Base: ${VALID_BASE}`,
+      '# Task', '', 'Status: done', '',
+      '## Dependencies', '', '- none', '', '## Verification Plan', '', '- Command: npm test', '', '## Receipt', '', 'Verification: PASS', 'Command: npm test', 'Exit: 0', `Base: ${VALID_BASE}`,
       '```', 'pass', '```',
     ].join('\n'));
     let body = parseBlock(runHook({}, dir).stdout);
@@ -1013,29 +806,13 @@ test('21. cache-hit: provenance mutation (removed Head / changed to stale) block
     assert.match(body.reason, /\bprovenance\b/);
     // mutate back to include both but with empty Head value (stale)
     fs.writeFileSync(taskFile, [
-      '# Task', '', '**Status:** done', '',
-      '## Evidence', '', 'Verification: PASS', 'Command: npm test', 'Exit: 0', `Base: ${VALID_BASE}`, 'Head:',
+      '# Task', '', 'Status: done', '',
+      '## Dependencies', '', '- none', '', '## Verification Plan', '', '- Command: npm test', '', '## Receipt', '', 'Verification: PASS', 'Command: npm test', 'Exit: 0', `Base: ${VALID_BASE}`, 'Head:',
       '```', 'pass', '```',
     ].join('\n'));
     body = parseBlock(runHook({}, dir).stdout);
     assert.ok(body, 'empty Head should block as stale provenance');
     assert.match(body.reason, /\bprovenance\b/);
-  } finally {
-    fs.rmSync(dir, { recursive: true, force: true });
-  }
-});
-
-test('22. cache-hit: deleted task file blocks even though spec still says done', () => {
-  const dir = makeFixture({ evidence: 'valid' });
-  try {
-    seedCache({ [FEATURE]: { [TASK_REL]: 'pending' } });
-    assert.strictEqual(runHook({}, dir).stdout, '');
-    assert.strictEqual(readCache()[FEATURE][TASK_REL], 'done');
-    fs.unlinkSync(path.join(dir, 'specs', FEATURE, TASK_REL));
-    const body = parseBlock(runHook({}, dir).stdout);
-    assert.ok(body, 'deleted receipt file should block on cache-hit');
-    assert.strictEqual(body.decision, 'block');
-    assert.match(body.reason, /\ba\b/);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
@@ -1093,9 +870,10 @@ test('25. placeholder tokens Command: TODO / Base: TBD / artifact sha256 empty m
   for (const { evidence, check, desc } of cases) {
     const dir = tmpDir();
     const featureDir = path.join(dir, 'specs', FEATURE);
+    fs.mkdirSync(featureDir, { recursive: true });
+    fs.writeFileSync(path.join(featureDir, 'plan.md'), '# Demo plan\n');
     fs.mkdirSync(path.join(featureDir, 'tasks'), { recursive: true });
-    fs.writeFileSync(path.join(featureDir, 'spec.json'), JSON.stringify({ status: 'in_progress', feature_name: FEATURE, current_phase: 'closeout', task_registry: { [TASK_REL]: { status: 'done', completed_at: '2026-07-01T00:00:00Z' } } }));
-    fs.writeFileSync(path.join(dir, 'specs', FEATURE, TASK_REL), ['# Task','','**Status:** done','','## Evidence','','' + evidence,'```','pass','```'].join('\n'));
+    fs.writeFileSync(path.join(dir, 'specs', FEATURE, TASK_REL), ['# Task','','Status: done','','## Dependencies', '', '- none', '', '## Verification Plan', '', '- Command: ' + ((evidence.match(/^Command: (.*)$/m) || [])[1] || 'npm test'), '', '## Receipt','','' + evidence,'```','pass','```'].join('\n'));
     seedCache({ [FEATURE]: { [TASK_REL]: 'pending' } });
     const body = parseBlock(runHook({}, dir).stdout);
     assert.ok(body, `placeholder case ${desc} should block`);
@@ -1107,8 +885,8 @@ test('25. placeholder tokens Command: TODO / Base: TBD / artifact sha256 empty m
   const dir2 = tmpDir();
   const featureDir2 = path.join(dir2, 'specs', FEATURE);
   fs.mkdirSync(path.join(featureDir2, 'tasks'), { recursive: true });
-  fs.writeFileSync(path.join(featureDir2, 'spec.json'), JSON.stringify({ status: 'in_progress', feature_name: FEATURE, current_phase: 'closeout', task_registry: { [TASK_REL]: { status: 'done', completed_at: '2026-07-01T00:00:00Z' } } }));
-  fs.writeFileSync(path.join(dir2, 'specs', FEATURE, TASK_REL), bindFixtureReceipt(dir2, ['# Task','','**Status:** done','','## Evidence','','Verification: PASS','Command: npm run todo:test','Exit: 0',`Base: ${VALID_BASE}`,`Head: ${VALID_HEAD}`,'```','pass','```'].join('\n')));
+  fs.writeFileSync(path.join(featureDir2, 'plan.md'), '# Demo plan\n');
+  fs.writeFileSync(path.join(dir2, 'specs', FEATURE, TASK_REL), bindFixtureReceipt(dir2, ['# Task','','Status: done','','## Dependencies', '', '- none', '', '## Verification Plan', '', '- Command: npm run todo:test', '', '## Receipt','','Verification: PASS','Command: npm run todo:test','Exit: 0',`Base: ${VALID_BASE}`,`Head: ${VALID_HEAD}`,'```','pass','```'].join('\n')));
   seedCache({ [FEATURE]: { [TASK_REL]: 'pending' } });
   assert.strictEqual(runHook({}, dir2).stdout, '', 'command containing todo substring should not block');
   fs.rmSync(dir2, { recursive: true, force: true });
@@ -1123,9 +901,10 @@ test('26. explicit failure outcomes Tests failed / Result FAIL and multiple Resu
   for (const { evidence, desc } of cases) {
     const dir = tmpDir();
     const featureDir = path.join(dir, 'specs', FEATURE);
+    fs.mkdirSync(featureDir, { recursive: true });
+    fs.writeFileSync(path.join(featureDir, 'plan.md'), '# Demo plan\n');
     fs.mkdirSync(path.join(featureDir, 'tasks'), { recursive: true });
-    fs.writeFileSync(path.join(featureDir, 'spec.json'), JSON.stringify({ status: 'in_progress', feature_name: FEATURE, current_phase: 'closeout', task_registry: { [TASK_REL]: { status: 'done', completed_at: '2026-07-01T00:00:00Z' } } }));
-    fs.writeFileSync(path.join(dir, 'specs', FEATURE, TASK_REL), ['# Task','','**Status:** done','','## Evidence','','' + evidence,'```','pass','```'].join('\n'));
+    fs.writeFileSync(path.join(dir, 'specs', FEATURE, TASK_REL), ['# Task','','Status: done','','## Dependencies', '', '- none', '', '## Verification Plan', '', '- Command: pnpm test', '', '## Receipt','','' + evidence,'```','pass','```'].join('\n'));
     seedCache({ [FEATURE]: { [TASK_REL]: 'pending' } });
     const body = parseBlock(runHook({}, dir).stdout);
     assert.ok(body, `explicit failure ${desc} should block`);
@@ -1137,8 +916,9 @@ test('26. explicit failure outcomes Tests failed / Result FAIL and multiple Resu
 test('27. task markdown symlink outside feature must be rejected (check a)', () => {
   const dir = tmpDir();
   const featureDir = path.join(dir, 'specs', FEATURE);
+  fs.mkdirSync(featureDir, { recursive: true });
+  fs.writeFileSync(path.join(featureDir, 'plan.md'), '# Demo plan\n');
   fs.mkdirSync(path.join(featureDir, 'tasks'), { recursive: true });
-  fs.writeFileSync(path.join(featureDir, 'spec.json'), JSON.stringify({ status: 'in_progress', feature_name: FEATURE, current_phase: 'closeout', task_registry: { [TASK_REL]: { status: 'done', completed_at: '2026-07-01T00:00:00Z' } } }));
   const outside = path.join(dir, 'outside.md');
   fs.writeFileSync(outside, '# Task\n\n**Status:** done\n\n## Evidence\n\nVerification: PASS\nCommand: pnpm test\nExit: 0\nBase: a\nHead: b\n');
   const taskPath = path.join(dir, 'specs', FEATURE, TASK_REL);
@@ -1148,23 +928,7 @@ test('27. task markdown symlink outside feature must be rejected (check a)', () 
   const body = parseBlock(runHook({}, dir).stdout);
   assert.ok(body, 'symlink task outside should block');
   assert.strictEqual(body.decision, 'block');
-  assert.match(body.reason, /\ba\b/);
-  fs.rmSync(dir, { recursive: true, force: true });
-});
-
-test('28. malformed spec.json must block with invalid_specs', () => {
-  const dir = tmpDir();
-  fs.mkdirSync(path.join(dir, 'specs', 'good'), { recursive: true });
-  fs.mkdirSync(path.join(dir, 'specs', 'bad'), { recursive: true });
-  fs.writeFileSync(path.join(dir, 'specs', 'good', 'spec.json'), JSON.stringify({ status: 'in_progress', feature_name: 'good', task_registry: {} }));
-  fs.writeFileSync(path.join(dir, 'specs', 'bad', 'spec.json'), '{ malformed');
-  seedCache({});
-  const { stdout } = runHook({}, dir);
-  const body = parseBlock(stdout);
-  assert.ok(body, 'malformed spec should block');
-  assert.strictEqual(body.decision, 'block');
-  assert.match(body.reason, /invalid spec/i);
-  assert.match(body.reason, /bad/);
+  assert.match(body.reason, /invalid workflow packet/);
   fs.rmSync(dir, { recursive: true, force: true });
 });
 
@@ -1174,7 +938,6 @@ test('29. specs/linked symlink outside must be explicit_malformed and non-explic
   fs.mkdirSync(specsDir, { recursive: true });
   const outside = path.join(dir, 'outside-feat');
   fs.mkdirSync(outside, { recursive: true });
-  fs.writeFileSync(path.join(outside, 'spec.json'), JSON.stringify({ status: 'in_progress' }));
   const link = path.join(specsDir, 'linked');
   fs.symlinkSync(outside, link);
   // non-explicit should block with invalid_specs (fail-closed, not phantom no-active)
@@ -1182,7 +945,7 @@ test('29. specs/linked symlink outside must be explicit_malformed and non-explic
   const nonExplicit = parseBlock(runHook({}, dir).stdout);
   assert.ok(nonExplicit, 'non-explicit symlink outside should block with invalid_specs');
   assert.strictEqual(nonExplicit.decision, 'block');
-  assert.match(nonExplicit.reason, /invalid spec/i);
+  assert.match(nonExplicit.reason, /invalid workflow packet/i);
   assert.match(nonExplicit.reason, /linked/);
   // explicit should block explicit_malformed
   const body = parseBlock(runHook({ featureName: 'linked' }, dir).stdout);
@@ -1224,15 +987,11 @@ test('30. phantom vectors via gate evidence must block with verification_state (
   for (const v of vectors) {
     const dir = tmpDir();
     const featureDir = path.join(dir, 'specs', FEATURE);
+    fs.mkdirSync(featureDir, { recursive: true });
+    fs.writeFileSync(path.join(featureDir, 'plan.md'), '# Demo plan\n');
     fs.mkdirSync(path.join(featureDir, 'tasks'), { recursive: true });
-    fs.writeFileSync(path.join(featureDir, 'spec.json'), JSON.stringify({
-      status: 'in_progress',
-      feature_name: FEATURE,
-      current_phase: 'closeout',
-      task_registry: { [TASK_REL]: { status: 'done', completed_at: '2026-07-01T00:00:00Z' } },
-    }));
     const evidence = bindFixtureReceipt(dir, ['Verification: PASS','Command: npm test','Exit: 0',`Base: ${VALID_BASE}`,`Head: ${VALID_HEAD}`, v].join('\n'));
-    fs.writeFileSync(path.join(dir, 'specs', FEATURE, TASK_REL), ['# Task','','**Status:** done','','## Evidence','','' + evidence,'```','pass','```'].join('\n'));
+    fs.writeFileSync(path.join(dir, 'specs', FEATURE, TASK_REL), ['# Task','','Status: done','','## Dependencies', '', '- none', '', '## Verification Plan', '', '- Command: npm test', '', '## Receipt','','' + evidence,'```','pass','```'].join('\n'));
     seedCache({ [FEATURE]: { [TASK_REL]: 'pending' } });
     const body = parseBlock(runHook({}, dir).stdout);
     assert.ok(body, `vector should block: ${v}`);
@@ -1271,14 +1030,9 @@ test('30. phantom vectors via gate evidence must block with verification_state (
     const dir = tmpDir();
     const featureDir = path.join(dir, 'specs', FEATURE);
     fs.mkdirSync(path.join(featureDir, 'tasks'), { recursive: true });
-    fs.writeFileSync(path.join(featureDir, 'spec.json'), JSON.stringify({
-      status: 'in_progress',
-      feature_name: FEATURE,
-      current_phase: 'closeout',
-      task_registry: { [TASK_REL]: { status: 'done', completed_at: '2026-07-01T00:00:00Z' } },
-    }));
+    fs.writeFileSync(path.join(featureDir, 'plan.md'), '# Demo plan\n');
     const evidence = bindFixtureReceipt(dir, ['Verification: PASS','Command: npm test','Exit: 0',`Base: ${VALID_BASE}`,`Head: ${VALID_HEAD}`, v].join('\n'));
-    fs.writeFileSync(path.join(dir, 'specs', FEATURE, TASK_REL), ['# Task','','**Status:** done','','## Evidence','','' + evidence,'```','pass','```'].join('\n'));
+    fs.writeFileSync(path.join(dir, 'specs', FEATURE, TASK_REL), ['# Task','','Status: done','','## Dependencies', '', '- none', '', '## Verification Plan', '', '- Command: npm test', '', '## Receipt','','' + evidence,'```','pass','```'].join('\n'));
     seedCache({ [FEATURE]: { [TASK_REL]: 'pending' } });
     const { stdout } = runHook({}, dir);
     assert.strictEqual(stdout, '', `positive control should not block: ${v}`);
@@ -2024,5 +1778,91 @@ test('53. an indented or sub-heading Command never becomes the canonical one', (
         fs.rmSync(dir, { recursive: true, force: true });
       }
     }
+  }
+});
+
+function plantLegacyPacket(dir, name = 'old') {
+  const legacyDir = path.join(dir, 'specs', name);
+  fs.mkdirSync(path.join(legacyDir, 'tasks'), { recursive: true });
+  fs.writeFileSync(path.join(legacyDir, 'spec.json'), JSON.stringify({
+    feature_name: name,
+    status: 'in_progress',
+    task_registry: { 'tasks/task-R1-01-x.md': { status: 'done' } },
+  }));
+  fs.writeFileSync(path.join(legacyDir, 'tasks', 'task-R1-01-x.md'), '# Task\n\n**Status:** done\n');
+}
+
+function writeActiveFeature(dir, featureName) {
+  fs.mkdirSync(path.join(dir, 'specs', '_shared'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'specs', '_shared', 'active-feature.json'), JSON.stringify({ featureName }));
+}
+
+test('a leftover legacy packet alone never blocks Stop', () => {
+  const dir = tmpDir();
+  try {
+    plantLegacyPacket(dir);
+    clearCache();
+    assert.strictEqual(runHook({}, dir).stdout, '');
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('a recorded active feature naming a legacy packet does not block Stop', () => {
+  const dir = makeFixture({ evidence: 'valid' });
+  try {
+    plantLegacyPacket(dir);
+    writeActiveFeature(dir, 'old');
+    clearCache();
+    assert.strictEqual(runHook({}, dir).stdout, '');
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('a recorded active feature naming a missing packet still blocks as explicit_not_found', () => {
+  const dir = makeFixture({ evidence: 'valid' });
+  try {
+    writeActiveFeature(dir, 'nope');
+    clearCache();
+    const body = parseBlock(runHook({}, dir).stdout);
+    assert.strictEqual(body?.decision, 'block');
+    assert.match(body.reason, /explicit_not_found/);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('a process-first packet with a dependency cycle and a done task blocks Stop', () => {
+  const dir = tmpDir();
+  try {
+    const featureDir = path.join(dir, 'specs', FEATURE);
+    fs.mkdirSync(featureDir, { recursive: true });
+    fs.writeFileSync(path.join(featureDir, 'plan.md'), '# Demo plan\nSpecs-Contract: process-first-ready-v1\n');
+    const task = (status, dependency) => [
+      '# Task', '', `Status: ${status}`, '', '## Dependencies', '', `- ${dependency}`, '',
+      '## Verification Plan', '', '- Command: npm test', '',
+    ].join('\n');
+    fs.writeFileSync(path.join(featureDir, 'task-01-a.md'), task('done', 'task-02-b.md'));
+    fs.writeFileSync(path.join(featureDir, 'task-02-b.md'), task('pending', 'task-01-a.md'));
+    clearCache();
+    const body = parseBlock(runHook({}, dir).stdout);
+    assert.strictEqual(body?.decision, 'block');
+    assert.match(body.reason, /invalid workflow packet/);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('a packet holding both plan.md and spec.json is read as process-first and its unreceipted done task blocks', () => {
+  const dir = makeFixture({ evidence: 'missing-evidence' });
+  try {
+    fs.writeFileSync(path.join(dir, 'specs', FEATURE, 'spec.json'), JSON.stringify({ feature_name: FEATURE }));
+    clearCache();
+    const body = parseBlock(runHook({}, dir).stdout);
+    assert.strictEqual(body?.decision, 'block');
+    assert.match(body.reason, new RegExp(TASK_REL));
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
   }
 });

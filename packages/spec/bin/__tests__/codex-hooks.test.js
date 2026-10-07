@@ -19,10 +19,6 @@ const { stateDir: codexStateDir } = require(
 );
 
 function runHook(file, cwd, payload) {
-  if (path.basename(file) === 'spec-gate.cjs') {
-    const rootResult = spawnSync('git', ['-C', cwd, 'rev-parse', '--show-toplevel'], { encoding: 'utf8' });
-    if (rootResult.status === 0) installFeatureReceipts(rootResult.stdout.trim(), payload.session_id || 'session-a');
-  }
   return spawnSync(process.execPath, [file], {
     cwd,
     input: JSON.stringify(payload),
@@ -34,7 +30,7 @@ function runtimeContext(root, feature = 'auth', session = 'session-a') {
   return PROVENANCE.deriveRuntimeContext({
     projectRoot: root,
     specsRoot: path.join(root, 'specs'),
-    specFile: path.join(root, 'specs', feature, 'spec.json'),
+    specFile: path.join(root, 'specs', feature, 'plan.md'),
     featureName: feature,
     runtimeSession: session,
   });
@@ -55,34 +51,18 @@ function workflowRuntimeContext(root, feature = 'auth', session = 'session-a') {
   });
 }
 
-function installFeatureReceipts(root, session = 'session-a') {
-  const specsRoot = path.join(root, 'specs');
-  if (!fs.existsSync(specsRoot)) return;
-  for (const feature of fs.readdirSync(specsRoot)) {
-    const featureDir = path.join(specsRoot, feature);
-    const specFile = path.join(featureDir, 'spec.json');
-    if (!fs.existsSync(specFile)) continue;
-    let spec;
-    try { spec = JSON.parse(fs.readFileSync(specFile, 'utf8')); } catch { continue; }
-    const lifecyclePhase = spec.current_phase || spec.phase;
-    const explicitCloseout = ['completed', 'complete'].includes(spec.status)
-      || ['closeout', 'completion', 'completed', 'complete'].includes(lifecyclePhase);
-    if (!explicitCloseout) continue;
-    const tasks = Object.values(spec.task_registry || {});
-    if (tasks.length === 0 || tasks.some((task) => task.status !== 'done')) continue;
-    const context = runtimeContext(root, feature, session);
-    fs.writeFileSync(path.join(featureDir, 'feature-receipt.md'), [
-      `Feature: ${feature}`,
-      'Expected: final integration verification passes',
-      'Observed: final integration verification passed',
-      'Verification: PASS',
-      'Command: node --test',
-      'Exit: 0',
-      `Base: ${context.base}`,
-      `Head: ${context.head}`,
-      '',
-    ].join('\n'));
-  }
+/** A process-first packet with one flat task whose Verification Plan runs `command`. */
+function writeProcessTask(featureDir, status, receiptLines = null, command = 'pnpm test', taskName = 'task-01-auth.md') {
+  fs.mkdirSync(featureDir, { recursive: true });
+  fs.writeFileSync(path.join(featureDir, 'plan.md'), '# Plan\nSpecs-Contract: process-first-ready-v1\n');
+  const lines = [
+    '# Task 01', '', `Status: ${status}`, '',
+    '## Dependencies', '', '- none', '',
+    '## Verification Plan', '', `- Command: ${command}`, '',
+  ];
+  if (receiptLines) lines.push('## Receipt', '', ...receiptLines, '');
+  fs.writeFileSync(path.join(featureDir, taskName), lines.join('\n'));
+  return path.join(featureDir, taskName);
 }
 
 function inHookFixture(run, options = {}) {
@@ -121,12 +101,6 @@ function inHookFixture(run, options = {}) {
       path.join(PACKAGE_ROOT, 'src/claude/scripts/spec-resolver.cjs'),
       path.join(root, '.codex', 'scripts', 'spec-resolver.cjs'),
     );
-    for (const file of ['spec-final-state.cjs']) {
-      fs.copyFileSync(
-        path.join(PACKAGE_ROOT, 'src/claude/scripts', file),
-        path.join(root, '.codex', 'scripts', file),
-      );
-    }
     fs.writeFileSync(path.join(root, '.codex', 'scripts', 'spec-scaffold.cjs'), '');
     for (const args of [['init', '-q'], ['config', 'user.email', 'cafekit@example.invalid'], ['config', 'user.name', 'CafeKit Test'], ['commit', '--allow-empty', '-qm', 'fixture']]) {
       const result = spawnSync('git', ['-C', root, ...args], { encoding: 'utf8' });
@@ -244,6 +218,87 @@ function inInstalledProcessSpecStateFixture(run) {
     });
   });
 }
+
+function writeCodexLegacyPacket(root, name = 'old') {
+  const dir = path.join(root, 'specs', name);
+  fs.mkdirSync(path.join(dir, 'tasks'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'spec.json'), JSON.stringify({
+    feature_name: name,
+    status: 'in_progress',
+    task_registry: { 'tasks/task-R1-01-x.md': { status: 'done' } },
+  }));
+  fs.writeFileSync(path.join(dir, 'tasks', 'task-R1-01-x.md'), '# Task\n\n**Status:** done\n');
+}
+
+const CODEX_LEGACY_NOTICE = /`specs\/old` is a legacy Specs packet without plan\.md; CafeKit no longer reads it/g;
+
+test('Codex spec-state notices a leftover legacy packet once per session, also when it is the only packet', () => {
+  inHookFixture((root, hooks) => {
+    writeCodexLegacyPacket(root);
+    const prompt = (session) => runHook(path.join(hooks, 'spec-state.cjs'), root, {
+      cwd: root, session_id: session, hook_event_name: 'UserPromptSubmit', prompt: 'Continue',
+    });
+    const first = prompt('session-a');
+    assert.equal(first.status, 0, first.stderr);
+    assert.equal((first.stdout.match(CODEX_LEGACY_NOTICE) || []).length, 1);
+    assert.equal((prompt('session-a').stdout.match(CODEX_LEGACY_NOTICE) || []).length, 0, 'the same session is not told twice');
+    assert.equal((prompt('session-b').stdout.match(CODEX_LEGACY_NOTICE) || []).length, 1, 'a new session is told once');
+  });
+});
+
+test('Codex Stop ignores a leftover legacy packet and still blocks a malformed process-first packet', () => {
+  inHookFixture((root, hooks) => {
+    const gate = path.join(hooks, 'spec-gate.cjs');
+    const payload = { cwd: root, session_id: 'session-a', hook_event_name: 'Stop', stop_hook_active: false };
+    writeCodexLegacyPacket(root);
+    const legacyOnly = runHook(gate, root, payload);
+    assert.equal(legacyOnly.status, 0, legacyOnly.stderr);
+    assert.equal(legacyOnly.stdout, '', 'a legacy packet alone never blocks');
+
+    const shared = path.join(root, 'specs', '_shared');
+    fs.mkdirSync(shared, { recursive: true });
+    fs.writeFileSync(path.join(shared, 'active-feature.json'), '{"featureName": "old"}\n');
+    assert.equal(runHook(gate, root, payload).stdout, '', 'a recorded legacy packet never blocks');
+    fs.rmSync(shared, { recursive: true, force: true });
+
+    const feature = path.join(root, 'specs', 'cycle');
+    writeProcessTask(feature, 'done', null, 'pnpm test', 'task-01-a.md');
+    writeProcessTask(feature, 'pending', null, 'pnpm test', 'task-02-b.md');
+    for (const [name, dependency] of [['task-01-a.md', 'task-02-b.md'], ['task-02-b.md', 'task-01-a.md']]) {
+      const file = path.join(feature, name);
+      fs.writeFileSync(file, fs.readFileSync(file, 'utf8').replace('- none', `- ${dependency}`));
+    }
+    const cycle = runHook(gate, root, payload);
+    assert.equal(cycle.status, 0, cycle.stderr);
+    const block = JSON.parse(cycle.stdout);
+    assert.equal(block.decision, 'block');
+    assert.match(block.reason, /invalid workflow packet/);
+  });
+});
+
+test('Codex Stop still blocks a recorded missing packet and reads a plan.md + spec.json packet as process-first', () => {
+  inHookFixture((root, hooks) => {
+    const gate = path.join(hooks, 'spec-gate.cjs');
+    const payload = { cwd: root, session_id: 'session-a', hook_event_name: 'Stop', stop_hook_active: false };
+    const feature = path.join(root, 'specs', 'auth');
+    writeProcessTask(feature, 'done');
+    fs.writeFileSync(path.join(feature, 'spec.json'), JSON.stringify({ feature_name: 'auth' }));
+    const hybrid = runHook(gate, root, payload);
+    assert.equal(hybrid.status, 0, hybrid.stderr);
+    const hybridBlock = JSON.parse(hybrid.stdout);
+    assert.equal(hybridBlock.decision, 'block');
+    assert.match(hybridBlock.reason, /task-01-auth\.md/);
+
+    const shared = path.join(root, 'specs', '_shared');
+    fs.mkdirSync(shared, { recursive: true });
+    fs.writeFileSync(path.join(shared, 'active-feature.json'), '{"featureName": "nope"}\n');
+    const missing = runHook(gate, root, payload);
+    assert.equal(missing.status, 0, missing.stderr);
+    const missingBlock = JSON.parse(missing.stdout);
+    assert.equal(missingBlock.decision, 'block');
+    assert.match(missingBlock.reason, /explicit_not_found/);
+  });
+});
 
 test('Codex installed spec-state re-evaluates a standalone task when blocked becomes pending', () => {
   inInstalledProcessSpecStateFixture(({ findCacheFile, hooks, runState, writeTask }) => {
@@ -615,18 +670,8 @@ test('Codex completion gate cannot be bypassed from a nested cwd', () => {
   inHookFixture((root, hooks) => {
     const nested = path.join(root, 'packages', 'app');
     const feature = path.join(root, 'specs', 'auth');
-    const taskPath = 'tasks/task-R0-01-auth.md';
-    fs.mkdirSync(path.join(feature, 'tasks'), { recursive: true });
     fs.mkdirSync(nested, { recursive: true });
-    const spec = {
-      status: 'in_progress',
-      feature_name: 'auth',
-      task_registry: {
-        [taskPath]: { status: 'pending', completed_at: null }
-      }
-    };
-    fs.writeFileSync(path.join(feature, 'spec.json'), `${JSON.stringify(spec)}\n`);
-    fs.writeFileSync(path.join(feature, taskPath), 'Status: pending\n');
+    writeProcessTask(feature, 'pending', null, 'node --test');
     const gate = path.join(hooks, 'spec-gate.cjs');
     const payload = {
       cwd: nested,
@@ -640,32 +685,19 @@ test('Codex completion gate cannot be bypassed from a nested cwd', () => {
     assert.equal(seeded.status, 0);
     assert.equal(seeded.stdout, '');
 
-    spec.task_registry[taskPath] = {
-      status: 'done',
-      completed_at: '2026-07-29T10:00:00.000Z'
-    };
-    fs.writeFileSync(path.join(feature, 'spec.json'), `${JSON.stringify(spec)}\n`);
-    fs.writeFileSync(path.join(feature, taskPath), 'Status: done\n');
+    writeProcessTask(feature, 'done', null, 'node --test');
+    const blocked = runHook(gate, nested, payload);
+    assert.equal(blocked.status, 0);
+    assert.equal(JSON.parse(blocked.stdout).decision, 'block');
+    assert.match(JSON.parse(blocked.stdout).reason, /verification receipt/);
 
-    const blockedBeforeCloseout = runHook(gate, nested, payload);
-    assert.equal(blockedBeforeCloseout.status, 0);
-    assert.equal(JSON.parse(blockedBeforeCloseout.stdout).decision, 'block');
-    assert.match(JSON.parse(blockedBeforeCloseout.stdout).reason, /verification receipt/);
-
-    fs.writeFileSync(path.join(feature, taskPath), bindReceipt(root, [
-      'Status: done', '', '## Evidence', '', 'Verification: PASS',
-      'Command: node --test', 'Exit: 0', `Base: ${VALID_BASE}`, `Head: ${VALID_HEAD}`,
-    ].join('\n'), 'auth'));
-    const validBeforeCloseout = runHook(gate, nested, payload);
-    assert.equal(validBeforeCloseout.status, 0);
-    assert.equal(validBeforeCloseout.stdout, '');
-    assert.equal(fs.existsSync(path.join(feature, 'feature-receipt.md')), false);
-
-    spec.current_phase = 'closeout';
-    fs.writeFileSync(path.join(feature, 'spec.json'), `${JSON.stringify(spec)}\n`);
-    const closeout = runHook(gate, nested, payload);
-    assert.equal(closeout.status, 0);
-    assert.equal(closeout.stdout, '');
+    writeProcessTask(feature, 'done', bindReceipt(root, [
+      'Verification: PASS', 'Command: node --test', 'Exit: 0', `Base: ${VALID_BASE}`, `Head: ${VALID_HEAD}`,
+      '```', 'node --test', 'ok 1', '```',
+    ].join('\n')).split('\n'), 'node --test');
+    const valid = runHook(gate, nested, payload);
+    assert.equal(valid.status, 0);
+    assert.equal(valid.stdout, '');
   });
 });
 
@@ -765,20 +797,15 @@ test('Codex process-v3 Receipt command must match the exact Verification Plan co
 });
 
 test('Codex recorded active feature turns the identity block into receipt validation', () => {
-  // Issue #79 end to end on this runtime. Two legacy packets both claiming closeout make
-  // the gate answer a missing-receipt violation with an identity complaint whose stated
-  // remedy nothing wrote. Naming the feature resolves it and the violation surfaces.
+  // Issue #79 end to end on this runtime. Two unfinished packets make the gate answer a
+  // missing-receipt violation with an identity complaint; naming the feature resolves it
+  // and the violation surfaces.
   inHookFixture((root, hooks) => {
     for (const name of ['alpha', 'beta']) {
       const feature = path.join(root, 'specs', name);
-      fs.mkdirSync(path.join(feature, 'tasks'), { recursive: true });
-      fs.writeFileSync(path.join(feature, 'spec.json'), `${JSON.stringify({
-        feature_name: name,
-        status: 'done',
-        current_phase: 'closeout',
-        task_registry: { 'tasks/task-R0-01-x.md': { status: 'done', completed_at: '2026-01-01T00:00:00.000Z' } },
-      }, null, 2)}\n`);
-      fs.writeFileSync(path.join(feature, 'tasks', 'task-R0-01-x.md'), '# Task\n\nStatus: done\n');
+      writeProcessTask(feature, 'done', null, 'node --test', 'task-01-x.md');
+      fs.writeFileSync(path.join(feature, 'task-02-y.md'),
+        '# Task 02\n\nStatus: pending\n\n## Dependencies\n\n- none\n\n## Verification Plan\n\n- Command: node --test\n');
     }
     const payload = { cwd: root, session_id: 'session-a', hook_event_name: 'Stop', stop_hook_active: false };
 
@@ -880,16 +907,7 @@ test('empty or forged Codex hook authority fails closed', () => {
       assert.match(block.reason, /hook payload (is empty|must be a JSON object)/i);
     }
 
-    const feature = path.join(root, 'specs', 'auth');
-    const taskPath = 'tasks/task.md';
-    fs.mkdirSync(path.join(feature, 'tasks'), { recursive: true });
-    fs.writeFileSync(path.join(feature, 'spec.json'), JSON.stringify({
-      status: 'in_progress',
-      current_phase: 'closeout',
-      feature_name: 'auth',
-      task_registry: { [taskPath]: { status: 'done', completed_at: '2026-08-11T00:00:00.000Z' } },
-    }));
-    fs.writeFileSync(path.join(feature, taskPath), 'Status: done\n');
+    writeProcessTask(path.join(root, 'specs', 'auth'), 'done');
     fs.writeFileSync(path.join(root, '.codex', 'runtime.json'), JSON.stringify({
       spec: { completion_gate: false },
     }));
@@ -908,40 +926,6 @@ test('empty or forged Codex hook authority fails closed', () => {
     const block = JSON.parse(forged.stdout);
     assert.equal(block.decision, 'block');
     assert.match(block.reason, /no completion-gate bypass is supported/i);
-  });
-});
-
-test('explicit Strict Codex completion ignores worker-writable proof strings and remains blocked', () => {
-  inHookFixture((root, hooks) => {
-    const feature = path.join(root, 'specs', 'auth');
-    const taskPath = 'tasks/task.md';
-    fs.mkdirSync(path.join(feature, 'tasks'), { recursive: true });
-    fs.writeFileSync(path.join(feature, 'spec.json'), JSON.stringify({
-      status: 'in_progress',
-      current_phase: 'closeout',
-      feature_name: 'auth',
-      workflow_policy: POLICY.workflowPolicySnapshot({ riskSignals: { auth: true }, assurance_level: 'Strict' }),
-      proofs: {
-        needsInspection: 'inspection completed',
-        needsIndependentAudit: 'PASS',
-        needsResearchGrounding: 'research completed',
-      },
-      task_registry: { [taskPath]: { status: 'done', completed_at: '2026-08-11T00:00:00.000Z' } },
-    }));
-    fs.writeFileSync(path.join(feature, taskPath), bindReceipt(root, [
-      'Status: done', '', '## Evidence', '', 'Verification: PASS',
-      'Command: node --test', 'Exit: 0', `Base: ${VALID_BASE}`, `Head: ${VALID_HEAD}`,
-    ].join('\n'), 'auth'));
-    const result = runHook(path.join(hooks, 'spec-gate.cjs'), root, {
-      cwd: root,
-      session_id: 'session-a',
-      hook_event_name: 'Stop',
-      stop_hook_active: false,
-    });
-    assert.equal(result.status, 0, result.stderr);
-    const block = JSON.parse(result.stdout);
-    assert.equal(block.decision, 'block');
-    assert.match(block.reason, /needsInspection|needsIndependentAudit|needsResearchGrounding/);
   });
 });
 
@@ -1053,61 +1037,55 @@ test('Codex canonical receipt provenance requires both Base and Head', () => {
   // Integration via spec-gate hook: only Base blocks, both passes
   inHookFixture((root, hooks) => {
     const feature = path.join(root, 'specs', 'auth');
-    const taskPath = 'tasks/task-R0-01-auth.md';
-    fs.mkdirSync(path.join(feature, 'tasks'), { recursive: true });
     const gate = path.join(hooks, 'spec-gate.cjs');
     const payload = { cwd: path.join(root, 'packages', 'app'), session_id: 'session-a', hook_event_name: 'Stop', stop_hook_active: false };
+    const output = ['```', 'pnpm test', 'ok 1', '```'];
+    fs.mkdirSync(payload.cwd, { recursive: true });
 
     // only Base -> block
-    fs.writeFileSync(path.join(feature, 'spec.json'), JSON.stringify({ status: 'in_progress', current_phase: 'closeout', feature_name: 'auth', task_registry: { [taskPath]: { status: 'done', completed_at: '2026-07-29T10:00:00.000Z' } } }));
-    fs.writeFileSync(path.join(feature, taskPath), 'Status: done\n\n## Evidence\n\nVerification: PASS\nCommand: pnpm test\nExit: 0\nBase: abc\n');
-    fs.mkdirSync(payload.cwd, { recursive: true });
+    writeProcessTask(feature, 'done', ['Verification: PASS', 'Command: pnpm test', 'Exit: 0', 'Base: abc', ...output]);
     const blocked = runHook(gate, payload.cwd, payload);
     assert.equal(JSON.parse(blocked.stdout).decision, 'block');
     assert.match(JSON.parse(blocked.stdout).reason, /\bprovenance\b/);
 
     // both -> no block
-    fs.writeFileSync(path.join(feature, taskPath), bindReceipt(root, `Status: done\n\n## Evidence\n\nVerification: PASS\nCommand: pnpm test\nExit: 0\nBase: ${VALID_BASE}\nHead: ${VALID_HEAD}\n`));
+    writeProcessTask(feature, 'done', bindReceipt(root, ['Verification: PASS', 'Command: pnpm test', 'Exit: 0', `Base: ${VALID_BASE}`, `Head: ${VALID_HEAD}`, ...output].join('\n')).split('\n'));
     const passed = runHook(gate, payload.cwd, payload);
     assert.equal(passed.stdout, '');
 
     // empty Base: should block provenance — reset gate cache so re-checked as newly-done
     try { fs.rmSync(path.join(root, '.codex', 'hooks', '.logs', 'spec-gate-last.json'), { force: true }); } catch {}
-    fs.writeFileSync(path.join(feature, taskPath), 'Status: done\n\n## Evidence\n\nVerification: PASS\nCommand: pnpm test\nExit: 0\nBase:\nHead: def\n');
+    writeProcessTask(feature, 'done', ['Verification: PASS', 'Command: pnpm test', 'Exit: 0', 'Base:', 'Head: def', ...output]);
     const blockedEmpty = runHook(gate, payload.cwd, payload);
     assert.equal(JSON.parse(blockedEmpty.stdout).decision, 'block');
     assert.match(JSON.parse(blockedEmpty.stdout).reason, /\bprovenance\b/);
 
     // bare base_sha without colon should block — reset cache again
     try { fs.rmSync(path.join(root, '.codex', 'hooks', '.logs', 'spec-gate-last.json'), { force: true }); } catch {}
-    fs.writeFileSync(path.join(feature, taskPath), 'Status: done\n\n## Evidence\n\nVerification: PASS\nCommand: pnpm test\nExit: 0\nbase_sha head_sha\n');
+    writeProcessTask(feature, 'done', ['Verification: PASS', 'Command: pnpm test', 'Exit: 0', 'base_sha head_sha', ...output]);
     const blockedBare = runHook(gate, payload.cwd, payload);
     assert.equal(JSON.parse(blockedBare.stdout).decision, 'block');
     assert.match(JSON.parse(blockedBare.stdout).reason, /\bprovenance\b/);
   });
 });
 
-test('Codex cache hardening: every done re-validated — mutation, deletion, malformed cache, unchanged valid', () => {
+test('Codex cache hardening: every done re-validated — mutation, malformed cache, unchanged valid', () => {
   inHookFixture((root, hooks) => {
     const feature = path.join(root, 'specs', 'auth');
-    const taskPath = 'tasks/task-R0-01-auth.md';
-    fs.mkdirSync(path.join(feature, 'tasks'), { recursive: true });
+    const taskPath = 'task-01-auth.md';
     const gate = path.join(hooks, 'spec-gate.cjs');
     const appCwd = path.join(root, 'packages', 'app');
     fs.mkdirSync(appCwd, { recursive: true });
     const payload = { cwd: appCwd, session_id: 'session-a', hook_event_name: 'Stop', stop_hook_active: false };
     const cacheFile = path.join(root, '.codex', 'hooks', '.logs', 'spec-gate-last.json');
-    const validBodyTemplate = [
-      'Status: done', '', '## Evidence', '', 'Verification: PASS',
-      'Command: pnpm test', 'Exit: 0', `Base: ${VALID_BASE}`, `Head: ${VALID_HEAD}`,
-      '```', 'pass', '```', '',
-    ].join('\n');
+    const output = ['```', 'pass', '```'];
+    const writeValid = () => writeProcessTask(feature, 'done', (writeProcessTask(feature, 'done'), bindReceipt(root, [
+      'Verification: PASS', 'Command: pnpm test', 'Exit: 0', `Base: ${VALID_BASE}`, `Head: ${VALID_HEAD}`, ...output,
+    ].join('\n'))).split('\n'));
 
     // first-run (no cache) with valid receipt → no block, cache seeded
     try { fs.rmSync(cacheFile, { force: true }); } catch {}
-    fs.writeFileSync(path.join(feature, 'spec.json'), JSON.stringify({ status: 'in_progress', current_phase: 'closeout', feature_name: 'auth', task_registry: { [taskPath]: { status: 'done', completed_at: '2026-07-29T10:00:00.000Z' } } }));
-    const validBody = bindReceipt(root, validBodyTemplate);
-    fs.writeFileSync(path.join(feature, taskPath), validBody);
+    writeValid();
     let res = runHook(gate, appCwd, payload);
     assert.equal(res.stdout, '', 'first-run valid should not block');
     assert.ok(fs.existsSync(cacheFile), 'cache file must be created on first valid run');
@@ -1119,7 +1097,7 @@ test('Codex cache hardening: every done re-validated — mutation, deletion, mal
     assert.equal(res.stdout, '', 'cache-hit unchanged valid must not block');
 
     // mutation: remove Command/Verification → must block even though cache says done
-    fs.writeFileSync(path.join(feature, taskPath), 'Status: done\n\n## Evidence\n\nExit: 0\nBase: abc123\nHead: def456\n```\npass\n```\n');
+    writeProcessTask(feature, 'done', ['Exit: 0', 'Base: abc123', 'Head: def456', ...output]);
     res = runHook(gate, appCwd, payload);
     assert.equal(JSON.parse(res.stdout).decision, 'block', 'mutated receipt missing Verification/Command should block on cache-hit');
     assert.match(JSON.parse(res.stdout).reason, /\bverification_state\b|\bcommand\b/);
@@ -1128,33 +1106,21 @@ test('Codex cache hardening: every done re-validated — mutation, deletion, mal
     assert.equal(JSON.parse(res.stdout).decision, 'block', 'second hit after mutation still blocks');
 
     // restore valid, then mutate provenance (remove Head) → block
-    fs.writeFileSync(path.join(feature, taskPath), validBody);
+    writeValid();
     assert.equal(runHook(gate, appCwd, payload).stdout, '', 'restored valid should pass again');
-    fs.writeFileSync(path.join(feature, taskPath), 'Status: done\n\n## Evidence\n\nVerification: PASS\nCommand: pnpm test\nExit: 0\nBase: abc123\n```\npass\n```\n');
+    writeProcessTask(feature, 'done', ['Verification: PASS', 'Command: pnpm test', 'Exit: 0', 'Base: abc123', ...output]);
     res = runHook(gate, appCwd, payload);
     assert.equal(JSON.parse(res.stdout).decision, 'block');
     assert.match(JSON.parse(res.stdout).reason, /\bprovenance\b/);
 
-    // deletion → block with check a
-    fs.writeFileSync(path.join(feature, taskPath), validBody);
-    assert.equal(runHook(gate, appCwd, payload).stdout, '');
-    fs.unlinkSync(path.join(feature, taskPath));
-    res = runHook(gate, appCwd, payload);
-    assert.equal(JSON.parse(res.stdout).decision, 'block');
-    assert.match(JSON.parse(res.stdout).reason, /\ba\b/);
-    // restore for next sub-test
-    fs.writeFileSync(path.join(feature, taskPath), validBody);
-    try { fs.rmSync(cacheFile, { force: true }); } catch {}
-    assert.equal(runHook(gate, appCwd, payload).stdout, '');
-
     // malformed cache with valid receipt → must still pass (cache parse fail-open)
+    writeValid();
     fs.writeFileSync(cacheFile, '{ malformed');
-    fs.writeFileSync(path.join(feature, taskPath), validBody);
     res = runHook(gate, appCwd, payload);
     assert.equal(res.stdout, '', 'malformed cache with valid receipt must not block');
     // malformed cache with invalid receipt → must still block
     fs.writeFileSync(cacheFile, '{ malformed again');
-    fs.writeFileSync(path.join(feature, taskPath), 'Status: done\n');
+    writeProcessTask(feature, 'done');
     res = runHook(gate, appCwd, payload);
     assert.equal(JSON.parse(res.stdout).decision, 'block', 'malformed cache with invalid receipt must block');
   });
@@ -1164,18 +1130,11 @@ test('Codex cache identity separates same-feature receipts from different roots'
   const contexts = [];
   for (let index = 0; index < 2; index += 1) {
     const context = inHookFixture((root, hooks) => {
-      const feature = path.join(root, 'specs', 'auth');
-      const taskPath = 'tasks/task.md';
-      fs.mkdirSync(path.join(feature, 'tasks'), { recursive: true });
-      fs.writeFileSync(path.join(feature, 'spec.json'), JSON.stringify({
-        status: 'in_progress',
-        feature_name: 'auth',
-        task_registry: { [taskPath]: { status: 'done', completed_at: '2026-08-11T00:00:00.000Z' } },
-      }));
-      fs.writeFileSync(path.join(feature, taskPath), bindReceipt(root, [
-        'Status: done', '', '## Evidence', '', 'Verification: PASS',
-        'Command: node --test', 'Exit: 0', `Base: ${VALID_BASE}`, `Head: ${VALID_HEAD}`,
-      ].join('\n')));
+      writeProcessTask(path.join(root, 'specs', 'auth'), 'done', null, 'node --test');
+      writeProcessTask(path.join(root, 'specs', 'auth'), 'done', bindReceipt(root, [
+        'Verification: PASS', 'Command: node --test', 'Exit: 0', `Base: ${VALID_BASE}`, `Head: ${VALID_HEAD}`,
+        '```', 'node --test', 'ok 1', '```',
+      ].join('\n')).split('\n'), 'node --test');
       const result = runHook(path.join(hooks, 'spec-gate.cjs'), root, {
         cwd: root,
         session_id: 'session-a',
@@ -1212,33 +1171,32 @@ test('Codex P0 regression: placeholder, explicit failure, artifact, symlink and 
   assert.ok(specReceipt.validateCanonicalReceipt('Verification: PASS\nCommand: pnpm test\nExit: 0\nBase: a\nHead: b\nArtifact: x\nsha256: TBD\n').includes('artifact_hash'));
   assert.ok(specReceipt.validateCanonicalReceipt('Verification: PASS\nCommand: pnpm test\nExit: 0\nBase: a\nHead: b\nArtifact: x\nsha256: \n').includes('artifact_hash'));
   assert.deepEqual(specReceipt.validateCanonicalReceipt(`Verification: PASS\nCommand: pnpm test\nExit: 0\nBase: ${VALID_BASE}\nHead: ${VALID_HEAD}\nArtifact: bundle\nsha256: ${'a'.repeat(64)}\n`), []);
-  // Probe D/E: symlink spec/task
+  // Probe D/E: symlink packet and task
   const tmp = fs2.mkdtempSync(path2.join(os2.tmpdir(), 'cafekit-codex-reg-'));
   try {
     const specsDir = path2.join(tmp, 'specs');
-    fs2.mkdirSync(specsDir, { recursive: true });
-    fs2.mkdirSync(path2.join(specsDir, 'valid'), { recursive: true });
-    fs2.writeFileSync(path2.join(specsDir, 'valid', 'spec.json'), JSON.stringify({ status: 'in_progress' }));
+    writeProcessTask(path2.join(specsDir, 'valid'), 'pending');
     const outside = path2.join(tmp, 'outside');
-    fs2.mkdirSync(outside, { recursive: true });
-    fs2.writeFileSync(path2.join(outside, 'spec.json'), JSON.stringify({ status: 'in_progress' }));
-    const link = path2.join(specsDir, 'linked');
-    fs2.symlinkSync(outside, link);
-    assert.equal(specUtils.resolveActiveSpec(tmp, {}, 'linked', null).error, 'explicit_malformed');
-    assert.equal(specUtils.resolveActiveSpec(tmp, {}, null, path2.join(specsDir, 'linked', 'spec.json')).error, 'explicit_malformed');
-    // task symlink
+    writeProcessTask(outside, 'pending');
+    fs2.symlinkSync(outside, path2.join(specsDir, 'linked'));
+    assert.equal(specUtils.resolveWorkflowCandidate(tmp, {}, 'linked', null).error, 'explicit_malformed');
+    assert.equal(specUtils.resolveWorkflowCandidate(tmp, {}, null, path2.join(specsDir, 'linked', 'plan.md')).error, 'explicit_malformed');
+    fs2.rmSync(path2.join(specsDir, 'linked'));
+    // task symlink to a file outside the packet
     const featDir = path2.join(specsDir, 'valid');
-    fs2.mkdirSync(path2.join(featDir, 'tasks'), { recursive: true });
     const outsideTask = path2.join(tmp, 'outside-task.md');
-    fs2.writeFileSync(outsideTask, '# Task\n\n**Status:** done\n\n## Evidence\n\nVerification: PASS\nCommand: pnpm test\nExit: 0\nBase: a\nHead: b\n');
-    const taskLink = path2.join(featDir, 'tasks', 'task.md');
-    fs2.symlinkSync(outsideTask, taskLink);
-    const fails = specReceipt.checkReceipt(featDir, 'tasks/task.md', { status: 'done', completed_at: '2026-08-11T00:00:00.000Z' });
-    assert.ok(fails.includes('a'));
-    // malformed spec
-    fs2.mkdirSync(path2.join(specsDir, 'bad'), { recursive: true });
-    fs2.writeFileSync(path2.join(specsDir, 'bad', 'spec.json'), '{ bad');
-    const mal = specUtils.resolveActiveSpec(tmp, {}, null, null);
+    fs2.copyFileSync(path2.join(featDir, 'task-01-auth.md'), outsideTask);
+    fs2.symlinkSync(outsideTask, path2.join(featDir, 'task-02-link.md'));
+    const proof = specReceipt.checkWorkflowReceiptDetails(featDir, 'task-02-link.md', null);
+    assert.ok(proof.failures.includes('unsafe_path'), `task symlink must be unsafe, got ${proof.failures}`);
+    assert.equal(specUtils.resolveWorkflowCandidate(tmp, {}, null, null).error, 'invalid_specs');
+    fs2.rmSync(path2.join(featDir, 'task-02-link.md'));
+    // malformed packet: dependency on a missing task
+    const bad = path2.join(specsDir, 'bad');
+    writeProcessTask(bad, 'pending');
+    fs2.writeFileSync(path2.join(bad, 'task-01-auth.md'),
+      fs2.readFileSync(path2.join(bad, 'task-01-auth.md'), 'utf8').replace('- none', '- task-09-missing.md'));
+    const mal = specUtils.resolveWorkflowCandidate(tmp, {}, null, null);
     assert.equal(mal.error, 'invalid_specs');
   } finally {
     fs2.rmSync(tmp, { recursive: true, force: true });
@@ -1289,17 +1247,10 @@ test('Codex adapter parity - phantom vectors via shared validator (r3)', () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'cafekit-codex-tap-heading-'));
   try {
     const featureDir = path.join(tmp, 'feature');
-    const taskPath = 'tasks/task.md';
-    fs.mkdirSync(path.join(featureDir, 'tasks'), { recursive: true });
-    const taskPrefix = ['# Task', '', '**Status:** done', '', '## Evidence', '', base.trim()];
-    fs.writeFileSync(path.join(featureDir, taskPath), [...taskPrefix, '# fail 1', ''].join('\n'));
-    const tapFailure = receipt.checkReceipt(featureDir, taskPath, { status: 'done', completed_at: '2026-08-11T00:00:00.000Z' });
-    assert.ok(tapFailure.includes('c'), 'unindented TAP # fail 1 must reach the shared validator');
-
-    fs.writeFileSync(path.join(featureDir, taskPath), [...taskPrefix, '# Notes', 'FAILED tests/test_demo.py', ''].join('\n'));
-    const markdownBody = receipt.evidenceBody(fs.readFileSync(path.join(featureDir, taskPath), 'utf8'));
-    assert.doesNotMatch(markdownBody, /FAILED tests\/test_demo\.py/);
-    assert.deepEqual(receipt.validateCanonicalReceipt(markdownBody), [], 'a real Markdown heading must still end Evidence');
+    const receiptFields = base.trim().split('\n');
+    writeProcessTask(featureDir, 'done', [...receiptFields, '```', 'pnpm test', '# fail 1', '```']);
+    const tapFailure = receipt.checkWorkflowReceiptDetails(featureDir, 'task-01-auth.md', null);
+    assert.ok(tapFailure.failures.includes('verification_state'), `unindented TAP # fail 1 must reach the shared validator, got ${tapFailure.failures}`);
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }
@@ -1329,38 +1280,20 @@ test('Codex adapter enforces declared task artifact SHA-256 with missing, invali
   const digest = crypto.createHash('sha256').update(artifact).digest('hex');
   const cases = [
     ['', true],
-    ['sha256: abc123\n', true],
-    [`sha256: ${'0'.repeat(64)}\n`, true],
-    [`sha256: ${digest}\n`, false],
+    ['sha256: abc123', true],
+    [`sha256: ${'0'.repeat(64)}`, true],
+    [`sha256: ${digest}`, false],
   ];
   for (const [hashLine, shouldBlock] of cases) {
     inHookFixture((root, hooks) => {
       const feature = path.join(root, 'specs', 'artifact-demo');
-      const taskPath = 'tasks/task.md';
-      fs.mkdirSync(path.join(feature, 'tasks'), { recursive: true });
       fs.mkdirSync(path.join(root, 'output'), { recursive: true });
       fs.writeFileSync(path.join(root, 'output', 'bundle.js'), artifact);
-      fs.writeFileSync(path.join(feature, 'spec.json'), JSON.stringify({
-        status: 'in_progress',
-        current_phase: 'closeout',
-        feature_name: 'artifact-demo',
-        task_registry: {
-          [taskPath]: {
-            status: 'done',
-            completed_at: '2026-08-11T00:00:00.000Z',
-            artifacts: ['output/bundle.js'],
-          },
-        },
-      }));
-      fs.writeFileSync(path.join(feature, taskPath), [
-        '# Task', '', '**Status:** done', '', '## Evidence', '',
+      writeProcessTask(feature, 'done', null, 'node --test');
+      writeProcessTask(feature, 'done', bindReceipt(root, [
         'Verification: PASS', 'Command: node --test', 'Exit: 0', `Base: ${VALID_BASE}`, `Head: ${VALID_HEAD}`,
-        'Artifact: output/bundle.js', hashLine,
-      ].join('\n'));
-      fs.writeFileSync(
-        path.join(feature, taskPath),
-        bindReceipt(root, fs.readFileSync(path.join(feature, taskPath), 'utf8'), 'artifact-demo'),
-      );
+        'Artifact: output/bundle.js', hashLine, '```', 'node --test', 'ok 1', '```',
+      ].join('\n'), 'artifact-demo').split('\n'), 'node --test');
       const result = runHook(path.join(hooks, 'spec-gate.cjs'), root, {
         cwd: root,
         session_id: 'session-a',

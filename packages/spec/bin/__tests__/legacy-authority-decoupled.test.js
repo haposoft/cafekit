@@ -19,7 +19,6 @@ const LEGACY_FILES = [
   'semantic-review-authority.cjs',
   'task-scaffold-guard.cjs',
 ];
-const MIGRATION = /Legacy spec\.json closeout is no longer supported/;
 
 function inTempProject(run) {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'cafekit-decoupled-')));
@@ -122,24 +121,22 @@ function checkProcessFirst(kind) {
   });
 }
 
-function checkLegacyCloseout(kind) {
-  for (const status of ['done', 'completed']) {
+// CafeKit no longer reads spec.json packets: a leftover one, closed or mid-execution, never
+// blocks Stop on its own, and beside a process-first packet the decision is that packet's alone.
+function checkLegacyIgnored(kind) {
+  for (const legacy of [{ status: 'done' }, { status: 'completed' }, { status: 'in_progress', doneTask: true }]) {
     inTempProject((root) => {
-      writeLegacy(root, { status });
+      writeLegacy(root, legacy);
       removeLegacyFiles(root);
-      assert.match(blockReason(stopGate(root, kind)), MIGRATION, `${kind} ${status}`);
+      assert.equal(stopGate(root, kind), '', `${kind} ${legacy.status} legacy packet alone`);
+      writeProcessFirst(root, { receipt: false });
+      const reason = blockReason(stopGate(root, kind));
+      assert.match(reason, /missing_receipt/);
+      assert.doesNotMatch(reason, /task-R1-01-legacy\.md/);
+      writeProcessFirst(root, { receipt: true });
+      assert.equal(stopGate(root, kind), '', `${kind} ${legacy.status} legacy packet beside a proven process-first packet`);
     });
   }
-}
-
-function checkLegacyMidExecution(kind) {
-  inTempProject((root) => {
-    writeLegacy(root, { status: 'in_progress', doneTask: true });
-    removeLegacyFiles(root);
-    const reason = blockReason(stopGate(root, kind));
-    assert.doesNotMatch(reason, MIGRATION);
-    assert.match(reason, /task-R1-01-legacy\.md/);
-  });
 }
 
 function checkSession(kind) {
@@ -151,9 +148,7 @@ function checkSession(kind) {
 
 test('claude gate passes and blocks process-first with and without the legacy files', () => checkProcessFirst('claude'));
 test('codex gate passes and blocks process-first with and without the legacy files', () => checkProcessFirst('codex'));
-test('claude gate blocks legacy 2.1 closeout with the migration message', () => checkLegacyCloseout('claude'));
-test('codex gate blocks legacy 2.1 closeout with the migration message', () => checkLegacyCloseout('codex'));
-test('claude gate still receipt-checks a legacy 2.1 packet mid-execution', () => checkLegacyMidExecution('claude'));
-test('codex gate still receipt-checks a legacy 2.1 packet mid-execution', () => checkLegacyMidExecution('codex'));
+test('claude gate ignores a leftover legacy packet', () => checkLegacyIgnored('claude'));
+test('codex gate ignores a leftover legacy packet', () => checkLegacyIgnored('codex'));
 test('claude session starts without the legacy files', () => checkSession('claude'));
 test('codex session starts without the legacy files', () => checkSession('codex'));

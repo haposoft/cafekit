@@ -50,9 +50,3 @@ After interruption, preserve the owned diff but discard ephemeral handoffs and
 remembered proof. Do not tell an implementation worker to repeat a non-idempotent
 action blindly; scope the resumed brief to unmet Acceptance and require fresh
 verification. Concurrent invocations remain unsupported, so drift blocks handoff.
-
-## Legacy workflow compatibility
-
-When the selected packet is legacy, include its persisted lane snapshot and
-obligations in the dispatch, but do not let workers edit that state or infer an
-independent result from a role label.

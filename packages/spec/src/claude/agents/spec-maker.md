@@ -91,7 +91,7 @@ chooses when execution begins.
 - Ownership overlap or dependency uncertainty prevents a parallel claim.
 - A command that cannot be run from the named work context is not verification.
 - User approval and test proof are different facts; never infer either.
-- Existing legacy specs remain untouched unless migration is explicitly asked.
+- Leave an existing packet directory without `plan.md` untouched unless migration is explicitly asked.
 
 ## Output
 

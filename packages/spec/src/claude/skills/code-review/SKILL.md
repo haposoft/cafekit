@@ -22,25 +22,22 @@ owns execution proof; the single closeout owner combines both results.
 With no argument, review the pending diff. Supported targets are a PR, commit,
 pending changes, or an explicit path. Load only current target bytes and needed
 references. For a valid process-first target, read `plan.md`, the active flat
-`task-NN-*.md`, and the controller-validated `test-proof-v1` handoff. Mixed,
-orphaned, malformed, symlinked, nonregular, or identity-conflicting packet state
-is `BLOCKED`; review never migrates it.
+`task-NN-*.md`, and the controller-validated `test-proof-v1` handoff. Orphaned,
+malformed, symlinked, nonregular, or identity-conflicting packet state is
+`BLOCKED`; review never migrates it.
 
-For process-first proof consumption, this skill's `## Execution-proof boundary`
-is authoritative. Do not load or follow legacy separate-receipt paragraphs from
-references; they apply only to a legacy packet.
+For proof consumption, this skill's `## Execution-proof boundary` is
+authoritative.
 
 Select review depth from risk and blast radius: for a process-first task, its
-coverage-profile Risk/evidence; for a legacy packet, its `assurance_level`. Lane
-is a derived view:
+coverage-profile Risk/evidence. Lane is a derived view:
 
 - Direct: targeted correctness/security/spec check;
 - Standard: bounded feature review at closeout;
 - Critical: independent, adversarial review covering every required obligation.
 
-Do not use file count as the depth selector. `execution_tier` is a read-only
-legacy adapter and cannot choose a review sequence. The review contract has no
-fixed Light/Standard/Deep sequence.
+Do not use file count as the depth selector. The review contract has no fixed
+Light/Standard/Deep sequence.
 
 ## Review stages
 
@@ -125,8 +122,7 @@ Use the shared adapter surface exactly:
 
 `PASS | PASS_WITH_WARNINGS | FAIL | BLOCKED`
 
-Legacy adapter inputs may include `PASS | FAIL | BLOCKED`, but they are
-normalized to the shared surface and no second enum is allowed. `PASS` means no
+No second verdict enum is allowed. `PASS` means no
 Critical, High, or Medium finding remains; Low findings may remain.
 `PASS_WITH_WARNINGS` means the heaviest remaining finding is a non-blocking
 Medium. `FAIL` means a Critical, High, or blocking Medium finding requires
@@ -162,10 +158,6 @@ make the review look complete. Return unresolved questions at the end.
 
 ## References
 
-- `references/spec-compliance-review.md` — load only its detailed scope checks;
-  its separate-receipt paragraph is Legacy-only.
+- `references/spec-compliance-review.md` — load for its detailed scope checks.
 - `references/pre-landing-checklists.md` — load for the selected risk surface.
 - `references/adversarial-review.md` — load for Critical/adversarial depth.
-- `references/verification-gate.md` — Legacy separate-receipt consumption only;
-  process-first proof uses this skill's execution-proof boundary. Execution
-  always stays with `cf:test`.

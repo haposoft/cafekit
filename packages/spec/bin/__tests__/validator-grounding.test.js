@@ -73,35 +73,36 @@ test('Codex installer transform preserves all owned spec assets idempotently', (
 
 });
 
-test('resolver binds feature identity and rejects cross-feature spec aliases', () => {
+test('resolver binds feature identity and rejects cross-feature plan aliases', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cafekit-resolver-identity-'));
+  const packet = (dir) => {
+    write(path.join(dir, 'plan.md'), '# Plan\nSpecs-Contract: process-first-ready-v1\n');
+    write(path.join(dir, 'task-01-x.md'), '# Task 01\n\nStatus: pending\n\n## Dependencies\n\n- none\n');
+  };
   try {
     const specsDir = path.join(root, 'specs');
-    write(path.join(specsDir, 'bar', 'spec.json'), JSON.stringify({ feature_name: 'bar', status: 'in_progress' }));
+    packet(path.join(specsDir, 'bar'));
     fs.mkdirSync(path.join(specsDir, 'foo'), { recursive: true });
-    fs.symlinkSync('../bar/spec.json', path.join(specsDir, 'foo', 'spec.json'));
+    fs.symlinkSync('../bar/plan.md', path.join(specsDir, 'foo', 'plan.md'));
 
-    const explicit = SPEC_RESOLVER.resolveActiveSpec({ projectRoot: root, explicitFeature: 'foo' });
+    const explicit = SPEC_RESOLVER.resolveWorkflowCandidate({ projectRoot: root, explicitFeature: 'foo' });
     assert.equal(explicit.error, 'explicit_malformed');
-    assert.match(explicit.reason, /does not belong to feature directory|canonical feature/);
+    assert.match(explicit.reason, /plan\.md must be a regular non-symlink file/);
 
-    const implicit = SPEC_RESOLVER.resolveActiveSpec({ projectRoot: root });
+    const implicit = SPEC_RESOLVER.resolveWorkflowCandidate({ projectRoot: root });
     assert.equal(implicit.error, 'invalid_specs');
     assert.deepEqual(implicit.candidates, ['foo']);
-    assert.doesNotMatch(implicit.reason, /Multiple active specs/);
-    assert.throws(
-      () => SPEC_RESOLVER.findAllActiveSpecs(root),
-      (error) => error.code === 'INVALID_SPECS' && /foo/.test(error.message),
-    );
+    assert.doesNotMatch(implicit.reason, /Multiple active/);
 
+    // A directory alias is refused rather than resolved to the packet it points at.
     const aliasRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'cafekit-resolver-directory-alias-'));
     try {
       const aliasSpecs = path.join(aliasRoot, 'specs');
-      write(path.join(aliasSpecs, 'bar', 'spec.json'), JSON.stringify({ feature_name: 'bar', status: 'in_progress' }));
+      packet(path.join(aliasSpecs, 'bar'));
       fs.symlinkSync('bar', path.join(aliasSpecs, 'foo'), 'dir');
-      const resolved = SPEC_RESOLVER.resolveActiveSpec({ projectRoot: aliasRoot });
-      assert.equal(resolved.featureName, 'bar');
-      assert.equal(SPEC_RESOLVER.findAllActiveSpecs(aliasRoot).length, 1);
+      const resolved = SPEC_RESOLVER.resolveWorkflowCandidate({ projectRoot: aliasRoot });
+      assert.equal(resolved.error, 'invalid_specs');
+      assert.deepEqual(resolved.candidates, ['foo']);
     } finally {
       fs.rmSync(aliasRoot, { recursive: true, force: true });
     }

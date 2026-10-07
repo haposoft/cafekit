@@ -3078,6 +3078,25 @@ test('Codex installed code_auditor carries no Strict attestation marker', () => 
   });
 });
 
+test('reinstall removes obsolete scripts from Codex and omp installs', () => {
+  inTempProject((root) => {
+    const first = installPlatforms(root, ['codex', 'omp']);
+    assert.equal(first.status, 0, `${first.stdout}\n${first.stderr}`);
+    const retired = ['change-firewall.cjs', 'spec-final-state.cjs'];
+    for (const runtime of ['.codex', '.omp']) {
+      for (const name of retired) fs.writeFileSync(path.join(root, runtime, 'scripts', name), 'legacy\n');
+    }
+    const again = installPlatforms(root, ['codex', 'omp'], ['--force-overwrite']);
+    assert.equal(again.status, 0, `${again.stdout}\n${again.stderr}`);
+    for (const runtime of ['.codex', '.omp']) {
+      for (const name of retired) {
+        assert.equal(fs.existsSync(path.join(root, runtime, 'scripts', name)), false, `${runtime}/scripts/${name} must be removed`);
+      }
+      assert.equal(fs.existsSync(path.join(root, runtime, 'scripts', 'spec-resolver.cjs')), true, `${runtime} keeps the resolver`);
+    }
+  });
+});
+
 test('reinstall removes the retired spec.json templates from Claude and Codex but a dry run keeps them', () => {
   inTempProject((root) => {
     const first = installPlatforms(root, ['claude', 'codex']);

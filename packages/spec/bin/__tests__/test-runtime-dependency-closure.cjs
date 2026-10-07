@@ -6,7 +6,6 @@ const os = require('node:os');
 const path = require('node:path');
 
 const CLAUDE_RUNTIME_ENTRYPOINTS = Object.freeze([
-  'scripts/spec-final-state.cjs',
   'scripts/spec-receipt.cjs',
   'scripts/spec-resolver.cjs',
   'scripts/workflow-policy.cjs',

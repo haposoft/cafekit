@@ -16,11 +16,12 @@ separate concise redacted report. Do not invent proof from remembered output.
 When the target is a feature or task, classify current bytes before execution:
 
 - A valid process-first packet has a regular `plan.md` with
-  `Specs-Contract: process-first-ready-v1`, regular flat `task-NN-*.md` files,
-  and no legacy marker. Read the exact current Verification Plan.
-- A valid legacy packet keeps its isolated adapter and separate receipt rules.
-- Mixed, orphaned, malformed, symlinked, nonregular, or identity-conflicting
-  packet markers return `BLOCKED`; never migrate or repair them.
+  `Specs-Contract: process-first-ready-v1` and regular flat `task-NN-*.md`
+  files. Read the exact current Verification Plan.
+- A packet directory with no `plan.md` that holds the old JSON planning state is no
+  longer read; return `BLOCKED` and name it.
+- Orphaned, malformed, symlinked, nonregular, or identity-conflicting packet
+  markers return `BLOCKED`; never migrate or repair them.
 - With no packet marker, use ordinary repository-aware test selection.
 
 For process-first work, the task's exact Command, exact unique Named probes,
@@ -125,9 +126,5 @@ proof and does not rerun it.
 Do not paste the full payload, secrets, verbose logs, or screenshots into this
 report. `PASS_WITH_WARNINGS` remains unfinished.
 
-## Legacy workflow compatibility
-
-After a valid legacy route, resolve its current spec/task contract and emit the
-existing legacy evidence through its separate-receipt adapter. Normalize legacy
-diagnostics to the canonical four verdicts. Never search for or write a separate
-receipt for process-first work, and never copy legacy proof into a flat task.
+Proof for process-first work lives only in the task's inline `## Receipt`; never
+search for or write a receipt file beside it.

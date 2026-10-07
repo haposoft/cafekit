@@ -51,14 +51,12 @@ links count as markers. Never migrate or repair packet state while testing.
 
 | Observed state | Route |
 |---|---|
-| Valid regular `plan.md` with `Specs-Contract: process-first-ready-v1`, one or more valid regular flat `task-NN-*.md`, and no legacy marker | Process-first |
-| Any flat marker that is orphaned, malformed, duplicated, symlinked, nonregular, or mixed with a legacy marker | `BLOCKED` |
-| Valid regular legacy root resolving every nested task and separate receipt, with no flat marker | Legacy adapter |
-| Orphan, malformed, symlinked, nonregular, identity-conflicting, or mixed legacy state | `BLOCKED` |
-| No flat or legacy marker | Ordinary non-Spec testing |
+| Valid regular `plan.md` with `Specs-Contract: process-first-ready-v1` and one or more valid regular flat `task-NN-*.md` | Process-first |
+| Any flat marker that is orphaned, malformed, duplicated, symlinked, or nonregular | `BLOCKED` |
+| A packet directory with no `plan.md` that holds the old JSON planning state | `BLOCKED`: CafeKit no longer reads it; move the work to a `plan.md` packet |
+| No flat marker | Ordinary non-Spec testing |
 
-A flat marker is a direct-child `plan.md` or `task-NN-*.md`. A legacy marker is
-`spec.json`, a nested legacy task, or a separate legacy receipt. See
+A flat marker is a direct-child `plan.md` or `task-NN-*.md`. See
 `references/execution-strategy.md` for the complete validation truth table.
 
 ## Spec-Aware Mode
@@ -184,14 +182,9 @@ pre-execution `BLOCKED` takes the same placement; its shape is in
 `references/execution-strategy.md` §4. For any other target, end with the
 report and the line `No payload: target not identifiable.`
 
-## Legacy workflow compatibility
+## Flash proof
 
-A valid legacy packet keeps the v2.1 adapter, legacy task resolution, and its
-separate receipt path. Do not write process-first inline proof into it. If
-legacy proof identities conflict or the packet is mixed/malformed, return
-`BLOCKED`; never choose one source or migrate it during unrelated testing.
-
-Flash legacy behavior remains proof-only: testing may make a current
+Flash behavior remains proof-only: testing may make a current
 `FLASH_UNVERIFIED` task eligible for trusted sync-finalize, but never promotes
 state or unblocks dependents itself. Only explicit trusted sync-finalize may
 promote it.

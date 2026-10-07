@@ -169,9 +169,9 @@ Human report chỉ tóm tắt verdict, command/exit, counts, reachability, proof
 drift và next action; full JSON/raw log không bị chép vào report. Đây là contract
 cấu trúc, không phải benchmark thời gian hay tuyên bố model live đã tuân thủ.
 
-Legacy feature có `spec.json`, nested task hoặc receipt riêng tiếp tục dùng
-separate-receipt adapter cũ. Test không tìm hoặc tạo separate receipt cho flat
-process-first task, và không migrate hai layout trong lúc proof.
+CafeKit không còn đọc gói cũ dùng `spec.json`. Thư mục gói có `spec.json` mà không có `plan.md` sẽ bị
+`BLOCKED` khi test và được nhắc một lần mỗi phiên; hãy chuyển việc sang gói `plan.md`.
+Proof của task process-first chỉ nằm trong `## Receipt` inline của chính task đó.
 
 ### Receipt canonical
 

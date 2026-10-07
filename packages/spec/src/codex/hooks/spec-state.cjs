@@ -40,7 +40,28 @@ try {
   const RECEIPT = receiptLoaded.receipt;
   const { projectRoot, runtime } = getHookContext(payload);
   if (runtime.spec?.tollgate === false) process.exit(0);
-  const { resolveWorkflowCandidate } = require('./lib/spec-utils.cjs');
+  const { findLegacyPackets, resolveWorkflowCandidate } = require('./lib/spec-utils.cjs');
+  const sessionId = payload.session_id || payload.sessionId || payload.sessionID || payload.session?.id;
+  // A legacy packet (a specs/<x>/ directory without plan.md that the old flow left
+  // behind) is no longer read. Say so once per session instead of on every prompt.
+  const legacyPackets = findLegacyPackets(projectRoot, runtime);
+  if (legacyPackets.length > 0) {
+    const noticeFile = sessionId
+      ? path.join(hookStateDir(projectRoot), `legacy-notice-${crypto.createHash('sha256').update(String(sessionId)).digest('hex').slice(0, 16)}.json`)
+      : null;
+    let noticed = [];
+    if (noticeFile) {
+      try { noticed = JSON.parse(fs.readFileSync(noticeFile, 'utf8')); } catch { noticed = []; }
+      if (!Array.isArray(noticed)) noticed = [];
+    }
+    const fresh = legacyPackets.filter((name) => !noticed.includes(name));
+    for (const name of fresh) {
+      process.stdout.write(`> ⚠️ \`specs/${name}\` is a legacy Specs packet without plan.md; CafeKit no longer reads it. Move ongoing work to a process-first plan.md packet.\n`);
+    }
+    if (noticeFile && fresh.length > 0) {
+      try { atomicWrite(noticeFile, `${JSON.stringify([...noticed, ...fresh].sort())}\n`); } catch { /* repeats the notice */ }
+    }
+  }
   const explicitFeature = payload.featureName || payload.feature || payload.explicitFeature || null;
   const explicitPath = payload.specPath || payload.spec_path || payload.featurePath || null;
   const resolved = resolveWorkflowCandidate(projectRoot, runtime, explicitFeature, explicitPath);
@@ -50,7 +71,7 @@ try {
     process.exit(0);
   }
   if (resolved.error === 'invalid_specs') {
-    process.stdout.write(`> ⚠️ Invalid spec JSON detected: ${resolved.candidates.join(', ')}. ${resolved.reason}. Fix or remove malformed spec.json. Tollgate paused.\n`);
+    process.stdout.write(`> ⚠️ Invalid workflow packet detected: ${resolved.candidates.join(', ')}. ${resolved.reason}. Fix the packet's plan.md or task files. Tollgate paused.\n`);
     process.exit(0);
   }
   if (resolved.error === 'explicit_not_found' || resolved.error === 'explicit_malformed') {
@@ -60,18 +81,16 @@ try {
   }
   if (resolved.error) process.exit(0);
   const active = resolved;
-  const processWorkflow = active.layoutKind === 'process-v3';
   const runtimeContext = POLICY.deriveRuntimeContext({
     projectRoot,
     specsRoot: active.specsDir,
-    specFile: active.stateFile || active.specFile || path.join(active.specsDir, active.featureName, 'spec.json'),
+    specFile: active.stateFile,
     featureName: active.featureName,
-    runtimeSession: payload.session_id || payload.sessionId || payload.sessionID || payload.session?.id,
+    runtimeSession: sessionId,
   });
 
-  const phase = active.phase || active.spec?.current_phase || active.spec?.phase || 'unknown';
-  const taskRegistry = active.taskRegistry || active.spec?.task_registry || {};
-  const flashTasks = POLICY.flashState(taskRegistry);
+  const phase = active.phase || 'unknown';
+  const taskRegistry = active.taskRegistry || {};
   const tasks = Object.entries(taskRegistry);
   const counts = tasks.reduce((result, [, task]) => {
     const status = task?.status || 'pending';
@@ -79,13 +98,7 @@ try {
     return result;
   }, {});
   const featureDir = path.join(active.specsDir, active.featureName);
-  const statuses = new Map(tasks.map(([taskPath, task]) => [
-    taskPath,
-    task?.status || 'pending'
-  ]));
-  const dependencyProof = processWorkflow
-    ? RECEIPT.workflowDependencyProofState(featureDir, taskRegistry, runtimeContext, POLICY)
-    : {};
+  const dependencyProof = RECEIPT.workflowDependencyProofState(featureDir, taskRegistry, runtimeContext, POLICY);
   const taskState = tasks.map(([taskPath, task]) => [
     taskPath,
     task?.status || 'pending',
@@ -101,12 +114,8 @@ try {
   const next = tasks.find(([, task]) => (
     active.queueReady !== false
     && (task?.status || 'pending') === 'pending'
-    && (task?.dependencies || []).every((dependency) => (
-      processWorkflow ? dependencyProof[dependency]?.eligible === true : statuses.get(dependency) === 'done'
-    ))
+    && (task?.dependencies || []).every((dependency) => dependencyProof[dependency]?.eligible === true)
   ));
-  const featureReceiptPresent = !processWorkflow
-    && RECEIPT.safeRead(featureDir, 'feature-receipt.md').status === 'ok';
   const stateKey = JSON.stringify({
     project_root: runtimeContext.project_root,
     specs_root: runtimeContext.specs_root,
@@ -124,14 +133,13 @@ try {
     proof_state: proofState,
     done: counts.done || 0,
     total: tasks.length,
-    feature_receipt_present: featureReceiptPresent,
   });
   const cache = cacheFile(projectRoot, runtimeContext.runtime_session);
   let previous = '';
   try { previous = fs.readFileSync(cache, 'utf8').trim(); } catch { /* first run */ }
 
   if (previous === stateKey) {
-    const migration = processWorkflow && active.queueReady === false
+    const migration = active.queueReady === false
       ? ' Add `Specs-Contract: process-first-ready-v1` after the plan title before tasks can enter Next.'
       : '';
     process.stdout.write(
@@ -147,26 +155,14 @@ try {
     `- Phase: \`${phase}\` | Tasks: ${counts.done || 0} done / ${tasks.length} total`
   ];
   if (next) lines.push(`- Next unblocked: \`${next[0]}\``);
-  if (flashTasks.length > 0) {
-    lines.push(`- Flash verification pending: ${flashTasks.map((taskPath) => `\`${taskPath}\``).join(', ')}. A PASS proof keeps the persisted task in_progress until explicit sync-finalize.`);
+  if (active.queueReady === false) {
+    lines.push('- Migration required: add `Specs-Contract: process-first-ready-v1` after the plan title before tasks can enter Next.');
   }
-  if (processWorkflow) {
-    if (active.queueReady === false) {
-      lines.push('- Migration required: add `Specs-Contract: process-first-ready-v1` after the plan title before tasks can enter Next.');
-    }
-    lines.push(
-      '- Sync each flat task `Status:` only after verified work; task proof belongs in that task\'s inline `## Receipt`.',
-      `- Workflow source: \`specs/${active.featureName}/plan.md\`; Stop re-checks every done receipt, binding Base/Head to the runtime only while a committed task file no longer matches its committed bytes.`,
-      '- Hooks revalidate receipt bytes but never grant approval.'
-    );
-  } else {
-    lines.push(
-      '- Sync `spec.json` and task Markdown status only after verified work; task proof belongs in `receipts/<task-basename>.md`.',
-      `- Create \`feature-receipt.md\` once after final integration proof${featureReceiptPresent ? ' (present)' : ' (not required before closeout)'}.`,
-      '- Legacy `spec.json` packets can no longer be validated; move ongoing work to a process-first `plan.md` packet.',
-      '- Hooks revalidate receipt bytes but never grant approval.'
-    );
-  }
+  lines.push(
+    '- Sync each flat task `Status:` only after verified work; task proof belongs in that task\'s inline `## Receipt`.',
+    `- Workflow source: \`specs/${active.featureName}/plan.md\`; Stop re-checks every done receipt, binding Base/Head to the runtime only while a committed task file no longer matches its committed bytes.`,
+    '- Hooks revalidate receipt bytes but never grant approval.'
+  );
   process.stdout.write(`${lines.join('\n')}\n`);
 } catch (error) {
   logCrash('spec-state', error);

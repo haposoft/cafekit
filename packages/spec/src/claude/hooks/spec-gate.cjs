@@ -97,8 +97,7 @@ try {
     RESOLVER = require(path.join(__dirname, '..', 'scripts', 'spec-resolver.cjs'));
     RECEIPT = require(path.join(__dirname, '..', 'scripts', 'spec-receipt.cjs'));
     if (typeof POLICY.validateCanonicalReceipt !== 'function'
-      || typeof POLICY.completionDecisionForSpec !== 'function'
-      || typeof RECEIPT.checkTaskReceipt !== 'function'
+      || typeof RECEIPT.checkWorkflowTaskReceipt !== 'function'
       || typeof RECEIPT.checkWorkflowReceiptSet !== 'function'
       || typeof RESOLVER.resolveWorkflowCandidate !== 'function') {
       throw new Error('shared workflow policy lacks completion authority functions');
@@ -164,7 +163,7 @@ try {
   if (resolved.error === 'invalid_specs') {
     process.stdout.write(JSON.stringify({
       decision: 'block',
-      reason: `Completion gate: invalid spec JSON detected (${resolved.candidates.join(', ')}): ${resolved.reason}. Fix or remove malformed spec.json before completing tasks.`
+      reason: `Completion gate: invalid workflow packet detected (${resolved.candidates.join(', ')}): ${resolved.reason}. Fix the packet's plan.md or task files before completing tasks.`,
     }) + '\n');
     process.exit(0);
   }
@@ -177,22 +176,12 @@ try {
   }
   if (resolved.error) process.exit(0);
 
-  const activeSpec = resolved.spec || {};
-  const processWorkflow = resolved.layoutKind === 'process-v3';
   const featureName = resolved.featureName;
   const specsPath = resolved.specsDir;
-  const lifecyclePhase = activeSpec.current_phase || activeSpec.phase;
-  const explicitCloseout = ['done', 'completed', 'complete'].includes(activeSpec.status)
-    || ['closeout', 'completion', 'completed', 'complete'].includes(lifecyclePhase);
-  // Legacy 2.1 closeout is retired; a 2.1 packet mid-execution keeps the ordinary receipt checks.
-  if (!processWorkflow && activeSpec.schema_version === '2.1' && explicitCloseout) {
-    emitBlock('Completion gate: Legacy spec.json closeout is no longer supported; move the packet to plan.md with flat task files');
-    process.exit(0);
-  }
   const runtimeContext = POLICY.deriveRuntimeContext({
     projectRoot: baseDir,
     specsRoot: specsPath,
-    specFile: resolved.stateFile || resolved.specFile || path.join(specsPath, featureName, 'spec.json'),
+    specFile: resolved.stateFile,
     featureName,
     runtimeSession: sessionIdentity(payload),
   });
@@ -202,7 +191,7 @@ try {
     emitBlock('Completion gate: runtime.spec.completion_gate is a worker-writable flag, not an authorization; no completion-gate bypass is supported. Remove the flag and satisfy the gate.');
     process.exit(0);
   }
-  const taskRegistry = resolved.taskRegistry || activeSpec.task_registry || {};
+  const taskRegistry = resolved.taskRegistry || {};
   const cacheFile = path.join(require('./lib/hook-state-dir.cjs').hookStateDir(), 'spec-gate-last.json');
   const cacheExists = fs.existsSync(cacheFile);
   let cache = {};
@@ -213,17 +202,6 @@ try {
   const currentStatuses = {};
   for (const [tp, task] of Object.entries(taskRegistry)) {
     currentStatuses[tp] = task?.status || 'pending';
-  }
-
-  const staleFlashTasks = processWorkflow ? [] : Object.entries(taskRegistry)
-    .filter(([, task]) => POLICY.isStaleFlashDone(task))
-    .map(([taskPath]) => taskPath);
-  if (staleFlashTasks.length > 0) {
-    process.stdout.write(JSON.stringify({
-      decision: 'block',
-      reason: `Completion gate: ${staleFlashTasks.length} task(s) marked done with FLASH_UNVERIFIED (${staleFlashTasks.join(', ')}). Run /cf:test for exact proof, then use explicit sync-finalize.`
-    }) + '\n');
-    process.exit(0);
   }
 
   // Cache hardening: every Stop re-reads and re-checks the receipt of every
@@ -241,28 +219,10 @@ try {
   const featureDir = path.join(specsPath, featureName);
   const failures = allDoneTasks
     .map((taskPath) => {
-      const proof = processWorkflow
-        ? RECEIPT.checkWorkflowTaskReceipt(featureDir, taskPath, runtimeContext, POLICY)
-        : RECEIPT.checkTaskReceipt(featureDir, taskPath, taskRegistry[taskPath], runtimeContext, POLICY);
+      const proof = RECEIPT.checkWorkflowTaskReceipt(featureDir, taskPath, runtimeContext, POLICY);
       return { taskPath, fails: proof.failures, body: proof.body };
     })
     .filter((f) => f.fails.length > 0);
-
-  const featureCloseoutRequired = !processWorkflow && explicitCloseout && allDoneTasks.length > 0;
-  const featureReceipt = featureCloseoutRequired
-    ? RECEIPT.checkFeatureReceipt(featureDir, runtimeContext, POLICY)
-    : null;
-  if (featureReceipt && featureReceipt.failures.length) {
-    failures.push({ taskPath: 'feature-receipt.md', fails: featureReceipt.failures });
-  }
-  const completion = featureCloseoutRequired && featureReceipt?.failures.length === 0
-    && Object.prototype.hasOwnProperty.call(activeSpec, 'workflow_policy')
-    ? POLICY.completionDecisionForSpec(activeSpec, {
-      runtimeContext,
-      executionReceipt: featureReceipt.body,
-      taskContext: {},
-    })
-    : null;
 
   // Always persist status transitions, including done → pending. Keep
   // failing done tasks at their previous cached status so a stale valid
@@ -279,27 +239,12 @@ try {
     fs.writeFileSync(cacheFile, JSON.stringify(cache));
   } catch { /* fail-open */ }
 
-  const completionBlocked = completion && completion.completion !== 'complete' && completion.completion !== 'not_applicable';
-  if (failures.length === 0 && !completionBlocked) process.exit(0);
+  if (failures.length === 0) process.exit(0);
 
-  const lines = [
-    failures.length > 0
-      ? `⚠️ Completion gate: ${failures.length} done task(s) lack a verification receipt.`
-      : '⚠️ Completion gate: workflow completion proof is incomplete.',
-  ];
+  const lines = [`⚠️ Completion gate: ${failures.length} done task(s) lack a verification receipt.`];
   for (const { taskPath, fails, body } of failures) {
     lines.push(`- \`${taskPath}\`: failed check(s) ${fails.join(', ')}`);
-    lines.push(taskPath === 'feature-receipt.md'
-      ? `  Fix: run final integration proof, then write \`specs/${featureName}/feature-receipt.md\`.`
-      : processWorkflow
-        ? `  Fix in \`specs/${featureName}/${path.posix.basename(taskPath)}\`: ${(typeof RECEIPT.receiptFixHint === 'function' && RECEIPT.receiptFixHint(fails, body)) || 'write a runtime-bound `## Receipt` with command output'}.`
-        : `  Fix: write canonical proof to \`specs/${featureName}/receipts/${path.posix.basename(taskPath)}\`; legacy \`## Evidence\` remains read-compatible.`);
-  }
-  if (completionBlocked) {
-    lines.push(`- Completion decision unfinished: ${completion.blocker || 'required workflow proof is missing.'}`);
-    if (Array.isArray(completion.missingProof) && completion.missingProof.length > 0) {
-      lines.push(`  Missing proof: ${completion.missingProof.join(', ')}`);
-    }
+    lines.push(`  Fix in \`specs/${featureName}/${path.posix.basename(taskPath)}\`: ${(typeof RECEIPT.receiptFixHint === 'function' && RECEIPT.receiptFixHint(fails, body)) || 'write a runtime-bound `## Receipt` with command output'}.`);
   }
   process.stdout.write(JSON.stringify({ decision: 'block', reason: lines.slice(0, 8).join('\n') }) + '\n');
   process.exit(0);

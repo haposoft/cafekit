@@ -114,7 +114,6 @@ const REQUIRED_PAYLOAD = [
   'src/claude/scripts/workflow-policy.cjs',
   'src/claude/scripts/provenance.cjs',
   'src/claude/scripts/spec-receipt.cjs',
-  'src/claude/scripts/spec-final-state.cjs',
   'src/claude/scripts/generate-skill-catalog.cjs',
   'src/claude/rules/process-management.md',
   'src/claude/rules/review-audit-self-decision.md',
@@ -1516,12 +1515,11 @@ function assertInstalledProvenance(root, platform, fixture) {
   const policy = path.join(scripts, 'workflow-policy.cjs');
   const resolver = path.join(scripts, 'spec-resolver.cjs');
   const receipt = path.join(scripts, 'spec-receipt.cjs');
-  const finalState = path.join(scripts, 'spec-final-state.cjs');
   const gate = path.join(
     root,
     platform === 'claude' ? '.claude/hooks/spec-gate.cjs' : '.codex/hooks/spec-gate.cjs'
   );
-  for (const file of [helper, policy, resolver, receipt, finalState]) {
+  for (const file of [helper, policy, resolver, receipt]) {
     assert.equal(fs.existsSync(file), true, `${platform} installed file missing: ${file}`);
   }
   assert.equal(fs.existsSync(gate), true, `${platform} installed gate missing: ${gate}`);
@@ -1653,10 +1651,8 @@ function assertInstalledScripts(root, platform) {
   const scripts = path.join(root, RUNTIMES[platform].root, 'scripts');
   const policy = path.join(scripts, 'workflow-policy.cjs');
   const scanner = path.join(scripts, 'scan-staged-secrets.cjs');
-  const finalState = path.join(scripts, 'spec-final-state.cjs');
   assert.ok(fs.existsSync(policy), `installed policy missing: ${policy}`);
   assert.ok(fs.existsSync(scanner), `installed scanner missing: ${scanner}`);
-  assert.ok(fs.existsSync(finalState), `installed final-state dependency missing: ${finalState}`);
 
   const policyRun = spawnSync(process.execPath, [policy, '--json'], { cwd: root, encoding: 'utf8' });
   assert.equal(policyRun.status, 0, `${policyRun.stdout}\n${policyRun.stderr}`);

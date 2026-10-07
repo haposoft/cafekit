@@ -238,19 +238,17 @@ keywords such as Python `prompt=` or `description=` from being corrupted.
 ## Completion gate identity
 
 The Stop gate asks about the project's Specs packets, and it first has to answer "which
-feature is this turn about?". It asks which packet still has unfinished work. Any layout
-qualifies: a repository of legacy `spec.json` packets narrows exactly the way a
-process-first one does. If more than one packet still has work, the ambiguity stands. If
-every packet is finished and every one of them is process-first, the gate audits the whole
-set instead; a legacy packet never reaches that branch, because it exits before the
-`FLASH_UNVERIFIED`, feature-receipt, and completion-policy layers.
+feature is this turn about?". Only process-first packets count: a `plan.md` with flat
+`task-NN-*.md` files beside it. It asks which packet still has unfinished work. If more
+than one packet still has work, the ambiguity stands. If every packet is finished, the
+gate audits the whole set instead.
 
-A legacy `schema_version` `2.1` packet that claims closeout (`status` done, completed or
-complete, or a closeout phase) is blocked with "Legacy spec.json closeout is no longer
-supported; move the packet to plan.md with flat task files"; mid-execution it still gets
-the ordinary receipt checks. The closeout-approval hook that once asked which packet was
-claiming closeout, and the Strict reviewer attestation, were removed; the validator fails a
-`Strict` packet with "Strict assurance is no longer supported".
+CafeKit no longer reads the older `spec.json` packets. A packet directory with `spec.json`
+and no `plan.md` is invisible to the gate and never blocks Stop, even when
+`specs/_shared/active-feature.json` names it; the session hook prints one line per
+session naming it so the work can be moved to a `plan.md` packet. A directory holding
+both files is read as a process-first packet, so its done tasks still need their inline
+Receipts. A malformed process-first packet blocks Stop as an invalid workflow packet.
 
 Before this, the gate decided identity by raw candidate count. A project that had
 simply accumulated finished features was blocked on every turn, and because identity is

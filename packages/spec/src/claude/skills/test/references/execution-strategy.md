@@ -20,27 +20,20 @@ marker. Resolve all accepted paths inside the target feature directory.
   marker, malformed or duplicate task fields, symlink, directory, device, or
   other nonregular flat marker returns `BLOCKED`.
 
-### Legacy markers
+### Packets the runtime no longer reads
 
-- Legacy markers are `spec.json`, nested legacy tasks, or separate legacy
-  receipts. Detect them even when orphaned or broken.
-- Legacy is selected only when a regular schema-valid `spec.json` has one
-  consistent identity and registry resolving every contained nested task and
-  receipt, and no flat marker exists.
-- Orphan nested tasks/receipts, absent or schema-invalid root, conflicting
-  identities, symlinks, nonregular markers, or unresolved/out-of-root entries
-  return `BLOCKED`.
+- A packet directory with no `plan.md` that holds the old JSON planning state is not
+  read by CafeKit. Return `BLOCKED` and name it; never migrate it while testing.
+- Other files beside a valid `plan.md` do not change its classification.
 
 ### Precedence truth table
 
-| Flat state | Legacy state | Result |
+| Flat state | Old planning state without `plan.md` | Result |
 |---|---|---|
-| valid | absent | process-first |
-| absent | valid | legacy adapter |
+| valid | any | process-first |
+| invalid | any | `BLOCKED` |
+| absent | present | `BLOCKED`: unsupported, move the work to a `plan.md` packet |
 | absent | absent | ordinary non-Spec scope |
-| any marker | any marker | `BLOCKED` mixed state |
-| invalid | absent | `BLOCKED` |
-| absent | invalid | `BLOCKED` |
 
 Do not infer that an invalid marker is absent. Testing never repairs, migrates,
 renames, deletes, or chooses between conflicting packet identities.
@@ -181,7 +174,7 @@ packet failed classification after the repository had a commit:
   },
   "proof_level": "source",
   "expected": "both Named probes pass under `node --test test/login.test.js`",
-  "observed": "BLOCKED before execution: specs/user-auth also holds spec.json, a legacy marker",
+  "observed": "BLOCKED before execution: specs/user-auth/task-01-login.md is a symlink",
   "reachability": {
     "status": "BLOCKED",
     "evidence": [
@@ -287,9 +280,5 @@ Do not paste verbose raw output, full JSON, credentials, PII, or screenshots int
 the report. Do not write a report file during proof. Process-first Status and
 inline `## Receipt` remain controller-only.
 
-## Legacy workflow compatibility
-
-After a valid legacy route, preserve its v2.1 task/receipt adapter and existing
-proof rules. Separate legacy receipts remain legacy-only. Never search for or
-create a separate receipt for a process-first task, and never copy a legacy
-receipt into a flat task.
+Proof for a process-first task lives only in its inline `## Receipt`; never
+search for or create a receipt file beside it.

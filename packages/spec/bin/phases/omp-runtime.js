@@ -129,14 +129,14 @@ function installBridge(ctx, platformKey) {
 }
 
 /**
- * Delete hooks the manifest marks obsolete. Mirrors removeObsoleteClaudeRuntimeFiles, but the
+ * Delete hooks and scripts the manifest marks obsolete. Mirrors removeObsoleteClaudeRuntimeFiles, but the
  * omp tracker records keys relative to the project root (`.omp/hooks/…`), so the record is
  * pruned through keyFor rather than by the bare `hooks/…` path.
  */
 function removeObsoleteOmpHooks(ctx, platformKey) {
   const platform = PLATFORMS[platformKey];
   const tracker = ctx.trackers && ctx.trackers[platformKey];
-  const obsoleteHooks = (ctx.manifest?.obsolete?.runtimeFiles || []).filter((rel) => rel.startsWith('hooks/'));
+  const obsoleteHooks = (ctx.manifest?.obsolete?.runtimeFiles || []).filter((rel) => rel.startsWith('hooks/') || rel.startsWith('scripts/'));
   for (const rel of obsoleteHooks) {
     const target = path.join(platform.folder, rel);
     if (!fs.existsSync(target)) continue;

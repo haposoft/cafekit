@@ -66,8 +66,8 @@ function sharedResolver() {
     // Use canonical realpath for require to avoid symlink hijack
     const realCandidate = canonicalRealpath(candidate);
     const resolver = require(realCandidate);
-    if (typeof resolver?.resolveActiveSpec !== 'function') {
-      throw new Error('shared spec resolver has no resolveActiveSpec function');
+    if (typeof resolver?.resolveWorkflowCandidate !== 'function') {
+      throw new Error('shared spec resolver has no resolveWorkflowCandidate function');
     }
     return resolver;
   } catch (error) {
@@ -80,31 +80,13 @@ function specsDirectory(projectRoot, runtime) {
   return sharedResolver().specsDirectory(projectRoot, runtime);
 }
 
-function findAllActiveSpecs(projectRoot, runtime) {
-  return sharedResolver().findAllActiveSpecs(projectRoot, runtime);
-}
-
-function findAllSpecCandidates(projectRoot, runtime) {
-  return sharedResolver().findAllSpecCandidates(projectRoot, runtime);
-}
-
-function resolveActiveSpec(projectRoot, runtime, explicitFeature, explicitPath) {
-  if (projectRoot && typeof projectRoot === 'object') {
-    return sharedResolver().resolveActiveSpec(projectRoot);
-  }
-  return sharedResolver().resolveActiveSpec({
-    projectRoot,
-    runtime,
-    explicitFeature,
-    explicitPath,
-  });
+function findLegacyPackets(projectRoot, runtime) {
+  const resolver = sharedResolver();
+  return typeof resolver.findLegacyPackets === 'function' ? resolver.findLegacyPackets(projectRoot, runtime) : [];
 }
 
 function resolveWorkflowCandidate(projectRoot, runtime, explicitFeature, explicitPath) {
   const resolver = sharedResolver();
-  if (typeof resolver.resolveWorkflowCandidate !== 'function') {
-    return resolveActiveSpec(projectRoot, runtime, explicitFeature, explicitPath);
-  }
   if (projectRoot && typeof projectRoot === 'object') {
     return resolver.resolveWorkflowCandidate(projectRoot);
   }
@@ -123,23 +105,6 @@ function refineWorkflowGateResolution(resolved) {
     : resolved;
 }
 
-function findActiveSpec(projectRoot, runtime) {
-  const resolved = resolveActiveSpec(projectRoot, runtime);
-  if (!resolved) return null;
-  if (resolved.error === 'multiple_active' || resolved.error === 'invalid_specs') return resolved;
-  if (resolved.error) return null;
-  return resolved;
-}
-
-function taskStatusMap(spec) {
-  return Object.fromEntries(
-    Object.entries(spec.task_registry || {}).map(([taskPath, task]) => [
-      taskPath,
-      task?.status || 'pending',
-    ]),
-  );
-}
-
 function extractExplicitTarget(...sources) {
   const resolver = sharedResolver();
   if (typeof resolver.extractExplicitTarget !== 'function') return null;
@@ -153,14 +118,10 @@ function readActiveFeatureTarget(options) {
 }
 
 module.exports = {
-  findActiveSpec,
   extractExplicitTarget,
+  findLegacyPackets,
   readActiveFeatureTarget,
-  findAllActiveSpecs,
-  findAllSpecCandidates,
-  resolveActiveSpec,
   resolveWorkflowCandidate,
   refineWorkflowGateResolution,
   specsDirectory,
-  taskStatusMap,
 };

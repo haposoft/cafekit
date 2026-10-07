@@ -63,7 +63,6 @@
       "workflow-policy.cjs",
       "spec-resolver.cjs",
       "spec-receipt.cjs",
-      "spec-final-state.cjs",
       "provenance.cjs"
     ]
   },
@@ -97,6 +96,8 @@
       "scripts/spec-ground.cjs",
       "scripts/spec-authoring-digest.cjs",
       "scripts/spec-semantic-model.cjs",
+      "scripts/spec-final-state.cjs",
+      "skills/code-review/references/verification-gate.md",
       "scripts/change-firewall.cjs",
       "scripts/spec-scaffold.cjs",
       "scripts/spec-readiness.cjs",

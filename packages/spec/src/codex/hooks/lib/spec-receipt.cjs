@@ -37,8 +37,8 @@ function loadSharedReceipt() {
     'spec-receipt.cjs',
     'spec-receipt.cjs',
     (receipt) => {
-      if (typeof receipt?.checkTaskReceipt !== 'function') {
-        throw new Error('shared spec receipt helper has no checkTaskReceipt function');
+      if (typeof receipt?.checkWorkflowTaskReceipt !== 'function') {
+        throw new Error('shared spec receipt helper has no checkWorkflowTaskReceipt function');
       }
     },
     'shared spec receipt helper is missing'
@@ -55,7 +55,6 @@ function receiptHelper() {
   return loaded.receipt;
 }
 
-function evidenceBody(text) { return receiptHelper().evidenceBody(text, getSharedPolicy() || {}); }
 function safeTaskFile(featureDir, taskPath) {
   const result = receiptHelper().safeRead(featureDir, taskPath);
   return result.status === 'ok' ? result.path : null;
@@ -63,11 +62,6 @@ function safeTaskFile(featureDir, taskPath) {
 function validateCanonicalReceipt(body, options = {}) {
   const validate = getSharedValidate();
   return validate ? validate(body, options) : ['shared_validator'];
-}
-function checkReceiptDetails(featureDir, taskPath, task, runtimeContext) {
-  const policy = getSharedPolicy();
-  if (!policy) return { failures: ['shared_validator'], status: 'missing' };
-  return receiptHelper().checkTaskReceipt(featureDir, taskPath, task, runtimeContext, policy);
 }
 function checkWorkflowReceiptDetails(featureDir, taskPath, runtimeContext) {
   const policy = getSharedPolicy();
@@ -85,40 +79,18 @@ function checkWorkflowReceiptSet(candidates, projectRoot, runtimeSession) {
   }
   return receipt.checkWorkflowReceiptSet(candidates, projectRoot, runtimeSession, policy);
 }
-function checkReceipt(featureDir, taskPath, task, runtimeContext) {
-  const map = {
-    unsafe_path: 'a', missing_receipt: 'b', task_status: 'a', completed_at: 'd',
-    verification_state: 'c', placeholder: 'c', validator_unavailable: 'c',
-    command: 'e', command_identity: 'e', exit_result: 'f', provenance: 'g',
-    artifact_hash: 'h', artifact_declaration: 'h',
-  };
-  return [...new Set(checkReceiptDetails(featureDir, taskPath, task, runtimeContext).failures.map((failure) => map[failure] || failure))];
-}
-function checkFeatureReceipt(featureDir, runtimeContext) {
-  const policy = getSharedPolicy();
-  if (!policy) return { failures: ['shared_validator'], status: 'missing' };
-  return receiptHelper().checkFeatureReceipt(featureDir, runtimeContext, policy);
-}
 function receiptFixHint(failures, body) {
   const helper = receiptHelper();
   return typeof helper.receiptFixHint === 'function' ? helper.receiptFixHint(failures, body) : null;
 }
-function readTaskProof(featureDir, taskPath) {
-  return receiptHelper().readTaskProof(featureDir, taskPath, getSharedPolicy() || {});
-}
 
 module.exports = {
-  checkFeatureReceipt,
-  checkReceipt,
-  checkReceiptDetails,
   checkWorkflowReceiptDetails,
   checkWorkflowReceiptSet,
-  evidenceBody,
   getSharedPolicy,
   getSharedValidate,
   loadSharedPolicy,
   loadSharedReceipt,
-  readTaskProof,
   receiptFixHint,
   safeTaskFile,
   validateCanonicalReceipt,

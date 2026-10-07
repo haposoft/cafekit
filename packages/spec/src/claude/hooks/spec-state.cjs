@@ -96,7 +96,7 @@ try {
     POLICY = require(path.join(__dirname, '..', 'scripts', 'workflow-policy.cjs'));
     RESOLVER = require(path.join(__dirname, '..', 'scripts', 'spec-resolver.cjs'));
     RECEIPT = require(path.join(__dirname, '..', 'scripts', 'spec-receipt.cjs'));
-    if (typeof POLICY.flashState !== 'function') throw new Error('shared workflow policy has no flashState function');
+    if (typeof RESOLVER.resolveWorkflowCandidate !== 'function') throw new Error('shared spec resolver has no resolveWorkflowCandidate function');
   } catch (error) {
     logCrash(error);
     emitControlledFailure(error.message);
@@ -167,6 +167,38 @@ try {
     process.exit(0);
   }
 
+  // A legacy packet (a specs/<x>/ directory without plan.md that the old flow left
+  // behind) is no longer read. Say so once per session instead of on every prompt.
+  const legacyPackets = typeof RESOLVER.findLegacyPackets === 'function'
+    ? RESOLVER.findLegacyPackets(baseDir, runtime)
+    : [];
+  if (legacyPackets.length > 0) {
+    const sessionKey = sessionIdentity(payload);
+    const noticeFile = sessionKey
+      ? path.join(
+        require('./lib/hook-state-dir.cjs').hookStateDir(),
+        `legacy-notice-${require('crypto').createHash('sha256').update(sessionKey).digest('hex')}.json`,
+      )
+      : null;
+    let noticed = [];
+    if (noticeFile) {
+      try { noticed = JSON.parse(fs.readFileSync(noticeFile, 'utf8')); } catch { noticed = []; }
+      if (!Array.isArray(noticed)) noticed = [];
+    }
+    const fresh = legacyPackets.filter((name) => !noticed.includes(name));
+    if (fresh.length > 0) {
+      for (const name of fresh) {
+        console.log(`\n> ⚠️ \`specs/${name}\` is a legacy Specs packet without plan.md; CafeKit no longer reads it. Move ongoing work to a process-first plan.md packet.`);
+      }
+      if (noticeFile) {
+        try {
+          fs.mkdirSync(path.dirname(noticeFile), { recursive: true });
+          fs.writeFileSync(noticeFile, JSON.stringify([...noticed, ...fresh].sort()));
+        } catch { /* an unwritable state dir only repeats the notice */ }
+      }
+    }
+  }
+
   if (touchFilter) {
     let packets = [];
     try {
@@ -177,10 +209,7 @@ try {
     if (named.length) addTouched(named);
   }
 
-  const resolveWorkflow = typeof RESOLVER.resolveWorkflowCandidate === 'function'
-    ? RESOLVER.resolveWorkflowCandidate
-    : RESOLVER.resolveActiveSpec;
-  const resolved = resolveWorkflow({ projectRoot: baseDir, runtime, explicitFeature, explicitPath });
+  const resolved = RESOLVER.resolveWorkflowCandidate({ projectRoot: baseDir, runtime, explicitFeature, explicitPath });
 
   if (!resolved) {
     process.exit(0); // No active spec, do nothing
@@ -194,7 +223,7 @@ try {
 
   if (resolved.error === 'invalid_specs') {
     const cands = resolved.candidates.join(', ');
-    console.log(`\n> ⚠️ Invalid spec JSON detected: ${cands}. ${resolved.reason}. Fix or remove malformed spec.json before continuing. Tollgate paused.\n`);
+    console.log(`\n> ⚠️ Invalid workflow packet detected: ${cands}. ${resolved.reason}. Fix the packet's plan.md or task files before continuing. Tollgate paused.\n`);
     process.exit(0);
   }
 
@@ -208,22 +237,19 @@ try {
     process.exit(0);
   }
 
-  const activeSpec = resolved.spec || {};
-  const processWorkflow = resolved.layoutKind === 'process-v3';
   const featureName = resolved.featureName;
   if (touchFilter && !readTouched().has(featureName)) process.exit(0);
   const specsPath = resolved.specsDir;
   const runtimeContext = POLICY.deriveRuntimeContext({
     projectRoot: baseDir,
     specsRoot: specsPath,
-    specFile: resolved.stateFile || resolved.specFile || path.join(specsPath, featureName, 'spec.json'),
+    specFile: resolved.stateFile,
     featureName,
     runtimeSession: sessionIdentity(payload),
   });
 
-  const phase = resolved.phase || activeSpec.current_phase || activeSpec.phase || 'unknown';
-  const taskRegistry = resolved.taskRegistry || activeSpec.task_registry || {};
-  const flashTasks = POLICY.flashState(taskRegistry);
+  const phase = resolved.phase || 'unknown';
+  const taskRegistry = resolved.taskRegistry || {};
   const taskEntries = Object.entries(taskRegistry);
   const taskCounts = taskEntries.reduce((acc, [, task]) => {
     const status = task?.status || 'pending';
@@ -231,10 +257,7 @@ try {
     return acc;
   }, {});
   const featureDir = path.join(specsPath, featureName);
-  const taskStatusByPath = new Map(taskEntries.map(([taskPath, task]) => [taskPath, task?.status || 'pending']));
-  const dependencyProof = processWorkflow
-    ? RECEIPT.workflowDependencyProofState(featureDir, taskRegistry, runtimeContext, POLICY)
-    : {};
+  const dependencyProof = RECEIPT.workflowDependencyProofState(featureDir, taskRegistry, runtimeContext, POLICY);
   const taskState = taskEntries.map(([taskPath, task]) => [
     taskPath,
     task?.status || 'pending',
@@ -250,12 +273,9 @@ try {
   const nextUnblocked = taskEntries.find(([, task]) => {
     const status = task?.status || 'pending';
     const deps = Array.isArray(task?.dependencies) ? task.dependencies : [];
-    return resolved.queueReady !== false && status === 'pending' && deps.every((dep) => (
-      processWorkflow ? dependencyProof[dep]?.eligible === true : taskStatusByPath.get(dep) === 'done'
-    ));
+    return resolved.queueReady !== false && status === 'pending'
+      && deps.every((dep) => dependencyProof[dep]?.eligible === true);
   });
-  const featureReceiptPresent = !processWorkflow
-    && RECEIPT.safeRead(featureDir, 'feature-receipt.md').status === 'ok';
 
   // ── State-change gate: only emit the full tollgate when spec state changed ──
   // The cache is shared by installed hook copies, so its key must carry the
@@ -278,7 +298,6 @@ try {
     proofState,
     done: taskCounts.done || 0,
     total: taskEntries.length,
-    featureReceiptPresent,
   });
   const cacheFile = path.join(require('./lib/hook-state-dir.cjs').hookStateDir(), 'tollgate-last.txt');
 
@@ -288,11 +307,10 @@ try {
   }
 
   if (stateKey && lastKey === stateKey) {
-    const stateTarget = processWorkflow ? 'task Markdown' : '`spec.json`';
-    const migration = processWorkflow && resolved.queueReady === false
+    const migration = resolved.queueReady === false
       ? ' Add `Specs-Contract: process-first-ready-v1` after the plan title before tasks can enter Next.'
       : '';
-    console.log(`\n> 🔵 Spec \`${featureName}\` @ \`${phase}\` (${taskCounts.done || 0}/${taskEntries.length} tasks done). Tollgate active — sync ${stateTarget} when state changes.${migration}\n`);
+    console.log(`\n> 🔵 Spec \`${featureName}\` @ \`${phase}\` (${taskCounts.done || 0}/${taskEntries.length} tasks done). Tollgate active — sync task Markdown when state changes.${migration}\n`);
     process.exit(0);
   }
 
@@ -312,20 +330,11 @@ try {
   if (nextUnblocked) {
     lines.push(`- Next unblocked: \`${nextUnblocked[0]}\``);
   }
-  if (flashTasks.length > 0) {
-    lines.push(`- Flash verification pending: ${flashTasks.map((taskPath) => `\`${taskPath}\``).join(', ')}. A PASS proof keeps the persisted task in_progress until explicit sync-finalize.`);
+  if (resolved.queueReady === false) {
+    lines.push('- Migration required: add `Specs-Contract: process-first-ready-v1` after the plan title before tasks can enter Next.');
   }
-  if (processWorkflow) {
-    if (resolved.queueReady === false) {
-      lines.push('- Migration required: add `Specs-Contract: process-first-ready-v1` after the plan title before tasks can enter Next.');
-    }
-    lines.push('- Sync each flat task `Status:` only after verified work; task proof belongs in that task\'s inline `## Receipt`.');
-    lines.push(`- Workflow source: \`specs/${featureName}/plan.md\`; Stop re-checks every done receipt, binding Base/Head to the runtime only while a committed task file no longer matches its committed bytes.`);
-  } else {
-    lines.push('- Sync `spec.json` + task Markdown status after verified work; task proof belongs in `receipts/<task-basename>.md`.');
-    lines.push(`- Create \`feature-receipt.md\` once after final integration proof${featureReceiptPresent ? ' (present)' : ' (not required before closeout)'}.`);
-    lines.push('- Legacy `spec.json` packets can no longer be validated; hooks revalidate receipt bytes but never grant approval. Move ongoing work to a process-first `plan.md` packet.');
-  }
+  lines.push('- Sync each flat task `Status:` only after verified work; task proof belongs in that task\'s inline `## Receipt`.');
+  lines.push(`- Workflow source: \`specs/${featureName}/plan.md\`; Stop re-checks every done receipt, binding Base/Head to the runtime only while a committed task file no longer matches its committed bytes.`);
   lines.push('');
 
   console.log(lines.join('\n'));

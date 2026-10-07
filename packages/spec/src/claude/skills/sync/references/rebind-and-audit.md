@@ -46,8 +46,8 @@ Never archive, move, rename, or delete a packet, change the specs root, or edit
 ## Bare call
 
 `/cf:sync` without arguments audits every process-first packet under the specs
-root and writes nothing. Report legacy (`spec.json`) and archived packets
-without touching them. End by asking with `AskUserQuestion` when the host has
+root and writes nothing. Report archived packets, and packet directories without
+`plan.md` that CafeKit no longer reads, without touching them. End by asking with `AskUserQuestion` when the host has
 it, otherwise ask in text and stop. Only a reply that arrives after the report
 and names the changes counts as confirmation; an instruction given before the
 report, such as "close everything", does not.

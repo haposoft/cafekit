@@ -132,3 +132,29 @@ test('a prompt touch is remembered even when two packets are active', () => {
     assert.match(fx.prompt('s7', 'Continue'), /auth-flow/);
   });
 });
+
+function writeLegacyPacket(root, name) {
+  const dir = path.join(root, 'specs', name);
+  fs.mkdirSync(path.join(dir, 'tasks'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'spec.json'), JSON.stringify({ feature_name: name, status: 'in_progress' }));
+}
+
+const LEGACY_NOTICE = /`specs\/old` is a legacy Specs packet without plan\.md; CafeKit no longer reads it/;
+
+test('a leftover legacy packet is noticed once per session, before the touch filter', () => {
+  within(fixture(['auth-flow']), (fx) => {
+    writeLegacyPacket(fx.root, 'old');
+    const first = fx.prompt('s1', 'Continue');
+    assert.match(first, LEGACY_NOTICE);
+    assert.strictEqual(first.match(new RegExp(LEGACY_NOTICE.source, 'g')).length, 1);
+    assert.strictEqual(fx.prompt('s1', 'Continue'), '', 'the same session is not told twice');
+    assert.match(fx.prompt('s2', 'Continue'), LEGACY_NOTICE, 'a new session is told once');
+  });
+});
+
+test('a legacy packet is noticed even when it is the only packet', () => {
+  within(fixture([]), (fx) => {
+    writeLegacyPacket(fx.root, 'old');
+    assert.match(fx.prompt('s1', 'Continue'), LEGACY_NOTICE);
+  });
+});

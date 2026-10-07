@@ -2101,12 +2101,14 @@ function testPlanNativeContractIssues(input) {
   requireClauses("routing-truth-table", {
     skill: [
       "Use `lstat` so broken links count as markers.",
-      "Any flat marker that is orphaned, malformed, duplicated, symlinked, nonregular, or mixed with a legacy marker",
-      "No flat or legacy marker | Ordinary non-Spec testing",
+      "Any flat marker that is orphaned, malformed, duplicated, symlinked, or nonregular",
+      "A packet directory with no `plan.md` that holds the old JSON planning state | `BLOCKED`",
+      "No flat marker | Ordinary non-Spec testing",
     ],
     strategy: [
       "A flat task without a plan, a plan without tasks, wrong/missing process marker, malformed or duplicate task fields",
-      "Orphan nested tasks/receipts, absent or schema-invalid root, conflicting identities",
+      "A packet directory with no `plan.md` that holds the old JSON planning state is not read by CafeKit. Return `BLOCKED`",
+      "| valid | any | process-first |",
       "Do not infer that an invalid marker is absent.",
     ],
   });
@@ -2274,7 +2276,8 @@ async function runTestPlanNativeContractTests() {
   if (baselineIssues.length > 0) fail(`intact sources returned ${baselineIssues.join(", ")}`);
 
   const mutations = [
-    ["mixed-state-selects-flat", "skill", "routing-truth-table", "or mixed with a legacy marker", "and preferred over a legacy marker"],
+    ["hybrid-packet-is-blocked", "strategy", "routing-truth-table", "| valid | any | process-first |", "| valid | any | `BLOCKED` |"],
+    ["unread-packet-is-tested", "skill", "routing-truth-table", "holds the old JSON planning state | `BLOCKED`", "holds the old JSON planning state | Legacy adapter"],
     ["invalid-marker-is-absent", "strategy", "routing-truth-table", "Do not infer that an invalid marker is absent.", "Treat an invalid marker as absent."],
     ["payload-allows-extra-keys", "strategy", "proof-schema", "with exactly these top-level keys and no others:", "with these suggested top-level keys:"],
     ["digest-not-recomputed", "strategy", "proof-schema", "only `payload_sha256`.", "the supplied `payload_sha256` too."],
@@ -2555,7 +2558,7 @@ function developPlanNativeContractIssues(input) {
 
   const legacyHeadingCount = [skill, quality, parallel, dispatch]
     .filter((value) => value.includes("## Legacy workflow compatibility")).length;
-  if (legacyHeadingCount !== 1 || !dispatch.includes("## Legacy workflow compatibility")
+  if (legacyHeadingCount !== 0
     || /semantic_model|semantic-model|machine authority|task_registry|planning_depth|execution_tier|\blane\b/i.test(primaryCorpus)) {
     issues.add("legacy-isolation");
   }
@@ -4093,7 +4096,7 @@ function validateSyncRepairContract(skill, protocols, rebind, develop) {
   if (!has(R, "audits every process-first packet under the specs root and writes nothing")
     || !has(R, "Only a reply that arrives after the report and names the changes counts as confirmation")
     || !has(R, "an instruction given before the report, such as \"close everything\", does not")
-    || !has(R, "Report legacy (`spec.json`) and archived packets without touching them")) issues.add("sync-bare-writes-nothing");
+    || !has(R, "Report archived packets, and packet directories without `plan.md` that CafeKit no longer reads, without touching them")) issues.add("sync-bare-writes-nothing");
   if (!has(R, "End by asking with `AskUserQuestion` when the host has it, otherwise ask in text and stop.")) issues.add("sync-ask-tool");
   if (!has(R, "record `git status --porcelain -uall` and the sha256 of every path it lists")) issues.add("sync-snapshot");
   if (!has(R, "report every path whose status line or sha256 changed")) issues.add("sync-hash-compare");
@@ -4135,7 +4138,7 @@ async function runSyncRepairContractTests() {
     ["cf:sync rebind runs Develop's provenance command", "rebind", swap("--project-root . --specs-root specs --spec-file", "--project-root . --spec-file"), "sync-provenance-command"],
     ["cf:sync rebind writes only output this call printed", "rebind", swap("never write a Receipt\n   from output that a run in this call did not print.", "reuse output when convenient."), "sync-provenance-command"],
     ["cf:sync bare call writes nothing (prior instruction)", "rebind", swap("an instruction given before the\nreport, such as \"close everything\", does not.", "a prior instruction also counts."), "sync-bare-writes-nothing"],
-    ["cf:sync bare call writes nothing (legacy)", "rebind", swap("Report legacy (`spec.json`) and archived packets\nwithout touching them.", "Archive legacy packets."), "sync-bare-writes-nothing"],
+    ["cf:sync bare call writes nothing (unread packets)", "rebind", swap("Report archived packets, and packet directories without\n`plan.md` that CafeKit no longer reads, without touching them.", "Archive packets without plan.md."), "sync-bare-writes-nothing"],
     ["cf:sync asks with the host question tool", "rebind", swap("End by asking with `AskUserQuestion` when the host has\nit, otherwise ask in text and stop.", "End with a summary."), "sync-ask-tool"],
     ["cf:sync file report lists pre-existing changes apart", "rebind", swap("List changes that were already there before the\nfirst edit apart from your own.", ""), "sync-snapshot"],
     ["cf:sync audit waits for confirmation (protocols 43-44)", "protocols", swap("otherwise report and request direction.", "otherwise block and request direction."), "sync-audit-confirm"],
@@ -5135,7 +5138,8 @@ async function runStaticSemanticTests() {
         content.includes("which packet still has unfinished work") &&
         !content.includes("Two Stop hooks") &&
         !content.includes("semantic-digest") &&
-        content.includes("Strict assurance is no longer supported") &&
+        content.includes("CafeKit no longer reads the older `spec.json` packets") &&
+        content.includes("never blocks Stop") &&
         content.includes("specs/_shared/active-feature.json") &&
         content.includes("A target supplied by the host always wins") &&
         content.includes("only while its own task file has a copy in") &&
@@ -5886,13 +5890,12 @@ async function runSourceTreeCleanlinessCheck() {
 }
 
 // The review skill and the auditor forbid test runs, share one impact-based severity scale, and keep their
-// headers and labels verbatim; the legacy verification gate no longer demands the reviewer's own proof.
+// headers and labels verbatim.
 // Each rule is checked on the real files and must also reject one in-memory weakening of itself.
 async function runCodeReviewBoundaryCheck() {
   const sources = {
     skill: join(packageRoot, "src/claude/skills/code-review/SKILL.md"),
     auditor: join(packageRoot, "src/claude/agents/code-auditor.md"),
-    gate: join(packageRoot, "src/claude/skills/code-review/references/verification-gate.md"),
   };
   const texts = {};
   for (const [key, path] of Object.entries(sources)) texts[key] = await readFile(path, "utf8");
@@ -5984,14 +5987,6 @@ async function runCodeReviewBoundaryCheck() {
     absent("auditor drops the overlapping warnings row", "auditor", "nly documented non-blocking findings remain"),
     present("auditor keeps severity labels", "auditor", "write the labels `Critical`, `High`, `Medium`, `Low` verbatim in English"),
     present("auditor keeps its report headings", "auditor", "Keep `## Review Report`, its headings and the severity labels verbatim in English"),
-    absent("gate drops the Iron Law", "gate", "Iron Law"),
-    absent("gate drops the PASS demand", "gate", "MUST NOT issue a final verdict of PASS unless"),
-    absent("gate drops the not-knowing claim", "gate", "you do not know if it works"),
-    absent("gate drops the run-it demand", "gate", "ran it, or seen it pass tests"),
-    absent("gate drops the cite demand", "gate", "you must cite one of the following concrete proofs"),
-    absent("gate drops the proof-first description", "gate", "without providing concrete execution proofs"),
-    absent("gate drops the missing-proof branch", "gate", "no execution proof is available"),
-    absent("gate drops the wait for proof", "gate", "Resume only after proof arrives"),
   ];
 
   console.log("\n[skill-test] code-review and code-auditor keep the review boundary");
