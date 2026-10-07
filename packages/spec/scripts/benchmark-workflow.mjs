@@ -3,10 +3,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { spawnSync } from 'node:child_process';
-import { createRequire } from 'node:module';
-
-const require = createRequire(import.meta.url);
-const changeFirewall = require('../src/claude/scripts/change-firewall.cjs');
 
 const LANES = ['Direct', 'Standard', 'Critical'];
 const ARMS = ['baseline', 'treatment'];
@@ -538,24 +534,10 @@ function runBenchmark({ corpusFile, configFiles, runnerFile, outDir, receiptsFil
 }
 
 function args(argv) { const out = { _: [] }; for (let i = 0; i < argv.length; i++) { const item = argv[i]; if (item.startsWith('--')) { const key = item.slice(2).replaceAll('-', '_'); if (key === 'config') out[key] = [...(out[key] ?? []), argv[++i]]; else out[key] = argv[++i]; } else out._.push(item); } return out; }
-// D1 production caller: creates the C9 freeze manifest via the canonical
-// change-firewall.cjs gate. --proposal FILE supplies a tagged C1
-// ChangeProposal (required whenever derived protected paths are non-empty);
-// omit it only for a clean released-state no_protected_change freeze.
-function runFreeze({ proposalFile }) {
-  const proposal = proposalFile ? readJson(path.resolve(proposalFile)) : null;
-  return changeFirewall.createFreezeManifest(proposal);
-}
-
 function main() {
   const flags = args(process.argv.slice(2));
   const verb = flags._[0];
-  if (!['validate', 'summarize', 'run', 'freeze'].includes(verb)) fail('usage: benchmark-workflow.mjs validate|summarize|run|freeze --corpus FILE --config FILE [--config FILE] [--receipts FILE] [--runner FILE --out DIR] [--proposal FILE]');
-  if (verb === 'freeze') {
-    const manifest = runFreeze({ proposalFile: flags.proposal });
-    process.stdout.write(`${JSON.stringify({ status: 'frozen', changeKind: manifest.changeKind, candidateDigest: manifest.candidateDigest, treeDigest: manifest.treeDigest }, null, 2)}\n`);
-    return;
-  }
+  if (!['validate', 'summarize', 'run'].includes(verb)) fail('usage: benchmark-workflow.mjs validate|summarize|run --corpus FILE --config FILE [--config FILE] [--receipts FILE] [--runner FILE --out DIR]');
   if (verb === 'run') {
     if (!flags.corpus) fail('corpus is required: --corpus FILE (frozen, not example_template)');
     const configs = Array.isArray(flags.config) ? flags.config : (flags.config ? [flags.config] : []);

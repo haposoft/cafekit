@@ -116,10 +116,8 @@ const REQUIRED_PAYLOAD = [
   'src/claude/scripts/spec-receipt.cjs',
   'src/claude/scripts/spec-ground.cjs',
   'src/claude/scripts/spec-final-state.cjs',
-  'src/claude/scripts/spec-readiness.cjs',
   'src/claude/scripts/spec-semantic-model.cjs',
   'src/claude/scripts/validate-spec-output.cjs',
-  'src/claude/scripts/spec-authoring-validation.cjs',
   'src/claude/scripts/spec-authoring-digest.cjs',
   'src/claude/scripts/generate-skill-catalog.cjs',
   'src/claude/rules/process-management.md',
@@ -1523,12 +1521,11 @@ function assertInstalledProvenance(root, platform, fixture) {
   const resolver = path.join(scripts, 'spec-resolver.cjs');
   const receipt = path.join(scripts, 'spec-receipt.cjs');
   const finalState = path.join(scripts, 'spec-final-state.cjs');
-  const readiness = path.join(scripts, 'spec-readiness.cjs');
   const gate = path.join(
     root,
     platform === 'claude' ? '.claude/hooks/spec-gate.cjs' : '.codex/hooks/spec-gate.cjs'
   );
-  for (const file of [helper, policy, resolver, receipt, finalState, readiness]) {
+  for (const file of [helper, policy, resolver, receipt, finalState]) {
     assert.equal(fs.existsSync(file), true, `${platform} installed file missing: ${file}`);
   }
   assert.equal(fs.existsSync(gate), true, `${platform} installed gate missing: ${gate}`);
@@ -1662,13 +1659,11 @@ function assertInstalledScripts(root, platform) {
   const scanner = path.join(scripts, 'scan-staged-secrets.cjs');
   const grounder = path.join(scripts, 'spec-ground.cjs');
   const finalState = path.join(scripts, 'spec-final-state.cjs');
-  const readiness = path.join(scripts, 'spec-readiness.cjs');
   const validator = path.join(scripts, 'validate-spec-output.cjs');
   assert.ok(fs.existsSync(policy), `installed policy missing: ${policy}`);
   assert.ok(fs.existsSync(scanner), `installed scanner missing: ${scanner}`);
   assert.ok(fs.existsSync(grounder), `installed validator dependency missing: ${grounder}`);
   assert.ok(fs.existsSync(finalState), `installed final-state dependency missing: ${finalState}`);
-  assert.ok(fs.existsSync(readiness), `installed readiness finalizer missing: ${readiness}`);
   assert.ok(fs.existsSync(validator), `installed validator missing: ${validator}`);
 
   const policyRun = spawnSync(process.execPath, [policy, '--json'], { cwd: root, encoding: 'utf8' });
@@ -1689,345 +1684,8 @@ function assertInstalledScripts(root, platform) {
   assert.match(scannerRun.stdout, /No staged secrets found/);
 }
 
-function installedSemanticPaths(root, platform) {
-  const runtimeRoot = path.join(root, RUNTIMES[platform].root);
-  const skillRoot = platform === 'codex'
-    ? path.join(root, '.agents', 'skills')
-    : path.join(runtimeRoot, 'skills');
-  const paths = {
-    policy: path.join(runtimeRoot, 'scripts', 'workflow-policy.cjs'),
-    scaffold: path.join(runtimeRoot, 'scripts', 'spec-scaffold.cjs'),
-    validator: path.join(runtimeRoot, 'scripts', 'validate-spec-output.cjs'),
-    authoringValidator: path.join(runtimeRoot, 'scripts', 'spec-authoring-validation.cjs'),
-    authoringDigest: path.join(runtimeRoot, 'scripts', 'spec-authoring-digest.cjs'),
-    grounder: path.join(runtimeRoot, 'scripts', 'spec-ground.cjs'),
-    finalState: path.join(runtimeRoot, 'scripts', 'spec-final-state.cjs'),
-    readiness: path.join(runtimeRoot, 'scripts', 'spec-readiness.cjs'),
-    semanticModel: path.join(runtimeRoot, 'scripts', 'spec-semantic-model.cjs'),
-    resolver: path.join(runtimeRoot, 'scripts', 'spec-resolver.cjs'),
-    provenance: path.join(runtimeRoot, 'scripts', 'provenance.cjs'),
-    stateTemplate: path.join(skillRoot, 'specs', 'templates', 'spec-state.json'),
-  };
-  for (const [name, target] of Object.entries(paths)) {
-    assert.equal(fs.existsSync(target), true, `${platform} installed ${name} missing: ${target}`);
-    assert.equal(path.relative(root, target).startsWith('..'), false, `${platform} ${name} escaped install root`);
-  }
-  return paths;
-}
-
-function runInstalled(script, args, root, expected = 0) {
-  const result = spawnSync(process.execPath, [script, ...args], { cwd: root, encoding: 'utf8' });
-  assert.equal(result.status, expected, `${script}\n${result.stdout}\n${result.stderr}`);
-  return result;
-}
-
 function writeJson(target, value) {
   fs.writeFileSync(target, `${JSON.stringify(value, null, 2)}\n`);
-}
-
-function materializeSpecState(paths, root, feature, { strict = false } = {}) {
-  const featureDir = path.join(root, 'specs', feature);
-  runInstalled(paths.scaffold, [feature], root);
-  const state = JSON.parse(fs.readFileSync(path.join(featureDir, 'spec.json'), 'utf8'));
-  state.scope_lock.in_scope = [`${feature} behavior`];
-  state.scope_lock.out_of_scope = ['unrelated behavior'];
-  if (strict) {
-    state.workflow_policy.assurance_level = 'Strict';
-    state.workflow_policy.classified_minimum.assurance_level = 'Strict';
-    state.workflow_policy.risks = ['auth'];
-  }
-  writeJson(path.join(featureDir, 'spec.json'), state);
-  return { featureDir, specFile: path.join(featureDir, 'spec.json'), state };
-}
-
-function requirementsProjection({ proof = false } = {}) {
-  return `# Requirements
-
-## Requirements
-
-### Requirement 1: Installed behavior
-
-- **R1.1**: The CommonJS entrypoint \`src/entry.js\` shall return an object containing only status \`enabled\` when its sole \`valid\` argument is the boolean \`true\`; it shall return an object containing only status \`rejected\` for \`false\`, a missing argument, or any non-boolean value.${proof ? '\n- **R1.2**: The installed verifier shall prove the observed entry behavior through its grounded evidence boundary.' : ''}
-`;
-}
-
-const TYPED_ANCHOR_COLUMNS = ['ID', 'Type', 'Target', 'Role', 'Access', 'Action'];
-
-function typedAnchorTable(rows) {
-  assert.ok(Array.isArray(rows) && rows.length > 0, 'typed anchor projection requires rows');
-  const header = `| ${TYPED_ANCHOR_COLUMNS.join(' | ')} |`;
-  const separator = `|${TYPED_ANCHOR_COLUMNS.map(() => '---').join('|')}|`;
-  const body = rows.map((row) => {
-    assert.deepEqual(Object.keys(row), ['id', 'type', 'target', 'role', 'access', 'action']);
-    assert.ok(Object.values(row).every((value) => typeof value === 'string' && value.trim() !== ''));
-    return `| ${row.id} | ${row.type} | \`${row.target}\` | ${row.role} | ${row.access} | ${row.action} |`;
-  });
-  return [header, separator, ...body].join('\n');
-}
-
-function designProjection({
-  expected = 'exit 0; boolean true returns the exact enabled object; false, undefined, null, `"true"`, 1, and an object return the exact rejected object',
-  taskful = false,
-} = {}) {
-  const anchors = typedAnchorTable([{
-    id: 'A-D-01', type: 'file', target: taskful ? 'src/design-boundary.js' : 'src/entry.js',
-    role: taskful ? 'existing design boundary for the entrypoint' : 'existing runtime entrypoint and contract owner',
-    access: 'read', action: 'read',
-  }]);
-  const reachabilityAnchors = taskful ? 'A-R1-01-01, A-R1-02-02' : 'A-D-01';
-  return `# Design
-
-## Boundary
-
-- **Owns:** The exact return contract of the CommonJS function exported by \`src/entry.js\`.
-- **Reads:** One \`valid\` argument; only the boolean \`true\` is valid.
-- **Writes/exposes:** Exactly one status field whose value is \`enabled\` or \`rejected\`.
-- **Outside boundary:** Unrelated runtime behavior.
-
-## Typed Anchors
-
-${anchors}
-
-## Decisions and Invariants
-
-### D1 — Installed result decision
-
-- **Decision:** \`valid === true\` returns an object containing only status \`enabled\`; every other value returns an object containing only status \`rejected\`.
-- **Rejects ambiguity:** Truthy non-booleans such as \`"true"\` never count as valid.
-- **Negative path:** \`false\`, \`undefined\`, \`null\`, strings, numbers, and objects return rejected.
-- **Anchors:** A-D-01
-
-### I1 — Rejection invariant
-
-Any input other than the boolean \`true\` never returns enabled.
-
-### C1 — Result contract
-
-- **Owner:** A-D-01
-- **Consumers:** \`test/entry.test.js\` and callers of the CommonJS export.
-- **Shape/behavior:** The result is an object with exactly one \`status\` field set to \`enabled\` or \`rejected\`.
-- **Compatibility:** The strict boolean discriminator, exact object shape, and two status values remain stable.
-
-## Verification Definitions
-
-- **V1**: Criteria R1.1; Owner ${taskful ? 'R1-01' : 'A-D-01'}; ${taskful ? 'Proof criteria R1.2; Proof owner R1-02; Evidence anchor A-R1-02-02; ' : ''}Decision refs D1, I1, C1; Method command \`node --test test/entry.test.js\`; Expected ${expected}; Negative/failure \`false\`, missing input, \`null\`, and truthy non-booleans all return the exact rejected object; Reachability/grounding entrypoint \`src/entry.js\` via ${reachabilityAnchors}.
-`;
-}
-
-function completeSemanticReview(paths, root, fixture, counterexamples) {
-  // C16/D13: only the installed spec-authoring-validation.cjs coordinator may
-  // flip authoring.* to validated and write the matching receipt (I21/R3.9) —
-  // run it over the fixture's current bytes instead of hand-writing the enum.
-  // Lifecycle order (I15/R3.7): authoring -> coordinator -> semantic review ->
-  // readiness, never the reverse.
-  runInstalled(paths.scaffold, [fixture.state.feature_name, '--sync-semantic-model'], root);
-  runInstalled(paths.authoringValidator, [fixture.featureDir], root);
-  const state = JSON.parse(fs.readFileSync(fixture.specFile, 'utf8'));
-  fixture.reviewResult = {
-    verdict: 'PASS',
-    findings: [],
-    unresolved_decisions: [],
-    graph_coverage: [
-      'criterion_local', 'cross_criterion', 'runtime_path',
-      'assumption_provenance', 'compatibility_migration',
-    ].map((surface) => ({
-      surface, covered: true,
-      notes: 'The review covers this semantic surface against the canonical model.',
-    })),
-    reviewed_criteria: counterexamples.map(({ criterion }) => criterion),
-    counterexamples,
-    reviewer_evidence: null,
-  };
-  if (state.workflow_policy.assurance_level === 'Strict') {
-    const digest = runInstalled(paths.validator, [fixture.featureDir, '--semantic-digest'], root).stdout.trim();
-    assert.match(digest, /^sha256:[a-f0-9]{64}$/);
-    return digest;
-  }
-  const reviewFile = path.join(fixture.featureDir, '.review-result.json');
-  writeJson(reviewFile, fixture.reviewResult);
-  runInstalled(paths.readiness, [fixture.featureDir, '--review-result', reviewFile], root);
-  fs.unlinkSync(reviewFile);
-  runInstalled(paths.validator, [fixture.featureDir], root);
-  runInstalled(paths.grounder, [fixture.featureDir, '--root', root], root);
-  return JSON.parse(fs.readFileSync(fixture.specFile, 'utf8')).validation.semantic_review.semantic_digest;
-}
-
-function createTasklessFixture(paths, root, feature, options = {}) {
-  fs.mkdirSync(path.join(root, 'src'), { recursive: true });
-  fs.mkdirSync(path.join(root, 'test'), { recursive: true });
-  fs.writeFileSync(path.join(root, 'src', 'entry.js'), 'module.exports = (valid) => ({ status: valid === true ? "enabled" : "rejected" });\n');
-  fs.writeFileSync(path.join(root, 'src', 'design-boundary.js'), 'module.exports = { entry: "src/entry.js" };\n');
-  fs.writeFileSync(path.join(root, 'test', 'entry.test.js'), `const test = require('node:test');
-const assert = require('node:assert/strict');
-const entry = require('../src/entry.js');
-
-test('entry accepts only the boolean true discriminator', () => {
-  assert.deepEqual(entry(true), { status: 'enabled' });
-  for (const invalid of [false, undefined, null, 'true', 1, {}]) {
-    assert.deepEqual(entry(invalid), { status: 'rejected' });
-  }
-});
-`);
-  fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ scripts: { test: 'node --test' } }));
-  const fixture = materializeSpecState(paths, root, feature, options);
-  fs.writeFileSync(path.join(fixture.featureDir, 'requirements.md'), requirementsProjection());
-  fs.writeFileSync(path.join(fixture.featureDir, 'design.md'), designProjection());
-  fixture.digest = completeSemanticReview(paths, root, fixture, [{
-    criterion: 'R1.1', case_kind: 'failure',
-    scenario: 'The installed entry receives input without the required discriminator.',
-    expected: 'The installed entry returns rejected and never returns enabled.',
-    decision_refs: ['D1', 'I1', 'C1'], verification_ref: 'V1',
-  }]);
-  return fixture;
-}
-
-function taskProjection({ id, title, ownedPath, criterion, verificationRef, role, artifact = false }) {
-  const artifactPath = `artifacts/${id}.json`;
-  const anchors = typedAnchorTable([
-    { id: `A-${id}-01`, type: 'file', target: ownedPath, role: 'owner', access: 'write', action: 'modify' },
-    ...(artifact ? [{
-      id: `A-${id}-02`, type: 'artifact', target: artifactPath,
-      role: 'verifier', access: 'write', action: 'create',
-    }] : []),
-    {
-      id: `A-${id}-${artifact ? '03' : '02'}`, type: 'command',
-      target: 'node --test test/entry.test.js', role: 'verifier', access: 'read', action: 'read',
-    },
-  ]);
-  return `# Task ${id}: ${title}
-**Status:** pending
-
-## Outcome
-
-Deliver observable ${title.toLowerCase()} behavior through the installed entrypoint.
-
-## Scope
-
-- **In scope:** Exact behavior owned at ${ownedPath}.
-- **Out of scope:** Unrelated runtime behavior.
-
-## Anchors and Ownership
-
-${anchors}
-
-## Changes
-
-- [ ] Implement the exact owned behavior. _Requirements: ${criterion.slice(1)}_
-
-## Acceptance
-
-- **${criterion}:** The installed command returns the criterion-specific observable state.
-
-## Dependencies
-
-- none
-
-## Verification Plan
-
-- **Verification ref:** ${verificationRef}
-- **Task role:** ${role}
-- **Command:** \`node --test test/entry.test.js\`
-- **Expected:** Exit code 0 and the criterion-specific state is observed.${artifact ? ` The artifact \`${artifactPath}\` must exist, and SHA-256 over its current bytes must match the recorded digest.` : ''}
-- **Negative path:** Invalid input returns the named rejected state.
-- **Reachability:** \`src/entry.js\` is reached by the installed test command.
-`;
-}
-
-function createTaskFixture(paths, root, feature) {
-  fs.mkdirSync(path.join(root, 'artifacts'), { recursive: true });
-  const fixture = materializeSpecState(paths, root, feature);
-  fs.writeFileSync(path.join(fixture.featureDir, 'requirements.md'), requirementsProjection({ proof: true }));
-  fs.writeFileSync(path.join(fixture.featureDir, 'design.md'), designProjection({
-    expected: 'exit 0, status enabled, and verifier artifact `artifacts/R1-02.json` whose SHA-256 over current bytes matches the recorded digest',
-    taskful: true,
-  }));
-  const taskOne = 'tasks/task-R1-01-implement.md';
-  const taskTwo = 'tasks/task-R1-02-verify.md';
-  fs.mkdirSync(path.join(fixture.featureDir, 'tasks'), { recursive: true });
-  fs.writeFileSync(path.join(fixture.featureDir, taskOne), taskProjection({
-    id: 'R1-01', title: 'Implement behavior', ownedPath: 'src/entry.js', criterion: 'R1.1',
-    verificationRef: 'V1', role: 'subject implements R1.1',
-  }));
-  fs.writeFileSync(path.join(fixture.featureDir, taskTwo), taskProjection({
-    id: 'R1-02', title: 'Verify behavior', ownedPath: 'test/entry.test.js', criterion: 'R1.2',
-    verificationRef: 'V1', role: 'verifier verifies V1 through separately owned R1.2 proof', artifact: true,
-  }));
-  const state = fixture.state;
-  state.authoring.tasks = 'draft';
-  state.task_files = [taskOne, taskTwo];
-  state.task_registry = Object.fromEntries([
-    [taskOne, { id: 'R1-01', title: 'Implement behavior', status: 'pending', dependencies: [], blocker: null, started_at: null, completed_at: null, last_updated_at: null }],
-    [taskTwo, { id: 'R1-02', title: 'Verify behavior', status: 'pending', dependencies: [], blocker: null, started_at: null, completed_at: null, last_updated_at: null }],
-  ]);
-  state.coordination.boundaries = [{
-    id: 'B-OWN', type: 'ownership', tasks: ['R1-01', 'R1-02'],
-    write_sets: { 'R1-01': ['src/entry.js'], 'R1-02': ['test/entry.test.js', 'artifacts/R1-02.json'] },
-  }, {
-    id: 'B-PROOF', type: 'proof', subject: 'R1-01', verifier: 'R1-02',
-    verification_ref: 'V1', artifact_anchor: 'A-R1-02-02',
-  }];
-  writeJson(fixture.specFile, state);
-  fixture.digest = completeSemanticReview(paths, root, fixture, [{
-    criterion: 'R1.1', case_kind: 'failure',
-    scenario: 'Invalid input reaches the installed implementation boundary.',
-    expected: 'The implementation returns rejected and never reports enabled.',
-    decision_refs: ['D1', 'I1', 'C1'], verification_ref: 'V1',
-  }, {
-    criterion: 'R1.2', case_kind: 'failure',
-    scenario: 'The verification command completes without producing its proof artifact.',
-    expected: 'The verification criterion remains unsatisfied until `artifacts/R1-02.json` exists and its SHA-256 over current bytes matches the recorded digest.',
-    decision_refs: ['D1', 'I1', 'C1'], verification_ref: 'V1',
-  }]);
-  return fixture;
-}
-
-function initializeGit(root) {
-  fs.writeFileSync(path.join(root, '.gitignore'), `${'node_' + 'modules'}/\n`);
-  for (const args of [
-    ['init', '-q'], ['config', 'user.name', 'CafeKit Packed E2E'],
-    ['config', 'user.email', 'packed-e2e@example.invalid'],
-    ['add', '--', '.gitignore', 'src/entry.js', 'src/design-boundary.js', 'test/entry.test.js', 'package.json'],
-    ['commit', '--no-gpg-sign', '-qm', 'packed semantic fixture'],
-  ]) {
-    const result = spawnSync('git', args, { cwd: root, encoding: 'utf8' });
-    assert.equal(result.status, 0, `${args.join(' ')}\n${result.stdout}\n${result.stderr}`);
-  }
-}
-
-function assertStrictRefusedAsUnsupported(paths, root, fixture) {
-  const specFile = path.join(fixture.featureDir, 'spec.json');
-  const before = fs.readFileSync(specFile);
-  const reviewFile = path.join(root, 'strict-review.json');
-  fs.writeFileSync(reviewFile, JSON.stringify(fixture.reviewResult));
-  const result = spawnSync(process.execPath, [paths.readiness, fixture.featureDir, '--review-result', reviewFile], { cwd: root, encoding: 'utf8' });
-  fs.rmSync(reviewFile, { force: true });
-  assert.notEqual(result.status, 0, `${result.stdout}\n${result.stderr}`);
-  assert.match(`${result.stdout}\n${result.stderr}`, /Strict assurance is no longer supported/);
-  assert.equal(fs.readFileSync(specFile).equals(before), true, 'a refused Strict readiness must leave spec.json unchanged');
-}
-
-function assertStaleDigestMutations(paths, root, taskless, taskBearing) {
-  const requirementFile = path.join(taskless.featureDir, 'requirements.md');
-  const requirementBytes = fs.readFileSync(requirementFile);
-  fs.appendFileSync(requirementFile, '\nThe installed Markdown meaning changed.\n');
-  assert.match(runInstalled(paths.validator, [taskless.featureDir], root, 1).stderr, /semantic_digest: stale/);
-  fs.writeFileSync(requirementFile, requirementBytes);
-
-  const tasklessState = JSON.parse(fs.readFileSync(taskless.specFile, 'utf8'));
-  const originalPolicy = JSON.parse(JSON.stringify(tasklessState.workflow_policy));
-  tasklessState.workflow_policy.planning_depth = 'Full';
-  writeJson(taskless.specFile, tasklessState);
-  assert.match(runInstalled(paths.validator, [taskless.featureDir], root, 1).stderr, /semantic_digest: stale/);
-  tasklessState.workflow_policy = originalPolicy;
-  writeJson(taskless.specFile, tasklessState);
-
-  const taskState = JSON.parse(fs.readFileSync(taskBearing.specFile, 'utf8'));
-  const originalId = taskState.coordination.boundaries[0].id;
-  taskState.coordination.boundaries[0].id = 'B-OWN-MUTATED';
-  writeJson(taskBearing.specFile, taskState);
-  assert.match(runInstalled(paths.validator, [taskBearing.featureDir], root, 1).stderr, /semantic_digest: stale/);
-  taskState.coordination.boundaries[0].id = originalId;
-  writeJson(taskBearing.specFile, taskState);
 }
 
 function assertTransforms(root, platform) {
@@ -2742,41 +2400,6 @@ test('repository and package guides document adaptive Docs usage', () => {
     assert.match(guide, /Delegation Gate/, `${name} guide documents the gate`);
     assert.match(guide, /Observed \| Inferred \| Unknown/, `${name} guide documents the evidence taxonomy`);
     assert.doesNotMatch(guide, /docs[^\n]*\b\d+(?:\.\d+)?\s*(?:%|x faster|seconds|minutes|ms)\b/i, `${name} guide must not invent timing claims`);
-  }
-});
-
-test('packed Claude and Codex installs execute semantic kernel behavior without package source', () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cafekit-packed-semantic-'));
-  const destination = path.join(root, 'pack');
-  fs.mkdirSync(destination, { recursive: true });
-  try {
-    const packed = npmPack(['--pack-destination', destination, '--json'], PACKAGE_ROOT);
-    const tarball = path.join(destination, packed.filename);
-    const runtimeClosure = packedRuntimeClosure(path.join(root, 'runtime-closure'));
-    assertCleanInventory(packedInventory(tarball));
-
-    for (const platform of ['claude', 'codex']) {
-      const project = path.join(root, platform);
-      const installer = installPacked(tarball, project, runtimeClosure);
-      runInstaller(installer, project, [platform], null);
-      const packedSource = path.resolve(path.dirname(installer), '..', 'src');
-      fs.rmSync(packedSource, { recursive: true, force: true });
-      assert.equal(fs.existsSync(packedSource), false, `${platform} package source must be unavailable`);
-
-      const paths = installedSemanticPaths(project, platform);
-      const taskless = createTasklessFixture(paths, project, 'compact-installed');
-      initializeGit(project);
-
-      const strict = createTasklessFixture(paths, project, 'strict-installed', { strict: true });
-      const taskBearing = createTaskFixture(paths, project, 'tasks-installed');
-      assertStrictRefusedAsUnsupported(paths, project, strict);
-      assertStaleDigestMutations(paths, project, taskless, taskBearing);
-      runInstalled(paths.validator, [taskless.featureDir], project);
-      runInstalled(paths.validator, [taskBearing.featureDir], project);
-      runInstalled(paths.grounder, [taskBearing.featureDir, '--root', project], project);
-    }
-  } finally {
-    fs.rmSync(root, { recursive: true, force: true });
   }
 });
 

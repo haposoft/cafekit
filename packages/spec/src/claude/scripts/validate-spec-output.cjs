@@ -3398,7 +3398,7 @@ function validateSpec21(specDir, canonicalSpecDir, spec, errors, warnings) {
   } else {
     errors.push(...SEMANTIC.validateSemanticModel(spec.semantic_model, spec));
     if (SEMANTIC.stableJson(spec.semantic_model) !== SEMANTIC.stableJson(projection.model)) {
-      errors.push('spec.json.semantic_model: differs from Markdown projection; rerun spec-readiness with the current semantic review result');
+      errors.push('spec.json.semantic_model: differs from Markdown projection; restore the Markdown the semantic model was finalized from');
     }
   }
   const authorityModel = isPlainObject(spec.semantic_model) ? spec.semantic_model : projection.model;

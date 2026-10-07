@@ -12,8 +12,7 @@
     "test": "node scripts/run-skill-self-tests.mjs",
     "test:package": "node --test bin/__tests__/package-inventory.test.js",
     "test:secrets": "node --test bin/__tests__/secret-scanner.test.js",
-    "test:policy": "node --test bin/__tests__/develop-contract.test.js",
-    "release:freeze": "node scripts/benchmark-workflow.mjs freeze"
+    "test:policy": "node --test bin/__tests__/develop-contract.test.js"
   },
   "files": [
     "bin",

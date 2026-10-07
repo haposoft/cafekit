@@ -2,8 +2,8 @@
 
 // Shared C16 freshness primitive (D13). Owned by R0-01. This module is the sole
 // place the raw-byte / stable-JSON digest algorithm for authoring artifacts is
-// implemented; R1-01's spec-authoring-validation.cjs and validate-spec-output.cjs's
-// authorized_evolution/finalizer freshness checks reuse it unmodified (I20).
+// implemented; validate-spec-output.cjs's authorized_evolution/finalizer
+// freshness checks reuse it unmodified (I20).
 //
 // Non-circular: every digest here is computed only from an authored artifact's own
 // bytes (requirements.md, design.md, research.md, task files). None of these ever

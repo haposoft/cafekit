@@ -531,7 +531,7 @@ function groundSpec({ specDir: inputSpecDir, root: inputRoot = null, spec: input
     } else {
       errors.push(...SEMANTIC.validateSemanticModel(spec.semantic_model, spec));
       if (SEMANTIC.stableJson(spec.semantic_model) !== SEMANTIC.stableJson(projection.model)) {
-        errors.push('spec.json: semantic_model differs from authored Markdown projection; rerun spec-readiness with the current semantic review result');
+        errors.push('spec.json: semantic_model differs from authored Markdown projection; restore the Markdown the semantic model was finalized from');
       }
       const taskById = new Map(Object.entries(spec.task_registry || {}).map(([taskPath, entry]) => [entry?.id, {
         path: taskPath,

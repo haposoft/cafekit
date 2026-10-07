@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 - **Two unimported hook libraries.** `hooks/lib/context.cjs` and `hooks/lib/detect.cjs` were shipped but nothing required them. They are deleted from the source and the migration manifest, and upgrading removes `.claude/hooks/lib/context.cjs` and `.claude/hooks/lib/detect.cjs` from an existing install.
+- **The legacy Specs kernel tools.** `scripts/spec-scaffold.cjs`, `spec-readiness.cjs`, `spec-authoring-validation.cjs` and `change-firewall.cjs` belonged to the `spec.json` planning flow that process-first Specs replaced; no hook or skill ran them. They are deleted with their tests, `scripts/release-preflight.mjs`, the `freeze` verb of `scripts/benchmark-workflow.mjs`, the `release:freeze` script and the five firewall schemas under `benchmarks/`. Upgrading removes the four scripts from `.claude/scripts/`. The validator, grounder, resolver and Stop gate that read an existing `spec.json` packet are kept, but such a packet can no longer be scaffolded or re-finalized; a semantic-model mismatch now says to restore the Markdown it was finalized from.
 
 ### Fixed
 

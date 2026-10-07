@@ -67,7 +67,6 @@
       "spec-ground.cjs",
       "spec-semantic-model.cjs",
       "spec-final-state.cjs",
-      "spec-readiness.cjs",
       "provenance.cjs"
     ]
   },
@@ -97,6 +96,10 @@
       "codex": ["agents/god_developer.toml"]
     },
     "runtimeFiles": [
+      "scripts/change-firewall.cjs",
+      "scripts/spec-scaffold.cjs",
+      "scripts/spec-readiness.cjs",
+      "scripts/spec-authoring-validation.cjs",
       "hooks/lib/context.cjs",
       "hooks/lib/detect.cjs",
       "hooks/skill-router.cjs",

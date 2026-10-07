@@ -3170,26 +3170,6 @@ test('Codex installed code_auditor carries no Strict attestation marker', () => 
   });
 });
 
-test('Codex scaffold resolver rejects symlink template', () => {
-  inTempProject((root) => {
-    const result = install(root);
-    assert.equal(result.status, 0);
-    const template = path.join(root, '.agents', 'skills', 'specs', 'templates', 'task.md');
-    const target = path.join(root, 'outside.md');
-    fs.writeFileSync(target, 'evil');
-    const original = fs.readFileSync(template);
-    fs.unlinkSync(template);
-    fs.symlinkSync(target, template);
-    const scaffold = path.join(root, '.codex', 'scripts', 'spec-scaffold.cjs');
-    const out = spawnSync(process.execPath, [scaffold, 'symlink-test', '--tasks', 'R1-01-foo,R1-02-bar', '--boundaries', '[{"id":"B-OWN","type":"ownership","tasks":["R1-01","R1-02"],"write_sets":{"R1-01":["src/a.js"],"R1-02":["src/b.js"]}}]'], { cwd: root, encoding: 'utf8' });
-    // Should fail because template is symlink and resolver rejects it
-    assert.notEqual(out.status, 0, 'scaffold should reject symlink template');
-    assert.match(`${out.stdout}\n${out.stderr}`, /template not found|symlink/i);
-    fs.unlinkSync(template);
-    fs.writeFileSync(template, original);
-  });
-});
-
 test('Claude and Codex installed routing rules preserve the live-catalog semantics and install no Route', () => {
   inTempProject((root) => {
     const result = installPlatforms(root, ['claude', 'codex']);
