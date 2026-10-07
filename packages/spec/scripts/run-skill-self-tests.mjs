@@ -5413,9 +5413,9 @@ async function runStaticSemanticTests() {
         content.includes("## Hook portability") &&
         content.includes("runtime-dir.cjs") &&
         content.includes("derive their runtime directory from their own location") &&
-        content.includes("The `~/.claude/` sites in `state.cjs`, `lib/counter.cjs` and `lib/context.cjs`") &&
+        content.includes("The `~/.claude/` sites in `state.cjs` and `lib/counter.cjs`") &&
         content.includes("kept as Claude Code behaviour") &&
-        content.includes("The dead code in `lib/context.cjs` and `lib/detect.cjs`") &&
+        content.includes("The unimported `lib/context.cjs` and `lib/detect.cjs` were deleted") &&
         content.includes("`src/omp/hooks/` is an overlay of one file"),
     },
     {

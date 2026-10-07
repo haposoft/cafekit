@@ -97,6 +97,8 @@
       "codex": ["agents/god_developer.toml"]
     },
     "runtimeFiles": [
+      "hooks/lib/context.cjs",
+      "hooks/lib/detect.cjs",
       "hooks/skill-router.cjs",
       "hooks/lib/skill-router-routes.cjs",
       "scripts/browser-tool.cjs",
@@ -161,8 +163,6 @@
       "hooks/lib/counter.cjs",
       "hooks/lib/git.cjs",
       "hooks/lib/config.cjs",
-      "hooks/lib/context.cjs",
-      "hooks/lib/detect.cjs",
       "hooks/lib/hook-state-dir.cjs",
       "hooks/lib/runtime-dir.cjs",
       "hooks/lib/hook-payload.cjs",
