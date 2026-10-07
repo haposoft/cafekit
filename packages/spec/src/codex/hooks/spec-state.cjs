@@ -163,7 +163,7 @@ try {
     lines.push(
       '- Sync `spec.json` and task Markdown status only after verified work; task proof belongs in `receipts/<task-basename>.md`.',
       `- Create \`feature-receipt.md\` once after final integration proof${featureReceiptPresent ? ' (present)' : ' (not required before closeout)'}.`,
-      `- Validate with \`node .codex/scripts/validate-spec-output.cjs specs/${active.featureName}\`.`,
+      '- Legacy `spec.json` packets can no longer be validated; move ongoing work to a process-first `plan.md` packet.',
       '- Hooks revalidate receipt bytes but never grant approval.'
     );
   }

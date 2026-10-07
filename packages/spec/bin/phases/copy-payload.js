@@ -94,37 +94,22 @@ function copyPlatformFiles(ctx, platformKey) {
       report(ctx, treeAction(agg), 'Skill: specs');
     }
 
-    // Keep spec templates in sync (Claude command runtime reads these).
+    // The specs skill tree above carries its templates; remove the ones retired
+    // with the spec.json planning flow from earlier installs.
     if (platformKey === 'claude' || platformKey === 'codex') {
-      const legacyInitTemplate = path.join(platform.skillsDir, 'specs', 'templates', 'init.json');
-      if (platformKey === 'claude' && fs.existsSync(legacyInitTemplate)) {
-        if (!ctx.dryRun) fs.rmSync(legacyInitTemplate, { force: true });
-        ctx.ui.detail(`  ↻ ${ctx.dryRun ? '[dry-run] ' : ''}Removed legacy template: ${legacyInitTemplate}`);
+      const retiredTemplates = platformKey === 'claude'
+        ? ['init.json', 'spec-state.json', 'requirements-init.md', 'requirements.md', 'design.md', 'task.md']
+        : ['spec-state.json', 'requirements-init.md', 'requirements.md', 'design.md', 'task.md'];
+      for (const fileName of retiredTemplates) {
+        const retired = path.join(platform.skillsDir, 'specs', 'templates', fileName);
+        if (!fs.existsSync(retired)) continue;
+        if (!ctx.dryRun) {
+          fs.rmSync(retired, { force: true });
+          if (tracker) tracker.prune(tracker.keyFor(retired));
+        }
+        ctx.ui.detail(`  ↻ ${ctx.dryRun ? '[dry-run] ' : ''}Removed legacy template: ${retired}`);
         ctx.results.updated++;
       }
-
-      const specTemplates = [
-        'spec-state.json',
-        'requirements-init.md',
-        'requirements.md',
-        'design.md',
-        'research.md',
-        'task.md'
-      ];
-
-      specTemplates.forEach((fileName) => {
-        const src = path.join(specSkillSource, 'templates', fileName);
-        const dest = path.join(platform.skillsDir, 'specs', 'templates', fileName);
-        const { action } = writeManagedFile({
-          src,
-          dest,
-          platformFolder,
-          ctx,
-          tracker,
-          transform: bodyTransform
-        });
-        report(ctx, action, `template: ${fileName}`);
-      });
     }
 
     // Core skills plus the optional document bundle selected for this runtime.

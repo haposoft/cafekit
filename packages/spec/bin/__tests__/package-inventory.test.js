@@ -114,11 +114,7 @@ const REQUIRED_PAYLOAD = [
   'src/claude/scripts/workflow-policy.cjs',
   'src/claude/scripts/provenance.cjs',
   'src/claude/scripts/spec-receipt.cjs',
-  'src/claude/scripts/spec-ground.cjs',
   'src/claude/scripts/spec-final-state.cjs',
-  'src/claude/scripts/spec-semantic-model.cjs',
-  'src/claude/scripts/validate-spec-output.cjs',
-  'src/claude/scripts/spec-authoring-digest.cjs',
   'src/claude/scripts/generate-skill-catalog.cjs',
   'src/claude/rules/process-management.md',
   'src/claude/rules/review-audit-self-decision.md',
@@ -1657,23 +1653,14 @@ function assertInstalledScripts(root, platform) {
   const scripts = path.join(root, RUNTIMES[platform].root, 'scripts');
   const policy = path.join(scripts, 'workflow-policy.cjs');
   const scanner = path.join(scripts, 'scan-staged-secrets.cjs');
-  const grounder = path.join(scripts, 'spec-ground.cjs');
   const finalState = path.join(scripts, 'spec-final-state.cjs');
-  const validator = path.join(scripts, 'validate-spec-output.cjs');
   assert.ok(fs.existsSync(policy), `installed policy missing: ${policy}`);
   assert.ok(fs.existsSync(scanner), `installed scanner missing: ${scanner}`);
-  assert.ok(fs.existsSync(grounder), `installed validator dependency missing: ${grounder}`);
   assert.ok(fs.existsSync(finalState), `installed final-state dependency missing: ${finalState}`);
-  assert.ok(fs.existsSync(validator), `installed validator missing: ${validator}`);
 
   const policyRun = spawnSync(process.execPath, [policy, '--json'], { cwd: root, encoding: 'utf8' });
   assert.equal(policyRun.status, 0, `${policyRun.stdout}\n${policyRun.stderr}`);
   assert.equal(JSON.parse(policyRun.stdout).contract, 'execution-policy');
-
-  const validatorRun = spawnSync(process.execPath, [validator], { cwd: root, encoding: 'utf8' });
-  assert.equal(validatorRun.status, 2, `${validatorRun.stdout}\n${validatorRun.stderr}`);
-  assert.match(validatorRun.stderr, /Usage: .*validate-spec-output\.cjs/);
-  assert.doesNotMatch(validatorRun.stderr, /MODULE_NOT_FOUND|Cannot find module/);
 
   const safe = path.join(root, 'safe.txt');
   fs.writeFileSync(safe, 'mode=safe\n');

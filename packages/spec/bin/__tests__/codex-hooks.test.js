@@ -121,7 +121,7 @@ function inHookFixture(run, options = {}) {
       path.join(PACKAGE_ROOT, 'src/claude/scripts/spec-resolver.cjs'),
       path.join(root, '.codex', 'scripts', 'spec-resolver.cjs'),
     );
-    for (const file of ['validate-spec-output.cjs', 'spec-ground.cjs', 'spec-semantic-model.cjs', 'spec-final-state.cjs']) {
+    for (const file of ['spec-final-state.cjs']) {
       fs.copyFileSync(
         path.join(PACKAGE_ROOT, 'src/claude/scripts', file),
         path.join(root, '.codex', 'scripts', file),

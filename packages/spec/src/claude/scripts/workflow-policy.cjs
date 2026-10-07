@@ -437,7 +437,7 @@ function clonePolicySnapshot(snapshot) {
 }
 
 const APPROVAL_SCHEMA_VERSION = '2.0';
-const LEGACY_APPROVAL_ERROR = `Legacy approval state detected (field \`approved\`). Migration required: replace \`approved\` with \`agent_validated\` per schema v${APPROVAL_SCHEMA_VERSION} (schema_version: "${APPROVAL_SCHEMA_VERSION}"). See spec-state.json template.`;
+const LEGACY_APPROVAL_ERROR = `Legacy approval state detected (field \`approved\`). Migration required: replace \`approved\` with \`agent_validated\` per schema v${APPROVAL_SCHEMA_VERSION} (schema_version: "${APPROVAL_SCHEMA_VERSION}").`;
 
 function assertLane(lane) {
   if (!LANES.includes(lane)) {

@@ -295,7 +295,7 @@ function installClaudeGate(root, policyMode = 'valid') {
     path.join(__dirname, '..', 'lib', 'hook-state-dir.cjs'),
     path.join(hooks, 'lib', 'hook-state-dir.cjs'),
   );
-  for (const name of ['spec-resolver.cjs', 'spec-receipt.cjs', 'validate-spec-output.cjs', 'spec-ground.cjs', 'spec-semantic-model.cjs', 'spec-final-state.cjs']) {
+  for (const name of ['spec-resolver.cjs', 'spec-receipt.cjs', 'spec-final-state.cjs']) {
     fs.copyFileSync(path.join(__dirname, '..', '..', 'scripts', name), path.join(scripts, name));
   }
   if (policyMode === 'valid') {

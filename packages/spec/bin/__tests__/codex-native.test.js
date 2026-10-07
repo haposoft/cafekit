@@ -182,12 +182,7 @@ const V3_SPECS_BUNDLE = [
   'SKILL.md',
   'references/review.md',
   'references/templates.md',
-  'templates/design.md',
-  'templates/requirements-init.md',
-  'templates/requirements.md',
-  'templates/research.md',
-  'templates/spec-state.json',
-  'templates/task.md'
+  'templates/research.md'
 ];
 const OBSOLETE_SPECS_FILES = [
   'references/archive-workflow.md',
@@ -270,64 +265,6 @@ function replaceGeneratedTomlString(content, key, value) {
   const matches = [...content.matchAll(pattern)];
   assert.equal(matches.length, 1, `expected exactly one TOML key: ${key}`);
   return content.replace(pattern, `${key} = ${JSON.stringify(value)}`);
-}
-
-function renderCanonicalVerificationExample(template) {
-  const values = new Map([
-    ['SUBJECT_REQ', '1'],
-    ['X', '1'],
-    ['PROOF_REQ', '1'],
-    ['Y', '2'],
-    ['exact command', 'node --test test/installed.test.js'],
-    ['exact anchored target', 'src/installed.js#entry'],
-    ['exact/repository/entrypoint', 'src/installed.js'],
-    ['observable result', 'the subject behavior and verifier proof both pass'],
-    ['concrete observable result and proof', 'the subject behavior and verifier proof both pass'],
-    ['concrete rejected or recovery case', 'invalid input remains rejected and observable'],
-    ['real entrypoint/caller and grounded anchor expectation', 'the installed entrypoint reaches A-D-01'],
-  ]);
-  return template.replace(/\{\{([^}]+)\}\}/g, (placeholder, name) => (
-    values.has(name) ? values.get(name) : placeholder
-  ));
-}
-
-function assertInstalledVerificationModel(grounderPath, designTemplate) {
-  const { parseVerificationDefinitions } = require(grounderPath);
-  assert.equal(typeof parseVerificationDefinitions, 'function');
-  const concreteDesign = renderCanonicalVerificationExample(designTemplate);
-  const errors = [];
-  const definitions = parseVerificationDefinitions(concreteDesign, errors);
-  assert.deepEqual(errors, []);
-  assert.equal(definitions.size, 1);
-  const definition = definitions.get('V1');
-  assert.ok(definition);
-  assert.deepEqual(definition.subject_criteria, ['R1.1']);
-  assert.deepEqual(definition.proof_criteria, []);
-  assert.equal(definition.proof_owner, null);
-  assert.equal(definition.evidence_anchor, null);
-  assert.deepEqual(definition.decision_refs, ['D1', 'I1', 'C1']);
-  for (const field of [
-    'subject_criteria', 'subject_owner', 'decision_refs', 'method', 'expected',
-    'negative', 'reachability'
-  ]) {
-    const value = definition[field];
-    assert.ok(
-      Array.isArray(value)
-        ? value.length > 0
-        : (typeof value === 'string' ? value.trim() !== '' : value && Object.keys(value).length > 0)
-    );
-  }
-  for (const mutation of [
-    concreteDesign.replace('- **V1**:', '### V1 —'),
-    concreteDesign.replace('- **V1**:', '| V1 |'),
-    concreteDesign.replace('; Expected ', '\nExpected '),
-    concreteDesign.replace('Decision refs ', 'Decisions '),
-  ]) {
-    const mutationErrors = [];
-    const mutated = parseVerificationDefinitions(mutation, mutationErrors);
-    assert.ok(mutationErrors.length > 0);
-    assert.equal(mutated.has('V1'), false);
-  }
 }
 
 function markdownSection(content, heading) {
@@ -2160,22 +2097,12 @@ test('Codex installed Specs and spec-maker reject adaptive coverage mutations', 
       '.codex/rules/state-sync.md',
       '.codex/rules/review-audit-self-decision.md',
       '.codex/rules/process-management.md',
-      '.codex/scripts/spec-ground.cjs',
-      '.codex/scripts/validate-spec-output.cjs',
       '.agents/.gitignore',
       ...V3_SPECS_BUNDLE.map((file) => `.agents/skills/specs/${file}`)
     ]) {
       assert.equal(fs.existsSync(path.join(root, relative)), true, `missing ${relative}`);
     }
 
-    const installedDesign = fs.readFileSync(
-      path.join(root, '.agents/skills/specs/templates/design.md'), 'utf8'
-    );
-    assert.equal((installedDesign.match(/^## Verification Definitions$/gm) || []).length, 1);
-    assertInstalledVerificationModel(
-      path.join(root, '.codex/scripts/spec-ground.cjs'),
-      installedDesign
-    );
     const installedSpecsRoot = path.join(root, '.agents/skills/specs');
     assert.throws(
       () => installedAuthoringProjectionIssues(root, '.agents/skills/specs'),
@@ -2191,22 +2118,6 @@ test('Codex installed Specs and spec-maker reject adaptive coverage mutations', 
     );
     assertInstalledAuthoringProjection(root, installedSpecsRoot);
 
-    const installedTask = fs.readFileSync(
-      path.join(root, '.agents/skills/specs/templates/task.md'), 'utf8'
-    );
-    assert.deepEqual(
-      [...installedTask.matchAll(/^## (.+)$/gm)].map((match) => match[1]),
-      ['Outcome', 'Scope', 'Anchors and Ownership', 'Changes', 'Acceptance', 'Dependencies', 'Verification Plan']
-    );
-    assert.match(installedTask, /^- \*\*Task role:\*\*/m);
-
-    const installedState = JSON.parse(fs.readFileSync(
-      path.join(root, '.agents/skills/specs/templates/spec-state.json'), 'utf8'
-    ));
-    assert.deepEqual(Object.keys(installedState.workflow_policy).sort(), [
-      'assurance_level', 'classified_minimum', 'planning_depth', 'risks', 'version'
-    ]);
-
     const agentsGitignore = fs.readFileSync(
       path.join(root, '.agents', '.gitignore'),
       'utf8'
@@ -2217,7 +2128,6 @@ test('Codex installed Specs and spec-maker reject adaptive coverage mutations', 
 
     if (process.platform !== 'win32') {
       for (const [sourceRelative, installedRelative] of [
-        ['src/claude/scripts/validate-spec-output.cjs', '.codex/scripts/validate-spec-output.cjs'],
         ['src/claude/skills/chrome-devtools/scripts/install.sh', '.agents/skills/chrome-devtools/scripts/install.sh'],
         ['src/claude/skills/ai-multimodal/scripts/check_setup.py', '.agents/skills/ai-multimodal/scripts/check_setup.py']
       ]) {
@@ -3136,8 +3046,6 @@ test('Codex install on top of existing Claude installation preserves content and
     assert.equal(fs.existsSync(path.join(root, '.codex', 'runtime.json')), true, '.codex/runtime.json should exist');
     assert.equal(fs.existsSync(path.join(root, '.codex', 'hooks', 'privacy-block.cjs')), true, '.codex/hooks/privacy-block.cjs should exist');
     assert.equal(fs.existsSync(path.join(root, '.codex', 'rules', 'workflow.md')), true, '.codex/rules/workflow.md should exist');
-    assert.equal(fs.existsSync(path.join(root, '.codex', 'scripts', 'spec-ground.cjs')), true, '.codex/scripts/spec-ground.cjs should exist');
-    assert.equal(fs.existsSync(path.join(root, '.codex', 'scripts', 'validate-spec-output.cjs')), true, '.codex/scripts/validate-spec-output.cjs should exist');
     assert.equal(fs.existsSync(path.join(root, '.agents', '.gitignore')), true, '.agents/.gitignore should exist');
     assert.equal(fs.existsSync(path.join(root, '.agents', 'skills', 'specs', 'SKILL.md')), true, '.agents/skills/specs/SKILL.md should exist');
 
@@ -3167,6 +3075,32 @@ test('Codex installed code_auditor carries no Strict attestation marker', () => 
     assert.doesNotMatch(toml, /CAFEKIT_SEMANTIC_REVIEW_ATTESTATION/);
     assert.doesNotMatch(toml, /Strict Semantic Review Attestation/);
     assert.doesNotMatch(toml, /MAC-protected host-hook observation/);
+  });
+});
+
+test('reinstall removes the retired spec.json templates from Claude and Codex but a dry run keeps them', () => {
+  inTempProject((root) => {
+    const first = installPlatforms(root, ['claude', 'codex']);
+    assert.equal(first.status, 0, `${first.stdout}\n${first.stderr}`);
+    const templateDirs = ['.claude/skills/specs/templates', '.agents/skills/specs/templates'];
+    const retired = ['design.md', 'task.md', 'requirements.md', 'requirements-init.md', 'spec-state.json'];
+    for (const dir of templateDirs) {
+      for (const name of retired) fs.writeFileSync(path.join(root, dir, name), 'legacy\n');
+    }
+
+    const dry = installPlatforms(root, ['claude', 'codex'], ['--force-overwrite', '--dry-run']);
+    assert.equal(dry.status, 0, `${dry.stdout}\n${dry.stderr}`);
+    for (const dir of templateDirs) {
+      for (const name of retired) {
+        assert.equal(fs.existsSync(path.join(root, dir, name)), true, `dry run removed ${dir}/${name}`);
+      }
+    }
+
+    const again = installPlatforms(root, ['claude', 'codex'], ['--force-overwrite']);
+    assert.equal(again.status, 0, `${again.stdout}\n${again.stderr}`);
+    for (const dir of templateDirs) {
+      assert.deepEqual(fs.readdirSync(path.join(root, dir)), ['research.md'], `${dir} keeps only research.md`);
+    }
   });
 });
 

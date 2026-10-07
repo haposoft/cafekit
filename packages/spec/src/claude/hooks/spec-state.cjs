@@ -324,7 +324,7 @@ try {
   } else {
     lines.push('- Sync `spec.json` + task Markdown status after verified work; task proof belongs in `receipts/<task-basename>.md`.');
     lines.push(`- Create \`feature-receipt.md\` once after final integration proof${featureReceiptPresent ? ' (present)' : ' (not required before closeout)'}.`);
-    lines.push(`- Validate with \`node ${runtimeDirName()}/scripts/validate-spec-output.cjs specs/${featureName}\`; hooks revalidate receipt bytes but never grant approval.`);
+    lines.push('- Legacy `spec.json` packets can no longer be validated; hooks revalidate receipt bytes but never grant approval. Move ongoing work to a process-first `plan.md` packet.');
   }
   lines.push('');
 

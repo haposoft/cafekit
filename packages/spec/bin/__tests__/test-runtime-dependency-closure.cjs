@@ -9,7 +9,7 @@ const CLAUDE_RUNTIME_ENTRYPOINTS = Object.freeze([
   'scripts/spec-final-state.cjs',
   'scripts/spec-receipt.cjs',
   'scripts/spec-resolver.cjs',
-  'scripts/validate-spec-output.cjs',
+  'scripts/workflow-policy.cjs',
 ]);
 
 function inside(root, target) {

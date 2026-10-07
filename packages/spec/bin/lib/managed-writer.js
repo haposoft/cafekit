@@ -60,9 +60,8 @@ function writeManagedFile(opts) {
   // Ownership manifest for this platform (read at run start), NOT the migration manifest.
   const ownership = (ctx.ownership && ctx.ownership[platformFolder]) || { files: {} };
 
-  // A file already written earlier THIS run (e.g. a spec template copied as part
-  // of the specs/ tree, then revisited by the template-sync loop) is ours — treat
-  // it as pristine against what we just wrote, not as a user-created file.
+  // A file already written earlier THIS run is ours — treat it as pristine
+  // against what we just wrote, not as a user-created file.
   const relForRun = tracker?.keyFor
     ? tracker.keyFor(dest)
     : path.relative(platformFolder, dest).replace(/\\/g, '/');

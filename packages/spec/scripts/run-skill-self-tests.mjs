@@ -9,34 +9,6 @@ import { createRequire } from "node:module";
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const require = createRequire(import.meta.url);
-const workflowPolicy = require(join(packageRoot, "src/claude/scripts/workflow-policy.cjs"));
-const { parseVerificationDefinitions } = require(
-  join(packageRoot, "src/claude/scripts/spec-ground.cjs"),
-);
-const semanticFirewallDiscovery = require(
-  join(packageRoot, "scripts/semantic-firewall-test-discovery.cjs"),
-);
-// C2 SemanticReviewReceipt's exact field-list authority (R1-01, frozen) lives
-// once in the validator; import it rather than maintaining a second literal.
-const { C2_FIELDS } = require(
-  join(packageRoot, "src/claude/scripts/validate-spec-output.cjs"),
-);
-
-// Repeatable `--require-semantic-test <basename>` flags (D12): each named
-// basename must be discovered under bin/__tests__ and must itself pass in
-// isolation, or the whole run fails nonzero.
-function parseRequiredSemanticTests(argv) {
-  const required = [];
-  for (let index = 0; index < argv.length; index += 1) {
-    if (argv[index] === "--require-semantic-test") {
-      const value = argv[index + 1];
-      if (!value) throw new Error("--require-semantic-test requires a basename argument");
-      required.push(value);
-      index += 1;
-    }
-  }
-  return required;
-}
 
 async function listFiles(directory, predicate) {
   const entries = await readdir(directory, { withFileTypes: true });
@@ -120,16 +92,6 @@ function parsePythonUnittestCount(output) {
   const match = output.match(/Ran\s+(\d+)\s+tests?/);
   return match ? Number(match[1]) : 0;
 }
-
-const TASK_21_SECTIONS = [
-  "Outcome",
-  "Scope",
-  "Anchors and Ownership",
-  "Changes",
-  "Acceptance",
-  "Dependencies",
-  "Verification Plan",
-];
 
 function markdownH2s(content) {
   return [...content.matchAll(/^##\s+(.+?)\s*$/gm)].map((match) => match[1]);
@@ -733,12 +695,7 @@ const SPECS_BUNDLE_FILES = [
   "src/claude/skills/specs/SKILL.md",
   "src/claude/skills/specs/references/review.md",
   "src/claude/skills/specs/references/templates.md",
-  "src/claude/skills/specs/templates/design.md",
-  "src/claude/skills/specs/templates/requirements-init.md",
-  "src/claude/skills/specs/templates/requirements.md",
   "src/claude/skills/specs/templates/research.md",
-  "src/claude/skills/specs/templates/spec-state.json",
-  "src/claude/skills/specs/templates/task.md",
 ];
 
 const ADAPTIVE_OWNED_BASELINE_LINES = new Map([
@@ -2952,170 +2909,11 @@ async function runAuthoringInstructionContractTests(fail) {
   return 8;
 }
 
-async function runSpecs21ContractTests() {
+async function runSpecsContractTests() {
   const fail = (message) => {
-    throw new Error(`[FAIL] Specs v2.1 contract: ${message}`);
+    throw new Error(`[FAIL] Specs contract: ${message}`);
   };
   const authoringInstructionTests = await runAuthoringInstructionContractTests(fail);
-  const taskTemplate = await readFile(
-    join(packageRoot, "src/claude/skills/specs/templates/task.md"),
-    "utf8",
-  );
-  const designTemplate = await readFile(
-    join(packageRoot, "src/claude/skills/specs/templates/design.md"),
-    "utf8",
-  );
-  const stateTemplate = JSON.parse(await readFile(
-    join(packageRoot, "src/claude/skills/specs/templates/spec-state.json"),
-    "utf8",
-  ));
-
-  const headings = markdownH2s(taskTemplate);
-  if (JSON.stringify(headings) !== JSON.stringify(TASK_21_SECTIONS)) {
-    fail(`task headings ${JSON.stringify(headings)} do not equal ${JSON.stringify(TASK_21_SECTIONS)}`);
-  }
-  const ownershipHeader = /^\|\s*ID\s*\|\s*Type\s*\|\s*Target\s*\|\s*Role\s*\|\s*Access\s*\|\s*Action\s*\|$/gm;
-  if ((taskTemplate.match(ownershipHeader) || []).length !== 1) {
-    fail("task template must contain exactly one six-column ownership table");
-  }
-  if (/^##\s+(?:Related Files|Evidence|Completion Criteria)\s*$/m.test(taskTemplate)
-    || /\btask_triggers\b|\(P\)/.test(taskTemplate)) {
-    fail("task template contains legacy canonical-authoring vocabulary");
-  }
-  const verificationSectionCount = markdownH2s(designTemplate)
-    .filter((heading) => heading === "Verification Definitions").length;
-  if (verificationSectionCount !== 1) {
-    fail("design template must expose exactly one Verification Definitions section");
-  }
-  const concreteValues = new Map([
-    ["SUBJECT_REQ", "1"],
-    ["X", "1"],
-    ["PROOF_REQ", "1"],
-    ["Y", "2"],
-    ["exact command", "node --test test/retry.test.js"],
-    ["exact anchored target", "src/retry-service.js#retry"],
-    ["exact/repository/entrypoint", "src/retry-service.js"],
-    ["observable result", "the subject result and verifier proof both pass"],
-    ["concrete observable result and proof", "the subject result and verifier proof both pass"],
-    ["concrete rejected or recovery case", "an exhausted retry remains failed and observable"],
-    ["real entrypoint/caller and grounded anchor expectation", "the public retry caller reaches A-D-01"],
-  ]);
-  const concreteDesign = designTemplate.replace(/\{\{([^}]+)\}\}/g, (placeholder, name) => (
-    concreteValues.has(name) ? concreteValues.get(name) : placeholder
-  ));
-  const parserErrors = [];
-  const definitions = parseVerificationDefinitions(concreteDesign, parserErrors);
-  if (parserErrors.length > 0) {
-    fail(`canonical concrete V example is parser-invalid: ${parserErrors.join("; ")}`);
-  }
-  const definition = definitions.get("V1");
-  if (!definition || definitions.size !== 1) {
-    fail("canonical parser must return exactly V1");
-  }
-  if (JSON.stringify(definition.subject_criteria) !== JSON.stringify(["R1.1"])
-    || JSON.stringify(definition.proof_criteria) !== JSON.stringify([])) {
-    fail(`canonical V1 criteria drifted: ${JSON.stringify({
-      subject: definition.subject_criteria,
-      proof: definition.proof_criteria,
-    })}`);
-  }
-  if (definition.proof_owner !== null || definition.evidence_anchor !== null) {
-    fail(`canonical base V1 must omit proof authority: ${JSON.stringify({
-      proof_owner: definition.proof_owner,
-      evidence_anchor: definition.evidence_anchor,
-    })}`);
-  }
-  if (JSON.stringify(definition.decision_refs) !== JSON.stringify(["D1", "I1", "C1"])) {
-    fail(`canonical V1 decision refs drifted: ${JSON.stringify(definition.decision_refs)}`);
-  }
-  const proofDesign = concreteDesign.replace(
-    "Owner A-D-01; Decision refs",
-    "Owner A-D-01; Proof criteria R1.2; Proof owner A-D-02; Evidence anchor A-D-02; Decision refs",
-  );
-  const proofParserErrors = [];
-  const proofDefinition = parseVerificationDefinitions(proofDesign, proofParserErrors).get("V1");
-  if (proofParserErrors.length > 0
-    || !proofDefinition
-    || JSON.stringify(proofDefinition.subject_criteria) !== JSON.stringify(["R1.1"])
-    || JSON.stringify(proofDefinition.proof_criteria) !== JSON.stringify(["R1.2"])
-    || proofDefinition.subject_owner !== "A-D-01"
-    || proofDefinition.proof_owner !== "A-D-02"
-    || proofDefinition.evidence_anchor !== "A-D-02"
-    || proofDefinition.subject_owner === proofDefinition.proof_owner) {
-    fail(`canonical proof extension drifted: ${JSON.stringify({
-      errors: proofParserErrors,
-      definition: proofDefinition,
-    })}`);
-  }
-  for (const field of [
-    "subject_criteria", "subject_owner", "decision_refs", "method", "expected", "negative",
-    "reachability",
-  ]) {
-    const value = definition[field];
-    if ((Array.isArray(value) && value.length === 0)
-      || (typeof value === "string" && value.trim() === "")
-      || (value && typeof value === "object" && Object.keys(value).length === 0)
-      || value === undefined) {
-      fail(`canonical V1 parser field ${field} must be non-empty`);
-    }
-  }
-  for (const hiddenGrammarMutation of [
-    concreteDesign.replace("- **V1**:", "### V1 —"),
-    concreteDesign.replace("- **V1**:", "| V1 |"),
-    concreteDesign.replace("; Expected ", "\nExpected "),
-    concreteDesign.replace("Decision refs ", "Decisions "),
-  ]) {
-    const mutationErrors = [];
-    const mutationDefinitions = parseVerificationDefinitions(hiddenGrammarMutation, mutationErrors);
-    if (mutationErrors.length === 0 || mutationDefinitions.has("V1")) {
-      fail("canonical parser accepted a hidden V grammar mutation");
-    }
-  }
-  const concreteTask = taskTemplate.replace(/\{\{([^}]+)\}\}/g, (placeholder, name) => {
-    if (/^V reference\b/.test(name)) return "V1";
-    if (name === "subject | verifier") return "subject";
-    return placeholder;
-  });
-  const taskFields = markdownBoldBulletFields(concreteTask);
-  if (taskFields.get("Verification ref") !== "V1"
-    || !["subject", "verifier"].includes(taskFields.get("Task role"))) {
-    fail("task Verification Plan must reference a V ID and declare subject/verifier role");
-  }
-
-  const policyKeys = Object.keys(stateTemplate.workflow_policy || {}).sort();
-  const expectedPolicyKeys = [...workflowPolicy.CANONICAL_WORKFLOW_POLICY_FIELDS].sort();
-  if (stateTemplate.schema_version !== "2.1"
-    || stateTemplate.workflow_policy?.version !== "2.1"
-    || JSON.stringify(policyKeys) !== JSON.stringify(expectedPolicyKeys)) {
-    fail("spec-state template must exactly equal the executable canonical policy fields");
-  }
-  const runtimePolicy = workflowPolicy.canonicalWorkflowPolicySnapshot({
-    planningDepth: "Compact",
-    assuranceLevel: "Routine",
-    risks: [],
-  });
-  if (JSON.stringify(Object.keys(runtimePolicy).sort()) !== JSON.stringify(expectedPolicyKeys)) {
-    fail("executable canonical workflow policy emits a non-minimal projection");
-  }
-  if (JSON.stringify(runtimePolicy) !== JSON.stringify(stateTemplate.workflow_policy)) {
-    fail("spec-state workflow_policy bytes drift from the executable canonical projection");
-  }
-  if (Object.prototype.hasOwnProperty.call(stateTemplate, "approvals")) {
-    fail("spec-state template must not persist legacy approval state");
-  }
-  const authoring = stateTemplate.authoring || {};
-  if (Object.keys(authoring).sort().join(",") !== "design,requirements,research,tasks"
-    || !Object.values(authoring).every((value) => ["draft", "validated", "absent"].includes(value))) {
-    fail("authoring state must use only draft, validated, or absent");
-  }
-  if (Object.keys(stateTemplate.coordination || {}).join(",") !== "boundaries"
-    || !Array.isArray(stateTemplate.coordination.boundaries)) {
-    fail("coordination.boundaries must be the initial topology authority");
-  }
-  const semanticReviewKeys = Object.keys(stateTemplate.validation?.semantic_review || {}).sort();
-  if (semanticReviewKeys.join(",") !== [...C2_FIELDS].sort().join(",")) {
-    fail("semantic review template fields drifted from the GATE-REVIEW canonical field-list authority");
-  }
 
   const instructionFiles = [
     "src/claude/skills/specs/SKILL.md",
@@ -3141,8 +2939,6 @@ async function runSpecs21ContractTests() {
     "src/claude/skills/specs/SKILL.md",
     "src/claude/skills/specs/references/review.md",
     "src/claude/skills/specs/references/templates.md",
-    "src/claude/skills/specs/templates/design.md",
-    "src/claude/skills/specs/templates/task.md",
     "src/claude/skills/develop/SKILL.md",
     "src/claude/skills/sync/SKILL.md",
   ];
@@ -3170,12 +2966,10 @@ async function runSpecs21ContractTests() {
     fail("full-runner failure summary must preserve exact count and failing test location");
   }
 
-  console.log("✔ Specs v2.1 task structure and ownership table are canonical");
-  console.log("✔ Specs v2.1 V definitions expose the validator grammar and proof roles");
-  console.log("✔ Specs v2.1 machine state and semantic receipt vocabulary are canonical");
-  console.log("✔ Specs v2.1 canonical authoring source exposes no downgrade receipt");
+  console.log("✔ Specs instruction model names the flat layout, the three gates, and receipt fields");
+  console.log("✔ Specs canonical authoring source exposes no downgrade receipt");
   console.log("✔ Full runner preserves exact Node failure counts and locations");
-  return 15 + authoringInstructionTests;
+  return 3 + authoringInstructionTests;
 }
 
 const DEBUG_ADAPTIVE_PATHS = {
@@ -4391,19 +4185,16 @@ async function runStaticSemanticTests() {
   const hotfixAdaptiveTests = await runHotfixAdaptiveContractTests();
   const docsAdaptiveTests = await runDocsAdaptiveContractTests();
   const researchAdaptiveTests = await runResearchAdaptiveContractTests();
-  const specs21Tests = await runSpecs21ContractTests();
+  const specsContractTests = await runSpecsContractTests();
   const specTemplateFiles = await readdir(
     join(packageRoot, "src/claude/skills/specs/templates"),
   );
 
-  if (!specTemplateFiles.includes("spec-state.json")) {
-    console.error("[FAIL] cf:specs spec-state template is missing");
-    process.exit(1);
-  }
-
-  if (specTemplateFiles.includes("init.json")) {
-    console.error("[FAIL] legacy cf:specs init.json template must not be packaged");
-    process.exit(1);
+  for (const retired of ["init.json", "spec-state.json", "requirements-init.md", "requirements.md", "design.md", "task.md"]) {
+    if (specTemplateFiles.includes(retired)) {
+      console.error(`[FAIL] retired cf:specs template ${retired} must not be packaged`);
+      process.exit(1);
+    }
   }
 
   const removedPlatformLower = "anti" + "gravity";
@@ -4434,12 +4225,13 @@ async function runStaticSemanticTests() {
         content.includes("Keep every new\ntask `Status: blocked` while GATE-REVIEW is open"),
     },
     {
-      label: "installer syncs spec-state template and drops init template",
+      label: "installer removes the retired spec.json templates from earlier installs",
       file: "bin/phases/copy-payload.js",
       assert: (content) =>
+        content.includes("retiredTemplates") &&
         content.includes("'spec-state.json'") &&
-        content.includes("Removed legacy template") &&
-        !content.includes("'init.json',"),
+        content.includes("'init.json'") &&
+        content.includes("Removed legacy template"),
     },
     {
       label: "installer writes CafeKit version metadata",
@@ -4625,11 +4417,6 @@ async function runStaticSemanticTests() {
         content.includes("Reread every file"),
     },
     {
-      label: "cf:specs requirements template has no SDD phase marker",
-      file: "src/claude/skills/specs/templates/requirements-init.md",
-      assert: (content) => !content.includes("/sdd:"),
-    },
-    {
       label: "cf:specs flow is gated GATE-SCOPE to GATE-DONE and process-first",
       file: "src/claude/skills/specs/SKILL.md",
       assert: (content) =>
@@ -4720,40 +4507,6 @@ async function runStaticSemanticTests() {
         content.includes("GATE-DONE") &&
         content.includes("Ask once at each gate") &&
         content.includes("Do not ask for routine implementation choices"),
-    },
-    {
-      label: "legacy kernel task template keeps the Specs v2.1 plan contract",
-      file: "src/claude/skills/specs/templates/task.md",
-      assert: (content) =>
-        content.includes("**Status:** pending") &&
-        content.includes("## Outcome") &&
-        content.includes("## Scope") &&
-        content.includes("## Anchors and Ownership") &&
-        content.includes("| ID | Type | Target | Role | Access | Action |") &&
-        content.includes("## Changes") &&
-        content.includes("## Acceptance") &&
-        content.includes("## Dependencies") &&
-        content.includes("## Verification Plan") &&
-        !content.includes("## Evidence") &&
-        !content.includes("## Completion Criteria"),
-    },
-    {
-      label: "spec validator enforces Specs v2.1 task-plan sections",
-      file: "src/claude/scripts/validate-spec-output.cjs",
-      assert: (content) =>
-        content.includes("TASK_21_SECTIONS") &&
-        content.includes("Anchors and Ownership") &&
-        content.includes("ID | Type | Target | Role | Access | Action") &&
-        content.includes("Verification Plan requires a command-shaped invocation") &&
-        content.includes("planned proof only"),
-    },
-    {
-      label: "spec validator blocks complex ready state before validation",
-      file: "src/claude/scripts/validate-spec-output.cjs",
-      assert: (content) =>
-        content.includes("design_context.validation_recommended") &&
-        content.includes("5+ task files") &&
-        content.includes("validation.status is not completed"),
     },
     {
       label: "cf:specs inline receipt is executable and provenance-bound",
@@ -5496,14 +5249,9 @@ async function runStaticSemanticTests() {
         "src/claude/skills/specs/SKILL.md",
         "src/claude/skills/specs/references/review.md",
         "src/claude/skills/specs/references/templates.md",
-        "src/claude/skills/specs/templates/design.md",
-        "src/claude/skills/specs/templates/requirements-init.md",
-        "src/claude/skills/specs/templates/requirements.md",
         "src/claude/skills/specs/templates/research.md",
-        "src/claude/skills/specs/templates/spec-state.json",
-        "src/claude/skills/specs/templates/task.md",
       ],
-      assert: (content) => content.trimEnd().split("\n").length - 8 <= 750,
+      assert: (content) => content.trimEnd().split("\n").length - 3 <= 750,
     },
     {
       label: "process-first Develop and Sync core stays at or below 400 lines",
@@ -5592,38 +5340,6 @@ async function runStaticSemanticTests() {
         content.includes("Review saturation") &&
         content.includes("Round three requires runtime evidence") &&
         content.includes("larger useful set means the plan should be split"),
-    },
-    {
-      // Behavioral: structured projection — task template Compact core has one anchor, proof conditional (parsed, not phrase-aggregate)
-      label: "task template Compact core is per-surface parsed (behavioral)",
-      file: "src/claude/skills/specs/templates/task.md",
-      assert: (content) => {
-        const rows = content
-          .split("\n")
-          .filter((line) => line.trim().startsWith("|"))
-          .map((line) => line.split("|").slice(1, -1).map((c) => c.trim()));
-        // Core must have exactly one data row (owner) by default; proof row is conditional comment, not a second data row
-        const dataRows = rows.filter((cells) => cells[0].startsWith("A-R"));
-        const hasSingleCoreAnchor = dataRows.length === 1 && dataRows[0][1] === "file";
-        const hasProofConditionalComment = content.includes("For a typed proof boundary, add:");
-        const hasBareNotOwnership = content.includes("bare command is not ownership") || content.includes("bare");
-        return hasSingleCoreAnchor && hasProofConditionalComment && hasBareNotOwnership;
-      },
-    },
-    {
-      // Design template Compact core parsed: single anchor, proof conditional
-      label: "design template Compact core is per-surface parsed (behavioral)",
-      file: "src/claude/skills/specs/templates/design.md",
-      assert: (content) => {
-        const rows = content
-          .split("\n")
-          .filter((line) => line.trim().startsWith("|"))
-          .map((line) => line.split("|").slice(1, -1).map((c) => c.trim()));
-        const dataRows = rows.filter((cells) => cells[0].startsWith("A-D"));
-        const hasSingleCoreAnchor = dataRows.length === 1 && dataRows[0][0] === "A-D-01";
-        const hasProofConditionalComment = content.includes("For a typed proof boundary, add:") && content.includes("A-D-02");
-        return hasSingleCoreAnchor && hasProofConditionalComment;
-      },
     },
     {
       label: "Specs skill keeps scope and proof boundaries explicit",
@@ -5860,7 +5576,7 @@ async function runStaticSemanticTests() {
     console.log(`✔ ${check.label}`);
   }
 
-  return checks.length + specs21Tests + implementationReadinessTests
+  return checks.length + specsContractTests + implementationReadinessTests
     + processTaskStatusTests + adaptiveCoverageTests + brainstormContractTests
     + developPlanNativeTests + scoutSubroutineTests + syncRepairTests + testPlanNativeTests + debugAdaptiveTests + debugProportionalTests + debugAgentGatesTests
     + hotfixAdaptiveTests + researchAdaptiveTests
@@ -6389,228 +6105,12 @@ async function assertNoSourcePayloadPaths(root, platform, reportFailure) {
   }
 }
 
-function runSpecValidator(specDir) {
-  const validator = join(packageRoot, "src/claude/scripts/validate-spec-output.cjs");
-  return spawnSync(process.execPath, [validator, specDir], {
-    cwd: packageRoot,
-    encoding: "utf8",
-  });
-}
-
 function runReconstructValidator(bundleDir) {
   const validator = join(packageRoot, "src/claude/scripts/validate-docs-reconstruct.cjs");
   return spawnSync(process.execPath, [validator, bundleDir], {
     cwd: packageRoot,
     encoding: "utf8",
   });
-}
-
-async function createValidSpecFixture(root) {
-  // Migration coverage: this deliberately exercises the schema 2.0 read-
-  // compatibility path. Canonical v2.1 authoring is checked structurally by
-  // runSpecs21ContractTests above.
-  const specDir = join(root, "valid-spec");
-  const taskPath = "tasks/task-R1-01-user-permission.md";
-  await writeText(
-    join(specDir, "spec.json"),
-    JSON.stringify(
-      {
-        schema_version: "2.0",
-        feature_name: "valid-spec",
-        created_at: "2026-08-13T00:00:00+07:00",
-        updated_at: "2026-08-13T00:05:00+07:00",
-        status: "in_progress",
-        current_phase: "tasks",
-        workflow_policy: workflowPolicy.workflowPolicySnapshot({ riskSignals: {} }),
-        scope_lock: {
-          source: "Add user permission control",
-          in_scope: ["1"],
-          out_of_scope: [],
-          expansion_policy: "requires-user-approval",
-        },
-        approvals: {
-          requirements: { generated: true, agent_validated: true },
-          design: { generated: true, agent_validated: true },
-          tasks: { generated: true, agent_validated: true },
-        },
-        coordination: {
-          tasks_required: true,
-          phases_required: false,
-          reason: "task_topology",
-          task_triggers: ["separate_proof"],
-        },
-        task_files: [taskPath],
-        task_registry: {
-          [taskPath]: {
-            id: "R1-01",
-            title: "User permission control",
-            status: "pending",
-            dependencies: [],
-            blocker: null,
-            started_at: null,
-            completed_at: null,
-            last_updated_at: null,
-            artifacts: ["backend/tests/test_admin_permissions.py"],
-          },
-        },
-        validation: {
-          status: "not-run",
-          last_validated_at: null,
-          semantic_review: {
-            status: "not-run",
-            reviewed_artifact_digest: null,
-            reviewed_criteria: [],
-            counterexamples: [],
-          },
-        },
-        timestamps: {
-          init: "2026-08-13T00:00:00+07:00",
-          requirements_done: "2026-08-13T00:01:00+07:00",
-          research_done: null,
-          design_done: "2026-08-13T00:03:00+07:00",
-          tasks_done: "2026-08-13T00:04:00+07:00",
-          code_done: null,
-          test_done: null,
-          review_done: null,
-          validation_done: null,
-        },
-        ready_for_implementation: false,
-      },
-      null,
-      2,
-    ),
-  );
-  await writeText(
-    join(specDir, "requirements.md"),
-    `# Requirements\n\n### Requirement 1: User Permission\n\n- **R1.1** When an admin toggles permission, the system shall persist the user permission state.\n`,
-  );
-  await writeText(
-    join(specDir, "design.md"),
-    `# Design\n\n## Boundary\n\nThe existing admin route owns the permission update.\n\n## Typed Anchors\n\n| ID | Type | Target | Role |\n|---|---|---|---|\n| A-D-01 | file | \`backend/app/api/v1/admin.py\` | existing route owner and entrypoint |\n| A-D-02 | route | \`PATCH /admin/users/{id}/permissions\` | permission update contract |\n\n## Decisions and Invariants\n\n### D1 — Preserve admin authorization\n\n- **Decision:** Extend the existing route and preserve its authorization check.\n- **Negative path:** A missing user returns 404.\n- **Anchors:** A-D-01, A-D-02\n\n## Verification\n\n| Requirement | Proof target | Expected result | Negative path / reachability |\n|---|---|---|---|\n| R1.1 | \`pytest backend/tests/test_admin_permissions.py\` | exit code 0 and persisted permission | missing user through A-D-02 returns 404 |\n`,
-  );
-  await writeText(
-    join(specDir, taskPath),
-    `# Task R1-01: User permission control\n\n**Status:** pending\n\n## Outcome\n\nAn admin can persist a user's workspace permission through the existing route.\n\n## Scope and Typed Anchors\n\n- **In scope:** Permission update and missing-user response.\n- **Out of scope:** A new authorization system.\n- **Contracts/Invariants:** D1\n- **Canonical design anchors consumed:** A-D-01, A-D-02\n\n| ID | Type | Target | Role |\n|---|---|---|---|\n| A-R1-01-01 | command | \`pytest backend/tests/test_admin_permissions.py\` | planned focused verification |\n\n## Changes\n\n- [ ] Persist permission through the existing admin route. _Requirements: 1.1_\n- [ ] Return 404 for a missing user. _Requirements: 1.1_\n\n## Acceptance\n\n- **R1.1:** The real route returns the persisted permission and rejects a missing user with 404.\n\n## Dependencies\n\n- none\n\n## Verification Plan\n\n- **Command:** \`pytest backend/tests/test_admin_permissions.py\`\n- **Expected:** exit code 0 with persisted-permission assertions\n- **Negative path:** missing user returns 404\n- **Reachability:** \`PATCH /admin/users/{id}/permissions\` is registered by \`backend/app/api/v1/admin.py\`\n`,
-  );
-  return specDir;
-}
-
-async function createInvalidSpecFixture(root) {
-  const specDir = join(root, "invalid-triage-like-spec");
-  const taskFiles = [
-    "tasks/task-R0-01-project-setup.md",
-    "tasks/task-R0-02-ticket-list.md",
-    "tasks/task-R0-03-filtering.md",
-    "tasks/task-R0-04-ticket-detail.md",
-    "tasks/task-R0-05-status-update.md",
-  ];
-  await writeText(
-    join(specDir, "spec.json"),
-    JSON.stringify(
-      {
-        feature: "triage-dashboard",
-        status: "approved",
-        scope_lock: true,
-        tasks: taskFiles,
-        task_registry: {
-          "task-R0-01": { slug: "project-setup", status: "pending" },
-          "task-R0-02": { slug: "ticket-list", status: "pending" },
-          "task-R0-03": { slug: "filtering", status: "pending" },
-        },
-        ready_for_implementation: true,
-      },
-      null,
-      2,
-    ),
-  );
-  await writeText(
-    join(specDir, "requirements.md"),
-    "# Requirements\n\n### R1 — Ticket List\nWHEN the dashboard loads, THE SYSTEM SHALL show tickets.\n",
-  );
-  await writeText(join(specDir, "design.md"), "# Design\n\nRender ticket list.\n");
-  for (const taskFile of taskFiles) {
-    await writeText(
-      join(specDir, taskFile),
-      `# Task\n\n## Goal\nBuild something.\n\n## Steps\n1. Do work.\n\n## Acceptance Criteria\n- Works.\n`,
-    );
-  }
-  return specDir;
-}
-
-async function runSpecValidatorFixtureTests() {
-  const root = await mkdtemp(join(tmpdir(), "cafekit-spec-validator-"));
-  try {
-    const validSpec = await createValidSpecFixture(root);
-    const invalidSpec = await createInvalidSpecFixture(root);
-
-    const valid = runSpecValidator(validSpec);
-    if (valid.status !== 0) {
-      console.error(valid.stdout);
-      console.error(valid.stderr);
-      console.error("[FAIL] spec validator rejected valid fixture");
-      process.exit(1);
-    }
-
-    const invalid = runSpecValidator(invalidSpec);
-    const invalidOutput = `${invalid.stdout}\n${invalid.stderr}`;
-    const expectedFailures = [
-      "scope_lock",
-      "task_files",
-      "task_registry",
-      "design_context.validation_recommended",
-      "validation.status is not completed",
-      "entirely R0",
-      "missing Requirements mapping",
-      "missing Evidence",
-      "missing Related Files",
-      "missing Completion Criteria",
-      "missing Risk Assessment",
-    ];
-
-    if (invalid.status === 0) {
-      console.error("[FAIL] spec validator accepted invalid triage-like fixture");
-      process.exit(1);
-    }
-
-    for (const expected of expectedFailures) {
-      if (!invalidOutput.includes(expected)) {
-        console.error(invalidOutput);
-        console.error(`[FAIL] spec validator did not report ${expected}`);
-        process.exit(1);
-      }
-    }
-
-    console.log("✔ spec validator accepts valid fixture");
-    console.log("✔ spec validator rejects triage-like invalid fixture");
-
-    // Specs v2 tasks reference named design contracts and never copy their
-    // canonical bodies, preventing first-block-only drift by construction.
-    const driftSpec = join(root, "multi-contract-drift-spec");
-    await cp(validSpec, driftSpec, { recursive: true });
-    const driftDesignPath = join(driftSpec, "design.md");
-    const driftDesign = `${await readFile(driftDesignPath, "utf8")}\n### C1 — Permission payload\n\n<!-- contract:PermissionPayload -->\n\`\`\`json\n{ "user_id": 1, "can_create": true }\n\`\`\`\n\n### GATE-REVIEW — Permission error\n\n<!-- contract:PermissionError -->\n\`\`\`json\n{ "error": "not_found" }\n\`\`\`\n`;
-    await writeText(
-      driftDesignPath,
-      driftDesign,
-    );
-    const driftTaskPath = join(driftSpec, "tasks/task-R1-01-user-permission.md");
-    const driftTask = (await readFile(driftTaskPath, "utf8")).replace(
-      "- **Contracts/Invariants:** D1",
-      '- **Contracts/Invariants:** C1, C2\n\n<!-- contract:PermissionPayload -->\n```json\n{ "user_id": 1, "can_create": true }\n```\n\n<!-- contract:PermissionError -->\n```json\n{ "error": "notFound" }\n```',
-    );
-    await writeText(driftTaskPath, driftTask);
-    const drift = runSpecValidator(driftSpec);
-    const driftOutput = `${drift.stdout}\n${drift.stderr}`;
-    if (drift.status === 0 || !driftOutput.includes("Specs v2 tasks reference named contract IDs and must not copy canonical contract blocks")) {
-      console.error(driftOutput);
-      console.error("[FAIL] spec validator allowed copied canonical contract blocks in a Specs v2 task");
-      process.exit(1);
-    }
-    console.log("✔ spec validator rejects copied canonical contract blocks in Specs v2 tasks");
-    return 3;
-  } finally {
-    await rm(root, { recursive: true, force: true });
-  }
 }
 
 const reconstructDocuments = [
@@ -7002,7 +6502,6 @@ async function main() {
     console.log(`\n[skill-test] PASS: ${totalTests} focused static tests executed`);
     return;
   }
-  const requiredSemanticTests = parseRequiredSemanticTests(argv);
   const chromeTestsDir = join(
     packageRoot,
     "src/claude/skills/chrome-devtools/scripts/__tests__",
@@ -7063,35 +6562,6 @@ async function main() {
     },
   ];
 
-  // D12: every required `*.semantic-firewall.test.js` basename must already
-  // be discovered under bin/__tests__ (sorted basenames, sole discovery
-  // authority: semantic-firewall-test-discovery.cjs) -- missing/undiscovered
-  // fails immediately, before any suite runs. Each required basename is then
-  // run and verified in isolation, exactly like every other suite above:
-  // not executed (0 tests) or a failing exit code both fail the whole run.
-  if (requiredSemanticTests.length > 0) {
-    const discovery = semanticFirewallDiscovery.assertRequiredSemanticTests(
-      installerTestsDir,
-      requiredSemanticTests,
-    );
-    if (!discovery.ok) {
-      for (const basename of discovery.missing) {
-        console.error(`[FAIL] required semantic-firewall test not discovered: ${basename}`);
-      }
-      process.exit(1);
-    }
-    for (const basename of requiredSemanticTests) {
-      testSuites.push({
-        label: `semantic-firewall required test: ${basename}`,
-        command: process.execPath,
-        args: ["--test", join(installerTestsDir, basename)],
-        expectedFiles: 1,
-        parseCount: parseNodeTestCount,
-        summarize: parseNodeTestSummary,
-      });
-    }
-  }
-
   const missingSuites = testSuites.filter((suite) => suite.expectedFiles === 0);
   if (missingSuites.length > 0) {
     for (const suite of missingSuites) {
@@ -7110,7 +6580,6 @@ async function main() {
   console.log("\n[skill-test] instruction install fixtures");
   totalTests += await runWave1InstructionFixtureTests();
   console.log("\n[skill-test] spec artifact validator fixtures");
-  totalTests += await runSpecValidatorFixtureTests();
   console.log("\n[skill-test] reconstruct docs validator fixtures");
   totalTests += await runReconstructValidatorFixtureTests();
   for (const suite of testSuites) {

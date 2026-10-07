@@ -1134,7 +1134,6 @@ test('spec-gate rejects stale FLASH_UNVERIFIED done state', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cafekit-spec-gate-'));
   const specGate = installClaudeRuntimeClosure(root);
   assert.equal(fs.existsSync(path.join(root, '.claude', 'scripts', 'spec-final-state.cjs')), true);
-  assert.equal(fs.existsSync(path.join(root, '.claude', 'scripts', 'validate-spec-output.cjs')), true);
   fs.mkdirSync(path.join(root, 'specs', 'demo', 'tasks'), { recursive: true });
   fs.writeFileSync(path.join(root, 'specs', 'demo', 'spec.json'), JSON.stringify({
     status: 'in_progress',

@@ -59,13 +59,10 @@
       "validate-docs.cjs",
       "validate-docs-reconstruct.cjs",
       "generate-skill-catalog.cjs",
-      "validate-spec-output.cjs",
       "scan-staged-secrets.cjs",
       "workflow-policy.cjs",
       "spec-resolver.cjs",
       "spec-receipt.cjs",
-      "spec-ground.cjs",
-      "spec-semantic-model.cjs",
       "spec-final-state.cjs",
       "provenance.cjs"
     ]
@@ -96,6 +93,10 @@
       "codex": ["agents/god_developer.toml"]
     },
     "runtimeFiles": [
+      "scripts/validate-spec-output.cjs",
+      "scripts/spec-ground.cjs",
+      "scripts/spec-authoring-digest.cjs",
+      "scripts/spec-semantic-model.cjs",
       "scripts/change-firewall.cjs",
       "scripts/spec-scaffold.cjs",
       "scripts/spec-readiness.cjs",
