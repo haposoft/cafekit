@@ -120,3 +120,12 @@ plans/*
 
 # claude plugin eval run outputs (any depth)
 evals/**/results/
+
+# Personal working notes in plans/ stay local (handoffs, reports, scratch plans).
+# Only the files below are shared: a self-test reads the blueprint, docs/provenance.md cites three, and the essence doc records the core design decision.
+plans/*.md
+!plans/specs-v2-remake-blueprint.md
+!plans/20260805-instructions-semantic-review.md
+!plans/20260805-instructions-editorial-implementation.md
+!plans/20260806-fixup-and-postmerge-plan.md
+!plans/20260818-essence-specs-process-first.md
