@@ -81,7 +81,7 @@ HOI_LAI = rf"^(?:(?!{LABEL})[\s\S])*?{QLINE}"
 MOT_CAU = rf"^(?![\s\S]*{QLINE}[\s\S]*{QLINE})[\s\S]*{QLINE}"
 DAN_NGUON = r"config\.js[`*]*[ \t]*(?::(?:[ \t]*(?:[Ll]ines?|[Dd]òng)[ \t]*)?|#L|,[ \t]*(?:[Ll]ines?|[Dd]òng)[ \t]*|\(?(?:[Ll]ines?|[Dd]òng|L)[ \t]*)\d"
 LECH = rf"(?:[Kk]hác|[Ll]ệch|[Kk]hông khớp|[Mm]âu thuẫn|[Ll]ỗi thời|(?<![{L}])[Cc]ũ(?![{L}])|[Oo]utdated|[Ss]tale|[Mm]ismatch|[Dd]iffer|[Cc]onflict|[Ii]nconsistent|[Ww]rong)"
-TIM_THAY = r"(?:[Nn]o evidence|[Nn]othing found|[Nn]ot found|[Kk]hông tìm thấy|[Cc]hưa tìm thấy|[Kk]hông thấy|[Kk]hông có bằng chứng|[Kk]hông có (?:cơ sở dữ liệu|database|CSDL|DB|db)|[Kk]hông (?:dùng|lưu|sử dụng)|[Dd]oes not (?:use|store)|[Dd]oesn't (?:use|store)|[Nn]o database)"
+TIM_THAY = r"(?:[Nn]o evidence|[Nn]othing found|[Nn]ot found|[Kk]hông tìm thấy|[Cc]hưa tìm thấy|[Kk]hông thấy|[Kk]hông có bằng chứng|[Kk]hông có (?:cơ sở dữ liệu|database|CSDL|DB|db)|[Kk]hông (?:dùng|lưu|sử dụng)|[Dd]oes not (?:use|store)|[Dd]oesn't (?:use|store)|[Nn]o database|[Kk]hông cho thấy|không (?:được )?(?:lưu|ghi lại) ở đâu|[Dd]oes not show|[Nn]o sign of|[Nn]ot stored)"
 WS = r'"file_path":"(?:[^"]*/home/cwd/|(?![/~]))'
 ALLOWED = [r"README\.md", r"package\.json", r"src/?", r"src/config\.js", r"src/greet\.js", r"src/server\.js", r"test/?", r"test/greet\.test\.js"]
 FILE_MOI = r"(?:^|\n)(?!(?:\./)?(?:\.git/[^\n]*|\.git|" + "|".join(ALLOWED) + r")(?=\n|$))[^\n]"
