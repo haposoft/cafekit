@@ -2567,7 +2567,7 @@ function developPlanNativeContractIssues(input) {
   const skillLines = lineCount(skill);
   const coreLines = [skill, parallel, sync, syncProtocols]
     .reduce((total, value) => total + lineCount(value), 0);
-  if (skillLines < 140 || skillLines > 200 || coreLines > 400) issues.add("context-budget");
+  if (skillLines < 115 || skillLines > 200 || coreLines > 400) issues.add("context-budget");
 
   return [...issues].sort();
 }
@@ -2587,7 +2587,7 @@ async function runDevelopPlanNativeContractTests() {
   const mutateClause = (name, source, issue, from, to) => ({
     name, source, issue, from, to,
   });
-  const specificTaskBoundary = "Specific-task\nmode never touches a sibling and returns after its successful sync without chaining or GATE-DONE.";
+  const specificTaskBoundary = "Specific-task mode never touches a sibling and returns after its successful sync without chaining or GATE-DONE.";
   const verifyFirstMutations = [
     mutateClause("drops the command that derives Base and Head", "quality", "provenance-command",
       "`node .claude/scripts/provenance.cjs --project-root . --specs-root specs --spec-file <task file> --feature-name <feature> --session <any label> --json`,",
@@ -2667,7 +2667,7 @@ async function runDevelopPlanNativeContractTests() {
       "interrupted-action-replayed-blindly",
       "skill",
       "interrupted-recovery",
-      "Do not blindly replay a non-idempotent\nmutation.",
+      "Do not blindly replay a non-idempotent mutation.",
       "Repeat every interrupted mutation from the beginning.",
     ),
     mutateClause(
@@ -2678,9 +2678,9 @@ async function runDevelopPlanNativeContractTests() {
       "More than one `in_progress` | Resume the first active task.",
     ),
     ...[
-      ["specific-task-touches-sibling", "Specific-task\nmode never touches a sibling and returns after its successful sync without chaining or GATE-DONE. Specific-task mode may touch a sibling after sync."],
-      ["specific-task-chains", "Specific-task\nmode never touches a sibling and returns after its successful sync without chaining or GATE-DONE. Specific-task mode may chain to the next task after sync."],
-      ["specific-task-opens-c3", "Specific-task\nmode never touches a sibling and returns after its successful sync without chaining or GATE-DONE. Specific-task mode may open GATE-DONE after sync."],
+      ["specific-task-touches-sibling", "Specific-task mode never touches a sibling and returns after its successful sync without chaining or GATE-DONE. Specific-task mode may touch a sibling after sync."],
+      ["specific-task-chains", "Specific-task mode never touches a sibling and returns after its successful sync without chaining or GATE-DONE. Specific-task mode may chain to the next task after sync."],
+      ["specific-task-opens-c3", "Specific-task mode never touches a sibling and returns after its successful sync without chaining or GATE-DONE. Specific-task mode may open GATE-DONE after sync."],
     ].map(([name, to]) => mutateClause(
       name,
       "skill",
@@ -2692,8 +2692,8 @@ async function runDevelopPlanNativeContractTests() {
       "writer-drift-allows-state-write",
       "skill",
       "interrupted-recovery",
-      "detected state, task, or owned-path drift stops\nbefore any Status or Receipt write.",
-      "detected state, task, or owned-path drift stops\nbefore any Status or Receipt write. Detected writer drift may be ignored and Status or Receipt writes may continue.",
+      "detected state, task, or owned-path drift stops before any Status or Receipt write.",
+      "detected state, task, or owned-path drift stops before any Status or Receipt write. Detected writer drift may be ignored and Status or Receipt writes may continue.",
     ),
     mutateClause(
       "shared-run-accepts-skips",
@@ -5245,7 +5245,47 @@ async function runStaticSemanticTests() {
     {
       label: "cf:develop SKILL stays within directional context budget",
       file: "src/claude/skills/develop/SKILL.md",
-      assert: (content) => content.trimEnd().split("\n").length >= 140 && content.trimEnd().split("\n").length <= 200,
+      assert: (content) => content.trimEnd().split("\n").length >= 115 && content.trimEnd().split("\n").length <= 200,
+    },
+    {
+      label: "cf:develop SKILL keeps Resolve rules as bullets, repair lines whole, fenced Receipt output, and no numbered list",
+      file: "src/claude/skills/develop/SKILL.md",
+      assert: (content) => {
+        const rules = [
+          "Resolve one `specs/<feature>/plan.md` plus flat `task-NN-*.md`; an explicit task path wins.",
+          "Read GATE-SCOPE scope, exclusions, acceptance mapping, ownership, and task order.",
+          "A task is unblocked only when every named dependency is `done` with a valid current inline Receipt.",
+          "Without a packet, work directly only when the change is clear, isolated, reversible, and low-risk.",
+        ];
+        const repairLines = [
+          ["Unless under `--flash` or the command costs money or writes artifacts, run the task's exact Verification Plan command once", "this pre-change run is not a repair round."],
+          ["Passing before any change, outside a resumed task,", "but never run it as proof."],
+        ];
+        const valid = (text) => {
+          const lines = text.split("\n");
+          let fenced = false;
+          const numbered = lines.some((line) => {
+            if (line.startsWith("```")) { fenced = !fenced; return false; }
+            return !fenced && /^\d+\. /.test(line);
+          });
+          return !numbered
+            && rules.every((rule) => lines.includes(`- ${rule}`))
+            && repairLines.every(([start, end]) => lines.some((line) => line.startsWith(start) && line.endsWith(end)))
+            && text.includes("non-empty current output in a fenced block");
+        };
+        const droppedRule = content.replace(`- ${rules[2]}`, "- A task is unblocked.");
+        const renumbered = content.replace(`- ${rules[0]}`, `1. ${rules[0]}`);
+        const extraNumbered = content.replace("\n## Modes", "\n1. extra\n\n## Modes");
+        const repairJoined = content.replace("but never run it as proof.\n", "but never run it as proof. ");
+        const unfenced = content.replace("non-empty current output in a fenced block", "non-empty current output");
+        return valid(content)
+          && droppedRule !== content && !valid(droppedRule)
+          && renumbered !== content && !valid(renumbered)
+          && extraNumbered !== content && !valid(extraNumbered)
+          && repairJoined !== content && !valid(repairJoined)
+          && unfenced !== content && !valid(unfenced);
+      },
+    },
     {
       label: "cf:test SKILL keeps every rule-map phrase on one line and no numbered list",
       file: "src/claude/skills/test/SKILL.md",
