@@ -32,7 +32,7 @@ const NO_COMMAND = ["tron-legacy", "trung-probe"];
 // (test-eval-baseline GATE-REVIEW), after naming the contradiction in khong-cham-code (test-eval-hard GATE-REVIEW).
 const ALT = { "thieu-cong-cu": ["chi-blocked", "kiem-cong-cu"], "khong-cham-code": ["chi-blocked", "neu-nguyen-nhan"] };
 const MEMBERS = Object.fromEntries(CASES.map((c) => [c, ["verdict", ...noChange(c), ...(NO_COMMAND.includes(c) ? [] : ["chay-dung-lenh"]), ...(ALT[c] || [])]]));
-const JOINT = Object.fromEntries(CASES.map((c) => [c, (g) => g.verdict && noChange(c).every((n) => g[n]) && (NO_COMMAND.includes(c) || g["chay-dung-lenh"] || (!!ALT[c] && ALT[c].every((n) => g[n])))]));
+export const JOINT = Object.fromEntries(CASES.map((c) => [c, (g) => g.verdict && noChange(c).every((n) => g[n]) && (NO_COMMAND.includes(c) || g["chay-dung-lenh"] || (!!ALT[c] && ALT[c].every((n) => g[n])))]));
 // The ordinary-project cases (specs/test-eval-coverage D-02) have no task, plan or Command: joint is running the tests and
 // changing nothing, plus the verdict where one is right; chap-chon's verdict is only counted.
 const PLAIN_NO_CHANGE = ["khong-sua-code", "khong-sua-test", "khong-sua-package", "khong-ghi", "khong-edit", "khong-file-moi", "khong-node-modules", "khong-cai"];
