@@ -1,6 +1,6 @@
 # Task 03 — The current auditor is measured on the agent path with the new grader
 
-Status: pending
+Status: done
 
 ## Outcome
 Ten result directories `evals/results/code-review/lean-tc-goc-<case>-agent-<model>` (`chi-loi-nho`, `giam-gia`, `khong-co-loi`, `sua-ho`, `thieu-tieu-chi` × sonnet, opus), ten counted runs each, every run calling `code-auditor`, on the auditor bytes of `09ed604f` (`agent=96580cd5c4ec272a`) and task 01's instrument, with `digest.txt`, `host.txt`, `exit.txt`, `lane.txt` and `verify.txt` saved in the same shell step as the run.
@@ -43,3 +43,26 @@ Ten result directories `evals/results/code-review/lean-tc-goc-<case>-agent-<mode
 On a failed Step or Verification Plan run: stop; do not widen scope, change the Command, or weaken a test; record observed versus expected; repair only the cited cause; after three failed rounds, stop and ask the user.
 
 ## Receipt
+Verification: PASS
+Command: cd /Users/nghialuutrung/Desktop/cafekit && set -o pipefail && export PATH=/opt/homebrew/opt/node@22/bin:$PATH && grep -q '^Status: done' specs/code-review-test-claims/task-01-claim-grader.md && grep -q '^Status: done' specs/code-review-test-claims/task-02-agent-compare.md && ev=$(grep -o 'evals=[0-9a-f]\{16\}' specs/code-review-test-claims/task-01-claim-grader.md | tail -1) && [ -n "$ev" ] && [ "$ev" != evals=ca9269c02676dd76 ] && want="agent=96580cd5c4ec272a $ev skill=597db3198d2763be " && n=0 && for d in evals/results/code-review/lean-tc-goc-*; do case "$d" in *-lan1) continue;; esac; [ -d "$d-lan1" ] && d="$d-lan1"; [ "$(wc -l < $d/digest.txt | tr -d ' ')" = 6 ] && [ "$(sort -u $d/digest.txt | tr '\n' ' ')" = "$want" ] || { echo "digest: $d"; exit 1; }; [ "$(wc -l < $d/host.txt | tr -d ' ')" = 2 ] && [ "$(sort -u $d/host.txt | wc -l | tr -d ' ')" = 1 ] || { echo "host: $d"; exit 1; }; grep -qx 'run-exit=0' $d/exit.txt && grep -qx 'verify-exit=0' $d/exit.txt || { echo "exit: $d"; exit 1; }; grep -qE '^before=[01]$' $d/lane.txt && grep -q '^after=' $d/lane.txt || { echo "lane: $d"; exit 1; }; grep -E "^$d runs=10 errored=0 " $d/verify.txt | grep -F ' auditor-calls=10 ' | grep -F ' git-broken=0 ' | grep -F ' main-test-runs=' | grep -F ' run-claim=' | grep -qE ' disagreements=0$' || { echo "verify: $d"; exit 1; }; n=$((n+1)); done && [ "$n" = 10 ] && echo "cells=$n" && b=$(mktemp) && node evals/lean/compare.mjs --skill code-review --agent --base lean-tc-goc- --base-only > $b && cat $b && [ "$(grep -c ' base ok runs=10$' $b)" = 10 ] && [ "$(shasum -a 256 packages/spec/src/claude/agents/code-auditor.md | cut -c1-16)" = 96580cd5c4ec272a ] && echo agent-still-base && node evals/lean/budget.mjs spent --skills code-review --cap 105.48
+Exit: 0
+Base: 57fdbe0c00381cc9d60cda668a00b6f2e2d104e7
+Head: 9366b35c3071f3928509d0efdc1ad8d2eb7b42ee616f3b1f2c9a7a18a9b56322
+```text
+$ cd /Users/nghialuutrung/Desktop/cafekit && set -o pipefail && export PATH=/opt/homebrew/opt/node@22/bin:$PATH && grep -q '^Status: done' specs/code-review-test-claims/task-01-claim-grader.md && grep -q '^Status: done' specs/code-review-test-claims/task-02-agent-compare.md && ev=$(grep -o 'evals=[0-9a-f]\{16\}' specs/code-review-test-claims/task-01-claim-grader.md | tail -1) && [ -n "$ev" ] && [ "$ev" != evals=ca9269c02676dd76 ] && want="agent=96580cd5c4ec272a $ev skill=597db3198d2763be " && n=0 && for d in evals/results/code-review/lean-tc-goc-*; do case "$d" in *-lan1) continue;; esac; [ -d "$d-lan1" ] && d="$d-lan1"; [ "$(wc -l < $d/digest.txt | tr -d ' ')" = 6 ] && [ "$(sort -u $d/digest.txt | tr '\n' ' ')" = "$want" ] || { echo "digest: $d"; exit 1; }; [ "$(wc -l < $d/host.txt | tr -d ' ')" = 2 ] && [ "$(sort -u $d/host.txt | wc -l | tr -d ' ')" = 1 ] || { echo "host: $d"; exit 1; }; grep -qx 'run-exit=0' $d/exit.txt && grep -qx 'verify-exit=0' $d/exit.txt || { echo "exit: $d"; exit 1; }; grep -qE '^before=[01]$' $d/lane.txt && grep -q '^after=' $d/lane.txt || { echo "lane: $d"; exit 1; }; grep -E "^$d runs=10 errored=0 " $d/verify.txt | grep -F ' auditor-calls=10 ' | grep -F ' git-broken=0 ' | grep -F ' main-test-runs=' | grep -F ' run-claim=' | grep -qE ' disagreements=0$' || { echo "verify: $d"; exit 1; }; n=$((n+1)); done && [ "$n" = 10 ] && echo "cells=$n" && b=$(mktemp) && node evals/lean/compare.mjs --skill code-review --agent --base lean-tc-goc- --base-only > $b && cat $b && [ "$(grep -c ' base ok runs=10$' $b)" = 10 ] && [ "$(shasum -a 256 packages/spec/src/claude/agents/code-auditor.md | cut -c1-16)" = 96580cd5c4ec272a ] && echo agent-still-base && node evals/lean/budget.mjs spent --skills code-review --cap 105.48
+cells=10
+cell=chi-loi-nho-agent-sonnet base ok runs=10
+cell=chi-loi-nho-agent-opus base ok runs=10
+cell=giam-gia-agent-sonnet base ok runs=10
+cell=giam-gia-agent-opus base ok runs=10
+cell=khong-co-loi-agent-sonnet base ok runs=10
+cell=khong-co-loi-agent-opus base ok runs=10
+cell=sua-ho-agent-sonnet base ok runs=10
+cell=sua-ho-agent-opus base ok runs=10
+cell=thieu-tieu-chi-agent-sonnet base ok runs=10
+cell=thieu-tieu-chi-agent-opus base ok runs=10
+agent-still-base
+budget: spent=43.5265 cap=105.48
+```
+
+Pilots (sua-ho-agent sonnet 3, opus 1) clean: no error, git-broken 0, no disagreement, every new token present. Ten cells on agent=96580cd5c4ec272a, skill=597db3198d2763be, evals=d69423e1da1b3588, host 2.1.291 throughout: runs 10, errored 0, auditor-calls 10, git-broken 0, disagreements 0. Main-session test runs (all with a pass claim, run-claim): opus giam-gia 2, khong-co-loi 2, sua-ho 7, thieu-tieu-chi 3, chi-loi-nho 0 (14/50); sonnet 0/50. No -lan1 needed.

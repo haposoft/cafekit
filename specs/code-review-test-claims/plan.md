@@ -53,7 +53,7 @@ Specs-Contract: process-first-ready-v1
 |---|---|---|---|---|---|---|
 | 01 | Widen the claim grader and attribute test runs | P1 | AC-01 | `evals/code-review/` | - | done |
 | 02 | Compare agent-path cells | P1 | AC-02 | `evals/lean/compare.mjs` | - | done |
-| 03 | Measure the current auditor on the agent path | P1 | AC-03 | `evals/results/code-review/lean-tc-goc-*` | task-01, task-02 | pending |
+| 03 | Measure the current auditor on the agent path | P1 | AC-03 | `evals/results/code-review/lean-tc-goc-*` | task-01, task-02 | done |
 | 04 | Add the relay instruction to code-auditor | P1 | AC-04 | `agents/code-auditor.md`, self-test | task-03 | pending |
 | 05 | Measure the changed auditor and compare | P1 | AC-05 | `evals/results/code-review/lean-tc-sau-*`, `compare-agent.txt` | task-02, task-04 | pending |
 
