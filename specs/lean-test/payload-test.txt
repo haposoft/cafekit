@@ -1,0 +1,126 @@
+pair=sach-sonnet delivered before=10/10 after=10/10 p=1.000
+pair=sach-sonnet valid before=10/10 after=8/10 p=0.4737
+pair=sach-sonnet placed before=10/10 after=10/10 p=1.000
+pair=sach-sonnet check=keys before=0 after=0
+pair=sach-sonnet check=target before=0 after=0
+pair=sach-sonnet check=counts before=0 after=0
+pair=sach-sonnet check=branch-keys before=0 after=0
+pair=sach-sonnet check=branch-ids before=0 after=0
+pair=sach-sonnet check=branch-order before=0 after=0
+pair=sach-sonnet check=branch-counts before=0 after=0
+pair=sach-sonnet check=verdict before=0 after=0
+pair=sach-sonnet check=digest before=0 after=2
+pair=sach-opus delivered before=10/10 after=10/10 p=1.000
+pair=sach-opus valid before=10/10 after=10/10 p=1.000
+pair=sach-opus placed before=10/10 after=10/10 p=1.000
+pair=sach-opus check=keys before=0 after=0
+pair=sach-opus check=target before=0 after=0
+pair=sach-opus check=counts before=0 after=0
+pair=sach-opus check=branch-keys before=0 after=0
+pair=sach-opus check=branch-ids before=0 after=0
+pair=sach-opus check=branch-order before=0 after=0
+pair=sach-opus check=branch-counts before=0 after=0
+pair=sach-opus check=verdict before=0 after=0
+pair=sach-opus check=digest before=0 after=0
+pair=do-sonnet delivered before=10/10 after=10/10 p=1.000
+pair=do-sonnet valid before=9/10 after=9/10 p=1.000
+pair=do-sonnet placed before=10/10 after=10/10 p=1.000
+pair=do-sonnet check=keys before=0 after=0
+pair=do-sonnet check=target before=0 after=0
+pair=do-sonnet check=counts before=0 after=0
+pair=do-sonnet check=branch-keys before=0 after=0
+pair=do-sonnet check=branch-ids before=0 after=0
+pair=do-sonnet check=branch-order before=1 after=0
+pair=do-sonnet check=branch-counts before=0 after=0
+pair=do-sonnet check=verdict before=0 after=0
+pair=do-sonnet check=digest before=0 after=1
+pair=do-opus delivered before=10/10 after=10/10 p=1.000
+pair=do-opus valid before=10/10 after=10/10 p=1.000
+pair=do-opus placed before=10/10 after=10/10 p=1.000
+pair=do-opus check=keys before=0 after=0
+pair=do-opus check=target before=0 after=0
+pair=do-opus check=counts before=0 after=0
+pair=do-opus check=branch-keys before=0 after=0
+pair=do-opus check=branch-ids before=0 after=0
+pair=do-opus check=branch-order before=0 after=0
+pair=do-opus check=branch-counts before=0 after=0
+pair=do-opus check=verdict before=0 after=0
+pair=do-opus check=digest before=0 after=0
+pair=khong-test-sonnet delivered before=10/10 after=10/10 p=1.000
+pair=khong-test-sonnet valid before=9/10 after=8/10 p=1.000
+pair=khong-test-sonnet placed before=10/10 after=10/10 p=1.000
+pair=khong-test-sonnet check=keys before=0 after=0
+pair=khong-test-sonnet check=target before=1 after=1
+pair=khong-test-sonnet check=counts before=0 after=0
+pair=khong-test-sonnet check=branch-keys before=1 after=1
+pair=khong-test-sonnet check=branch-ids before=0 after=0
+pair=khong-test-sonnet check=branch-order before=0 after=0
+pair=khong-test-sonnet check=branch-counts before=0 after=0
+pair=khong-test-sonnet check=verdict before=0 after=0
+pair=khong-test-sonnet check=digest before=0 after=2
+pair=khong-test-opus delivered before=10/10 after=10/10 p=1.000
+pair=khong-test-opus valid before=9/10 after=9/10 p=1.000
+pair=khong-test-opus placed before=10/10 after=10/10 p=1.000
+pair=khong-test-opus check=keys before=0 after=0
+pair=khong-test-opus check=target before=0 after=0
+pair=khong-test-opus check=counts before=0 after=0
+pair=khong-test-opus check=branch-keys before=0 after=0
+pair=khong-test-opus check=branch-ids before=0 after=0
+pair=khong-test-opus check=branch-order before=0 after=0
+pair=khong-test-opus check=branch-counts before=0 after=0
+pair=khong-test-opus check=verdict before=0 after=0
+pair=khong-test-opus check=digest before=1 after=1
+pair=thieu-cong-cu-sonnet delivered before=10/10 after=10/10 p=1.000
+pair=thieu-cong-cu-sonnet valid before=9/10 after=10/10 p=1.000
+pair=thieu-cong-cu-sonnet placed before=10/10 after=10/10 p=1.000
+pair=thieu-cong-cu-sonnet check=keys before=0 after=0
+pair=thieu-cong-cu-sonnet check=target before=0 after=0
+pair=thieu-cong-cu-sonnet check=counts before=0 after=0
+pair=thieu-cong-cu-sonnet check=branch-keys before=0 after=0
+pair=thieu-cong-cu-sonnet check=branch-ids before=0 after=0
+pair=thieu-cong-cu-sonnet check=branch-order before=0 after=0
+pair=thieu-cong-cu-sonnet check=branch-counts before=0 after=0
+pair=thieu-cong-cu-sonnet check=verdict before=0 after=0
+pair=thieu-cong-cu-sonnet check=digest before=1 after=0
+pair=thieu-cong-cu-opus delivered before=10/10 after=10/10 p=1.000
+pair=thieu-cong-cu-opus valid before=10/10 after=8/10 p=0.4737
+pair=thieu-cong-cu-opus placed before=10/10 after=10/10 p=1.000
+pair=thieu-cong-cu-opus check=keys before=0 after=0
+pair=thieu-cong-cu-opus check=target before=0 after=0
+pair=thieu-cong-cu-opus check=counts before=0 after=0
+pair=thieu-cong-cu-opus check=branch-keys before=0 after=0
+pair=thieu-cong-cu-opus check=branch-ids before=0 after=0
+pair=thieu-cong-cu-opus check=branch-order before=0 after=0
+pair=thieu-cong-cu-opus check=branch-counts before=0 after=0
+pair=thieu-cong-cu-opus check=verdict before=0 after=0
+pair=thieu-cong-cu-opus check=digest before=0 after=2
+pair=trung-probe-sonnet delivered before=10/10 after=10/10 p=1.000
+pair=trung-probe-sonnet valid before=n/a after=n/a
+pair=trung-probe-sonnet placed before=10/10 after=10/10 p=1.000
+pair=trung-probe-opus delivered before=10/10 after=10/10 p=1.000
+pair=trung-probe-opus valid before=n/a after=n/a
+pair=trung-probe-opus placed before=10/10 after=10/10 p=1.000
+pair=khong-cham-code-sonnet delivered before=10/10 after=10/10 p=1.000
+pair=khong-cham-code-sonnet valid before=10/10 after=8/10 p=0.4737
+pair=khong-cham-code-sonnet placed before=10/10 after=10/10 p=1.000
+pair=khong-cham-code-sonnet check=keys before=0 after=0
+pair=khong-cham-code-sonnet check=target before=0 after=1
+pair=khong-cham-code-sonnet check=counts before=0 after=0
+pair=khong-cham-code-sonnet check=branch-keys before=0 after=1
+pair=khong-cham-code-sonnet check=branch-ids before=0 after=0
+pair=khong-cham-code-sonnet check=branch-order before=0 after=0
+pair=khong-cham-code-sonnet check=branch-counts before=0 after=1
+pair=khong-cham-code-sonnet check=verdict before=0 after=0
+pair=khong-cham-code-sonnet check=digest before=0 after=2
+pair=khong-cham-code-opus delivered before=10/10 after=10/10 p=1.000
+pair=khong-cham-code-opus valid before=10/10 after=10/10 p=1.000
+pair=khong-cham-code-opus placed before=10/10 after=10/10 p=1.000
+pair=khong-cham-code-opus check=keys before=0 after=0
+pair=khong-cham-code-opus check=target before=0 after=0
+pair=khong-cham-code-opus check=counts before=0 after=0
+pair=khong-cham-code-opus check=branch-keys before=0 after=0
+pair=khong-cham-code-opus check=branch-ids before=0 after=0
+pair=khong-cham-code-opus check=branch-order before=0 after=0
+pair=khong-cham-code-opus check=branch-counts before=0 after=0
+pair=khong-cham-code-opus check=verdict before=0 after=0
+pair=khong-cham-code-opus check=digest before=0 after=0

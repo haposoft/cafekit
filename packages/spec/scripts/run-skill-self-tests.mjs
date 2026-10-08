@@ -2304,7 +2304,7 @@ async function runTestPlanNativeContractTests() {
     ["tester-writes-receipt", "skill", "controller-only-state-proof", "alone writes process-first Status and inline Receipt.", "may delegate process-first Status and inline Receipt writes to Test."],
     ["memory-created", "memory", "side-effect-boundary", "If absent, continue without creating it.", "If absent, create a default memory file."],
     ["lazy-install-restored", "strategy", "side-effect-boundary", "Do not auto-install\nmissing runners, packages, browsers, or linters.", "Run npm install for missing browser tooling."],
-    ["profile-cross-origin", "skill", "safe-ui-auth-and-redaction", "Block cross-origin redirects and destructive production actions without fresh\n  consent.", "Allow cross-origin redirects and destructive production actions."],
+    ["profile-cross-origin", "skill", "safe-ui-auth-and-redaction", "Block cross-origin redirects and destructive production actions without fresh consent.", "Allow cross-origin redirects and destructive production actions."],
     ["partial-verdict", "triage", "canonical-verdicts", "Do not emit `PARTIAL`, `COLLAPSE`, `NO_TESTS`, or an unknown result.", "Emit `PARTIAL` for coverage gaps."],
     ["flaky-read", "skill", "ordinary-nondeterminism", "read the tests that cover the target or changed code (every test file when", "skim the code (every test file when"],
     ["flaky-assert", "skill", "ordinary-nondeterminism", "even when every run passes. When only setup", "unless a run passes. When only setup"],
@@ -5246,6 +5246,51 @@ async function runStaticSemanticTests() {
       label: "cf:develop SKILL stays within directional context budget",
       file: "src/claude/skills/develop/SKILL.md",
       assert: (content) => content.trimEnd().split("\n").length >= 140 && content.trimEnd().split("\n").length <= 200,
+    {
+      label: "cf:test SKILL keeps every rule-map phrase on one line and no numbered list",
+      file: "src/claude/skills/test/SKILL.md",
+      assert: (content) => {
+        const phrases = [
+          "Read current `plan.md` and flat task bytes",
+          "Select only a contained regular task whose dependencies allow proof",
+          "Use the task's exact `Command`, exact unique `Named probes`, `Reachability`, `Oracle`, `Counterexample`, required proof level, and artifact declaration",
+          "Run the smallest adequate proof",
+          "`--full` expands scope but cannot weaken the Verification Plan or substitute unrelated green tests",
+          "Return exactly one canonical `test-proof-v1` object",
+          "alone writes process-first Status and inline Receipt",
+          "Detect commands from task and repository files; never invent them",
+          "Run a cheap compile or typecheck precheck when the project provides one",
+          "Execute the exact task command and all named probes with real counts",
+          "read the tests that cover the target or changed code",
+          "the verdict is `FAIL`, naming the source, even when every run passes. When only setup",
+          "rerun just the suspect tests at least twice more",
+          "A single green run of such a test is not `PASS`",
+          "This step does not apply to process-first Named probes, which run exactly once.",
+          "Inspect negative paths, runtime reachability, and declared artifacts",
+          "Capture tracked, untracked, and ignored project-command drift separately from runtime Head",
+          "Never silently clean or hide project changes",
+          "Redact sensitive material",
+          "validate the complete proof object, then return a concise human report separately from the machine handoff",
+          "### Machine handoff (test-proof-v1)",
+          "No payload: target not identifiable.",
+        ];
+        const valid = (text) => {
+          const lines = text.split("\n");
+          let fenced = false;
+          const numbered = lines.some((line) => {
+            if (line.startsWith("```")) { fenced = !fenced; return false; }
+            return !fenced && /^\d+\. /.test(line);
+          });
+          return !numbered && phrases.every((phrase) => lines.some((line) => line.includes(phrase)));
+        };
+        const droppedPhrase = content.replace(phrases[3], "Run proof");
+        const extraNumbered = content.replace("\n## Execution", "\n1. extra\n\n## Execution");
+        const splitPhrase = content.replace(phrases[3], phrases[3].replace(" ", "\n"));
+        return valid(content)
+          && droppedPhrase !== content && !valid(droppedPhrase)
+          && extraNumbered !== content && !valid(extraNumbered)
+          && splitPhrase !== content && !valid(splitPhrase);
+      },
     },
     {
       label: "cf:specs complete shipped bundle stays at or below 750 lines",
