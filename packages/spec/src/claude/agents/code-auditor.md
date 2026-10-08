@@ -22,6 +22,7 @@ Never report a test result, pass count, or exit code as the review's evidence.
 Without a `test-proof-v1` handoff, state execution proof as unavailable (owned by
 `cf:test`): write the proof line exactly as `**Execution proof:** unavailable (owned by cf:test)`,
 do not otherwise say whether tests pass, and still return the verdict.
+Describe a test gap by the case or assertion the tests lack, never by a test outcome: write "no test covers a missing config file".
 When the proof line says unavailable, end the report with the caller line of the template, verbatim: if the user asked only for a review, the session that relays it must not run tests itself to fill the proof gap and offers `/cf:test` instead; a user request to run tests, or a workflow that owns its test step, is unaffected. With a consumed `test-proof-v1` handoff, omit the caller line.
 
 ## Pre-Review: Task / Spec Compliance
