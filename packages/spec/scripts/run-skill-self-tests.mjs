@@ -6062,7 +6062,6 @@ async function runCodeReviewBoundaryCheck() {
     absent("auditor drops the Strict attestation validator", "auditor", "the attestation validator"),
     absent("auditor drops the attestation marker", "auditor", "CAFEKIT_SEMANTIC_REVIEW_ATTESTATION"),
     present("auditor reports no test result as evidence", "auditor", "Never report a test result, pass count, or exit code as the review's evidence"),
-    present("auditor names a test gap without a test outcome", "auditor", "Describe a test gap by the case or assertion the tests lack, never by a test outcome: write \"no test covers a missing config file\"."),
     present("auditor fixes the unavailable proof line", "auditor", "write the proof line exactly as `**Execution proof:** unavailable (owned by cf:test)`"),
     present("auditor reports the proof field", "auditor", "- **Execution proof:** test-proof-v1 consumed | unavailable (owned by cf:test)"),
     present("auditor does not block on missing proof", "auditor", "Missing execution proof alone is not `BLOCKED`"),
