@@ -128,7 +128,7 @@ const PLATFORMS = {
     detectFiles: ['.omp'],
     commandsDir: null,
     // omp discovers .claude/skills and .agents/skills itself, so CafeKit copies
-    // no skill payload for it. See specs/omp-runtime-support/plan.md.
+    // no skill payload for it. See specs/archive/omp-runtime-support/plan.md.
     skillsDir: '.agents/skills',
     agentsDir: null,
     skillsRef: '.agents/skills',

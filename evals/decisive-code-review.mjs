@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Ghi nguyên văn "đoạn quyết định" của mỗi lượt evals/code-review: lượt trượt một thước chính (danh sách ở
-// specs/code-review-eval-baseline/task-02-ten-review-cases.md, mục Graders), và lượt mà workspace cho thấy test đã
+// specs/archive/code-review-eval-baseline/task-02-ten-review-cases.md, mục Graders), và lượt mà workspace cho thấy test đã
 // chạy, HEAD di chuyển, có stash, cây file đổi hay lời gọi auditor bị từ chối. In số lượt và các dòng nguyên văn,
 // không cắt: input của công cụ với thước tool_used; các dòng final message mà mẫu vắng mặt khớp, hoặc với mẫu hiện
 // diện trượt, các dòng khớp gợi ý của thước; các dòng .test-runs.log; bytes của file được chấm với con-nguyen; các

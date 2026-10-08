@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Đọc lại phòng thử được giữ lại (--keep-temp) và trace của từng lượt chạy, rồi chấm các thước TRẠNG THÁI CUỐI
-// (loại V trong bảng ca ở specs/git-skill-repair/plan.md) mà grader của harness không đọc được. Mỗi lượt in một
+// (loại V trong bảng ca ở specs/archive/git-skill-repair/plan.md) mà grader của harness không đọc được. Mỗi lượt in một
 // dòng cho mỗi thước, theo định dạng cố định để evals/compare-git.mjs đọc:
 //   <dir> run=<i> grader=<tên> verdict=<yes|no|error>
 // rồi một dòng tổng `<dir> runs=<n> disagreements=<k>`; k là số lượt không đọc được trace hay phòng thử (mọi thước

@@ -2,7 +2,7 @@
 // So sánh ô số gốc (base-<ca>-<model>) với ô sau sửa (sau-<ca>-<model>) của bộ đo cf:sync, mỗi thước một dòng với Fisher exact hai phía.
 // Đọc mỗi ô: result.json (thước H, chi phí, số lượt), verify-run.txt (dòng đầu `instrument=<dấu>`, rồi thước V), skill-loaded.txt (dòng
 // tổng `loaded=k/n model=…`) và instrument.digest (dấu thước lúc chạy ô). Phân loại thước chính/watch là bảng GRADERS dưới đây, chép
-// từ bảng ca và thước của specs/sync-skill-repair/plan.md (một nhà duy nhất cho tên thước; đổi bảng đó thì đổi ở đây).
+// từ bảng ca và thước của specs/archive/sync-skill-repair/plan.md (một nhà duy nhất cho tên thước; đổi bảng đó thì đổi ở đây).
 // Định dạng dòng cố định (task 04):
 //   <ca> <model> grader=<g> base=<a>/<n> after=<b>/<n> p=<x.xxxxxx> primary|watch     (--base-only: after=- p=-)
 //   <ca> <model> cost base=<usd> after=<usd>

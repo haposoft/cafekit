@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Đọc lại phòng thử được giữ lại (--keep-temp) và trace của từng lượt chạy, rồi chấm các thước loại V của specs/sync-skill-repair/plan.md
+// Đọc lại phòng thử được giữ lại (--keep-temp) và trace của từng lượt chạy, rồi chấm các thước loại V của specs/archive/sync-skill-repair/plan.md
 // (bảng ca và thước). Lệnh đã chạy được đọc từ trace (tool_use Bash + tool_result cùng id), không bao giờ từ câu trả lời cuối; trạng thái
 // Receipt được chấm bằng chính mã nguồn của gate (lib/state.mjs receiptFailures). Định dạng cố định để evals/compare-sync.mjs đọc:
 //   instrument=<dấu thước>

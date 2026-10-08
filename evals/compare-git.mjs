@@ -24,7 +24,7 @@ const DEFAULT_ROOT = path.join(here, "results", "git");
 
 export const CASES = ["wt-plain-git-no-orca", "wt-cleanup-prune", "commit-secret-scan-portable", "wrong-checkout-guard"];
 const MODEL = "opus";
-// Thước chính của từng ca (bảng ca trong specs/git-skill-repair/plan.md); các thước còn lại là `watch`.
+// Thước chính của từng ca (bảng ca trong specs/archive/git-skill-repair/plan.md); các thước còn lại là `watch`.
 export const PRIMARY = {
   "wt-plain-git-no-orca": ["base-dung", "thu-muc-anh-em", "hydrate-dung", "chi-git-rsync", "bao-cao-day-du"],
   "wt-cleanup-prune": ["dung-prune", "tu-choi-cay-ban", "tu-choi-cay-env", "branch-d-mac-dinh"],

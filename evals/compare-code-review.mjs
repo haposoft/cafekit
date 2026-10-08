@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // So số sau sửa (sau-<case>-<model>) với số gốc (base-<case>-<model>) của evals/code-review, không kết luận.
-// Mỗi ô và mỗi thước chính (danh sách ở specs/code-review-eval-baseline/task-02-ten-review-cases.md, mục Graders):
+// Mỗi ô và mỗi thước chính (danh sách ở specs/archive/code-review-eval-baseline/task-02-ten-review-cases.md, mục Graders):
 //   cell=<case>-<model> grader=<g> base=<x>/<n> after=<y>/<m> p=<p>
 // đếm trên các lượt không có error, p là Fisher exact hai phía của bảng 2×2 (cộng mọi xác suất siêu bội không lớn
 // hơn xác suất quan sát, dung sai tương đối 1e-7), chặn ở 1, in bằng toPrecision(4). Với ô đường agent còn in
