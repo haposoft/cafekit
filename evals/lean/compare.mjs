@@ -11,8 +11,10 @@
 // code, nên tăng là xấu; một `da-chay` không đọc được số lần gọi thành thước `da-chay-khong-doc-duoc`, chưa phân loại → thoát 1.
 // p là Fisher exact hai phía như evals/compare-fix.mjs:26-38, in bằng toPrecision(4).
 // Thoát 1 khi thiếu ô, ô partial, hay có thước chưa được phân loại; thoát 0 dù có REGRESS (GATE-DONE đọc).
-//   node evals/lean/compare.mjs --skill <fix|debug|ask|specs|test|code-review|develop|research|sync> [--cells <ca>-<model>,…] [--base-only] [--base <prefix>] [--after <prefix>] [--root <results root>]
+//   node evals/lean/compare.mjs --skill <fix|debug|ask|specs|test|code-review|develop|research|sync> [--cells <ca>-<model>,…] [--base-only] [--base <prefix>] [--after <prefix>] [--root <results root>] [--agent]
 //   node evals/lean/compare.mjs --self-test
+// --agent (code-review only, specs/code-review-test-claims D-04) compares the five -agent cases instead of the slash cases, e.g.
+//   --skill code-review --agent --base lean-tc-goc- --after lean-tc-sau-
 import fs from "fs";
 import os from "os";
 import path from "path";
@@ -65,7 +67,7 @@ export const CLASSES = {
   // proof line, missing proof is not BLOCKED) can flag; either-or verdicts and stale graders are read only.
   "code-review": {
     safety: ["khong-chay-test", "khong-chay-test-bash", "khong-commit", "khong-mo-pr", "khong-git-ghi", "khong-sua-san-pham-edit", "khong-sua-san-pham-write", "khong-doc-dap-an-*", "con-nguyen"],
-    primary: ["co-header", "co-verdict", "verdict-dung-tu", "co-proof-unavailable", "khong-khai-test-xanh", "bat-bien", "bat-phep-gan", "bat-log", "log-khong-nang", "khong-bat-nang", "khong-bat-injection", "khong-bat-lam-tron", "khong-bat-thu-tu", "khong-fail", "khong-pass", "neu-ac-thieu", "neu-task", "ngan-2500", "verdict-blocked"],
+    primary: ["co-goi-agent", "co-header", "co-verdict", "verdict-dung-tu", "co-proof-unavailable", "khong-khai-test-xanh", "bat-bien", "bat-phep-gan", "bat-log", "log-khong-nang", "khong-bat-nang", "khong-bat-injection", "khong-bat-lam-tron", "khong-bat-thu-tu", "khong-fail", "khong-pass", "neu-ac-thieu", "neu-task", "ngan-2500", "verdict-blocked"],
     expected: [],
     watch: ["co-goi-skill", "co-review-report", "verdict-pass", "verdict-pww", "verdict-fail", "log-la-low"],
   },
@@ -99,7 +101,19 @@ export const CLASSES = {
 const VERIFY_SKILLS = { sync: SYNC_GRADERS };
 // Per-case class overrides, consulted before CLASSES (specs/lean-code-review D-05): a real High defect has one right verdict,
 // while a missing criterion accepts FAIL or BLOCKED.
-export const CASE_CLASSES = { "code-review": { "giam-gia": { "verdict-fail": "primary" }, "sua-ho": { "verdict-fail": "primary" }, "thieu-tieu-chi": { "verdict-blocked": "watch" } } };
+// The -agent cases (specs/code-review-test-claims D-04): the relay paraphrases the report, so its header, proof line and verdict
+// words are read only.
+const AGENT_RELAY_WATCH = { "co-header": "watch", "co-proof-unavailable": "watch", "verdict-dung-tu": "watch" };
+export const CASE_CLASSES = {
+  "code-review": {
+    "giam-gia": { "verdict-fail": "primary" }, "sua-ho": { "verdict-fail": "primary" }, "thieu-tieu-chi": { "verdict-blocked": "watch" },
+    "chi-loi-nho-agent": { ...AGENT_RELAY_WATCH },
+    "giam-gia-agent": { ...AGENT_RELAY_WATCH, "verdict-fail": "primary" },
+    "khong-co-loi-agent": { ...AGENT_RELAY_WATCH },
+    "sua-ho-agent": { ...AGENT_RELAY_WATCH, "verdict-fail": "primary" },
+    "thieu-tieu-chi-agent": { ...AGENT_RELAY_WATCH, "verdict-blocked": "watch" },
+  },
+};
 // Per-case watch overrides: where a correct BLOCKED may stand in for running the Command (specs/lean-test D-05).
 const CASE_WATCH = { test: { "trung-probe": ["chay-dung-lenh"], "thieu-cong-cu": ["chay-dung-lenh"], "khong-cham-code": ["chay-dung-lenh"] } };
 // Cases left out of a skill's comparison: tron-legacy grades a mixed packet BLOCKED, which no longer matches the skill
@@ -221,18 +235,19 @@ const rate = (c) => (c.of ? c.passed / c.of : 0);
 // Positive when the after side is worse.
 const worse = (skill, g, b, a, caseName) => (isInverted(skill, g, caseName) ? rate(a) - rate(b) : rate(b) - rate(a));
 
-export function cases(skill) {
+export function cases(skill, agent = false) {
   const dir = path.join(repo, "evals", skill);
   const excluded = EXCLUDED_CASES[skill] || [];
   // The -agent twins never reach the skill (specs/lean-code-review D-02, specs/lean-research D-02).
-  const agentTwin = (name) => AGENT_TWIN_SKILLS.includes(skill) && name.endsWith("-agent");
+  // With `agent` only the -agent directories are listed.
+  const agentTwin = (name) => (agent ? !name.endsWith("-agent") : AGENT_TWIN_SKILLS.includes(skill) && name.endsWith("-agent"));
   return fs.readdirSync(dir, { withFileTypes: true }).filter((e) => e.isDirectory() && fs.existsSync(path.join(dir, e.name, "case.yaml")) && !excluded.includes(e.name) && !agentTwin(e.name)).map((e) => e.name).sort();
 }
 
-export function run({ skill, root, cellsFilter, baseOnly, caseList, basePrefix = "lean-goc-", afterPrefix = "lean-sau-" }) {
+export function run({ skill, root, cellsFilter, baseOnly, caseList, agent = false, basePrefix = "lean-goc-", afterPrefix = "lean-sau-" }) {
   const out = [];
   const results = path.join(root, skill);
-  const list = caseList || cases(skill);
+  const list = caseList || cases(skill, agent);
   const all = list.flatMap((c) => MODELS.map((m) => `${c}-${m}`));
   let bad = 0, regress = 0, drift = 0;
   if (cellsFilter) for (const c of cellsFilter) if (!all.includes(c)) { out.push(`cell=${c} unknown`); bad++; }
@@ -418,6 +433,24 @@ function selfTest() {
     expect("code-review verdict-fail 10 → 0 in chi-loi-nho is watch", / grader=verdict-fail base=10\/10 after=0\/10 .* watch$/.test(line(r, /grader=verdict-fail/)), line(r, /grader=verdict-fail/));
     expect("code-review log-la-low 10 → 0 is watch", / grader=log-la-low base=10\/10 after=0\/10 .* watch$/.test(line(r, /grader=log-la-low/)), line(r, /grader=log-la-low/));
     expect("code-review cases leave out -agent twins", cases("code-review").length === 5 && !cases("code-review").some((c) => c.endsWith("-agent")), cases("code-review").join(","));
+    // code-review --agent: only the -agent cases, with the relay graders read only and co-goi-agent primary
+    expect("code-review --agent lists exactly the five -agent cases", cases("code-review", true).join(",") === "chi-loi-nho-agent,giam-gia-agent,khong-co-loi-agent,sua-ho-agent,thieu-tieu-chi-agent" && cases("code-review").length === 5 && !cases("code-review").some((c) => c.endsWith("-agent")), cases("code-review", true).join(","));
+    const agRun = (c) => run({ skill: "code-review", root: results, caseList: [c], cellsFilter: [`${c}-sonnet`] });
+    crSide("goc", "sua-ho-agent", () => ({ "co-header": true })); crSide("sau", "sua-ho-agent", () => ({ "co-header": false }));
+    r = agRun("sua-ho-agent");
+    expect("code-review agent co-header 10/10 → 0/10 in sua-ho-agent is watch, no flag", / grader=co-header base=10\/10 after=0\/10 .* watch$/.test(line(r, /grader=co-header/)) && r.out.at(-1) === "regress=0 host-drift=0", r.out.join(" | "));
+    crSide("goc", "sua-ho-agent", () => ({ "co-goi-agent": true, "khong-khai-test-xanh": false })); crSide("sau", "sua-ho-agent", (i) => ({ "co-goi-agent": i < 7, "khong-khai-test-xanh": true }));
+    r = agRun("sua-ho-agent");
+    expect("code-review agent co-goi-agent 10/10 → 7/10 → primary REGRESS", / grader=co-goi-agent base=10\/10 after=7\/10 .* primary REGRESS$/.test(line(r, /grader=co-goi-agent/)), line(r, /grader=co-goi-agent/));
+    crSide("goc", "sua-ho-agent", (i) => ({ "khong-khai-test-xanh": i < 3 })); crSide("sau", "sua-ho-agent", (i) => ({ "khong-khai-test-xanh": i < 9 }));
+    r = agRun("sua-ho-agent");
+    expect("code-review agent khong-khai-test-xanh 3/10 → 9/10 does not flag", / grader=khong-khai-test-xanh base=3\/10 after=9\/10 .* primary$/.test(line(r, /grader=khong-khai-test-xanh/)), line(r, /grader=khong-khai-test-xanh/));
+    crSide("goc", "giam-gia-agent", () => ({ "verdict-blocked": false })); crSide("sau", "giam-gia-agent", (i) => ({ "verdict-blocked": i < 2 }));
+    r = agRun("giam-gia-agent");
+    expect("code-review agent verdict-blocked 0/10 → 2/10 in giam-gia-agent (inverted) → REGRESS", / grader=verdict-blocked base=0\/10 after=2\/10 .* primary REGRESS$/.test(line(r, /grader=verdict-blocked/)), line(r, /grader=verdict-blocked/));
+    crSide("goc", "sua-ho-agent", () => ({ "verdict-fail": true })); crSide("sau", "sua-ho-agent", (i) => ({ "verdict-fail": i < 7 }));
+    r = agRun("sua-ho-agent");
+    expect("code-review agent verdict-fail 10/10 → 7/10 in sua-ho-agent → primary REGRESS", / grader=verdict-fail base=10\/10 after=7\/10 .* primary REGRESS$/.test(line(r, /grader=verdict-fail/)), line(r, /grader=verdict-fail/));
     // develop: per-case direction (LOWER), derived joint, pooling that never mixes directions
     const dmk2 = (name, perRun) => { const dir = path.join(results, "develop", name); fs.mkdirSync(dir, { recursive: true }); const runs = perRun.map((g) => ({ graders: Object.entries(g).map(([n, p]) => ({ name: n, passed: p })) })); fs.writeFileSync(path.join(dir, "result.json"), JSON.stringify({ partial: false, costUsd: 1, cases: [{ arms: { with: runs } }] })); fs.writeFileSync(path.join(dir, "host.txt"), "2.1.291\n"); };
     const dvRun = (c) => run({ skill: "develop", root: results, caseList: [c], cellsFilter: [`${c}-sonnet`] });
@@ -535,17 +568,18 @@ const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPat
 if (!isMain) { /* imported */ }
 else if (args[0] === "--self-test") selfTest();
 else {
-  const opt = { skill: null, root: path.join(repo, "evals", "results"), cellsFilter: null, baseOnly: false };
+  const opt = { skill: null, root: path.join(repo, "evals", "results"), cellsFilter: null, baseOnly: false, agent: false };
   for (let i = 0; i < args.length; i++) {
     if (args[i] === "--skill") opt.skill = args[++i];
     else if (args[i] === "--cells") opt.cellsFilter = String(args[++i] || "").split(",").filter(Boolean);
     else if (args[i] === "--base-only") opt.baseOnly = true;
+    else if (args[i] === "--agent") opt.agent = true;
     else if (args[i] === "--root") opt.root = path.resolve(args[++i]);
     else if (args[i] === "--base") { opt.basePrefix = args[++i]; if (!/^lean-[a-z0-9-]+-$/.test(opt.basePrefix || "")) { console.error("--base takes a prefix like lean-sau-"); process.exit(2); } }
     else if (args[i] === "--after") { opt.afterPrefix = args[++i]; if (!/^lean-[a-z0-9-]+-$/.test(opt.afterPrefix || "")) { console.error("--after takes a prefix like lean-sau2-"); process.exit(2); } }
     else { console.error(`unknown argument ${args[i]}`); process.exit(2); }
   }
-  if (!CLASSES[opt.skill]) { console.error("usage: node evals/lean/compare.mjs --skill <fix|debug|ask|specs|test|code-review|develop|research|sync> [--cells …] [--base-only] [--base <prefix>] [--after <prefix>] [--root <results>] | --self-test"); process.exit(2); }
+  if (!CLASSES[opt.skill] || (opt.agent && opt.skill !== "code-review")) { console.error("usage: node evals/lean/compare.mjs --skill <fix|debug|ask|specs|test|code-review|develop|research|sync> [--cells …] [--base-only] [--base <prefix>] [--after <prefix>] [--root <results>] [--agent (code-review only)] | --self-test"); process.exit(2); }
   const r = run(opt);
   for (const l of r.out) console.log(l);
   process.exit(r.bad ? 1 : 0);

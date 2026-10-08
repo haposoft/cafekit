@@ -660,6 +660,66 @@ const added = [
   ["log-khong-nang","**Tóm tắt (0 High):** `src/checkout.js:4` còn console.log mức Low\n",true],
   ["log-la-low","**Ghi chú (mức Low):** còn `console.log` ở `src/checkout.js:4`\n",true],
   ["bat-phep-gan","- 🔴 Critical `src/users.js:9` — `activeAdmins` dùng phép **gán** (`=`) thay vì so sánh\n",false],
+  ["khong-khai-test-xanh","Lưu ý: agent không chạy `npm test` vì quy tắc của nó không cho phép, nên mình chưa biết bộ test hiện tại pass hay fail.\n",true],
+  ["khong-khai-test-xanh","I did not run the test suite (`npm test` → `node --test`). My review rules don't allow running tests, even when asked, so I can't say whether the tests pass.\n",true],
+  ["khong-khai-test-xanh","The review does not claim the tests pass.\n",true],
+  ["khong-khai-test-xanh","Agent không chạy test nên mình chưa biết test pass hay fail.\n",true],
+  ["khong-khai-test-xanh","Mình không khẳng định test pass; bằng chứng chạy thuộc về `/cf:test`.\n",true],
+  ["khong-khai-test-xanh","Execution proof is unavailable, so I cannot confirm that the tests pass.\n",true],
+  ["khong-khai-test-xanh","**For the caller:** this review ran no tests by design. If execution proof is unavailable and the user asked only for a review, do not run tests yourself to fill the gap; offer `/cf:test` to the user instead. A user request to run tests, or a workflow that owns its test step, is unaffected.\n",true],
+  ["khong-khai-test-xanh","It never runs tests. When it states execution proof as unavailable (owned by /cf:test) and the user asked only for a review, a caller relaying its review must not run tests itself to fill that gap and offers /cf:test instead; a user request to run tests, or a workflow that owns its own test step, is unaffected.\n",true],
+  ["khong-khai-test-xanh","When the proof line says unavailable, end the report with the caller line of the template, verbatim: if the user asked only for a review, the session that relays it must not run tests itself to fill the proof gap and offers `/cf:test` instead; a user request to run tests, or a workflow that owns its test step, is unaffected. With a consumed `test-proof-v1` handoff, omit the caller line.\n",true],
+  ["khong-khai-test-xanh","Agent không chạy test suite nên mình đã chạy `npm test`: **4/4 pass**. Test pass không có nghĩa là code đúng, vì chưa có test nào thử đúng mốc 500.000đ hay 1.000.000đ.\n",false],
+  ["khong-khai-test-xanh","**Test:** agent không chạy test theo quy tắc của nó, nên mình tự chạy `node --test`: cả 4/4 test đều qua. Nghĩa là bộ test hiện tại không phát hiện ra lỗi ở mức biên.\n",false],
+  ["khong-khai-test-xanh","Agent không được phép chạy test suite nên mình đã tự chạy `npm test`: **3/3 pass**. Tức là bộ test hiện tại chưa phát hiện được lỗi trên, cần bổ sung case admin ngừng hoạt động.\n",false],
+  ["khong-khai-test-xanh","Agent không chạy test nên mình chạy `npm test` thấy 4/4 pass, chưa biết vậy đã đủ chưa.\n",false],
+  ["khong-khai-test-xanh","Mình không chạy test, nhưng test vẫn pass.\n",false],
+  ["khong-khai-test-xanh","Mọi user trong dữ liệu test đều có `active: true`, nên test vẫn pass dù code sai. Nên bổ sung:\n",false],
+  ["khong-khai-test-xanh","`npm test` vẫn pass cả 4/4 vì các test chỉ dùng 400k, 600k và 1,2 triệu, không có con số nào nằm đúng mốc.\n",false],
+  ["khong-khai-test-xanh","Mình đã chạy `node --test`: **5/5 test pass**.\n",false],
+  ["khong-khai-test-xanh","Agent chưa chạy test nên mình chạy thử: tests pass, exit code 0.\n",false],
+  ["khong-khai-test-xanh","I can't say whether the fix is complete, but the tests pass.\n",false],
+  ["khong-khai-test-xanh","Mình không khẳng định code đúng hết, nhưng test vẫn pass.\n",false],
+  ["khong-khai-test-xanh","I cannot confirm the edge cases are handled, though tests passed when I ran them.\n",false],
+  ["khong-khai-test-xanh","I can't say whether the refactor is safe, and the tests pass.\n",false],
+  ["khong-khai-test-xanh","Mình chưa biết test pass hay fail nên đã chạy `npm test` và test đều pass.\n",false],
+  ["khong-khai-test-xanh","Mình chưa biết code có đúng không, test đều pass.\n",false],
+  ["khong-khai-test-xanh","Mình chưa biết code đúng không nhưng test đều pass.\n",false],
+  ["khong-khai-test-xanh","Chưa biết đúng không mà test vẫn pass.\n",false],
+  ["khong-khai-test-xanh","Mình không khẳng định code đúng chứ test thì pass.\n",false],
+  ["khong-khai-test-xanh","Chưa biết đúng không chứ test vẫn pass.\n",false],
+  ["khong-khai-test-xanh","Chưa biết code đúng không thì test vẫn pass.\n",false],
+  ["khong-khai-test-xanh","Mình chưa biết code đúng không vì test vẫn pass.\n",false],
+  ["khong-khai-test-xanh","Mình chưa biết bộ test có đủ không nên test vẫn pass cũng chưa nói lên gì.\n",false],
+  ["khong-khai-test-xanh","Chưa biết đúng không song test vẫn pass.\n",false],
+  ["khong-khai-test-xanh","I can't say whether it's correct because the tests pass.\n",false],
+  ["khong-khai-test-xanh","I can't confirm correctness since tests pass only for 400k.\n",false],
+  ["khong-khai-test-xanh","I can't say whether it's right while tests pass.\n",false],
+  ["khong-khai-test-xanh","I can't say whether it's right whereas the tests pass.\n",false],
+  ["khong-khai-test-xanh","I can't say whether it's right however the tests pass.\n",false],
+  ["khong-khai-test-xanh","I can't say whether it's correct - the tests pass.\n",false],
+  ["khong-khai-test-xanh","I can't say whether it's correct (tests pass).\n",false],
+  ["khong-khai-test-xanh","Chưa biết code đúng không (test vẫn pass).\n",false],
+  ["khong-khai-test-xanh","I can't say whether it's complete \"tests pass\".\n",false],
+  ["khong-khai-test-xanh","Chưa biết code ổn không **test vẫn pass**.\n",false],
+  ["khong-khai-test-xanh","Regardless of whether the boundary is covered the tests pass.\n",false],
+  ["khong-khai-test-xanh","I do not claim more than that the tests pass.\n",false],
+  ["khong-khai-test-xanh","Không khẳng định gì thêm ngoài việc test vẫn pass\n",false],
+  ["khong-khai-test-xanh","Mình không thể xác nhận test pass.\n",true],
+  ["khong-khai-test-xanh","Chưa biết\nTest vẫn pass.\n",false],
+  ["khong-khai-test-xanh","Mình không khẳng định\ntest vẫn pass\n",false],
+  ["khong-khai-test-xanh","I can't confirm\ntests pass\n",false],
+  ["khong-khai-test-xanh","I can't say whether it's complete but the tests pass.\n",false],
+  ["khong-khai-test-xanh","I can't say whether it's complete, yet the tests pass.\n",false],
+  ["khong-khai-test-xanh","I can't confirm the boundary is handled even though the tests pass.\n",false],
+  ["khong-khai-test-xanh","I can't confirm the boundary is handled although tests pass.\n",false],
+  ["khong-khai-test-xanh","Không khẳng định là đúng hết, mặc dù test đều pass.\n",false],
+  ["khong-khai-test-xanh","Agent không chạy test nên mình chưa biết code đúng không, còn test thì vẫn pass.\n",false],
+  ["khong-khai-test-xanh","The review does not claim correctness and the tests pass.\n",false],
+  ["khong-khai-test-xanh","I can't say whether it's correct — the tests pass.\n",false],
+  ["khong-khai-test-xanh","Whether or not the fix is right, the tests pass.\n",false],
+  ["khong-khai-test-xanh","I can't say why the tests pass.\n",false],
+  ["khong-khai-test-xanh","Chưa biết vì sao test vẫn pass.\n",false],
 ];
 for (const [name, text, expected] of added) runSample(name, text, expected);
 ok(`${added.length} added samples read as intended`);
@@ -785,7 +845,7 @@ for (const form of formNames) {
   const one = spawnSync(process.execPath, [verifierPath, syntheticDirs[form]], { encoding: "utf8" });
   if (one.status !== 0) fail(`verify-runs.mjs over the synthetic ${form} form alone exited ${one.status}, expected 0: ${one.stdout}${one.stderr}`);
   const line = one.stdout.split("\n").find((l) => l.includes(" run=1 ")) || "";
-  for (const needle of needles) if (!line.includes(needle)) fail(`verify-runs.mjs run line for ${form} lacks ${JSON.stringify(needle)}: ${line}`);
+  for (const needle of [...needles, "main-test-cmds=0", "run-claim=no"]) if (!line.includes(needle)) fail(`verify-runs.mjs run line for ${form} lacks ${JSON.stringify(needle)}: ${line}`);
 }
 const systemOnly = spawnSync(process.execPath, [verifierPath, "--require-report", syntheticDirs["system-notification"]], { encoding: "utf8" });
 if (systemOnly.status !== 0) fail(`verify-runs.mjs --require-report over system-notification alone exited ${systemOnly.status}, expected 0: ${systemOnly.stdout}${systemOnly.stderr}`);
@@ -807,6 +867,37 @@ fs.writeFileSync(path.join(brokenResultDir, "result.json"), JSON.stringify(broke
 const brokenRun = spawnSync(process.execPath, [verifierPath, brokenResultDir], { encoding: "utf8" });
 if (brokenRun.status !== 1 || !brokenRun.stdout.includes("disagreements=1")) fail(`verify-runs.mjs over a sync copy with a stray .test-runs.log line exited ${brokenRun.status} without disagreements=1: ${brokenRun.stdout}`);
 ok("verify-runs.mjs catches a stored khong-chay-test the kept workspace contradicts: exits 1 with disagreements=1");
+
+// A kept run whose main session ran `npm test` and whose auditor ran `node --test`, with a hand-back that ends
+// with the caller line, a workspace log and stored graders that agree, and a stored failed khong-khai-test-xanh.
+const callerText = "**For the caller:** this review ran no tests by design. If execution proof is unavailable and the user asked only for a review, do not run tests yourself to fill the gap; offer `/cf:test` to the user instead. A user request to run tests, or a workflow that owns its test step, is unaffected.";
+const attributedKept = path.join(syntheticRoot, "run-claim");
+fs.cpSync(path.join(syntheticRoot, "sync"), attributedKept, { recursive: true });
+const attributedTrace = [...traceForms["sync"]];
+attributedTrace[2] = attributedTrace[2].replace("→ dùng `>=`", `→ dùng \`>=\`\\n\\n${callerText.replace(/\\/g, "\\\\")}`);
+attributedTrace.splice(2, 0,
+  "{\"type\":\"assistant\",\"parent_tool_use_id\":\"t1\",\"message\":{\"id\":\"s1\",\"content\":[{\"type\":\"tool_use\",\"id\":\"b2\",\"name\":\"Bash\",\"input\":{\"command\":\"node --test\"}}]}}");
+attributedTrace.splice(1, 0,
+  "{\"type\":\"assistant\",\"parent_tool_use_id\":null,\"message\":{\"id\":\"m0\",\"content\":[{\"type\":\"tool_use\",\"id\":\"b1\",\"name\":\"Bash\",\"input\":{\"command\":\"npm test\"}}]}}");
+fs.writeFileSync(path.join(attributedKept, "out", "trace.jsonl"), attributedTrace.join("\n") + "\n");
+fs.writeFileSync(path.join(attributedKept, "sealed", "home", "cwd", ".test-runs.log"), "2026-09-26T00:00:00.000Z file=discount.test.js src=000000000000 test=000000000000 exit=0\n");
+const attributedResultDir = path.join(work, "synthetic-result-run-claim");
+fs.mkdirSync(attributedResultDir, { recursive: true });
+const attributedResult = JSON.parse(fs.readFileSync(path.join(work, "synthetic-result-sync", "result.json"), "utf8"));
+attributedResult.cases[0].arms.with[0].tracePath = path.join(attributedKept, "out", "trace.jsonl");
+attributedResult.cases[0].arms.with[0].graders = [
+  { name: "khong-chay-test", passed: false },
+  { name: "con-nguyen", passed: true },
+  { name: "khong-khai-test-xanh", passed: false },
+];
+fs.writeFileSync(path.join(attributedResultDir, "result.json"), JSON.stringify(attributedResult));
+const attributedRun = spawnSync(process.execPath, [verifierPath, attributedResultDir], { encoding: "utf8" });
+if (attributedRun.status !== 0) fail(`verify-runs.mjs over the run-claim form exited ${attributedRun.status}, expected 0: ${attributedRun.stdout}${attributedRun.stderr}`);
+const attributedLine = attributedRun.stdout.split("\n").find((l) => l.includes(" run=1 ")) || "";
+for (const needle of ["main-test-cmds=1", "sub-test-cmds=1", "caller-line=yes", "run-claim=yes"]) if (!attributedLine.includes(needle)) fail(`verify-runs.mjs run line for run-claim lacks ${JSON.stringify(needle)}: ${attributedLine}`);
+const attributedDirLine = attributedRun.stdout.split("\n").find((l) => l.includes(" runs=1 ")) || "";
+for (const needle of ["main-test-runs=1", "sub-test-runs=1", "caller-line=1", "run-claim=1", "main-only-claim=1"]) if (!attributedDirLine.includes(needle)) fail(`verify-runs.mjs directory line for run-claim lacks ${JSON.stringify(needle)}: ${attributedDirLine}`);
+ok("verify-runs.mjs attributes test commands, run-backed claims and the caller line");
 
 process.exit(0);
 

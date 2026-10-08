@@ -10,6 +10,11 @@
 // và tổng hợp trên các lượt đã đọc được. Thoát 1 khi có bất đồng, khi một result.json không đọc được, và
 // với --require-report khi không lượt nào của một case -agent có report-src=sync hay notification. Một
 // notification là <task-notification> trong tin nhắn user, hoặc summary của sự kiện system task_notification.
+// Mỗi lượt còn in main-test-cmds= và sub-test-cmds= (lệnh Bash khớp input_match của thước khong-chay-test-bash
+// của case, do phiên chính hay do auditor chạy), caller-line= (yes|no|none: report có **For the caller:**) và
+// run-claim= (khong-khai-test-xanh đã lưu là fail và main-test-cmds>0); mỗi thư mục in main-test-runs=,
+// sub-test-runs=, caller-line=, run-claim= và main-only-claim= (khong-khai-test-xanh đã lưu fail trong khi
+// r.khong-khai-test-xanh=yes) ngay trước report-runs=. Không token nào thêm bất đồng.
 //   node evals/code-review/verify-runs.mjs [--require-report] <result dir>...
 import fs from "fs";
 import path from "path";
@@ -108,6 +113,14 @@ function unframe(text) {
   return body.join("\n").replace(/\n+$/, "");
 }
 
+// input_match of the case's khong-chay-test-bash grader: the Bash commands that run the fixture's tests.
+function testCommandPattern(caseName) {
+  const f = path.join(here, caseName, "graders", "khong-chay-test-bash.md");
+  if (!fs.existsSync(f)) return null;
+  const m = fs.readFileSync(f, "utf8").match(/^input_match: '(.*)'$/m);
+  return m ? new RegExp(m[1].replace(/''/g, "'")) : null;
+}
+
 function classifyReport(events) {
   let launch = null;
   for (const ev of events) {
@@ -177,7 +190,8 @@ for (const dir of dirs) {
   let auditorCalls = 0, hostSkillCalls = 0, pluginSkillCalls = 0, initHostYesCount = 0, subEventTotal = 0, deniedTotal = 0;
   let unreadVerdictYes = 0, headMoveRuns = 0, stashRuns = 0, treeChangedRuns = 0, gitBrokenRuns = 0;
   const rGraderCounts = Object.fromEntries(graders.map((g) => [g.name, 0]));
-  let reportRuns = 0;
+  let reportRuns = 0, mainTestRuns = 0, subTestRuns = 0, callerLineRuns = 0, runClaimRuns = 0, mainOnlyClaim = 0;
+  const testCmd = testCommandPattern(caseName);
 
   kase.arms.with.forEach((run, i) => {
     const label = `${dir} run=${i + 1}`;
@@ -224,6 +238,25 @@ for (const dir of dirs) {
     const { src, report } = classifyReport(events);
     srcCounts[src] = (srcCounts[src] || 0) + 1;
     if (src === "sync" || src === "notification") { agentPathReportSeen = agentPathReportSeen || isAgentPath; reportRuns++; }
+
+    let mainTestCmds = 0, subTestCmds = 0;
+    for (const ev of events) {
+      if (ev.type !== "assistant" || !ev.message || !Array.isArray(ev.message.content) || !testCmd) continue;
+      for (const block of ev.message.content) {
+        if (block.type !== "tool_use" || block.name !== "Bash" || !testCmd.test(JSON.stringify(block.input))) continue;
+        if (ev.parent_tool_use_id != null && auditorIds.has(ev.parent_tool_use_id)) subTestCmds++;
+        else mainTestCmds++;
+      }
+    }
+    if (mainTestCmds > 0) mainTestRuns++;
+    if (subTestCmds > 0) subTestRuns++;
+    const callerLine = report === undefined ? "none" : report.includes("**For the caller:**") ? "yes" : "no";
+    if (callerLine === "yes") callerLineRuns++;
+    const storedClaim = run.graders.find((g) => g.name === "khong-khai-test-xanh");
+    const claimFailed = !!storedClaim && storedClaim.passed === false;
+    const runClaim = claimFailed && mainTestCmds > 0;
+    if (runClaim) runClaimRuns++;
+    if (claimFailed && report !== undefined && graders.some((g) => g.name === "khong-khai-test-xanh" && g.pattern.test(report))) mainOnlyClaim++;
 
     const rTokens = [];
     if (report !== undefined) {
@@ -315,6 +348,7 @@ for (const dir of dirs) {
 
     console.log(`${label} agent=${agentTypes.length ? agentTypes.join(",") : "none"} init-host-code-review=${initHostCodeReview ? "yes" : "no"} `
       + `skill-ids=${skillIds.length ? skillIds.join(",") : "none"} calls-auditor=${callsAuditor} sub-events=${subEvents} `
+      + `main-test-cmds=${mainTestCmds} sub-test-cmds=${subTestCmds} caller-line=${callerLine} run-claim=${runClaim ? "yes" : "no"} `
       + `denied=${denials.length}${auditorDenied ? " auditor-denied" : ""} report-src=${src} report=${report !== undefined ? report.length : "none"} `
       + `${rTokens.join(" ")} final=${finalText.length} unread-verdict=${unreadVerdict ? "yes" : "no"} git-broken=${gitBroken ? "yes" : "no"} `
       + `test-runs=${testRuns} head-moves=${headMoves} stash=${stash ? "yes" : "no"} tree=${treeStr}${conNguyenToken} disagreements=${runDisagreements}`);
@@ -326,7 +360,7 @@ for (const dir of dirs) {
     + `report-src-error=${srcCounts.error} report-src-none=${srcCounts.none} auditor-calls=${auditorCalls} host-skill-calls=${hostSkillCalls} `
     + `plugin-skill-calls=${pluginSkillCalls} init-host-code-review=${initHostYesCount} sub-events=${subEventTotal} denied=${deniedTotal} `
     + `unread-verdict=${unreadVerdictYes} head-moves=${headMoveRuns} stash=${stashRuns} tree-changed=${treeChangedRuns} git-broken=${gitBrokenRuns} `
-    + `${Object.entries(rGraderCounts).map(([n, c]) => `r.${n}=${c}`).join(" ")} report-runs=${reportRuns} disagreements=${dirDisagreements}`);
+    + `${Object.entries(rGraderCounts).map(([n, c]) => `r.${n}=${c}`).join(" ")} main-test-runs=${mainTestRuns} sub-test-runs=${subTestRuns} caller-line=${callerLineRuns} run-claim=${runClaimRuns} main-only-claim=${mainOnlyClaim} report-runs=${reportRuns} disagreements=${dirDisagreements}`);
 }
 
 let exitCode = totalDisagreements > 0 || readErrors > 0 ? 1 : 0;
