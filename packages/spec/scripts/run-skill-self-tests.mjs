@@ -6017,6 +6017,15 @@ async function runCodeReviewBoundaryCheck() {
       return flat.replace(markers[2], `(a leftover debug log) ${markers[2]}`);
     },
   });
+  // The auditor's conditional relay additions: the description sentence, the boundary line, and the report's last line.
+  const relayDescription = " It never runs tests. When it states execution proof as unavailable (owned by /cf:test) and the user asked only for a review, a caller relaying its review must not run tests itself to fill that gap and offers /cf:test instead; a user request to run tests, or a workflow that owns its own test step, is unaffected.";
+  const relayBoundary = "When the proof line says unavailable, end the report with the caller line of the template, verbatim: if the user asked only for a review, the session that relays it must not run tests itself to fill the proof gap and offers `/cf:test` instead; a user request to run tests, or a workflow that owns its test step, is unaffected. With a consumed `test-proof-v1` handoff, omit the caller line.";
+  const relayCaller = "**For the caller:** this review ran no tests by design. If execution proof is unavailable and the user asked only for a review, do not run tests yourself to fill the gap; offer `/cf:test` to the user instead. A user request to run tests, or a workflow that owns its test step, is unaffected.";
+  const descriptionLine = /^description: ".*"$/m;
+  const lastReportLine = (content) => {
+    const lines = (/^```markdown\r?\n([\s\S]*?)^```\r?$/m.exec(content)?.[1] ?? "").split(/\r?\n/).filter((line) => line.trim());
+    return lines.length ? lines[lines.length - 1].trimEnd() : undefined;
+  };
   const rules = [
     present("skill names its test-run boundary", "skill", "## Test-run boundary"),
     present("skill forbids the test suite", "skill", "Never run the project's test suite or a test file, not even as a sanity check"),
@@ -6076,6 +6085,18 @@ async function runCodeReviewBoundaryCheck() {
     absent("auditor drops the overlapping PASS clause", "auditor", "no Critical or High findings and no blocking Medium finding"),
     absent("auditor drops the overlapping warnings row", "auditor", "nly documented non-blocking findings remain"),
     present("auditor keeps severity labels", "auditor", "write the labels `Critical`, `High`, `Medium`, `Low` verbatim in English"),
+    present("auditor gives the caller its relay line", "auditor", relayCaller),
+    present("auditor ends every report with the caller line", "auditor", relayBoundary),
+    {
+      id: "auditor description carries the relay sentence", file: "auditor", what: "the description line lacks the relay sentence",
+      holds: (content) => descriptionLine.exec(content)?.[0].includes(relayDescription) ?? false,
+      weaken: (content) => content.replace(descriptionLine, (line) => line.replace(relayDescription, "")),
+    },
+    {
+      id: "auditor keeps the caller line last in the report template", file: "auditor", what: "the `For the caller` line is not the last line of the report template",
+      holds: (content) => lastReportLine(content) === relayCaller,
+      weaken: (content) => content.replace(`${relayCaller}\n`, "").replace("### ✅ Positive Observations", `${relayCaller}\n### ✅ Positive Observations`),
+    },
     present("auditor keeps its report headings", "auditor", "Keep `## Review Report`, its headings and the severity labels verbatim in English"),
   ];
 
