@@ -42,7 +42,7 @@ Specs-Contract: process-first-ready-v1
 | # | Task | Priority | Criteria | Primary ownership | Dependencies | Status |
 |---|---|---|---|---|---|---|
 | 01 | Teach the auditor to describe a test gap without a result, and pin it | P1 | AC-01 | `agents/code-auditor.md`, self-test | - | done |
-| 02 | Measure the changed auditor and compare with the reused BEFORE | P1 | AC-02 | `evals/results/code-review/lean-asc-*`, `compare-agent.txt`, `claim-lines.txt` | task-01-gap-wording.md | pending |
+| 02 | Measure the changed auditor and compare with the reused BEFORE | P1 | AC-02 | `evals/results/code-review/lean-asc-*`, `compare-agent.txt`, `claim-lines.txt` | task-01-gap-wording.md | done |
 
 ## Known limits
 - Reused baseline: BEFORE and AFTER run on the same host version and the same day but not interleaved; drift in model serving between the two runs is unmeasured and would show as a difference on both graders and cost.
