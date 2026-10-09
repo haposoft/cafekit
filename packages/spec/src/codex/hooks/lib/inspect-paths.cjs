@@ -1,5 +1,4 @@
 'use strict';
-
 const BLOCKED_DIRS = new Set([
   'node_modules', 'dist', 'build', '.next', '.nuxt', '.output',
   '__pycache__', '.venv', 'venv', 'vendor', 'target',
@@ -86,7 +85,6 @@ function commandGroups(command) {
   }
   return groups.filter((group) => group.length);
 }
-
 function positional(tokens, optionsWithValue = new Set()) {
   const out = [];
   for (let index = 1; index < tokens.length; index += 1) {
@@ -96,7 +94,6 @@ function positional(tokens, optionsWithValue = new Set()) {
   }
   return out;
 }
-
 function readerOptionPaths(name, tokens) {
   if (!['rg', 'grep', 'sed'].includes(name)) return [];
   const paths = [];
@@ -111,7 +108,6 @@ function readerOptionPaths(name, tokens) {
   }
   return paths;
 }
-
 function findRoots(tokens) {
   const roots = [];
   let index = 1;
@@ -127,7 +123,6 @@ function findRoots(tokens) {
   }
   return roots;
 }
-
 function commandPaths(group, globs) {
   const commandIndex = group.findIndex((token) => (
     token && !/^[A-Za-z_][A-Za-z0-9_]*=/.test(token)
@@ -137,6 +132,12 @@ function commandPaths(group, globs) {
   while (['sudo', 'env', 'time', 'command'].includes(tokens[0])) tokens.shift();
   if (!tokens.length) return [];
   const name = tokens[0].replace(/\\/g, '/').split('/').pop();
+  // Build outputs are not inspection roots. Keep each chained reader inspected,
+  // and do not exempt package-manager exec (which can run cat/find/grep).
+  const expandsCommand = tokens.some((token) => /\$\(|`/.test(token));
+  if (!expandsCommand && (/^(tsc|vite|esbuild|webpack|rollup|turbo|nx|make|mvn|gradle)$/.test(name)
+    || (['npm', 'pnpm', 'yarn', 'bun'].includes(name) && /^(?:run|build|test)$/.test(tokens[1] || ''))
+    || (['cargo', 'go', 'dotnet'].includes(name) && ['build', 'test'].includes(tokens[1])))) return [];
   const optionPaths = readerOptionPaths(name, tokens);
 
   for (let index = 1; index < tokens.length; index += 1) {
@@ -173,7 +174,6 @@ function commandPaths(group, globs) {
     || (token.includes('/') && blockedSegment(token))
   ));
 }
-
 function inspectInput(input) {
   const paths = [];
   const globs = [];

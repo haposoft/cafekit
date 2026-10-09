@@ -101,13 +101,16 @@ function cleanup(projectRoot, now = Date.now()) {
   }
 }
 
-function clearState(projectRoot) {
+function clearState(projectRoot, sessionId) {
   try {
+    if (typeof sessionId !== 'string' || !sessionId.trim()) return;
     const dir = secureStateDir(projectRoot);
     if (!dir) return;
     for (const name of fs.readdirSync(dir)) {
       if (/^(pending|token)-[a-f0-9]+\.json$/.test(name)) {
-        try { fs.unlinkSync(path.join(dir, name)); } catch { /* concurrently consumed */ }
+        const file = path.join(dir, name);
+        if (readJson(dir, file)?.sessionId !== sessionId) continue;
+        try { fs.unlinkSync(file); } catch { /* concurrently consumed */ }
       }
     }
   } catch {

@@ -1996,6 +1996,45 @@ function sessionLauncher(projectRoot) {
   return { config, command: config.hooks.SessionStart[0].hooks[0].command };
 }
 
+test('parity regression: moved Codex checkout rebinds both launcher fields and preserves metadata', () => {
+  inTempProject((root) => {
+    const oldRoot = path.join(root, "old ' quoted project"), newRoot = path.join(root, "new ' quoted project");
+    fs.mkdirSync(oldRoot);
+    assert.equal(install(oldRoot).status, 0);
+    const configPath = path.join(oldRoot, '.codex/hooks.json');
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    config.hooks.SessionStart[0].matcher = 'custom-startup';
+    config.hooks.SessionStart[0].hooks[0].timeout = 41;
+    fs.writeFileSync(configPath, JSON.stringify(config));
+    fs.renameSync(oldRoot, newRoot);
+    const movedConfig = path.join(newRoot, '.codex/hooks.json');
+    const before = fs.readFileSync(movedConfig, 'utf8');
+    assert.equal(install(newRoot, ['--dry-run']).status, 0);
+    assert.equal(fs.readFileSync(movedConfig, 'utf8'), before, 'dry run modified launchers');
+    const upgraded = install(newRoot);
+    assert.equal(upgraded.status, 0, `${upgraded.stdout}\n${upgraded.stderr}`);
+    const rebound = sessionLauncher(newRoot);
+    assert.equal(rebound.config.hooks.SessionStart[0].matcher, 'custom-startup');
+    assert.equal(rebound.config.hooks.SessionStart[0].hooks[0].timeout, 41);
+    const launched = runPosixLauncher(rebound.command, newRoot);
+    assert.equal(launched.status, 0, launched.stderr);
+    assert.match(launched.stdout, /Session startup\./);
+    const windowsCommand = rebound.config.hooks.SessionStart[0].hooks[0].commandWindows.replace(/^node /, `"${process.execPath}" `);
+    const launchedWindows = spawnSync(windowsCommand, { cwd: newRoot, encoding: 'utf8', input: JSON.stringify({ session_id: 'moved-windows', hook_event_name: 'SessionStart', source: 'startup', cwd: newRoot }), shell: true });
+    assert.equal(launchedWindows.status, 0, launchedWindows.stderr);
+    assert.match(launchedWindows.stdout, /Session startup\./);
+    for (const { handler } of allHookLaunchers(rebound.config)) {
+      const encoded = handler.commandWindows.match(/\s([A-Za-z0-9_-]+)$/)?.[1];
+      assert.ok(encoded);
+      const target = Buffer.from(encoded, 'base64url').toString('utf8');
+      assert.equal(path.dirname(target), fs.realpathSync(path.join(newRoot, '.codex/hooks')));
+    }
+    const stable = fs.readFileSync(movedConfig, 'utf8');
+    assert.equal(install(newRoot).status, 0);
+    assert.equal(fs.readFileSync(movedConfig, 'utf8'), stable, 'reinstall changed stable hooks config');
+  });
+});
+
 test('Codex POSIX hook launchers run without Git and outside the repository root', () => {
   inTempProject((root) => {
     // A launcher that asks Git for its root gets nothing here and the outer root one
@@ -3222,4 +3261,3 @@ test('Claude and Codex installed rules preserve the ported review and process gu
     }
   });
 });
-

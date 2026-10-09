@@ -176,7 +176,7 @@ function collectPathValues(value, key, out) {
     return;
   }
   if (Array.isArray(value)) {
-    if (isPathKey(key)) out.push(...value.filter((item) => typeof item === 'string'));
+    for (const item of value) collectPathValues(item, key, out);
     return;
   }
   if (!value || typeof value !== 'object') return;

@@ -79,6 +79,18 @@ function isTrackedTool(toolName) {
     || name.includes('todo');
 }
 
+function hasPriorContent(text) {
+  const filler = [
+    /^#{1,6}\s/,
+    /^<!--.*-->$/,
+    /^- \((?:No completed tasks recorded|No pending tasks recorded|All tasks completed|No file changes detected)\)$/,
+    /^- Completed at \d{2}:\d{2}:\d{2}$/,
+    /^- Completed without a result message\.$/,
+  ];
+  return text.split('\n').map((line) => line.trim())
+    .some((line) => line && !filler.some((pattern) => pattern.test(line)));
+}
+
 function loadPrevious(projectRoot, sessionId) {
   try {
     const dir = stateDir(projectRoot, sessionId);
@@ -87,7 +99,9 @@ function loadPrevious(projectRoot, sessionId) {
     if (!fs.existsSync(file)) return '';
     const text = fs.readFileSync(file, 'utf8');
     const generated = text.match(/<!-- Generated: (.+?) -->/)?.[1];
-    if (!generated || Date.now() - Date.parse(generated) > EXPIRY_MS) return '';
+    const timestamp = Date.parse(generated);
+    if (!generated || !Number.isFinite(timestamp) || Date.now() - timestamp > EXPIRY_MS) return '';
+    if (!hasPriorContent(text)) return '';
     return text;
   } catch {
     return '';

@@ -2,7 +2,7 @@
 
 > Native spec-driven workflow and runtime bundle for Claude Code and Codex CLI.
 
-[![Version](https://img.shields.io/badge/version-0.18.1-blue.svg)](https://github.com/haposoft/cafekit)
+[![Version](https://img.shields.io/badge/version-0.18.2-blue.svg)](https://github.com/haposoft/cafekit)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Claude%20Code](https://img.shields.io/badge/Claude%20Code-Native-orange.svg)](https://claude.ai/code)
 [![Codex%20CLI](https://img.shields.io/badge/Codex%20CLI-Native-111111.svg)](https://developers.openai.com/codex)
@@ -132,6 +132,9 @@ stable when a session starts in a subdirectory. They also carry a PATH floor poi
 the Node.js that installed them, so a host launched from the macOS GUI — whose children
 inherit only `/usr/bin:/bin:/usr/sbin:/sbin` — can still find the interpreter. The floor
 is appended, so a version manager's current Node still wins in a normal terminal.
+Reinstall after moving a project updates CafeKit-owned launcher paths and preserves
+custom hooks. Docs sync runs on demand; startup omits empty prior context, and
+Specs reminders follow the packets selected or successfully edited by that session.
 CafeKit uses Codex's native status and usage UI instead of installing the
 Claude statusline.
 

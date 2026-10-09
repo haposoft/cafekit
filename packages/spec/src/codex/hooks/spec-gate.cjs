@@ -41,6 +41,8 @@ try {
     process.exit(0);
   }
   const POLICY = loaded.policy;
+  // Match Claude: one invocation validates receipts against one checkout snapshot.
+  require(path.join(path.dirname(loaded.path), 'provenance.cjs')).enableSnapshotMemo();
   const { projectRoot, runtime } = getHookContext(payload);
   if (typeof POLICY.deriveRuntimeContext !== 'function') {
     throw new Error('shared workflow policy lacks completion authority functions');
@@ -143,13 +145,12 @@ try {
     currentStatuses[taskPath] === 'done'
   ));
   const featureDir = path.join(active.specsDir, active.featureName);
-  const receiptBodies = new Map();
   const failures = allDoneTasks
     .map((taskPath) => {
       const proof = checkWorkflowReceiptDetails(featureDir, taskPath, runtimeContext);
-      if (proof.body) receiptBodies.set(taskPath, proof.body);
       return {
         taskPath,
+        body: proof.body,
         failures: proof.failures
       };
     })
@@ -160,9 +161,11 @@ try {
     if (previous[result.taskPath] === undefined) delete next[result.taskPath];
     else next[result.taskPath] = previous[result.taskPath];
   }
-  atomicWrite(cacheFile, `${JSON.stringify({
-    entries: { ...cacheEntries, [runtimeContext.context_id]: { identity: cacheIdentity, tasks: next } },
-  })}\n`);
+  try {
+    atomicWrite(cacheFile, `${JSON.stringify({
+      entries: { ...cacheEntries, [runtimeContext.context_id]: { identity: cacheIdentity, tasks: next } },
+    })}\n`);
+  } catch { /* Cache persistence is not completion authority. */ }
 
   if (!failures.length) process.exit(0);
   const lines = [`Completion gate: ${failures.length} done task(s) lack a verification receipt.`];

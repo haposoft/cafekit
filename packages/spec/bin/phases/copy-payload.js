@@ -97,9 +97,7 @@ function copyPlatformFiles(ctx, platformKey) {
     // The specs skill tree above carries its templates; remove the ones retired
     // with the spec.json planning flow from earlier installs.
     if (platformKey === 'claude' || platformKey === 'codex') {
-      const retiredTemplates = platformKey === 'claude'
-        ? ['init.json', 'spec-state.json', 'requirements-init.md', 'requirements.md', 'design.md', 'task.md']
-        : ['spec-state.json', 'requirements-init.md', 'requirements.md', 'design.md', 'task.md'];
+      const retiredTemplates = ['init.json', 'spec-state.json', 'requirements-init.md', 'requirements.md', 'design.md', 'task.md'];
       for (const fileName of retiredTemplates) {
         const retired = path.join(platform.skillsDir, 'specs', 'templates', fileName);
         if (!fs.existsSync(retired)) continue;

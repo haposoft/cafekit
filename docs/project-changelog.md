@@ -3,6 +3,18 @@
 All notable changes to CafeKit are documented here, following
 [Keep a Changelog](https://keepachangelog.com/).
 
+## [Unreleased]
+
+### Fixed
+
+- Codex privacy duyệt đường dẫn trong mảng input MCP; reset grant chỉ cho phiên hiện tại, giữ grant của phiên khác.
+- Stop coi cache IO là best-effort, dùng snapshot memo trong một invocation và giữ nội dung Receipt cho hướng dẫn sửa; vẫn revalidate mọi done Receipt. Provenance giữ exclusions runtime-neutral và bỏ generated session/privacy state khỏi source evidence.
+- Inspect cho phép build output đã xác định, vẫn kiểm tra các lệnh đọc/chained readers; Codex retirement gỡ legacy `init.json` giống Claude.
+- Projection chuyển shorthand Explore/model guidance sang native Codex; strategist dùng high reasoning effort, mô tả đúng model kế thừa. Script multimodal tùy chọn tìm `.codex/.env` đúng split-root layout.
+
+- Codex reinstall cập nhật launcher CafeKit về root hiện tại sau khi di chuyển project, giữ hook tùy chỉnh và metadata; không nhận nhầm hook bên ngoài chỉ vì trùng basename.
+- Codex startup bỏ docs-sync tự động và prior context rỗng. Specs context chỉ nhắc packet session đã chọn hoặc sửa; native PostToolUse ghi touch âm thầm, Stop vẫn kiểm tra Receipt. Upgrade gỡ riêng docs-sync SessionStart do CafeKit quản lý; Docs vẫn gọi hook theo nhu cầu.
+
 ## [0.18.1] - 2026-10-08
 ### Removed
 - **Hai thư viện hook không ai dùng.** `hooks/lib/context.cjs` và `hooks/lib/detect.cjs` vẫn được cài nhưng không file nào require. Đã xoá khỏi nguồn và manifest; nâng cấp sẽ xoá hai file này khỏi `.claude/hooks/lib/` của bản cài cũ.

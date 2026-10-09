@@ -156,6 +156,7 @@ const RUNTIME_STATE_ROOTS = Object.freeze([
   '.claude/hooks/.logs', '.codex/hooks/.logs', '.omp/hooks/.logs',
   '.claude/.logs', '.codex/.logs', '.omp/.logs',
   '.claude/runtime.json', '.codex/runtime.json', '.omp/runtime.json',
+  '.codex/session-state', '.codex/hooks/.privacy',
 ]);
 
 function excluded(root, absolute, specsRoot) {

@@ -229,8 +229,11 @@ function normalizeAskUserQuestion(content) {
   return masked.restore(normalized);
 }
 
-function normalizeRuntimePaths(content) {
-  return normalizeSourcePaths(content, {
+function normalizeRuntimePaths(content, sourcePath = '') {
+  const stateRootsPattern = /const RUNTIME_STATE_ROOTS = Object\.freeze\(\[[\s\S]*?\]\);/;
+  const sharedStateRoots = path.basename(sourcePath) === 'provenance.cjs'
+    ? content.match(stateRootsPattern)?.[0] : null;
+  let next = normalizeSourcePaths(content, {
     runtimeRoot: '.codex',
     skillsRoot: '.agents/skills'
   })
@@ -239,6 +242,14 @@ function normalizeRuntimePaths(content) {
     .replace(/(?<!~\/)\.claude(?=[/\\])/g, '.codex')
     .replace(/(['"])\.claude\1/g, '$1.codex$1')
     .replace(/`\.claude`/g, '`.codex`');
+  // This table describes every runtime's generated state, not the install root.
+  if (sharedStateRoots) next = next.replace(stateRootsPattern, () => sharedStateRoots);
+  if (/\/ai-multimodal\/scripts\/(?:media_optimizer|document_converter)\.py$/.test(sourcePath.replace(/\\/g, '/'))) {
+    // Shared skills live under .agents; native support/config still lives in .codex.
+    next = next.replace(/\bclaude_dir = skills_dir\.parent\b/g,
+      "claude_dir = skills_dir.parent.parent / '.codex'");
+  }
+  return next;
 }
 
 function normalizeSkillNames(content) {
@@ -262,6 +273,7 @@ function normalizeAgentNames(content) {
 
 function normalizeAgentInvocations(content) {
   return content
+    .replace(/\bTask\s*\(\s*Explore\s*\)/g, 'spawn_agent(agent_type="explorer", fork_turns="none", task_name="explore", message="Describe the scan")')
     .replace(/\bAgent\s*\(/g, 'spawn_agent(')
     .replace(/\bsubagent_type\s*=\s*"([^"]+)"/g, (_match, name) => (
       `agent_type="${normalizeAgentRole(name)}", fork_turns="none"`
@@ -286,7 +298,7 @@ function isInstructionAsset(sourcePath) {
 }
 
 function normalizeCodexBody(content, sourcePath = '') {
-  let next = normalizeRuntimePaths(String(content));
+  let next = normalizeRuntimePaths(String(content), sourcePath);
   next = next
     .replace(/\bCLAUDE\.md\b/g, 'AGENTS.md')
     .replace(/\bClaude Code\b/g, 'Codex CLI');
@@ -294,6 +306,8 @@ function normalizeCodexBody(content, sourcePath = '') {
   if (!isInstructionAsset(sourcePath)) return next;
 
   next = normalizeAgentInvocations(normalizeAgentNames(normalizeSkillNames(next)));
+  next = next.replace(/`?CLAUDE_CODE_SUBAGENT_MODEL`?/g,
+    'the configured agent model (`model` in `.codex/agents/<agent>.toml`, or `[agents].default_subagent_model` in native Codex configuration)');
   return applyReplacements(normalizeAskUserQuestion(next), INSTRUCTION_REPLACEMENTS);
 }
 
@@ -307,14 +321,25 @@ function getCodexCopyOptions(baseOptions = {}) {
 function convertCodexAgentContent(content, fileName = '') {
   const { frontmatter, body } = splitFrontmatter(content);
   const name = codexAgentName(frontmatter.name || fileName);
-  const description = normalizeCodexBody(
+  let description = normalizeCodexBody(
     frontmatter.description || `CafeKit Codex agent: ${name}`
   );
-  const instructions = normalizeCodexBody(body).trim();
+  let instructions = normalizeCodexBody(body).trim();
+  const reasoning = [];
+  if (name === 'strategist') {
+    description = 'Autonomous advisory counsel with high reasoning effort; inherits the session model unless native spawn or agent defaults select another. No session model switch or user interview. Mention @strategist or spawn it for hard design, debugging, or trade-off calls. Advisory-only; returns advice, not code.';
+    instructions = instructions
+      .replace('consulted for counsel and running on the strongest available model',
+        'consulted for counsel with high reasoning effort on the configured native model')
+      .replace(/## Runtime note\s+[\s\S]*$/,
+        '## Runtime note\n\nThis agent sets `model_reasoning_effort = "high"` and omits `model`. It inherits the session model unless an explicit native spawn or `[agents].default_subagent_model` selects another. No strongest-model selection is guaranteed. For deployment control, set `model` in `.codex/agents/strategist.toml` or configure native agent defaults in native Codex configuration; choose a model that supports high reasoning effort. Advice remains advisory-only and never counts as execution proof.');
+    reasoning.push('model_reasoning_effort = "high"');
+  }
 
   return [
     `name = ${JSON.stringify(name)}`,
     `description = ${JSON.stringify(description)}`,
+    ...reasoning,
     `developer_instructions = ${JSON.stringify(instructions)}`,
     ''
   ].join('\n');

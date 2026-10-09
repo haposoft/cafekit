@@ -47,29 +47,34 @@ function makeStale(root) {
   execSync('git -c user.email=t@t -c user.name=t add -A && git -c user.email=t@t -c user.name=t commit -qm fixture', { cwd: root });
 }
 
-test('fresh claude install runs no docs-sync at SessionStart', () => {
-  inTempProject((root) => {
-    install(root, ['claude']);
-    const settings = JSON.parse(fs.readFileSync(path.join(root, '.claude', 'settings.json'), 'utf8'));
-    assert.equal(commands(settings, 'SessionStart').some((c) => c.includes('docs-sync.cjs')), false);
-    assert.equal(fs.existsSync(path.join(root, '.claude', 'hooks', 'docs-sync.cjs')), true, 'the hook stays installed for on-demand use');
+for (const [runtime, folder, config] of [['claude', '.claude', 'settings.json'], ['codex', '.codex', 'hooks.json']]) {
+  test(`fresh ${runtime} install runs no docs-sync at SessionStart`, () => {
+    inTempProject((root) => {
+      install(root, [runtime]);
+      const settings = JSON.parse(fs.readFileSync(path.join(root, folder, config), 'utf8'));
+      assert.equal(commands(settings, 'SessionStart').some((c) => c.includes('docs-sync.cjs')), false);
+      assert.equal(fs.existsSync(path.join(root, folder, 'hooks', 'docs-sync.cjs')), true, 'the hook stays installed for on-demand use');
+    });
   });
-});
 
-test('upgrade drops the SessionStart docs-sync entry', () => {
-  inTempProject((root) => {
-    install(root, ['claude']);
-    const settingsPath = path.join(root, '.claude', 'settings.json');
-    const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
-    const kept = commands(settings, 'SessionStart');
-    settings.hooks.SessionStart[0].hooks.push({ type: 'command', command: 'node "$CLAUDE_PROJECT_DIR/.claude/hooks/docs-sync.cjs"' });
-    fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
-    install(root, ['claude']);
-    const after = commands(JSON.parse(fs.readFileSync(settingsPath, 'utf8')), 'SessionStart');
-    assert.equal(after.some((c) => c.includes('docs-sync.cjs')), false);
-    for (const command of kept) assert.ok(after.includes(command), `kept: ${command}`);
+  test(`${runtime} upgrade drops the managed SessionStart docs-sync entry`, () => {
+    inTempProject((root) => {
+      install(root, [runtime]);
+      const settingsPath = path.join(root, folder, config);
+      const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+      const kept = commands(settings, 'SessionStart');
+      const command = runtime === 'claude'
+        ? 'node "$CLAUDE_PROJECT_DIR/.claude/hooks/docs-sync.cjs"'
+        : 'node ".codex/hooks/docs-sync.cjs"';
+      settings.hooks.SessionStart[0].hooks.push({ type: 'command', command });
+      fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+      install(root, [runtime]);
+      const after = commands(JSON.parse(fs.readFileSync(settingsPath, 'utf8')), 'SessionStart');
+      assert.equal(after.some((c) => c.includes('docs-sync.cjs')), false);
+      for (const command of kept) assert.ok(after.includes(command), `kept: ${command}`);
+    });
   });
-});
+}
 
 test('the docs skill runs docs-sync on demand', () => {
   for (const rel of ['SKILL.md', 'references/update-workflow.md']) {

@@ -12,11 +12,6 @@
           },
           {
             "type": "command",
-            "command": "node \".codex/hooks/docs-sync.cjs\"",
-            "commandWindows": "node \".codex/hooks/docs-sync.cjs\""
-          },
-          {
-            "type": "command",
             "command": "node \".codex/hooks/state.cjs\"",
             "commandWindows": "node \".codex/hooks/state.cjs\""
           }
@@ -86,6 +81,16 @@
             "type": "command",
             "command": "node \".codex/hooks/state.cjs\"",
             "commandWindows": "node \".codex/hooks/state.cjs\""
+          }
+        ]
+      },
+      {
+        "matcher": "apply_patch|Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \".codex/hooks/spec-state.cjs\"",
+            "commandWindows": "node \".codex/hooks/spec-state.cjs\""
           }
         ]
       }

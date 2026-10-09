@@ -86,8 +86,10 @@ try {
     : detectFramework(pkg);
   const branch = gitBranch(projectRoot);
 
-  // Approval tokens never survive a session boundary or compaction.
-  clearState(projectRoot);
+  // Invalidate this session only; another pane retains its own approvals.
+  const sessionId = [payload.session_id, payload.sessionId, payload.sessionID, payload.session?.id]
+    .find((value) => typeof value === 'string' && value.trim());
+  clearState(projectRoot, sessionId);
 
   // Orca (onorca.dev) sets ORCA_PANE_KEY in every pane; it is a presence marker, not a
   // secret. ORCA_AGENT_HOOK_TOKEN and ORCA_AGENT_LAUNCH_TOKEN live in the same

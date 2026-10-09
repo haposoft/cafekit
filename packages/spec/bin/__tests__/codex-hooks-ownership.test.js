@@ -17,7 +17,7 @@ const PACKAGE_ROOT = path.join(__dirname, '../..');
 const INSTALLER = path.join(PACKAGE_ROOT, 'bin/install.js');
 const TEMPLATE = path.join(PACKAGE_ROOT, 'src/codex/hooks.json');
 const MANIFEST = require(path.join(PACKAGE_ROOT, 'src/claude/migration-manifest.json'));
-const { hookScript } = require(path.join(PACKAGE_ROOT, 'bin/phases/codex-hooks.js'));
+const { hookScript, repairLegacyCodexLaunchers } = require(path.join(PACKAGE_ROOT, 'bin/phases/codex-hooks.js'));
 
 const USER_STOP_COMMAND = 'node "$(git rev-parse --show-toplevel)/scripts/my-own-stop.js"';
 const USER_PRETOOL_COMMAND = 'echo user-owned-pretooluse';
@@ -235,5 +235,73 @@ test('hooks.json stays outside the ownership manifest, like settings.json', () =
       !tracked.some((file) => file.endsWith('hooks.json')),
       'hooks.json is tracked as a payload file, so a user edit would be classified user-modified again'
     );
+  });
+});
+
+test('parity regression: foreign hooks with managed basenames stay exact and cannot suppress registration', () => {
+  inTempProject((root) => {
+    fs.mkdirSync(path.join(root, '.codex'));
+    const foreign = { type: 'command', command: `node '${root}/tools/hooks/session.cjs'`, timeout: 17 };
+    const custom = { type: 'command', command: `node '${root}/.codex/hooks/session.cjs' --custom`, timeout: 19 };
+    fs.writeFileSync(hooksPath(root), JSON.stringify({ hooks: { SessionStart: [{ matcher: '*', hooks: [foreign, custom] }] } }));
+    const result = install(root);
+    assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+    const handlers = readHooks(root).hooks.SessionStart.flatMap((group) => group.hooks);
+    assert.ok(handlers.some((entry) => JSON.stringify(entry) === JSON.stringify(foreign)), 'foreign hook was rewritten');
+    assert.ok(handlers.some((entry) => JSON.stringify(entry) === JSON.stringify(custom)), 'custom hook was rewritten');
+    assert.equal(handlers.filter((entry) => entry.command?.startsWith('PATH=') && hookScript(entry.command) === 'session.cjs').length, 1);
+  });
+});
+
+test('parity regression: repairing launchers preserves unknown and foreign command shapes', () => {
+  inTempProject((root) => {
+    const commands = [
+      `node '${root}/tools/hooks/check.cjs'`,
+      `node '${root}/tools/hooks/session.cjs'`,
+      `node '${root}/.codex/hooks/user-guard.cjs'`,
+      `node '${root}/.codex/hooks/session.cjs' --custom`,
+    ];
+    const config = { hooks: { Stop: [{ hooks: commands.map((command) => ({ type: 'command', command })) }] } };
+    assert.deepEqual(repairLegacyCodexLaunchers(config, root).config, config);
+    const windowsPrefix = 'node -e "process.argv[1]=Buffer.from(process.argv[1],\'base64url\').toString(\'utf8\');require(\'module\').runMain()" ';
+    const foreignWindows = windowsPrefix + Buffer.from(`${root}/tools/hooks/session.cjs`).toString('base64url');
+    const mixed = { type: 'command', command: 'node ".codex/hooks/session.cjs"', commandWindows: foreignWindows, timeout: 7 };
+    const next = repairLegacyCodexLaunchers({ hooks: { Stop: [{ hooks: [mixed] }] } }, root).config.hooks.Stop[0].hooks[0];
+    assert.equal(next.commandWindows, foreignWindows, 'foreign platform field was rebound');
+    assert.equal(next.timeout, 7);
+    assert.match(next.command, /^PATH=/);
+    for (const commandWindows of [windowsPrefix + 'bad-base64!', foreignWindows + ' --custom']) {
+      const unknown = { hooks: { Stop: [{ hooks: [{ type: 'command', commandWindows }] }] } };
+      assert.deepEqual(repairLegacyCodexLaunchers(unknown, root).config, unknown);
+    }
+  });
+});
+
+test('parity regression: upgrade removes only managed docs startup handlers', () => {
+  inTempProject((root) => {
+    assert.equal(install(root).status, 0);
+    const config = readHooks(root);
+    const managed = { type: 'command', command: `node '${root}/.codex/hooks/docs-sync.cjs'`, timeout: 23 };
+    const foreign = { type: 'command', command: `node '${root}/tools/hooks/docs-sync.cjs'` };
+    const custom = { type: 'command', command: `node '${root}/.codex/hooks/docs-sync.cjs' --custom` };
+    const hybrid = { ...managed, commandWindows: 'echo user-owned-windows-docs' };
+    config.hooks.SessionStart.push({ matcher: '*', hooks: [managed, foreign, custom, hybrid] });
+    config.hooks.Stop.push({ hooks: [{ ...managed }] });
+    fs.writeFileSync(hooksPath(root), JSON.stringify(config));
+    const before = fs.readFileSync(hooksPath(root), 'utf8');
+    const preview = install(root, ['--dry-run']);
+    assert.equal(preview.status, 0, preview.stderr);
+    assert.equal(fs.readFileSync(hooksPath(root), 'utf8'), before);
+    const result = install(root);
+    assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+    const upgraded = readHooks(root);
+    const startup = upgraded.hooks.SessionStart.flatMap((group) => group.hooks);
+    assert.ok(!startup.some((entry) => entry.command === managed.command), 'managed docs startup hook survived');
+    assert.ok(!startup.some((entry) => entry.command?.startsWith('PATH=') && hookScript(entry.command) === 'docs-sync.cjs' && !entry.commandWindows), 'managed docs startup launcher survived');
+    assert.ok(startup.some((entry) => entry.command === foreign.command));
+    assert.ok(startup.some((entry) => entry.command === custom.command));
+    assert.ok(startup.some((entry) => entry.commandWindows === hybrid.commandWindows), 'migration removed a foreign platform field');
+    assert.ok(upgraded.hooks.Stop.flatMap((group) => group.hooks).some((entry) => hookScript(entry.command) === 'docs-sync.cjs'));
+    assert.ok(fs.existsSync(path.join(root, '.codex/hooks/docs-sync.cjs')), 'on-demand docs hook was deleted');
   });
 });

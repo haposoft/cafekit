@@ -25,9 +25,16 @@ function cacheFile(projectRoot, sessionId) {
   return path.join(hookStateDir(projectRoot), `tollgate-${key}.txt`);
 }
 
+let mutationObserver = false;
 try {
   const payload = readPayload();
+  mutationObserver = payload?.hook_event_name === 'PostToolUse';
   if (!payload) process.exit(0);
+  const context = getHookContext(payload);
+  const { touchSession } = require('./lib/spec-session-touch.cjs');
+  const touch = touchSession(payload, context);
+  // Mutation observers only persist paths. They must not inspect packet state or proof.
+  if (payload.hook_event_name === 'PostToolUse') process.exit(0);
   const loaded = loadSharedPolicy();
   if (!loaded.policy) {
     logCrash('spec-state', loaded.error);
@@ -38,10 +45,10 @@ try {
   const receiptLoaded = loadSharedReceipt();
   if (!receiptLoaded.receipt) throw receiptLoaded.error;
   const RECEIPT = receiptLoaded.receipt;
-  const { projectRoot, runtime } = getHookContext(payload);
+  const { projectRoot, runtime } = context;
   if (runtime.spec?.tollgate === false) process.exit(0);
   const { findLegacyPackets, resolveWorkflowCandidate } = require('./lib/spec-utils.cjs');
-  const sessionId = payload.session_id || payload.sessionId || payload.sessionID || payload.session?.id;
+  const sessionId = touch.sessionId;
   // A legacy packet (a specs/<x>/ directory without plan.md that the old flow left
   // behind) is no longer read. Say so once per session instead of on every prompt.
   const legacyPackets = findLegacyPackets(projectRoot, runtime);
@@ -62,9 +69,22 @@ try {
       try { atomicWrite(noticeFile, `${JSON.stringify([...noticed, ...fresh].sort())}\n`); } catch { /* repeats the notice */ }
     }
   }
-  const explicitFeature = payload.featureName || payload.feature || payload.explicitFeature || null;
-  const explicitPath = payload.specPath || payload.spec_path || payload.featurePath || null;
-  const resolved = resolveWorkflowCandidate(projectRoot, runtime, explicitFeature, explicitPath);
+  const explicitFeature = payload.explicitFeature ?? payload.featureName ?? payload.feature ?? null;
+  const explicitPath = payload.explicitPath ?? payload.specPath ?? payload.spec_path ?? payload.featurePath ?? null;
+  const hasExplicit = explicitFeature !== null || explicitPath !== null;
+  if (sessionId && !hasExplicit && touch.touched.length === 0) process.exit(0);
+  let resolved;
+  if (sessionId && !hasExplicit) {
+    const names = touch.names.length ? touch.names : touch.touched;
+    const candidates = names.map((name) => resolveWorkflowCandidate(projectRoot, runtime, name, null));
+    resolved = candidates.find((candidate) => candidate?.error);
+    const active = candidates.filter((candidate) => candidate && !candidate.error && !candidate.allTasksDone);
+    if (!resolved) resolved = active.length > 1
+      ? { error: 'multiple_active', candidates: active.map((candidate) => candidate.featureName) }
+      : active[0] || null;
+  } else {
+    resolved = resolveWorkflowCandidate(projectRoot, runtime, explicitFeature, explicitPath);
+  }
   if (!resolved) process.exit(0);
   if (resolved.error === 'multiple_active') {
     process.stdout.write(`> ⚠️ Multiple active specs detected: ${resolved.candidates.join(', ')}. Provide explicit feature target or resolve ambiguity. Tollgate paused.\n`);
@@ -166,5 +186,5 @@ try {
   process.stdout.write(`${lines.join('\n')}\n`);
 } catch (error) {
   logCrash('spec-state', error);
-  emitControlledFailure(error.message);
+  if (!mutationObserver) emitControlledFailure(error.message);
 }

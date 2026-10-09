@@ -17,21 +17,40 @@ const { PLATFORMS } = require('../lib/context');
 
 const CODEX_SRC = path.join(__dirname, '../../src/codex');
 const HOOK_COMMAND_TEMPLATE = /^node "\.codex\/hooks\/([a-z0-9-]+\.cjs)"$/;
-// Exact shapes earlier installers wrote, kept only to recognize and upgrade them. Before
-// 0.16.2 the path came from Git; 0.16.2 fixed the path but still resolved `node` through
-// PATH. Matching the whole command keeps a hook the user wrote from ever being rewritten.
-const LEGACY_POSIX_COMMANDS = [
-  /^node "\$\(git rev-parse --show-toplevel\)\/\.codex\/hooks\/([a-z0-9-]+\.cjs)"$/,
-  /^node '(?:[^']|'\\'')*[/\\]hooks[/\\]([a-z0-9-]+\.cjs)'$/,
-];
+const LEGACY_GIT_COMMAND = /^node "\$\(git rev-parse --show-toplevel\)\/\.codex\/hooks\/([a-z0-9-]+\.cjs)"$/;
+const SHELL_QUOTED = "'(?:[^']|'\\\\'')*'";
+const POSIX_COMMAND = new RegExp(`^(?:PATH="\\$PATH"(?::${SHELL_QUOTED})+ )?node (${SHELL_QUOTED})$`);
+const WINDOWS_LAUNCHER = 'node -e "process.argv[1]=Buffer.from(process.argv[1],\'base64url\').toString(\'utf8\');require(\'module\').runMain()" ';
 
-function legacyPosixScript(command) {
+// A basename alone cannot prove ownership: users may also run tools/hooks/session.cjs.
+// Only known source scripts at the native runtime path and an exact emitted launcher
+// shape may be rebound or count as already registered.
+const MANAGED_SCRIPTS = new Set(fs.readdirSync(path.join(CODEX_SRC, 'hooks')).filter((name) => /^[a-z0-9-]+\.cjs$/.test(name)));
+
+function nativeScript(target) {
+  if (!path.posix.isAbsolute(target) && !path.win32.isAbsolute(target)) return null;
+  const match = target.match(/[/\\]\.codex[/\\]hooks[/\\]([a-z0-9-]+\.cjs)$/);
+  return match && MANAGED_SCRIPTS.has(match[1]) ? match[1] : null;
+}
+
+function managedCommandScript(command) {
   if (typeof command !== 'string') return null;
-  for (const pattern of LEGACY_POSIX_COMMANDS) {
-    const match = command.match(pattern);
-    if (match) return match[1];
-  }
-  return null;
+  const template = command.match(HOOK_COMMAND_TEMPLATE) || command.match(LEGACY_GIT_COMMAND);
+  if (template) return MANAGED_SCRIPTS.has(template[1]) ? template[1] : null;
+  const posix = command.match(POSIX_COMMAND);
+  if (posix) return nativeScript(posix[1].slice(1, -1).replace(/'\\''/g, "'"));
+  if (!command.startsWith(WINDOWS_LAUNCHER)) return null;
+  const encoded = command.slice(WINDOWS_LAUNCHER.length);
+  if (!/^[A-Za-z0-9_-]+$/.test(encoded)) return null;
+  const target = Buffer.from(encoded, 'base64url').toString('utf8');
+  return Buffer.from(target, 'utf8').toString('base64url') === encoded ? nativeScript(target) : null;
+}
+
+function managedHandlerScript(handler) {
+  if (handler?.type !== 'command') return null;
+  const fields = ['command', 'commandWindows'].filter((field) => handler[field] !== undefined);
+  const scripts = fields.map((field) => managedCommandScript(handler[field]));
+  return scripts.length > 0 && scripts.every((script) => script && script === scripts[0]) ? scripts[0] : null;
 }
 
 /** The hook script a command runs, which is stable across installs and platforms. */
@@ -57,8 +76,8 @@ function hookPathFor(script, projectRoot) {
  * nothing outside a repository and the *outer* root for a project nested inside one. Both
  * cases produced a path that does not exist, so Codex started every hook, every hook died,
  * and the gates were silently absent. The path is known at install time, so it is written
- * directly. The literal `/hooks/<script>.cjs` segment must survive, because hookScript()
- * reads it as the identity that lets a reinstall recognize CafeKit's own entries.
+ * directly. The literal `.codex/hooks/<script>.cjs` path and emitted launcher shape
+ * let managedHandlerScript() recognize CafeKit's own entries on a reinstall.
  */
 /**
  * Directories to fall back on when PATH carries no `node`.
@@ -88,7 +107,7 @@ function posixHookCommand(script, projectRoot) {
  */
 function windowsHookCommand(script, projectRoot) {
   const encoded = Buffer.from(hookPathFor(script, projectRoot), 'utf8').toString('base64url');
-  return 'node -e "process.argv[1]=Buffer.from(process.argv[1],\'base64url\').toString(\'utf8\');require(\'module\').runMain()" ' + encoded;
+  return WINDOWS_LAUNCHER + encoded;
 }
 
 /** Rewrite a managed template handler into absolute launchers for both platforms. */
@@ -104,10 +123,9 @@ function materializeHookCommands(handler, projectRoot) {
 }
 
 /**
- * Repair launchers an older installer wrote. A reinstall treats an already-registered
- * script as the user's placement and leaves it alone, so without this pass every existing
- * project would keep its broken git-derived command forever. Only the exact byte pattern
- * CafeKit itself emitted is rewritten; anything else stays untouched.
+ * Rebind recognized CafeKit launchers after an upgrade or a project move. Registration
+ * preserves the user's event/matcher placement; only emitted command shapes change,
+ * and a custom field for another platform remains untouched.
  */
 function repairLegacyCodexLaunchers(config, projectRoot) {
   if (!config.hooks) return { config, repaired: 0 };
@@ -120,13 +138,13 @@ function repairLegacyCodexLaunchers(config, projectRoot) {
       return {
         ...group,
         hooks: group.hooks.map((handler) => {
-          const legacy = legacyPosixScript(handler?.command);
-          const template = typeof handler?.commandWindows === 'string'
-            && handler.commandWindows.match(HOOK_COMMAND_TEMPLATE);
-          if (!legacy && !template) return handler;
+          if (handler?.type !== 'command') return handler;
           const next = { ...handler };
-          if (legacy) next.command = posixHookCommand(legacy, projectRoot);
-          if (template) next.commandWindows = windowsHookCommand(template[1], projectRoot);
+          for (const [field, build] of [['command', posixHookCommand], ['commandWindows', windowsHookCommand]]) {
+            const script = managedCommandScript(handler[field]);
+            if (script) next[field] = build(script, projectRoot);
+          }
+          if (next.command === handler.command && next.commandWindows === handler.commandWindows) return handler;
           repaired += 1;
           return next;
         }),
@@ -139,7 +157,7 @@ function repairLegacyCodexLaunchers(config, projectRoot) {
 /** Drop CafeKit hooks the manifest has retired, leaving foreign entries untouched. */
 function pruneObsoleteCodexHooks(config, ctx) {
   const obsolete = ctx.manifest?.obsolete?.settingsHookCommandSubstrings || [];
-  if (!config.hooks || obsolete.length === 0) return { config, removed: 0 };
+  if (!config.hooks) return { config, removed: 0 };
 
   let removed = 0;
   const pruned = {};
@@ -150,7 +168,8 @@ function pruneObsoleteCodexHooks(config, ctx) {
       if (!Array.isArray(group?.hooks)) { keptGroups.push(group); continue; }
       const keptHooks = group.hooks.filter((handler) => {
         const command = handler?.command || '';
-        const isObsolete = obsolete.some((substring) => command.includes(substring));
+        const isObsolete = obsolete.some((substring) => command.includes(substring))
+          || (eventName === 'SessionStart' && managedHandlerScript(handler) === 'docs-sync.cjs');
         if (isObsolete) removed += 1;
         return !isObsolete;
       });
@@ -198,7 +217,7 @@ function mergeCodexHooks(ctx, platformKey, projectRoot = process.cwd()) {
 
   const { config: base, repaired } = repairLegacyCodexLaunchers(pruned, projectRoot);
   if (repaired > 0) {
-    ctx.ui.detail(`  ↻ ${ctx.dryRun ? '[dry-run] ' : ''}Codex hooks: rebound ${repaired} launcher(s) written by an older installer`);
+    ctx.ui.detail(`  ↻ ${ctx.dryRun ? '[dry-run] ' : ''}Codex hooks: rebound ${repaired} launcher(s) to the current project`);
     ctx.results.updated++;
   }
 
@@ -215,7 +234,7 @@ function mergeCodexHooks(ctx, platformKey, projectRoot = process.cwd()) {
     // it. Matching on the script rather than the whole command survives the path
     // differences between installs and platforms.
     const registered = new Set(
-      groups.flatMap((group) => (group?.hooks || []).map((handler) => hookScript(handler?.command))).filter(Boolean),
+      groups.flatMap((group) => (Array.isArray(group?.hooks) ? group.hooks : []).map(managedHandlerScript)).filter(Boolean),
     );
 
     for (const managedGroup of managedGroups) {

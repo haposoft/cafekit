@@ -37,7 +37,7 @@ bin/phases/
   omp-runtime.js            Oh My Pi: Claude gate scripts + omp overlay, runtime.json, bridge extension; no skill payload
   write-metadata.js         cafekit.json version metadata + ownership manifest write
   root-config.js            root .gitignore patterns
-  post-install.js           Gemini API key, language + managed-block
+  post-install.js           language + managed-block
                             addressing for Claude and Codex
   skills-setup.js           opt-in: venv+pip, skill npm, Chromium; detect+guide system tools
   summary.js / report.js    summary output + per-action reporting helper
@@ -224,6 +224,12 @@ Codex uses root `AGENTS.md` as its native project instruction surface, and Claud
 - Each runtime owns exactly one additional managed block (Codex: `<!-- CAFEKIT CODEX START/END -->`). The block header states an explicit ignore contract: non-owners must ignore that block and consume only `CORE` plus their native block. If ownership cannot be determined, the file is treated as `CORE`-only (fail-safe).
 - Markers are not a filesystem isolation boundary — they are an ownership/ignore contract. Tests assert no cross-runtime directive leakage (e.g., Codex block not treated as Claude instructions, and `CORE` stays neutral). Do not claim cross-runtime instruction isolation until a native alternate entrypoint is proven for the affected runtime.
 
+Codex SessionStart không chạy `docs-sync`; Docs gọi hook này khi cần. Upgrade chỉ gỡ handler SessionStart do CafeKit quản lý. Hook vẫn được cài, hook tùy chỉnh bên ngoài vẫn được giữ.
+
+State recovery bỏ snapshot chỉ có placeholder hoặc timestamp; todo, kết quả agent và nội dung thực vẫn được phục hồi. Với session có ID, `spec-state` chỉ nhắc packet đã được session đó chọn bằng prompt/target hoặc đã sửa qua `apply_patch`/Edit/Write. PostToolUse chỉ ghi nhận touch, không phát context; Stop tiếp tục kiểm tra Receipt độc lập. Không có session ID thì giữ fallback kiểm tra cũ, không dùng chung touch state.
+
+Reinstall nhận diện launcher do CafeKit sinh và cập nhật đường dẫn về project root hiện tại, kể cả launcher Windows đã encode. Các command, matcher và metadata bên ngoài được giữ; tên file giống hook CafeKit không đủ để xác định ownership.
+
 The installer does not create `.codex/config.toml` or change user-global trust.
 
 Codex loads project agents/hooks after the repository is trusted; users review
@@ -234,6 +240,10 @@ Codex payload conversion is scoped by asset type. Markdown/text instructions
 map Claude paths, skill syntax, tools, and agent examples to native Codex
 equivalents. Executable source files receive path/label rewrites only, preventing
 keywords such as Python `prompt=` or `description=` from being corrupted.
+
+Codex và Claude dùng chung exclusions provenance cho generated runtime state, kể cả session-state/privacy của Codex. Projection giữ danh sách này runtime-neutral; Stop memo checkout snapshot riêng trong mỗi invocation, vẫn đọc và kiểm tra mọi done Receipt. Lỗi ghi cache không thay kết quả validation.
+
+Privacy Codex duyệt cả nested array paths và chỉ invalidates grant của session hiện tại. Inspect phân biệt output của build tool đã biết với đường dẫn đọc bị hạn chế. Agent strategist sinh `model_reasoning_effort = "high"` và kế thừa model theo native host config; không khẳng định chọn strongest model.
 
 ## Completion gate identity
 
