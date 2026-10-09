@@ -1,6 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
+import { tools, mapRun, mappedGrade, condition, calibrationFile } from './mapping.mjs';
+import { readManifest, logRoot } from './room.mjs';
 const YAML = createRequire(import.meta.url)('yaml');
 
 export function loadGrader(file) {
@@ -77,6 +79,9 @@ export function grade(g, context) {
   if (g.arm === 'without') return { status: 'untransferred', reason: 'Không có lượt without trong manifest Codex.' };
   if (g.type === 'llm') return { status: 'untransferred', reason: 'N/A: không có giám khảo LLM hoặc dữ liệu hiệu chỉnh hợp lệ.' };
   if (g.type === 'tool_order' || (g.type === 'tool_used' && g.tool !== 'Bash')) {
+    if (g.type === 'tool_used' && tools.includes(g.tool) && context.mapping) {
+      return mappedGrade(g, { ...context, mappingKey: `${context.mappingCell}/${g.name}` });
+    }
     return { status: 'untransferred', reason: `N/A: ${g.type}/${g.tool || 'order'} chưa có ánh xạ đã hiệu chỉnh (task 05).` };
   }
   if (g.type === 'tool_used') {
@@ -106,7 +111,7 @@ export function grade(g, context) {
   return result;
 }
 
-export function readRun(directory, skill) {
+export function readRun(directory, skill, options = {}) {
   const readJSON = file => JSON.parse(fs.readFileSync(path.join(directory, file), 'utf8'));
   const readEvents = file => fs.readFileSync(path.join(directory, file), 'utf8').split('\n').filter(Boolean).map(JSON.parse);
   const stdoutEvents = readEvents('events.jsonl');
@@ -130,7 +135,20 @@ export function readRun(directory, skill) {
       initialEvidence = `${scaffoldManifest} + ${harnessManifest}`;
     }
   }
-  return { root, events, stdoutEvents, initialFiles, initialEvidence, files: inventory(root),
+  // Ánh xạ hiệu chỉnh bật tường minh; replay verdict H đã khoá vẫn dùng profile task 03.
+  let mapped = {};
+  if (options.mapping) {
+    const manifest = options.manifest || readManifest(), source = options.logRoot || logRoot(manifest);
+    const definition = manifest.skills.find(s => s.name === skill);
+    const cell = definition?.cases.find(c => c.slots.some(s => path.resolve(source, s.directory) === path.resolve(directory)));
+    const slot = cell?.slots.find(s => path.resolve(source, s.directory) === path.resolve(directory));
+    if (!slot) throw new Error('Lượt ánh xạ không có trong manifest');
+    mapped = { mapping: mapRun(directory, events, { ...options, eventFile: fs.existsSync(path.join(directory, native)) ? native : 'events.jsonl' }), mappingCell: `${skill}/${cell.case}`,
+      mappingCondition: condition(definition, slot).id,
+      mappingManifest: manifest, mappingLogRoot: source,
+      mappingCalibration: options.calibration || JSON.parse(fs.readFileSync(calibrationFile, 'utf8')) };
+  }
+  return { root, events, stdoutEvents, initialFiles, initialEvidence, ...mapped, files: inventory(root),
     last: fs.readFileSync(path.join(directory, 'last.txt'), 'utf8'),
     agentMessages: stdoutEvents.filter(e => e.type === 'item.completed' && e.item?.type === 'agent_message').map(e => e.item.text) };
 }
