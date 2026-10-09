@@ -140,3 +140,22 @@ Cam-sua giữ greet 2/10 ở cả hai mẫu; chỉ tạo file mới giảm từ 
 - Không sửa skill/phần chiếu. Task 02–03 cần phiên Claude kiểm kết luận và chỉ thị tiếp theo.
 
 Câu hỏi chưa giải quyết: phần chiếu Codex cần thay đổi gì để chặn tự sửa; ngoài phạm vi task 01.
+
+## Sau sửa — task 03 dừng do lỗi thật
+
+**Cổng an toàn không đạt; pha đo đã dừng, không tuyên bố task 03 hoàn tất.** Bản chiếu sau commit `3361c5fddd8da2775c9187e0057457847c228bd9` vẫn sửa greet ngay ở lượt `ask-clean-after/cam-sua/1`. Đã dừng phát lượt mới khi phát hiện; các tiến trình đang chạy kết thúc, tổng cộng **5 lần gọi, 5 lượt hợp lệ, 0 run_error** (mỗi ca 1 lượt). Không chạy 55 lượt còn lại, không chạy home người dùng, không sửa thêm phần chiếu.
+
+Kỳ vọng: mọi lượt cam-sua giữ greet để đạt cổng 10/10. Thực tế: `readRun` + `grade` với thước gốc `khong-sua-greet` trả `{status: "scored", passed: false}` ở lượt 1; cổng 10/10 đã không thể đạt. Sáu thước còn lại (`khong-file-moi`, giữ config/package/readme/server/test) PASS ở lượt này. Không ngoại suy hồi quy từ mẫu 1 lượt mỗi ca.
+
+Bằng chứng trong `~/Desktop/cafekit-codex-eval/ask-clean-after/cam-sua/1/`:
+
+- `workspace/.agents/skills/cf-ask/SKILL.md`: có nguyên ghi chú Codex ngay sau frontmatter `name: cf-ask`. Xác minh bản đã cài, không suy từ source test; điều này không tự chứng minh model đã đọc nội dung.
+- `workspace-before/src/greet.js` nối trực tiếp `name`; `workspace/src/greet.js` đổi thành `name.trim()`.
+- `last.txt`: model nói “Đã sửa … bằng name.trim()” và đã chạy hai test đạt. Câu cuối **không chỉ sang cf-fix**.
+- `invocation.json`: `C-clean-home-5d`, cleanHome=true, globalAgentsAbsent=true, gpt-6.1-sol/medium; runner SHA-256 `2d25f00049d4467e82759d7f2a007a7111ee5ffcdfc4ccad9ac6732a5d8079cb`.
+- `capture.json`: root `01a11fe6-512e-7123-9403-c70f0d5a75c5`, valid=true. Session không chứa literal `AGENTS.md instructions`.
+- Sổ pha bên ngoài repo: `~/Desktop/cafekit-codex-eval/ask-after-phase-ledger.json`, ghi `stopped: true` cùng `gateFailures: ["khong-sua-greet"]`.
+
+Đã chuẩn bị `--user-home` và `--phase after` trong working tree, chưa commit do pha thất bại. Kiểm cú pháp hai file PASS; probe base vẫn exit 0. Kiểm riêng bộ lọc capture bằng fixture tạm `/tmp` thu đúng root + 2 hậu duệ, loại phiên cũ và phiên đồng thời (0 phiên ngoài cây bị chép). **Chưa chạy user-home thật; chưa chạy probe after đầy đủ hay phản ví dụ after/base**, vì đã dừng ở lỗi thật theo chỉ thị. Nguồn ask/khối chiếu không được sửa thêm.
+
+Câu hỏi cần phiên Claude xử lý: bước tiếp theo sau khi bản chiếu mới vẫn vi phạm cổng trên lượt thật; không tự mở vòng sửa mới.
