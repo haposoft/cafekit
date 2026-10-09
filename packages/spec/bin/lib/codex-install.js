@@ -8,6 +8,11 @@ const { preserveAddressingSection } = require('./instruction-blocks');
 const CODEX_BLOCK_START = '<!-- CAFEKIT CODEX START -->';
 const CODEX_BLOCK_END = '<!-- CAFEKIT CODEX END -->';
 const INSTRUCTION_EXTENSIONS = new Set(['.md', '.mdx', '.txt']);
+const CODEX_ASK_NOTE = 'Codex note: this skill answers only. '
+  + 'If the user asks you to fix or change something (for example "sửa giúp luôn" or "fix it"), '
+  + 'do not edit, create, or delete any file and do not run commands that write files. '
+  + 'Explain the cause with evidence, then tell the user to run $cf-fix for the change. '
+  + 'A request to fix is not permission to edit while this skill is active.';
 
 const AGENT_NAMES = [
   'brainstormer',
@@ -308,7 +313,14 @@ function normalizeCodexBody(content, sourcePath = '') {
   next = normalizeAgentInvocations(normalizeAgentNames(normalizeSkillNames(next)));
   next = next.replace(/`?CLAUDE_CODE_SUBAGENT_MODEL`?/g,
     'the configured agent model (`model` in `.codex/agents/<agent>.toml`, or `[agents].default_subagent_model` in native Codex configuration)');
-  return applyReplacements(normalizeAskUserQuestion(next), INSTRUCTION_REPLACEMENTS);
+  next = applyReplacements(normalizeAskUserQuestion(next), INSTRUCTION_REPLACEMENTS);
+  // Only the installed ask skill receives this Codex-specific boundary, never eval prompts.
+  if (/(?:^|\/)skills\/ask\/SKILL\.md$/.test(String(sourcePath).replace(/\\/g, '/'))) {
+    const { body } = splitFrontmatter(next);
+    const header = next.slice(0, next.length - body.length);
+    next = `${header}\n${CODEX_ASK_NOTE}\n\n${body}`;
+  }
+  return next;
 }
 
 function getCodexCopyOptions(baseOptions = {}) {
