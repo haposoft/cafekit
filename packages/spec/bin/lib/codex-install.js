@@ -8,11 +8,10 @@ const { preserveAddressingSection } = require('./instruction-blocks');
 const CODEX_BLOCK_START = '<!-- CAFEKIT CODEX START -->';
 const CODEX_BLOCK_END = '<!-- CAFEKIT CODEX END -->';
 const INSTRUCTION_EXTENSIONS = new Set(['.md', '.mdx', '.txt']);
-const CODEX_ASK_NOTE = 'Codex note: this skill answers only. '
-  + 'If the user asks you to fix or change something (for example "sửa giúp luôn" or "fix it"), '
-  + 'do not edit, create, or delete any file and do not run commands that write files. '
-  + 'Explain the cause with evidence, then tell the user to run $cf-fix for the change. '
-  + 'A request to fix is not permission to edit while this skill is active.';
+const CODEX_ASK_DESCRIPTION_BOUNDARY = 'A request to fix or change something is still answered without editing any file; point the user to $cf-fix.';
+const CODEX_ASK_NOTE = 'Rule 1 (Codex): never edit, create, or delete files in this skill, '
+  + 'even when the user says fix it or sửa giúp luôn. Do not run commands that write files. '
+  + 'Answer the cause with evidence and tell the user to run $cf-fix.';
 
 const AGENT_NAMES = [
   'brainstormer',
@@ -316,8 +315,11 @@ function normalizeCodexBody(content, sourcePath = '') {
   next = applyReplacements(normalizeAskUserQuestion(next), INSTRUCTION_REPLACEMENTS);
   // Only the installed ask skill receives this Codex-specific boundary, never eval prompts.
   if (/(?:^|\/)skills\/ask\/SKILL\.md$/.test(String(sourcePath).replace(/\\/g, '/'))) {
-    const { body } = splitFrontmatter(next);
-    const header = next.slice(0, next.length - body.length);
+    const { frontmatter, body } = splitFrontmatter(next);
+    const description = `${frontmatter.description} ${CODEX_ASK_DESCRIPTION_BOUNDARY}`;
+    if (description.length > 1024) throw new Error('Codex ask description exceeds 1024 characters');
+    const header = next.slice(0, next.length - body.length)
+      .replace(/^description:[^\r\n]*$/m, () => `description: ${JSON.stringify(description)}`);
     next = `${header}\n${CODEX_ASK_NOTE}\n\n${body}`;
   }
   return next;
