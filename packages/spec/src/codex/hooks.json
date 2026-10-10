@@ -52,6 +52,11 @@
             "type": "command",
             "command": "node \".codex/hooks/spec-state.cjs\"",
             "commandWindows": "node \".codex/hooks/spec-state.cjs\""
+          },
+          {
+            "type": "command",
+            "command": "node \".codex/hooks/ask-guard.cjs\"",
+            "commandWindows": "node \".codex/hooks/ask-guard.cjs\""
           }
         ]
       }
@@ -69,6 +74,16 @@
             "type": "command",
             "command": "node \".codex/hooks/inspect-block.cjs\"",
             "commandWindows": "node \".codex/hooks/inspect-block.cjs\""
+          }
+        ]
+      },
+      {
+        "matcher": "apply_patch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \".codex/hooks/ask-guard.cjs\"",
+            "commandWindows": "node \".codex/hooks/ask-guard.cjs\""
           }
         ]
       }
