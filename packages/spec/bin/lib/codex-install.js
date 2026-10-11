@@ -12,6 +12,11 @@ const CODEX_ASK_DESCRIPTION_BOUNDARY = 'A request to fix or change something is 
 const CODEX_ASK_NOTE = 'Rule 1 (Codex): never edit, create, or delete files in this skill, '
   + 'even when the user says fix it or sửa giúp luôn. Do not run commands that write files. '
   + 'Answer the cause with evidence and tell the user to run $cf-fix.';
+const CODEX_RESEARCH_DEPTH_MARKER = 'Codex research depth: treat a settled repository decision that remains in force as a known option.';
+const CODEX_RESEARCH_DEPTH_NOTE = CODEX_RESEARCH_DEPTH_MARKER
+  + ' Use Quick for that decision. An outdated supporting rationale alone does not raise depth '
+  + 'unless correcting it changes the recommendation. Conflicting evidence that changes the '
+  + 'recommendation still requires escalation under the depth table.';
 
 const AGENT_NAMES = [
   'brainstormer',
@@ -322,6 +327,12 @@ function normalizeCodexBody(content, sourcePath = '') {
       .replace(/^description:[^\r\n]*$/m, () => `description: ${JSON.stringify(description)}`);
     next = `${header}\n${CODEX_ASK_NOTE}\n\n${body}`;
   }
+  // Only the installed research skill receives this note, never prompts or templates.
+  if (/(?:^|\/)skills\/research\/SKILL\.md$/.test(String(sourcePath).replace(/\\/g, '/'))) {
+    const { body } = splitFrontmatter(next);
+    const header = next.slice(0, next.length - body.length);
+    next = `${header}\n${CODEX_RESEARCH_DEPTH_NOTE}\n\n${body}`;
+  }
   return next;
 }
 
@@ -404,6 +415,8 @@ function transformManagedCodexContent(content, transform) {
 }
 
 module.exports = {
+  CODEX_RESEARCH_DEPTH_MARKER,
+  CODEX_RESEARCH_DEPTH_NOTE,
   normalizeCodexBody,
   getCodexCopyOptions,
   codexAgentName,
