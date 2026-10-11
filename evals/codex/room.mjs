@@ -31,7 +31,7 @@ export function installProjection(destination) {
   return destination;
 }
 
-export function buildRoom(skill, cell, projection, destination) {
+export function buildRoom(skill, cell, projection, destination, { askGuard = false } = {}) {
   fs.mkdirSync(destination, { recursive: true });
   if (fs.readdirSync(destination).length) throw new Error('Phòng thử phải rỗng');
   const room = fs.realpathSync(destination);
@@ -63,6 +63,17 @@ export function buildRoom(skill, cell, projection, destination) {
   // Manuals của role là output installer, không chép hook hay policy toàn runtime.
   if (agents.length && fs.existsSync(path.join(projection, '.codex/references'))) {
     copy(path.join(projection, '.codex/references'), path.join(room, '.codex/references'));
+  }
+  if (askGuard) {
+    // hook-context has only Node built-in dependencies; do not load other hooks.
+    for (const file of ['ask-guard.cjs', 'lib/hook-context.cjs']) {
+      copy(path.join(projection, '.codex/hooks', file), path.join(room, '.codex/hooks', file));
+    }
+    const handler = { type: 'command', command: 'node ".codex/hooks/ask-guard.cjs"' };
+    fs.writeFileSync(path.join(room, '.codex/hooks.json'), JSON.stringify({ hooks: {
+      UserPromptSubmit: [{ hooks: [handler] }],
+      PreToolUse: [{ matcher: 'apply_patch', hooks: [handler] }]
+    } }, null, 2) + '\n');
   }
   let prompt = normalizeCodexBody(spec.execution.prompt);
   for (const agent of agents) prompt = prompt.replaceAll(`agent ${agent.replaceAll('_', '-')}`, `agent ${agent}`);

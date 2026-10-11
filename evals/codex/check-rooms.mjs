@@ -2,8 +2,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import crypto from 'node:crypto';
+import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
 import { readManifest, logRoot, repo, installProjection, buildRoom, inventory } from './room.mjs';
+import { commandFor } from './run.mjs';
 
 function validateRunCondition(slot, skill, root) {
   const condition = slot.runCondition;
@@ -127,6 +129,15 @@ export function validateManifest(manifest) {
 }
 
 export function checkRooms(manifest) {
+  for (const research of [false, true]) {
+    assert.deepEqual(commandFor('/room', 'prompt', '/last.txt', research), [
+      'exec', '--json', '-m', 'gpt-6.1-sol', '-c', 'model_reasoning_effort="medium"',
+      '-s', 'workspace-write', '-C', '/room', '--skip-git-repo-check', '--enable', 'multi_agent',
+      '-c', 'projects."/room".trust_level="trusted"',
+      ...(research ? ['-c', 'web_search="live"', '-c', 'sandbox_workspace_write.network_access=true'] : []),
+      '-o', '/last.txt', 'prompt'
+    ]);
+  }
   const stats = validateManifest(manifest);
   const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'cafekit-check-rooms-'));
   let built = 0;
@@ -134,6 +145,7 @@ export function checkRooms(manifest) {
     const projection = installProjection(path.join(temporary, 'projection'));
     for (const skill of manifest.skills) for (const cell of skill.cases) {
       const result = buildRoom(skill, cell, projection, path.join(temporary, 'rooms', skill.name, cell.case));
+      assert.equal(fs.existsSync(path.join(result.room, '.codex/hooks.json')), false);
       const actualScripts = inventory(result.room).filter(file => file.startsWith('.codex/scripts/'));
       const wanted = result.scripts.map(file => file.replace('.claude/', '.codex/')).sort();
       if (JSON.stringify(actualScripts) !== JSON.stringify(wanted)) throw new Error(`Sai tập script: ${skill.name}/${cell.case}`);
@@ -147,6 +159,7 @@ export function checkRooms(manifest) {
     if (built !== 68) throw new Error(`Sai số phòng: ${built}/68`);
     console.log(`rooms: ${built}/68`);
     console.log(`manifest: 12 skills, duplicate slots ${stats.duplicateSlots}, missing slots ${stats.missingSlots}`);
+    console.log('defaults: argv unchanged, rooms without hooks.json');
   } finally {
     fs.rmSync(temporary, { recursive: true, force: true });
   }

@@ -11,11 +11,12 @@ export const EFFORT = 'medium';
 const sha = file => crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
 const json = (file, value) => fs.writeFileSync(file, JSON.stringify(value, null, 2) + '\n');
 
-export function commandFor(room, prompt, lastFile, research = false) {
+export function commandFor(room, prompt, lastFile, research = false, { askGuard = false } = {}) {
   return ['exec', '--json', '-m', MODEL, '-c', `model_reasoning_effort="${EFFORT}"`,
     '-s', 'workspace-write', '-C', room, '--skip-git-repo-check', '--enable', 'multi_agent',
     '-c', `projects.${JSON.stringify(room)}.trust_level="trusted"`,
     ...(research ? ['-c', 'web_search="live"', '-c', 'sandbox_workspace_write.network_access=true'] : []),
+    ...(askGuard ? ['--dangerously-bypass-hook-trust'] : []),
     '-o', lastFile, prompt];
 }
 
@@ -85,8 +86,11 @@ export function captureSessions(home, output, room, events, startedAt) {
   if (!sessions.some(s => s.root) || sessions.some(s => !s.valid)) throw new Error('Native role/model/effort/sandbox không khớp');
 }
 
-export function runCell(skill, cell, output, projection, { execute = false, userHome = false } = {}) {
+export function runCell(skill, cell, output, projection, { execute = false, userHome = false, askGuard = false, promptOverride } = {}) {
   if (!execute) throw new Error('Cần opt-in execute; không gọi model mặc định');
+  if (promptOverride !== undefined && (typeof promptOverride !== 'string' || !promptOverride.trim())) {
+    throw new Error('--prompt-override cần một prompt không rỗng');
+  }
   if (cell.excludedReason) throw new Error(cell.excludedReason);
   fs.mkdirSync(output, { recursive: true });
   if (fs.readdirSync(output).length) throw new Error('Output phải mới; không ghi đè lượt đã lưu');
@@ -95,7 +99,8 @@ export function runCell(skill, cell, output, projection, { execute = false, user
   const home = userHome ? original : path.join(temporary, 'home');
   if (!userHome) fs.mkdirSync(home, { mode: 0o700 });
   try {
-    const prepared = buildRoom(skill, cell, projection, path.join(temporary, 'room'));
+    const prepared = buildRoom(skill, cell, projection, path.join(temporary, 'room'), { askGuard });
+    if (promptOverride !== undefined) prepared.prompt = promptOverride;
     if (prepared.historyFile) throw new Error('Chưa có native history replay');
     const { room, prompt } = prepared;
     const config = userHome ? null : `model = "${MODEL}"\nmodel_reasoning_effort = "${EFFORT}"\n[features]\nmulti_agent = true\n[projects.${JSON.stringify(room)}]\ntrust_level = "trusted"\n`;
@@ -106,19 +111,27 @@ export function runCell(skill, cell, output, projection, { execute = false, user
     }
     fs.cpSync(room, path.join(output, 'workspace-before'), { recursive: true });
     json(path.join(output, 'initial.json'), prepared);
-    const argv = commandFor(room, prompt, path.join(output, 'last.txt'), skill.name === 'research');
+    const argv = commandFor(room, prompt, path.join(output, 'last.txt'), skill.name === 'research', { askGuard });
+    const guardDirectory = path.join(temporary, 'ask-guard');
     const startedAt = Date.now();
     json(path.join(output, 'invocation.json'), { executable: 'codex', argv, startedAt,
       configuration: userHome ? 'C-user-home-5d' : 'C-clean-home-5d',
       runnerSha256: sha(fileURLToPath(import.meta.url)), cleanHome: !userHome,
       globalAgentsAbsent: !fs.existsSync(path.join(home, 'AGENTS.md')), config });
-    const result = spawnSync('codex', argv, { env: { ...process.env, CODEX_HOME: home },
+    const result = spawnSync('codex', argv, { env: { ...process.env, CODEX_HOME: home,
+      ...(askGuard ? { CAFEKIT_ASK_GUARD_DIR: guardDirectory } : {}) },
       encoding: 'utf8', timeout: prepared.timeoutSeconds * 1000, maxBuffer: 64 * 1024 * 1024 });
     fs.writeFileSync(path.join(output, 'events.jsonl'), result.stdout || '');
     fs.writeFileSync(path.join(output, 'stderr.txt'), result.stderr || '');
     fs.cpSync(room, path.join(output, 'workspace'), { recursive: true });
     let events = [], parseError;
     try { events = (result.stdout || '').split('\n').filter(Boolean).map(JSON.parse); } catch (error) { parseError = error.message; }
+    if (askGuard) {
+      const thread = events.find(e => e.type === 'thread.started')?.thread_id;
+      const sessionHash = thread && crypto.createHash('sha256').update(thread).digest('hex');
+      const denials = sessionHash && path.join(guardDirectory, sessionHash, 'denials.jsonl');
+      if (denials && fs.existsSync(denials)) fs.copyFileSync(denials, path.join(output, 'denials.jsonl'));
+    }
     const last = fs.existsSync(path.join(output, 'last.txt')) ? fs.readFileSync(path.join(output, 'last.txt'), 'utf8') : '';
     const check = executionCheck(events, last, result.stderr || '', result.status, parseError || result.error?.message);
     try { captureSessions(home, output, room, events, startedAt); } catch (error) { check.error ||= error.message; }
@@ -138,12 +151,16 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     else {
       const value = name => args[args.indexOf(name) + 1];
       if (!args.includes('--only') || !args.includes('--out')) throw new Error('Cần --only skill/case --out <new-directory>');
+      if (args.includes('--prompt-override') && (!value('--prompt-override') || value('--prompt-override').startsWith('--'))) {
+        throw new Error('--prompt-override cần một prompt không rỗng');
+      }
       const [name, caseName] = value('--only').split('/');
       const skill = manifest.skills.find(s => s.name === name), cell = skill?.cases.find(c => c.case === caseName);
       if (!cell || cell.excludedReason) throw new Error(cell?.excludedReason || 'Không tìm thấy ca');
       const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'cafekit-run-projection-'));
       try { runCell(skill, cell, path.resolve(value('--out')), installProjection(temporary),
-        { execute: true, userHome: args.includes('--user-home') }); }
+        { execute: true, userHome: args.includes('--user-home'), askGuard: args.includes('--ask-guard'),
+          promptOverride: args.includes('--prompt-override') ? value('--prompt-override') : undefined }); }
       finally { fs.rmSync(temporary, { recursive: true, force: true }); }
     }
   } catch (error) { console.error(error.message); process.exitCode = 1; }
