@@ -5,6 +5,12 @@ All notable changes to CafeKit are documented here, following
 
 ## [Unreleased]
 
+### Added
+
+- Codex `ask-guard`: khi prompt bắt đầu bằng `$cf-ask` hoặc `/cf:ask`, hook từ chối `apply_patch` trong phiên đó cho tới prompt kế tiếp không gọi ask, và chỉ người dùng sang `$cf-fix`. Đo trên `gpt-6.1-sol`: `ask/cam-sua` không sửa file 10/10 (trước 2/10), 4 ca ask khác không hồi quy. Hook chỉ chạy khi người dùng đã tin cậy hook qua `/hooks`; không chặn lệnh shell ghi file.
+- Codex `cf-research`: bản cài cho Codex thêm ghi chú chọn độ sâu — quyết định repo đã chốt và còn hiệu lực là *known option* nên dùng Quick; lý do phụ lỗi thời không nâng độ sâu trừ khi làm đổi khuyến nghị. Đo trên `gpt-6.1-sol`: `research/da-co-quyet-dinh` chọn Quick 10/10 (trước 0/10), 4 ca không agent không hồi quy. Skill gốc và Claude không đổi.
+- Codex `cf-specs`: bản cài cho Codex thêm ghi chú cổng phạm vi — câu hỏi GATE-SCOPE nằm trong final answer, không tóm tắt sau nó, mỗi mục cần quyết là `[NEEDS CLARIFICATION: …]` có câu hỏi thật, giữ nguyên EXPAND/KEEP/CUT. Đo trên `gpt-6.1-sol`: `specs/mo-ho-c1` marker và bộ ba ở tin cuối 10/10 (mốc 0/10; đối chứng không ghi chú trên runner mới 3/5 và 4/5, marker thật 1/5), 3 ca khác không hồi quy. Skill gốc và Claude không đổi.
+
 ### Fixed
 
 - Codex privacy duyệt đường dẫn trong mảng input MCP; reset grant chỉ cho phiên hiện tại, giữ grant của phiên khác.
