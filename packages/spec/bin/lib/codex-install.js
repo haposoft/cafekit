@@ -17,6 +17,13 @@ const CODEX_RESEARCH_DEPTH_NOTE = CODEX_RESEARCH_DEPTH_MARKER
   + ' Use Quick for that decision. An outdated supporting rationale alone does not raise depth '
   + 'unless correcting it changes the recommendation. Conflicting evidence that changes the '
   + 'recommendation still requires escalation under the depth table.';
+const CODEX_SPECS_SCOPE_MARKER = 'Codex scope gate: put the GATE-SCOPE question in the final answer of the turn.';
+const CODEX_SPECS_SCOPE_NOTE = CODEX_SPECS_SCOPE_MARKER
+  + ' Ask it there, not in commentary or through `request_user_input`. Do not send a summary after the question. '
+  + 'For each item needing a decision, use `[NEEDS CLARIFICATION: <question>]`, replacing <question> '
+  + 'with the real question, not a placeholder or a quotation of this note. Offer EXPAND, KEEP, and CUT together. '
+  + 'Preserve the exact words NEEDS CLARIFICATION, EXPAND, KEEP, and CUT; do not translate them. '
+  + 'Wait for the user to decide; do not choose scope or implement code on their behalf.';
 
 const AGENT_NAMES = [
   'brainstormer',
@@ -333,6 +340,12 @@ function normalizeCodexBody(content, sourcePath = '') {
     const header = next.slice(0, next.length - body.length);
     next = `${header}\n${CODEX_RESEARCH_DEPTH_NOTE}\n\n${body}`;
   }
+  // Only the installed specs skill receives this note, never prompts or templates.
+  if (/(?:^|\/)skills\/specs\/SKILL\.md$/.test(String(sourcePath).replace(/\\/g, '/')) && !next.includes(CODEX_SPECS_SCOPE_NOTE)) {
+    const { body } = splitFrontmatter(next);
+    const header = next.slice(0, next.length - body.length);
+    next = `${header}\n${CODEX_SPECS_SCOPE_NOTE}\n\n${body}`;
+  }
   return next;
 }
 
@@ -417,6 +430,8 @@ function transformManagedCodexContent(content, transform) {
 module.exports = {
   CODEX_RESEARCH_DEPTH_MARKER,
   CODEX_RESEARCH_DEPTH_NOTE,
+  CODEX_SPECS_SCOPE_MARKER,
+  CODEX_SPECS_SCOPE_NOTE,
   normalizeCodexBody,
   getCodexCopyOptions,
   codexAgentName,

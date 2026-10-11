@@ -54,7 +54,7 @@ test('research marker is absent from every other projected skill including ask',
     const projected = normalizeCodexBody(source, file);
     assert.ok(!projected.includes(CODEX_RESEARCH_DEPTH_MARKER), file);
     // Ask intentionally has its own boundary; all other skill bodies stay identical.
-    if (file !== path.join(SKILLS, 'ask/SKILL.md')) assert.equal(projected, normalizeCodexBody(source), file);
+    if (![path.join(SKILLS, 'ask/SKILL.md'), path.join(SKILLS, 'specs/SKILL.md')].includes(file)) assert.equal(projected, normalizeCodexBody(source), file);
   }
 });
 
