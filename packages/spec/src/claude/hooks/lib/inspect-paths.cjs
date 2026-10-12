@@ -81,6 +81,14 @@ function commandGroups(command) {
           index += match[0].length - 1; continue;
         }
       }
+      if (char === '>' || char === '<') {
+        // Preserve operator identity (quoted > remains ordinary text). A numeric
+        // token touching the operator is its fd, not a positional argument.
+        if (/^\d+$/.test(token)) token = '';
+        flush();
+        const operator = command.slice(index).match(/^(?:>>|>&|>|<)/)[0];
+        group.push({ redirect: operator }); index += operator.length - 1; continue;
+      }
       if (char === '\n') {
         boundary();
         for (const here of heredocs.splice(0)) {
@@ -152,6 +160,17 @@ function positional(tokens, options) {
   return values;
 }
 function commandPaths(group, globs) {
+  const inputs = []; const args = [];
+  for (let index = 0; index < group.length; index += 1) {
+    const token = group[index];
+    if (token.redirect) {
+      const operand = group[index += 1];
+      if (token.redirect === '<' && typeof operand === 'string') inputs.push(operand);
+    } else args.push(token);
+  }
+  return [...inputs, ...readerPaths(args, globs)];
+}
+function readerPaths(group, globs) {
   const tokens = unwrap(group);
   if (tokens.command !== undefined) {
     const groups = commandGroups(tokens.command);
@@ -175,7 +194,10 @@ function commandPaths(group, globs) {
       if (['-g', '--glob', '--iglob'].includes(token)) globs.push(tokens[index + 1] || '');
       else if (/^--i?glob=/.test(token)) globs.push(token.slice(token.indexOf('=') + 1));
     }
-    const options = new Set(['-e', '--regexp', '-f', '--file', '-g', '--glob', '--iglob', '-t', '--type', '-T', '--type-not', '--exclude', '--exclude-dir', '--include', '-m', '--max-count', '-A', '-B', '-C', '--after-context', '--before-context', '--context', '--encoding', '--color']);
+    const options = new Set(['-e', '--regexp', '-f', '--file', '-g', '--glob', '--iglob', '-t', '--type', '-T', '--type-not', '--exclude', '--exclude-dir', '--include', '-m', '--max-count', '-A', '-B', '-C', '--after-context', '--before-context', '--context', '--encoding', '--color',
+      '--max-depth', '-d', '-j', '--threads', '-M', '--max-columns', '--sort', '--sortr', '--replace', '--max-filesize', '--pre', '--path-separator', '--dfa-size-limit', '--regex-size-limit', '--directories', '-D', '--devices', '--label']);
+    // rg -r takes replacement text; grep -r is a recursive flag.
+    if (name === 'rg') options.add('-r');
     const values = positional(tokens, options);
     const explicit = tokens.some((token) => /^(?:-[ef]|--(?:regexp|file)(?:=|$))/.test(token)) || tokens.includes('--files');
     return explicit ? values : values.slice(1);

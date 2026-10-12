@@ -87,7 +87,7 @@ for (const variant of ['', 'nested', 'symlink']) {
 add('Read ordinary', 'Read', { file_path: 'src/a.js' });
 shell('cat src/a.js');
 
-// D-03..D-05: wrapper options, nested substitutions, and structured paths.
+// Wrapper options, nested substitutions, and structured paths.
 for (const command of [
   'time -p env -u FOO BAR=1 command -- cat dist/a', 'nice -n 5 nohup cat dist/a',
   'xargs -I {} cat dist/a', 'pnpm exec -- cat dist/a', 'pnpx --yes cat dist/a',
@@ -110,6 +110,16 @@ add('notebook path reader', 'Read', { notebook_path: 'dist/a.ipynb' }, true);
 add('unknown command reader', 'mcp__shell', { command: 'cat dist/a' }, true);
 add('missing name command reader', undefined, { command: 'cat dist/a' }, true);
 add('write skips command too', 'Write', { file_path: 'dist/a', command: 'cat dist/a' });
+
+// Output redirections are writes; search option values are not patterns.
+for (const command of [
+  "cat > dist/index.html <<'EOF'\n<html></html>\nEOF",
+  'ls src > build/files.txt', 'wc -l src/a.ts > coverage/summary.txt',
+  'grep x src 2> build/err', 'ls src >> build/x', 'ls src 2>&1', 'ls src>build/x',
+  'rg --max-depth 2 target src', 'rg -j 4 build src', 'rg -M 200 dist src',
+  'rg --sort path target src', 'grep -rn -d skip build src',
+]) shell(command);
+for (const command of ['cat < dist/a', 'cat <dist/a']) shell(command, true);
 
 for (const host of ['claude', 'codex']) {
   for (const entry of cases) {
