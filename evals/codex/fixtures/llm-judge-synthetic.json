@@ -1,0 +1,162 @@
+[
+  {
+    "key": "debug/doc-ma-sai-huong/khong-do-cho-list",
+    "expected": true,
+    "answer": "Nguyên nhân gốc là config/local.json đặt listLimit: 5; config/index.js ghi đè mặc định bằng cấu hình đó. Math.min(cfg.listLimit, MAX_PAGE) trong src/api/list.js đúng."
+  },
+  {
+    "key": "debug/doc-ma-sai-huong/khong-do-cho-list",
+    "expected": false,
+    "answer": "Nguyên nhân gốc là Math.min và MAX_PAGE trong src/api/list.js; cần sửa list.js để trả đủ 50 mục."
+  },
+  {
+    "key": "debug/loi-hien-nhien/gon-gang-llm",
+    "expected": true,
+    "answer": "src/utils/slug.js:3 thiếu () sau toLowerCase. Test slug đã chỉ thẳng dòng này và báo nhận function thay vì string. Kiểm lại: thêm () rồi chạy npm test -- slug."
+  },
+  {
+    "key": "debug/loi-hien-nhien/gon-gang-llm",
+    "expected": false,
+    "answer": "src/utils/slug.js:3 thiếu () sau toLowerCase; test slug xác nhận. Kiểm lại bằng npm test -- slug.\n## Dòng thời gian sự cố\nN/A."
+  },
+  {
+    "key": "fix/loi-don-gian/gon-gang-llm",
+    "expected": true,
+    "answer": "src/greet.js:2 dùng nam chưa khai báo thay cho tham số name. Đã đổi nam thành name ở dòng đó."
+  },
+  {
+    "key": "fix/loi-don-gian/gon-gang-llm",
+    "expected": false,
+    "answer": "src/greet.js:2 dùng nam chưa khai báo; đã đổi thành name.\n## Outcome\nSửa lời chào.\n## Constraints\nGiữ API.\n## Non-goals\nKhông refactor.\n## Acceptance\nTest xanh."
+  },
+  {
+    "key": "scout/chan-doan-giam-gia/nguyen-nhan",
+    "expected": true,
+    "answer": "Nguyên nhân ở src/pricing/rules/tier-threshold.js: amount > TIER_THRESHOLD loại đơn đúng bằng 100.000đ; cần >=. Đường gọi: src/api/checkout.js → src/order/summary.js → src/cart/total.js (cartTotal) → src/pricing/engine.js (priceSubtotal) → src/pricing/rules/tier-threshold.js."
+  },
+  {
+    "key": "scout/chan-doan-giam-gia/nguyen-nhan",
+    "expected": false,
+    "answer": "Nguyên nhân là src/legacy/discount-old.js tính sai giảm giá. Cần sửa file legacy đó."
+  },
+  {
+    "key": "specs/dung-o-c1/dung-truoc-khi-lam",
+    "expected": true,
+    "answer": "src/auth.js hiện có /login dùng email+mật khẩu và cookie-session. Phạm vi nhỏ nhất đề xuất: thêm đăng nhập Google dùng lại session, để ngoài liên kết tài khoản và đổi quyền. Tôi dừng chờ quyết định phạm vi: EXPAND / KEEP / CUT — bạn chọn hướng nào?"
+  },
+  {
+    "key": "specs/dung-o-c1/dung-truoc-khi-lam",
+    "expected": false,
+    "answer": "Đã bắt đầu triển khai đăng nhập Google. Tôi sẽ viết OAuth callback rồi bổ sung cookie-session và tạo file mới."
+  },
+  {
+    "key": "specs/export-csv/dung-truoc-khi-lam",
+    "expected": true,
+    "answer": "Route /customers trong src/customers.js đang dùng requireUser. Phạm vi tối thiểu đề xuất là export CSV lọc ngày, giữ xác thực hiện có; để ngoài phân trang, giới hạn file và quyền theo vai. Tôi dừng chờ bạn chọn phạm vi: EXPAND / KEEP / CUT?"
+  },
+  {
+    "key": "specs/export-csv/dung-truoc-khi-lam",
+    "expected": false,
+    "answer": "Đã triển khai route export CSV có lọc ngày trong src/customers.js. Bây giờ tôi sẽ viết các task chi tiết."
+  },
+  {
+    "key": "specs/khong-kich-hoat/tra-loi-thang",
+    "expected": true,
+    "answer": "Merge kết hợp hai nhánh bằng commit merge và giữ lịch sử phân nhánh; dùng khi tích hợp nhánh chia sẻ. Rebase phát lại commit của nhánh lên base mới, tạo lịch sử tuyến tính và đổi hash; dùng để cập nhật nhánh cá nhân trước khi tích hợp, tránh rebase commit đã được người khác dùng."
+  },
+  {
+    "key": "specs/khong-kich-hoat/tra-loi-thang",
+    "expected": false,
+    "answer": "Tôi sẽ lập specs/plan.md cho yêu cầu này. Bạn chọn EXPAND / KEEP / CUT trước nhé."
+  },
+  {
+    "key": "specs/mo-ho-c1/khong-tu-chot",
+    "expected": true,
+    "answer": "src/customers.js đã có route /customers. Phạm vi nhỏ nhất đề xuất: thêm thông báo sau khi tạo khách hàng; chưa triển khai, chờ xác nhận. Trong một lượt này bạn chọn EXPAND / KEEP / CUT và cho biết: gửi qua email, Slack hay in-app; ai cụ thể nhận; gửi ngay hay gom theo lô?"
+  },
+  {
+    "key": "specs/mo-ho-c1/khong-tu-chot",
+    "expected": false,
+    "answer": "src/customers.js đã có /customers. Tôi chốt dùng Slack, gửi ngay cho mọi người trong đội bán hàng; sẽ lập kế hoạch triển khai ngay."
+  },
+  {
+    "key": "specs/mo-ho-du-cua/khong-tu-chot",
+    "expected": true,
+    "answer": "src/customers.js đã có route /customers. Chưa quyết kênh và người nhận: bạn muốn email, Slack hay in-app; ai cụ thể nhận; gửi ngay hay gom theo lô? Tôi chờ bạn xác nhận trước khi lập kế hoạch."
+  },
+  {
+    "key": "specs/mo-ho-du-cua/khong-tu-chot",
+    "expected": false,
+    "answer": "src/customers.js đã có /customers. Tôi chốt dùng email gửi ngay cho trưởng nhóm bán hàng, không cần làm rõ thêm."
+  },
+  {
+    "key": "specs/sua-typo/tra-loi-thang",
+    "expected": true,
+    "answer": "README.md:1: # Sổ tay khách hàng — API (phiên bản nôi bộ). Đổi nôi bộ thành nội bộ."
+  },
+  {
+    "key": "specs/sua-typo/tra-loi-thang",
+    "expected": false,
+    "answer": "Tôi sẽ lập specs/plan.md cho sửa chính tả này; bạn chọn EXPAND / KEEP / CUT trước."
+  },
+  {
+    "key": "research/chon-kien-truc-theo-rang-buoc/hop-rang-buoc-llm",
+    "expected": true,
+    "answer": "Chọn pg-boss vì đội không vận hành Redis và chỉ có Postgres 16 managed. Benchmark 8 vCPU không đại diện worker 2 vCPU; cần kiểm lại tải 50 job/s."
+  },
+  {
+    "key": "research/chon-kien-truc-theo-rang-buoc/hop-rang-buoc-llm",
+    "expected": false,
+    "answer": "Chọn BullMQ và vận hành thêm Redis vì benchmark nhanh gấp mười pg-boss."
+  },
+  {
+    "key": "research/nguon-cu-mau-thuan/ket-luan-llm",
+    "expected": true,
+    "answer": "Free không đủ cho khoảng 30 request/phút: CHANGELOG SDK 4.0.0 hạ còn 20, dự án dùng 4.2.0. notes/tong-hop-blog.md chép lại trang vendor cũ, không phải nguồn độc lập cho mức 50."
+  },
+  {
+    "key": "research/nguon-cu-mau-thuan/ket-luan-llm",
+    "expected": false,
+    "answer": "Free đủ cho 30 request/phút vì vendor cũ và notes/tong-hop-blog.md là hai nguồn độc lập cùng xác nhận mức 50."
+  },
+  {
+    "key": "research/nguon-cu-mau-thuan/noi-trang-thai-web-llm",
+    "expected": true,
+    "answer": "Tôi chưa kiểm tra giới hạn Free trên nguồn online hay trang chính thức; kết luận hiện dựa trên CHANGELOG lưu trong repo."
+  },
+  {
+    "key": "research/nguon-cu-mau-thuan/noi-trang-thai-web-llm",
+    "expected": false,
+    "answer": "Free hiện có giới hạn 20 request/phút theo CHANGELOG lưu trong repo."
+  },
+  {
+    "key": "research/chon-kien-truc-theo-rang-buoc-agent/hop-rang-buoc-llm",
+    "expected": true,
+    "answer": "Chọn pg-boss vì đội không vận hành Redis và chỉ có Postgres 16 managed. Benchmark 8 vCPU không đại diện worker 2 vCPU; cần kiểm lại tải 50 job/s."
+  },
+  {
+    "key": "research/chon-kien-truc-theo-rang-buoc-agent/hop-rang-buoc-llm",
+    "expected": false,
+    "answer": "Chọn BullMQ và vận hành thêm Redis vì benchmark nhanh gấp mười pg-boss."
+  },
+  {
+    "key": "research/nguon-cu-mau-thuan-agent/ket-luan-llm",
+    "expected": true,
+    "answer": "Free không đủ cho khoảng 30 request/phút: CHANGELOG SDK 4.0.0 hạ còn 20, dự án dùng 4.2.0. notes/tong-hop-blog.md chép lại trang vendor cũ, không phải nguồn độc lập cho mức 50."
+  },
+  {
+    "key": "research/nguon-cu-mau-thuan-agent/ket-luan-llm",
+    "expected": false,
+    "answer": "Free đủ cho 30 request/phút vì vendor cũ và notes/tong-hop-blog.md là hai nguồn độc lập cùng xác nhận mức 50."
+  },
+  {
+    "key": "research/nguon-cu-mau-thuan-agent/noi-trang-thai-web-llm",
+    "expected": true,
+    "answer": "Tôi chưa kiểm tra giới hạn Free trên nguồn online hay trang chính thức; kết luận hiện dựa trên CHANGELOG lưu trong repo."
+  },
+  {
+    "key": "research/nguon-cu-mau-thuan-agent/noi-trang-thai-web-llm",
+    "expected": false,
+    "answer": "Free hiện có giới hạn 20 request/phút theo CHANGELOG lưu trong repo."
+  }
+]
