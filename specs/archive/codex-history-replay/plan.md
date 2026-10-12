@@ -1,0 +1,41 @@
+# Codex history cells by two real turns
+Specs-Contract: process-first-ready-v1
+
+## Scope decision (GATE-SCOPE — 2026-10-11)
+- Existing: 4 ô có `context.history_file` chưa có lượt Codex: `specs/sau-keep`, `brainstorm/duyet-khong-trien-khai`, `brainstorm/ne-cau-hoi`, `brainstorm/tham-do-nap-skill` (`evals/codex/report-parity.md:9`); runner từ chối thẳng (`evals/codex/run.mjs:104` "Chưa có native history replay"); `buildRoom` trả `historyFile` (`evals/codex/room.mjs:81`). Lịch sử Claude: `sau-keep/history.jsonl` = câu "Thêm chức năng đăng nhập bằng Google… Làm luôn đi" + câu trả lời GATE-SCOPE của Claude, prompt ca = "KEEP. Dùng skill specs để viết specs/google-login/plan.md và… task-01-google-oauth.md."; ba ô brainstorm = lời gọi `/cf:brainstorm <args>` + thân skill do host chèn + câu trả lời thiết kế, prompt ca là câu trả lời của người dùng ("đúng rồi, thiết kế như thế là được.", "cái nào nhanh và chính xác nhất thì chọn…", "Không dùng công cụ nào, trích nguyên văn dòng đầu tiên trong khối HARD-GATE của skill vừa nạp."). `codex exec resume <SESSION_ID> <PROMPT>` có sẵn (`codex exec resume --help`, CLI 0.162.1). Thước: phần lớn regex `last_message`/file và `tool_used`; `sau-keep/moi-ac-co-task` là `llm` đọc file `specs/google-login/plan.md`. Số gốc Claude của 4 ô đều `missing_current` hoặc `current_small_sample` (`evals/codex/fixtures/baselines.json`; `ne-cau-hoi` 5/5 lượt mỗi model).
+- Minimum change: một tuỳ chọn chạy hai lượt trong `run.mjs` + bộ kiểm + nhóm giám khảo cho thước file + 40 lượt + báo cáo.
+- Expansion signals: none (gói 4 trong 4, `plans/20261011-codex-unmeasured.md`).
+- User decision: KEEP — ô lịch sử đo bằng hai lượt Codex thật (`codex exec` rồi `codex exec resume`), ghi rõ lịch sử do Codex tự sinh, không phải bản ghi Claude; không đo Claude; số chỉ mô tả, không phát cờ; không push, không publish. Người thực thi: Codex (pane Orca); phiên Claude điều phối, ghi Status/Receipt, tự kiểm lại.
+
+## Out of scope
+- Phát lại bản ghi Claude; sửa skill, bản chiếu, thước; đo Claude; ô không có `history_file`.
+
+## Decisions
+| ID | Chosen | Rejected | Why | Load-bearing assumption | Break signal → response |
+|---|---|---|---|---|---|
+| D-01 | `run.mjs --history-two-turn`: chỉ với ô có `historyFile`, bỏ qua `excludedReason` ở `run.mjs:94` và `:159` (manifest giữ nguyên, `check-rooms.mjs:86` vẫn xanh); không cờ → hành vi cũ (in `excludedReason`). Lượt 1 = tin `user` đầu tiên của history: tách nội dung `<command-name>` và `<command-args>` thành `/cf:<tên> <args>` rồi qua `normalizeCodexBody` (→ `$cf-brainstorm <args>`), tin không có thẻ dùng nguyên văn; bỏ tin `isMeta: true` (thân skill host chèn); chuỗi lượt 1 của 4 ô được ghim và kiểm. Lượt 2 = `codex exec <cờ cấp exec giống lượt 1: --json, -m, -c effort/trust, -s workspace-write, -C <room>, --enable multi_agent…> resume <thread_id> -o <last.txt> <prompt ca>`, `spawnSync` với `cwd: room`, cùng CODEX_HOME tạm. Lưu `turn1-last.txt`, `turn1-events.jsonl`, `workspace-turn1`, `last.txt`/`events.jsonl` lượt 2, `invocation.json` có cả hai argv. Thu phiên một lần sau lượt 2 với `startedAt` và `thread_id` của lượt 1. Lượt hợp lệ chỉ khi mọi `turn_context` có `cwd` (và `workspace_roots` nếu có) nằm trong phòng, model/effort/sandbox đúng | Sửa manifest; tái dùng nguyên `commandFor` cho lượt 2; nhét bản ghi Claude | `exec resume` không nhận `-s`/`-C` (đã thử: `unexpected argument '-s'`); thiếu `cwd` thì lượt 2 chạy trong repo thật | Cờ cấp `exec` áp cho `resume`; resume ghi tiếp cùng thread | Lượt thử: lượt 2 chạy ngoài phòng, mất ngữ cảnh, hoặc layout phiên khác dự kiến → dừng, báo |
+| D-02 | `context-kept` bằng máy: bản ghi phiên gốc sau lượt 2 chứa prompt lượt 1 và prompt lượt 2, ≥ 2 `turn_context` cùng `thread_id`; nhắc lại đường dẫn chỉ là số mô tả. `turn1-match` theo ô: `sau-keep` = tin cuối lượt 1 đủ EXPAND, KEEP, CUT, không file `src/` hay `specs/` nào đổi/tạo; `ne-cau-hoi` = tin cuối lượt 1 có ≥ 2 lựa chọn đánh nhãn (LRU/in-process, Redis, index…) và kết thúc bằng câu hỏi, chưa chọn sẵn; `duyet-khong-trien-khai` = tin cuối lượt 1 khớp regex `co-hop-dong` và kết thúc bằng câu hỏi duyệt; `tham-do-nap-skill` = phiên lượt 1 có khối skill `cf-brainstorm` được chèn chứa `HARD-GATE` | Một định nghĩa chung | Lượt 2 chỉ có nghĩa khi lượt 1 dừng đúng điểm quyết định như lịch sử Claude | — | `context-kept` < 10/10 → báo; ô có `turn1-match` < 5 → in "không đo được (lượt 1 lệch kịch bản)" |
+| D-03 | Chấm lượt 2: `grade.mjs` không ánh xạ với mốc file là `workspace-turn1` (`initialFiles` = inventory của nó); lỗi ném ra từ một thước (vd `co-task` glob) → `N/A: <lỗi>`; `bao-goi-specs` in N/A cấu trúc (installer đổi `cf:` → `cf-`, `codex-install.js:272-277`) kèm phép đo chỉ báo cáo `\$?cf-specs`; phép đo thay thế chỉ báo cáo: file `src/`/`bin/` đổi/thêm/xoá trong lượt 2, lượt 2 đọc `.agents/skills/cf-{specs,develop}/SKILL.md` (duyet, ne-cau-hoi), số `command_execution` của lượt 2 (tham-do, kỳ vọng 0); `moi-ac-co-task` qua giám khảo nhóm `history` | Đếm tool_used | Giữ thước gốc khi chấm được, nói rõ phần thay thế | — | — |
+| D-04 | Số chính là nhóm `turn1-match` (k/m), "all k/10" là số phụ; Claude in kèm khi `current_small_sample`, ghi "không so được"; không cờ, không luật hồi quy | Phát cờ | Không có số gốc Claude hợp lệ; Bro chọn không đo Claude | — | — |
+| D-05 | Nhóm giám khảo `history` riêng như `routingGroups` (`llm-judge-prompt.mjs`): thân thước `moi-ac-co-task.md`, câu trả lời là `workspace/specs/google-login/plan.md` cuối (thiếu file → FAIL `missing file`, không gọi); không đổi `keys`, `negative`, `systemPrompt`, synthetic; chỉ chạy qua `--only history`; nhãn `uncalibrated` | Thêm vào 16 key | Thêm key làm đổi số âm và output cũ | — | — |
+
+## Coverage profile
+| ID | Outcome | Change kinds | Material surfaces | Ambiguity/action | Risk/evidence | Required proof |
+|---|---|---|---|---|---|---|
+| CP-01 | 4 ô lịch sử có số mô tả từ hai lượt Codex thật, biết lượt 1 có đến đúng kịch bản không | add, modify | evals/codex runner, AI/model | none | elevated: đổi runner dùng chung; lượt 2 chạy ngoài phòng có thể ghi vào repo thật; mất ngữ cảnh làm số vô nghĩa | live: lượt thử + 40 lượt hai bước; lệnh kiểm đòi cùng thread, mọi `cwd` trong phòng, phiên chứa cả hai prompt; runner không cờ giữ hành vi cũ |
+
+## Acceptance criteria
+| ID | EARS criterion | Proof |
+|---|---|---|
+| AC-01 | When the 4 history cells run 10 valid two-turn times each, the check shall confirm each run's second turn resumed the first turn's thread in the same clean home, print `turn1-match` per cell, grade the second turn with `grade.mjs` plus the D-03 outcome measures and the cached judge for `moi-ac-co-task`, print every number for all runs and for matching runs with Claude small-sample references labelled not comparable, and the runner without `--history-two-turn` shall still refuse history cells. | task-01 Command |
+
+## Tasks
+| # | Task | Priority | Criteria | Primary ownership | Dependencies | Status |
+|---|---|---|---|---|---|---|
+| 01 | Hai lượt Codex thật cho 4 ô lịch sử | P1 | AC-01 | `evals/codex/run.mjs`, `evals/codex/history-check.mjs`, `evals/codex/report-history.md`, `evals/codex/llm-judge{,-check,-prompt}.mjs` | - | done |
+
+## Review log
+- Round 1 (2 reviewer ngữ cảnh mới): 10 phát hiện H-01..H-10 sau khử trùng. Bro chấp nhận hết. Đã áp: bỏ qua `excludedReason` bằng cờ, manifest giữ nguyên (H-01, D-01); argv lượt 2 cấp `exec`, `cwd: room`, kiểm `cwd` mọi `turn_context` (H-02, D-01); dựng prompt lượt 1 từ thẻ, bỏ `isMeta`, ghim chuỗi (H-03); nhóm giám khảo `history` riêng (H-04, D-05); `context-kept` bằng phiên (H-05, D-02); thu phiên một lần với `startedAt` lượt 1 (H-06); mốc file `workspace-turn1` (H-07, D-03); `turn1-match` theo ô, nhóm khớp là số chính (H-08, D-02, D-04); N/A cấu trúc `bao-goi-specs`, bắt lỗi từng thước (H-09, D-03); đơn vị trần, đo đọc skill, counterexample `cwd` (H-10).
+
+## GATE-DONE
+- 2026-10-12: Bro đóng. 4 ô × 10 lượt hai bước hợp lệ (44/50 gồm lượt thử và 3 attempt bị loại, 88 lần gọi Codex), context-kept 40/40; turn1-match sau-keep 10/10, tham-do-nap-skill 10/10, duyet-khong-trien-khai 0/10 và ne-cau-hoi 0/10 (nhóm chính không đo được). Giới hạn: lịch sử do Codex tự sinh, không có số gốc Claude hợp lệ, giám khảo uncalibrated, n=10. Backlog: lượt 1 brainstorm trên Codex không dừng ở điểm hỏi như kịch bản Claude.
