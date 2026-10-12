@@ -44,6 +44,25 @@ test('upgrade preserves a mixed user group and warns', () => matcherFixture(f =>
   assert.ok(f.read().hooks.PreToolUse[0].hooks.some(h => h.command === 'echo user-owned'));
   assert.ok(f.warnings.some(line => /matcher.*preserv/i.test(line)));
 }));
+test('reinstall keeps purely user groups unchanged without matcher warnings', () => matcherFixture(f => {
+  const userPre = { matcher: 'Bash', hooks: [{ command: 'my-linter' }] };
+  const userPost = { hooks: [{ command: 'my-logger' }] };
+  f.config.hooks = { PreToolUse: [userPre], PostToolUse: [userPost] }; f.save();
+  const installs = Array.from({ length: 2 }, () => {
+    const result = spawnSync(process.execPath, [path.resolve(__dirname, '../install.js'), '--platform', 'codex', '-y'], {
+      cwd: f.root, encoding: 'utf8',
+    });
+    return { result, config: f.read() };
+  });
+  for (const { result, config } of installs) {
+    assert.equal(result.status, 0, result.stderr);
+    for (const [event, original] of [['PreToolUse', userPre], ['PostToolUse', userPost]]) {
+      const group = config.hooks[event].find(g => g.hooks.some(h => h.command === original.hooks[0].command));
+      assert.equal(JSON.stringify(group), JSON.stringify(original));
+    }
+    assert.doesNotMatch(result.stdout + result.stderr, /matcher preserved/);
+  }
+}));
 test('fresh hook registration uses every template matcher', () => matcherFixture(f => {
   f.merge();
   for (const [event, groups] of Object.entries(f.config.hooks)) {

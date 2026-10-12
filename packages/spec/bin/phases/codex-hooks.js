@@ -43,6 +43,7 @@ function refreshManagedMatchers(config, template, ctx) {
     hooks[event] = hooks[event].map(group => {
       const handlers = Array.isArray(group?.hooks) ? group.hooks : [];
       const scripts = handlers.map(managedHandlerScript);
+      if (!scripts.some(Boolean)) return group;
       const candidates = handlers.length && scripts.every(Boolean)
         ? (template.hooks[event] || []).filter(target => {
           const wanted = target.hooks.map(managedHandlerScript);
