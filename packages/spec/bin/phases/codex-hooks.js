@@ -22,6 +22,46 @@ const SHELL_QUOTED = "'(?:[^']|'\\\\'')*'";
 const POSIX_COMMAND = new RegExp(`^(?:PATH="\\$PATH"(?::${SHELL_QUOTED})+ )?node (${SHELL_QUOTED})$`);
 const WINDOWS_LAUNCHER = 'node -e "process.argv[1]=Buffer.from(process.argv[1],\'base64url\').toString(\'utf8\');require(\'module\').runMain()" ';
 
+// Former template values from the hooks.json history. Custom expressions never
+// establish ownership, even when every handler belongs to CafeKit.
+const FORMER_MATCHERS = {
+  PreToolUse: new Set([
+    'Bash|apply_patch|Edit|Write|Read|Glob|Grep|mcp__.*',
+    'Bash|exec_command|apply_patch|Edit|Write|Read|Glob|Grep|mcp__.*|shell',
+  ]),
+  PostToolUse: new Set([
+    'Agent|spawn_agent|update_plan|task|Task|TodoWrite',
+    'apply_patch|Edit|Write|MultiEdit',
+  ]),
+};
+
+function refreshManagedMatchers(config, template, ctx) {
+  let updated = 0;
+  const hooks = { ...(config.hooks || {}) };
+  for (const [event, former] of Object.entries(FORMER_MATCHERS)) {
+    if (!Array.isArray(hooks[event])) continue;
+    hooks[event] = hooks[event].map(group => {
+      const handlers = Array.isArray(group?.hooks) ? group.hooks : [];
+      const scripts = handlers.map(managedHandlerScript);
+      const candidates = handlers.length && scripts.every(Boolean)
+        ? (template.hooks[event] || []).filter(target => {
+          const wanted = target.hooks.map(managedHandlerScript);
+          return scripts.every(script => wanted.includes(script));
+        }) : [];
+      const target = candidates.length === 1 ? candidates[0] : null;
+      if (target && (group.matcher || '') === (target.matcher || '')) return group;
+      if (target && former.has(group.matcher)) {
+        updated += 1;
+        ctx.ui.detail(`  ↻ ${ctx.dryRun ? '[dry-run] ' : ''}Codex hooks: ${event} matcher updated`);
+        return { ...group, matcher: target.matcher };
+      }
+      ctx.ui.warn(`Codex hooks: ${event} matcher preserved; custom, mixed, or ambiguous group. Review it manually.`);
+      return group;
+    });
+  }
+  return { config: { ...config, hooks }, updated };
+}
+
 // A basename alone cannot prove ownership: users may also run tools/hooks/session.cjs.
 // Only known source scripts at the native runtime path and an exact emitted launcher
 // shape may be rebound or count as already registered.
@@ -215,11 +255,14 @@ function mergeCodexHooks(ctx, platformKey, projectRoot = process.cwd()) {
     ctx.results.updated++;
   }
 
-  const { config: base, repaired } = repairLegacyCodexLaunchers(pruned, projectRoot);
+  const { config: rebound, repaired } = repairLegacyCodexLaunchers(pruned, projectRoot);
   if (repaired > 0) {
     ctx.ui.detail(`  ↻ ${ctx.dryRun ? '[dry-run] ' : ''}Codex hooks: rebound ${repaired} launcher(s) to the current project`);
     ctx.results.updated++;
   }
+
+  const { config: base, updated: matcherUpdates } = refreshManagedMatchers(rebound, managed, ctx);
+  ctx.results.updated += matcherUpdates;
 
   const merged = { ...base };
   if (typeof managed.description === 'string' && typeof merged.description !== 'string') {
@@ -261,7 +304,7 @@ function mergeCodexHooks(ctx, platformKey, projectRoot = process.cwd()) {
     merged.hooks[eventName] = groups;
   }
 
-  if (added === 0 && removed === 0) {
+  if (added === 0 && removed === 0 && matcherUpdates === 0) {
     ctx.ui.detail(`  → ${ctx.dryRun ? '[dry-run] ' : ''}Codex hooks: already registered`);
     ctx.results.unchanged++;
   }

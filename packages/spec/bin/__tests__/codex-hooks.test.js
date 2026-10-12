@@ -8,6 +8,62 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { test } = require('node:test');
 
+const OLD_INSPECTION_MATCHER = 'Bash|exec_command|apply_patch|Edit|Write|Read|Glob|Grep|mcp__.*|shell';
+const NEW_INSPECTION_MATCHER = 'Bash|exec_command|shell|apply_patch|mcp__.*|collaborationspawn_agent|collaborationwait_agent';
+function matcherFixture(run) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cafekit-matcher-'));
+  const previous = process.cwd();
+  const config = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../../src/codex/hooks.json'), 'utf8'));
+  const messages = [], warnings = [];
+  const ctx = { dryRun: false, results: { updated: 0, unchanged: 0, errors: 0 },
+    manifest: require('../../src/claude/migration-manifest.json'),
+    ui: { detail: value => messages.push(value), warn: value => warnings.push(value) } };
+  const file = path.join(root, '.codex/hooks.json');
+  try {
+    fs.mkdirSync(path.dirname(file), { recursive: true }); process.chdir(root);
+    const merge = require('../phases/codex-hooks.js').mergeCodexHooks;
+    run({ root, config, ctx, file, messages, warnings, merge: () => merge(ctx, 'codex', root),
+      save: () => fs.writeFileSync(file, JSON.stringify(config)), read: () => JSON.parse(fs.readFileSync(file, 'utf8')) });
+  } finally { process.chdir(previous); fs.rmSync(root, { recursive: true, force: true }); }
+}
+test('upgrade refreshes a former managed inspection matcher and reports it', () => matcherFixture(f => {
+  f.config.hooks.PreToolUse[0].matcher = OLD_INSPECTION_MATCHER; f.save();
+  const before = fs.readFileSync(f.file, 'utf8');
+  f.ctx.dryRun = true; f.merge();
+  assert.equal(fs.readFileSync(f.file, 'utf8'), before);
+  assert.ok(f.messages.some(line => /↻.*matcher updated/.test(line)));
+  f.ctx.dryRun = false; f.messages.length = 0; f.merge();
+  assert.equal(f.read().hooks.PreToolUse[0].matcher, NEW_INSPECTION_MATCHER);
+  assert.ok(f.messages.some(line => /↻.*matcher updated/.test(line)));
+  assert.ok(!f.messages.some(line => /already registered/.test(line)));
+}));
+test('upgrade preserves a mixed user group and warns', () => matcherFixture(f => {
+  f.config.hooks.PreToolUse[0].matcher = OLD_INSPECTION_MATCHER;
+  f.config.hooks.PreToolUse[0].hooks.push({ type: 'command', command: 'echo user-owned' }); f.save(); f.merge();
+  assert.equal(f.read().hooks.PreToolUse[0].matcher, OLD_INSPECTION_MATCHER);
+  assert.ok(f.read().hooks.PreToolUse[0].hooks.some(h => h.command === 'echo user-owned'));
+  assert.ok(f.warnings.some(line => /matcher.*preserv/i.test(line)));
+}));
+test('fresh hook registration uses every template matcher', () => matcherFixture(f => {
+  f.merge();
+  for (const [event, groups] of Object.entries(f.config.hooks)) {
+    assert.deepEqual(f.read().hooks[event].map(g => g.matcher), groups.map(g => g.matcher));
+  }
+}));
+test('upgrade preserves a user-selected managed matcher and warns', () => matcherFixture(f => {
+  f.config.hooks.PreToolUse[0].matcher = 'Read|Grep'; f.save(); f.merge();
+  assert.equal(f.read().hooks.PreToolUse[0].matcher, 'Read|Grep');
+  assert.ok(f.warnings.some(line => /matcher.*preserv/i.test(line)));
+}));
+test('upgrade refreshes the surviving group after retired hooks are pruned', () => matcherFixture(f => {
+  f.config.hooks.PreToolUse[0].matcher = OLD_INSPECTION_MATCHER;
+  f.config.hooks.PreToolUse[0].hooks.push({ type: 'command', command: 'node ".codex/hooks/task-scaffold-guard.cjs"' });
+  f.save(); f.merge();
+  assert.equal(f.read().hooks.PreToolUse[0].matcher, NEW_INSPECTION_MATCHER);
+  assert.ok(!JSON.stringify(f.read()).includes('task-scaffold-guard'));
+  assert.ok(f.messages.some(line => /matcher updated/.test(line)));
+}));
+
 const PACKAGE_ROOT = path.join(__dirname, '../..');
 const CODEX_HOOKS = path.join(PACKAGE_ROOT, 'src/codex/hooks');
 const PROVENANCE = require(path.join(PACKAGE_ROOT, 'src/claude/scripts/provenance.cjs'));

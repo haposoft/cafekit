@@ -63,7 +63,7 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "Bash|exec_command|apply_patch|Edit|Write|Read|Glob|Grep|mcp__.*|shell",
+        "matcher": "Bash|exec_command|shell|apply_patch|mcp__.*|collaborationspawn_agent|collaborationwait_agent",
         "hooks": [
           {
             "type": "command",
@@ -90,7 +90,7 @@
     ],
     "PostToolUse": [
       {
-        "matcher": "Agent|spawn_agent|update_plan|task|Task|TodoWrite",
+        "matcher": "collaborationspawn_agent|Agent|spawn_agent|update_plan",
         "hooks": [
           {
             "type": "command",
@@ -100,7 +100,7 @@
         ]
       },
       {
-        "matcher": "apply_patch|Edit|Write|MultiEdit",
+        "matcher": "apply_patch",
         "hooks": [
           {
             "type": "command",

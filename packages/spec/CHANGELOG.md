@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Matcher hook Codex theo tên tool đo trên CLI; installer cập nhật matcher template cũ của nhóm CafeKit, giữ nguyên nhóm tùy chỉnh hoặc trộn hook người dùng và cảnh báo.
+
 ### Added
 
 - Codex `ask-guard`: khi prompt bắt đầu bằng `$cf-ask` hoặc `/cf:ask`, hook từ chối `apply_patch` trong phiên đó cho tới prompt kế tiếp không gọi ask, và chỉ người dùng sang `$cf-fix`. Đo trên `gpt-6.1-sol`: `ask/cam-sua` không sửa file 10/10 (trước 2/10), 4 ca ask khác không hồi quy. Hook chỉ chạy khi người dùng đã tin cậy hook qua `/hooks`; không chặn lệnh shell ghi file.
