@@ -49,7 +49,7 @@ function csvRows(text) {
   const headers = rows.shift();
   return rows.filter(r => r.length > 1).map(r => Object.fromEntries(headers.map((h, i) => [h, r[i]])));
 }
-export function loadDataset({ gradersRoot = path.join(repo, 'evals') } = {}) {
+export function loadDataset({ gradersRoot = path.join(repo, 'evals'), routingGroups = [] } = {}) {
   const manifest = readManifest(), root = logRoot(manifest), entries = [], calibrationRows = [], excluded = [];
   const keys = json(path.join(repo, 'plans/20261008-codex-regrade/rubrics-all.json')).filter(r => r.type === 'llm' && r.case !== 'sau-keep').map(r => {
     const file = path.join(gradersRoot, r.skill, r.case, 'graders', `${r.grader}.md`), text = read(file);
@@ -131,5 +131,16 @@ export function loadDataset({ gradersRoot = path.join(repo, 'evals') } = {}) {
       } catch (error) { excluded.push({ source: 'b', cell: b.cell, key: key.key, grader: b.grader, model: b.model, lockedPassed: Number(b.passed), lockedN: Number(b.scored), history, reason: error.message }); }
     }
   } finally { fs.rmSync(temp, { recursive: true, force: true }); }
+  for (const group of routingGroups) {
+    if (!['routing', 'routing-control'].includes(group)) throw new Error(`Nhóm định tuyến không hợp lệ: ${group}`);
+    for (const cell of ['sua-typo', 'khong-kich-hoat']) {
+      const key = keys.find(k => k.key === `specs/${cell}/tra-loi-thang`);
+      if (!key) throw new Error(`Thiếu thước định tuyến: ${cell}`);
+      for (let n = 1; n <= (group === 'routing' ? 10 : 5); n++) {
+        const source = path.join(root, `specs-${group}`, cell, String(n), 'last.txt');
+        add(key, group, String(n), read(source), { source });
+      }
+    }
+  }
   return { entries, calibrationRows, excluded, keys };
 }

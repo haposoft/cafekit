@@ -7280,7 +7280,8 @@
         {
           "case": "develop-auth",
           "loadedSkills": [
-            "specs"
+            "specs",
+            "develop"
           ],
           "loadedAgents": [],
           "timeoutSeconds": 1200,

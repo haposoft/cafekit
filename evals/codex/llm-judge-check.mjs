@@ -63,7 +63,8 @@ function descriptiveScores(gradersRoot, judged) {
 
 export function check(options = {}) {
   const { cacheRoot, gradersRoot } = { ...defaults, ...options }, errors = [], lines = [], judged = new Map();
-  const dataset = loadDataset({ gradersRoot });
+  const routingGroups = ['routing', 'routing-control'].filter(group => fs.existsSync(path.join(cacheRoot, group)));
+  const dataset = loadDataset({ gradersRoot, routingGroups });
   const version = execFileSync('claude', ['--version'], { encoding: 'utf8' }).trim();
   const { cost, calls } = readCosts(cacheRoot, errors);
   if (cost > 60) errors.push(`Chi phí vượt trần $60: $${cost.toFixed(6)}`);
@@ -106,7 +107,7 @@ export function check(options = {}) {
   for (const skill of new Set(dataset.keys.map(k => k.skill))) {
     for (const cell of new Set(dataset.keys.filter(k => k.skill === skill).map(k => k.case))) {
       const keys = dataset.keys.filter(k => k.skill === skill && k.case === cell);
-      for (const set of ['new', 'old']) {
+      for (const set of ['new', 'old', ...routingGroups]) {
         const entries = [...judged.values()].filter(e => e.group === set && keys.some(k => k.key === e.key));
         if (!entries.length) continue;
         const runs = [...new Set(entries.map(e => e.id))].map(slot => ({ slot, scores: entries.filter(e => e.id === slot).map(e => ({ family: 'H', grader: e.key.split('/')[2], status: 'scored', passed: e.pass })) }));

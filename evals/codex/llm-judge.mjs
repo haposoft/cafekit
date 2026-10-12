@@ -8,6 +8,7 @@ import { flags, model, buildPrompt, hashFor, parseVote, loadDataset } from './ll
 export const cacheRoot = path.join(os.homedir(), 'Desktop/cafekit-codex-eval/llm-judge');
 const cap = 60, perCallCap = 0.50, concurrency = 6;
 const groups = ['negative', 'calib', 'new', 'old'];
+const routingGroups = ['routing', 'routing-control'];
 const version = () => execFileSync('claude', ['--version'], { encoding: 'utf8' }).trim();
 const read = file => JSON.parse(fs.readFileSync(file, 'utf8'));
 const ledger = root => fs.existsSync(path.join(root, 'calls.jsonl'))
@@ -86,9 +87,10 @@ async function invoke(entry, vote, root, cliVersion, cwd, state) {
 }
 
 export async function run({ only, root = cacheRoot, execute = false } = {}) {
-  if (only && !groups.includes(only)) throw new Error(`Nhóm không hợp lệ: ${only}`);
-  const dataset = loadDataset(), cliVersion = version(), entries = dataset.entries;
-  for (const group of groups) {
+  if (only && ![...groups, ...routingGroups].includes(only)) throw new Error(`Nhóm không hợp lệ: ${only}`);
+  const selectedRouting = routingGroups.includes(only) ? [only] : [];
+  const dataset = loadDataset({ routingGroups: selectedRouting }), cliVersion = version(), entries = dataset.entries;
+  for (const group of [...groups, ...selectedRouting]) {
     const count = entries.filter(e => e.group === group).length;
     console.log(`plan ${group}: answers ${count}, calls ${count * 3}`);
   }
