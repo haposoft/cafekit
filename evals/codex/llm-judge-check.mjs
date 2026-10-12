@@ -64,12 +64,17 @@ function descriptiveScores(gradersRoot, judged) {
 export function check(options = {}) {
   const { cacheRoot, gradersRoot } = { ...defaults, ...options }, errors = [], lines = [], judged = new Map();
   const routingGroups = ['routing', 'routing-control'].filter(group => fs.existsSync(path.join(cacheRoot, group)));
-  const dataset = loadDataset({ gradersRoot, routingGroups });
+  const history = fs.existsSync(path.join(cacheRoot, 'history'));
+  const dataset = loadDataset({ gradersRoot, routingGroups, history });
   const version = execFileSync('claude', ['--version'], { encoding: 'utf8' }).trim();
   const { cost, calls } = readCosts(cacheRoot, errors);
   if (cost > 60) errors.push(`Chi phí vượt trần $60: $${cost.toFixed(6)}`);
   const logged = new Set(calls.filter(c => c.valid && c.exit === 0).map(c => `${c.group}/${c.key}/${c.id}/${c.vote}`));
   for (const entry of dataset.entries) {
+    if (entry.missingFile) {
+      judged.set(identity(entry), { ...entry, pass: false, reason: 'missing file', votes: [] });
+      continue;
+    }
     const votes = [];
     for (let k = 1; k <= 3; k++) {
       const file = path.join(cacheRoot, identity(entry), `vote-${k}.json`);
@@ -135,6 +140,11 @@ export function check(options = {}) {
   }
   const descriptive = descriptiveScores(gradersRoot, judged);
   for (const r of descriptive) lines.push(`descriptive ${r.skill} ${r.case}/${r.grader}: ${r.passed}/${r.scored} (${r.conditions}${r.reasons.length ? `; N/A: ${r.reasons.join('; ')}` : ''})`);
+  if (history) {
+    const entries = [...judged.values()].filter(e => e.group === 'history');
+    lines.push(`specs/sau-keep/moi-ac-co-task history: codex ${count(entries)}/${entries.length}; label uncalibrated`);
+    for (const entry of entries.filter(e => e.missingFile)) lines.push(`history/${entry.key}/${entry.id}: FAIL missing file`);
+  }
   const verdict = calibrated ? 'PASS' : 'REFERENCE';
   lines.push(`cost: $${cost.toFixed(6)}`, `verdict: ${verdict}`);
   return { lines, errors, metrics, calibration, calibrated, negative, synthetic: { correct, scored: syntheticN }, cost, verdict, descriptive, excluded: dataset.excluded, dataset, judged };

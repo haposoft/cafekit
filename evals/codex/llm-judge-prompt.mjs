@@ -49,7 +49,7 @@ function csvRows(text) {
   const headers = rows.shift();
   return rows.filter(r => r.length > 1).map(r => Object.fromEntries(headers.map((h, i) => [h, r[i]])));
 }
-export function loadDataset({ gradersRoot = path.join(repo, 'evals'), routingGroups = [] } = {}) {
+export function loadDataset({ gradersRoot = path.join(repo, 'evals'), routingGroups = [], history = false } = {}) {
   const manifest = readManifest(), root = logRoot(manifest), entries = [], calibrationRows = [], excluded = [];
   const keys = json(path.join(repo, 'plans/20261008-codex-regrade/rubrics-all.json')).filter(r => r.type === 'llm' && r.case !== 'sau-keep').map(r => {
     const file = path.join(gradersRoot, r.skill, r.case, 'graders', `${r.grader}.md`), text = read(file);
@@ -140,6 +140,15 @@ export function loadDataset({ gradersRoot = path.join(repo, 'evals'), routingGro
         const source = path.join(root, `specs-${group}`, cell, String(n), 'last.txt');
         add(key, group, String(n), read(source), { source });
       }
+    }
+  }
+  if (history) {
+    const key = 'specs/sau-keep/moi-ac-co-task';
+    const body = bodyOf(read(path.join(gradersRoot, 'specs/sau-keep/graders/moi-ac-co-task.md')));
+    for (let n = 1; n <= 10; n++) {
+      const source = path.join(root, 'history/specs/sau-keep', String(n), 'workspace/specs/google-login/plan.md');
+      const missingFile = !fs.existsSync(source);
+      entries.push({ group: 'history', key, id: String(n), body, answer: missingFile ? '' : read(source), source, missingFile });
     }
   }
   return { entries, calibrationRows, excluded, keys };

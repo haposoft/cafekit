@@ -4,12 +4,88 @@ import os from 'node:os';
 import crypto from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { readManifest, installProjection, buildRoom, inventory } from './room.mjs';
+import { createRequire } from 'node:module';
+import { repo, readManifest, installProjection, buildRoom, inventory } from './room.mjs';
+
+const require = createRequire(import.meta.url), YAML = require('yaml');
+const { normalizeCodexBody } = require('../../packages/spec/bin/lib/codex-install.js');
 
 export const MODEL = 'gpt-6.1-sol';
 export const EFFORT = 'medium';
 const sha = file => crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
 const json = (file, value) => fs.writeFileSync(file, JSON.stringify(value, null, 2) + '\n');
+
+export function historyTurn1(skill, cell) {
+  const directory = path.join(repo, 'evals', skill.name, cell.case);
+  const spec = YAML.parse(fs.readFileSync(path.join(directory, 'case.yaml'), 'utf8'));
+  if (!spec.context?.history_file) throw new Error('Ô không có history_file');
+  const first = fs.readFileSync(path.join(directory, spec.context.history_file), 'utf8').split('\n').filter(Boolean)
+    .map(JSON.parse).find(e => e.type === 'user' && !e.isMeta);
+  const content = first?.message?.content;
+  const text = typeof content === 'string' ? content : (content || []).map(c => c.text || '').join('\n');
+  if (!text.trim()) throw new Error('Thiếu prompt lượt 1');
+  const command = text.match(/<command-name>([\s\S]*?)<\/command-name>/)?.[1];
+  const args = text.match(/<command-args>([\s\S]*?)<\/command-args>/)?.[1];
+  if (command && args === undefined) throw new Error('Thiếu command-args');
+  return normalizeCodexBody(command ? `${command.trim()} ${args.trim()}` : text);
+}
+
+function checkHistoryCapture(output, room, thread, prompt1, prompt2) {
+  const contained = cwd => {
+    if (typeof cwd !== 'string') return false;
+    const relative = path.relative(room, path.resolve(cwd));
+    return relative === '' || relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
+  };
+  let root;
+  for (const file of fs.readdirSync(path.join(output, 'sessions'))) {
+    const raw = fs.readFileSync(path.join(output, 'sessions', file), 'utf8').split('\n').filter(Boolean).map(JSON.parse);
+    const contexts = raw.filter(e => e.type === 'turn_context').map(e => e.payload);
+    if (contexts.some(c => !contained(c.cwd) || c.workspace_roots && !c.workspace_roots.every(contained))) throw new Error('History turn_context ngoài phòng');
+    if (raw[0]?.payload?.id === thread) root = raw;
+  }
+  const users = (root || []).filter(e => e.type === 'response_item' && e.payload?.role === 'user')
+    .flatMap(e => e.payload.content || []).map(c => c.text || '');
+  if (!root || root.filter(e => e.type === 'turn_context').length < 2 || ![prompt1, prompt2].every(p => users.some(t => t.includes(p)))) throw new Error('History mất ngữ cảnh');
+}
+
+function runHistory(prepared, output, home, startedAt, invocation) {
+  const { room, prompt, promptTurn1 } = prepared;
+  const env = { ...process.env, CODEX_HOME: home };
+  let calls = 0;
+  const invoke = (argv, prefix) => {
+    calls++;
+    const result = spawnSync('codex', argv, { cwd: room, env, encoding: 'utf8', timeout: prepared.timeoutSeconds * 1000, maxBuffer: 64 * 1024 * 1024 });
+    fs.writeFileSync(path.join(output, `${prefix}events.jsonl`), result.stdout || '');
+    fs.writeFileSync(path.join(output, `${prefix}stderr.txt`), result.stderr || '');
+    let events = [], parseError;
+    try { events = (result.stdout || '').split('\n').filter(Boolean).map(JSON.parse); } catch (e) { parseError = e.message; }
+    const file = path.join(output, `${prefix}last.txt`), last = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
+    return { result, events, check: executionCheck(events, last, result.stderr || '', result.status, parseError || result.error?.message) };
+  };
+  invocation.turn1Argv = commandFor(room, promptTurn1, path.join(output, 'turn1-last.txt'));
+  invocation.historyTwoTurn = true;
+  json(path.join(output, 'invocation.json'), invocation);
+  const first = invoke(invocation.turn1Argv, 'turn1-');
+  fs.cpSync(room, path.join(output, 'workspace-turn1'), { recursive: true });
+  const thread = first.events.find(e => e.type === 'thread.started')?.thread_id;
+  first.check.error ||= !thread ? 'Thiếu thread_id lượt 1' : null;
+  let second;
+  if (!first.check.error) {
+    invocation.argv = [...commandFor(room, prompt, path.join(output, 'last.txt')).slice(0, -3), 'resume', thread, '-o', path.join(output, 'last.txt'), prompt];
+    json(path.join(output, 'invocation.json'), invocation);
+    second = invoke(invocation.argv, '');
+    if (second.events.find(e => e.type === 'thread.started')?.thread_id !== thread) second.check.error ||= 'Lượt 2 khác thread';
+  }
+  fs.cpSync(room, path.join(output, 'workspace'), { recursive: true });
+  const check = { ...(second || first).check };
+  try {
+    captureSessions(home, output, room, first.events, startedAt);
+    if (second) checkHistoryCapture(output, room, thread, promptTurn1, prompt);
+  } catch (error) { check.error ||= error.message; }
+  json(path.join(output, 'result.json'), { status: check.error ? 'run_error' : 'completed', exit: (second || first).result.status,
+    requestedModel: MODEL, reasoningEffort: EFFORT, ...check, codexInvocations: calls, scored: 0 });
+  if (check.error) throw new Error(check.error);
+}
 
 export function commandFor(room, prompt, lastFile, research = false, { askGuard = false } = {}) {
   return ['exec', '--json', '-m', MODEL, '-c', `model_reasoning_effort="${EFFORT}"`,
@@ -86,12 +162,14 @@ export function captureSessions(home, output, room, events, startedAt) {
   if (!sessions.some(s => s.root) || sessions.some(s => !s.valid)) throw new Error('Native role/model/effort/sandbox không khớp');
 }
 
-export function runCell(skill, cell, output, projection, { execute = false, userHome = false, askGuard = false, promptOverride } = {}) {
+export function runCell(skill, cell, output, projection, { execute = false, userHome = false, askGuard = false, promptOverride, historyTwoTurn = false } = {}) {
   if (!execute) throw new Error('Cần opt-in execute; không gọi model mặc định');
   if (promptOverride !== undefined && (typeof promptOverride !== 'string' || !promptOverride.trim())) {
     throw new Error('--prompt-override cần một prompt không rỗng');
   }
-  if (cell.excludedReason) throw new Error(cell.excludedReason);
+  const historyPrompt = historyTwoTurn ? historyTurn1(skill, cell) : null;
+  if (cell.excludedReason && !historyTwoTurn) throw new Error(cell.excludedReason);
+  if (historyTwoTurn && (userHome || askGuard || promptOverride !== undefined)) throw new Error('History chỉ dùng clean home và prompt gốc');
   fs.mkdirSync(output, { recursive: true });
   if (fs.readdirSync(output).length) throw new Error('Output phải mới; không ghi đè lượt đã lưu');
   const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'cafekit-codex-run-'));
@@ -101,7 +179,8 @@ export function runCell(skill, cell, output, projection, { execute = false, user
   try {
     const prepared = buildRoom(skill, cell, projection, path.join(temporary, 'room'), { askGuard });
     if (promptOverride !== undefined) prepared.prompt = promptOverride;
-    if (prepared.historyFile) throw new Error('Chưa có native history replay');
+    if (prepared.historyFile && !historyTwoTurn) throw new Error('Chưa có native history replay');
+    if (historyTwoTurn) prepared.promptTurn1 = historyPrompt;
     const { room, prompt } = prepared;
     const config = userHome ? null : `model = "${MODEL}"\nmodel_reasoning_effort = "${EFFORT}"\n[features]\nmulti_agent = true\n[projects.${JSON.stringify(room)}]\ntrust_level = "trusted"\n`;
     if (!userHome) {
@@ -118,6 +197,10 @@ export function runCell(skill, cell, output, projection, { execute = false, user
       configuration: userHome ? 'C-user-home-5d' : 'C-clean-home-5d',
       runnerSha256: sha(fileURLToPath(import.meta.url)), cleanHome: !userHome,
       globalAgentsAbsent: !fs.existsSync(path.join(home, 'AGENTS.md')), config });
+    if (historyTwoTurn) {
+      runHistory(prepared, output, home, startedAt, JSON.parse(fs.readFileSync(path.join(output, 'invocation.json'), 'utf8')));
+      return;
+    }
     const result = spawnSync('codex', argv, { env: { ...process.env, CODEX_HOME: home,
       ...(askGuard ? { CAFEKIT_ASK_GUARD_DIR: guardDirectory } : {}) },
       encoding: 'utf8', timeout: prepared.timeoutSeconds * 1000, maxBuffer: 64 * 1024 * 1024 });
@@ -146,7 +229,12 @@ export function runCell(skill, cell, output, projection, { execute = false, user
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
     const args = process.argv.slice(2), manifest = readManifest();
-    if (!args.includes('--run')) console.log(JSON.stringify({ model: MODEL, reasoningEffort: EFFORT,
+    if (args.includes('--print-history-turn1')) {
+      const [name, caseName] = (args[args.indexOf('--print-history-turn1') + 1] || '').split('/');
+      const skill = manifest.skills.find(s => s.name === name), cell = skill?.cases.find(c => c.case === caseName);
+      if (!cell) throw new Error('Không tìm thấy ca');
+      console.log(historyTurn1(skill, cell));
+    } else if (!args.includes('--run')) console.log(JSON.stringify({ model: MODEL, reasoningEffort: EFFORT,
       configuration: 'C-clean-home-5d', cells: manifest.skills.flatMap(s => s.cases.map(c => `${s.name}/${c.case}`)) }, null, 2));
     else {
       const value = name => args[args.indexOf(name) + 1];
@@ -156,11 +244,12 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
       }
       const [name, caseName] = value('--only').split('/');
       const skill = manifest.skills.find(s => s.name === name), cell = skill?.cases.find(c => c.case === caseName);
-      if (!cell || cell.excludedReason) throw new Error(cell?.excludedReason || 'Không tìm thấy ca');
+      if (!cell || cell.excludedReason && !args.includes('--history-two-turn')) throw new Error(cell?.excludedReason || 'Không tìm thấy ca');
       const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'cafekit-run-projection-'));
       try { runCell(skill, cell, path.resolve(value('--out')), installProjection(temporary),
         { execute: true, userHome: args.includes('--user-home'), askGuard: args.includes('--ask-guard'),
-          promptOverride: args.includes('--prompt-override') ? value('--prompt-override') : undefined }); }
+          promptOverride: args.includes('--prompt-override') ? value('--prompt-override') : undefined,
+          historyTwoTurn: args.includes('--history-two-turn') }); }
       finally { fs.rmSync(temporary, { recursive: true, force: true }); }
     }
   } catch (error) { console.error(error.message); process.exitCode = 1; }

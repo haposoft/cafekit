@@ -37,7 +37,7 @@ export function projection(entries, root = cacheRoot) {
   const inputChars = negative.reduce((n, row) => n + (row.inputChars || 0), 0);
   if (!inputChars || negative.some(row => !Number.isFinite(row.cost))) return null;
   // Extrapolate measured negative cost per input character; include the cost already incurred.
-  const remainingChars = entries.reduce((n, e) => n + [1, 2, 3].filter(v => !fs.existsSync(cacheFile(root, e, v))).length * buildPrompt(e.body, e.answer).length, 0);
+  const remainingChars = entries.filter(e => !e.missingFile).reduce((n, e) => n + [1, 2, 3].filter(v => !fs.existsSync(cacheFile(root, e, v))).length * buildPrompt(e.body, e.answer).length, 0);
   return spent(root) + remainingChars * cost / inputChars;
 }
 
@@ -87,12 +87,13 @@ async function invoke(entry, vote, root, cliVersion, cwd, state) {
 }
 
 export async function run({ only, root = cacheRoot, execute = false } = {}) {
-  if (only && ![...groups, ...routingGroups].includes(only)) throw new Error(`Nhóm không hợp lệ: ${only}`);
+  if (only && ![...groups, ...routingGroups, 'history'].includes(only)) throw new Error(`Nhóm không hợp lệ: ${only}`);
   const selectedRouting = routingGroups.includes(only) ? [only] : [];
-  const dataset = loadDataset({ routingGroups: selectedRouting }), cliVersion = version(), entries = dataset.entries;
-  for (const group of [...groups, ...selectedRouting]) {
+  const dataset = loadDataset({ routingGroups: selectedRouting, history: only === 'history' }), cliVersion = version(), entries = dataset.entries;
+  for (const group of [...groups, ...selectedRouting, ...(only === 'history' ? ['history'] : [])]) {
     const count = entries.filter(e => e.group === group).length;
-    console.log(`plan ${group}: answers ${count}, calls ${count * 3}`);
+    const callable = entries.filter(e => e.group === group && !e.missingFile).length;
+    console.log(`plan ${group}: answers ${count}, calls ${callable * 3}`);
   }
   console.log(`judge: ${model}; CLI ${cliVersion}; cap: $${cap}`);
   const estimate = projection(entries, root);
@@ -104,6 +105,12 @@ export async function run({ only, root = cacheRoot, execute = false } = {}) {
   try {
     // A new isolated authentication/schema probe precedes every requested group.
     for (const group of only ? [only] : groups) {
+      if (group === 'history') {
+        fs.mkdirSync(path.join(root, group), { recursive: true });
+        const missing = entries.filter(e => e.group === group && e.missingFile);
+        for (const entry of missing) console.log(`${group}/${entry.key}/${entry.id}: FAIL missing file`);
+        if (missing.length === 10) { console.log(`${group}: complete, cost $${spent(root).toFixed(4)}`); continue; }
+      }
       if (group !== 'negative') {
         const negatives = entries.filter(e => e.group === 'negative');
         if (!negatives.every(e => [1, 2, 3].every(v => cached(root, e, v, cliVersion)))) throw new Error('Phải hoàn tất negative trước mọi nhóm khác');
@@ -113,7 +120,7 @@ export async function run({ only, root = cacheRoot, execute = false } = {}) {
       }
       await invoke({ group: 'preflight', key: 'isolation', id: group, body: 'PASS if the answer is exactly READY; otherwise FAIL.', answer: 'READY' }, 1, root, cliVersion, cwd, state);
       console.log(`preflight ${group}: PASS`);
-      const jobs = entries.filter(e => e.group === group).flatMap(e => [1, 2, 3].map(v => ({ e, v }))).filter(({ e, v }) => !cached(root, e, v, cliVersion));
+      const jobs = entries.filter(e => e.group === group && !e.missingFile).flatMap(e => [1, 2, 3].map(v => ({ e, v }))).filter(({ e, v }) => !cached(root, e, v, cliVersion));
       let next = 0, completed = 0, failure;
       const workers = Array.from({ length: concurrency }, async () => {
         while (!failure && next < jobs.length) {
