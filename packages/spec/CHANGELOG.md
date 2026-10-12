@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Inspect dùng chung bộ phân tích đường dẫn cho Claude, Codex, omp và grok; chỉ kiểm thao tác đọc, không chặn nhầm venv, build, patch hay Grep regex, vẫn chặn reader qua lớp bọc và substitution.
+
 - Codex privacy duyệt đường dẫn trong mảng input MCP; reset grant chỉ cho phiên hiện tại, giữ grant của phiên khác.
 - Stop coi cache IO là best-effort, dùng snapshot memo trong một invocation và giữ nội dung Receipt cho hướng dẫn sửa; vẫn revalidate mọi done Receipt. Provenance giữ exclusions runtime-neutral và bỏ generated session/privacy state khỏi source evidence.
 - Inspect cho phép build output đã xác định, vẫn kiểm tra các lệnh đọc/chained readers; Codex retirement gỡ legacy `init.json` giống Claude.

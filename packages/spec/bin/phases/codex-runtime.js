@@ -123,6 +123,13 @@ function installRuntimeFiles(ctx, platformKey) {
     path.join(platform.folder, 'hooks', 'lib', 'runtime-path-safety.cjs'),
     'Codex runtime path safety'
   );
+  writeSourceFile(
+    ctx,
+    platformKey,
+    path.join(SRC, 'claude', 'hooks', 'lib', 'inspect-paths.cjs'),
+    path.join(platform.folder, 'hooks', 'lib', 'inspect-paths.cjs'),
+    'Codex inspection path analyzer'
+  );
 }
 
 function installNativeRuleOverrides(ctx, platformKey) {

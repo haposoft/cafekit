@@ -15,50 +15,7 @@
 
 try {
   const fs   = require('fs');
-  const path = require('path');
-  const { execSync } = require('child_process');
-
-  // Directories that should never be read (too large / irrelevant to LLM)
-  const BLOCKED_DIRS = [
-    'node_modules', 'dist', 'build', '.next', '.nuxt', '.output',
-    '__pycache__', '.venv', 'venv',
-    'vendor', 'target',
-    '.git', 'coverage', '.nyc_output',
-  ];
-
-  // Glob patterns too broad to be useful
-  const BROAD_GLOB = [/^\*\*\/\*$/, /^\*\*\.\w+$/, /^\*\*\/\*\.\w+$/];
-
-  // Commands that are always allowed (build tools, package managers, venv)
-  const ALLOWED_CMD = /^(npm|pnpm|yarn|bun|npx|pnpx|bunx|tsc|vite|esbuild|webpack|rollup|turbo|nx|jest|vitest|eslint|prettier|go|cargo|make|mvn|gradle|dotnet|docker|kubectl|helm|python3?|pip|uv|deno|bundle|rake|php|composer|ruby|mix)\b/;
-  const VENV_EXEC   = /(^|[\/\\])\.?venv[\/\\](bin|Scripts)[\/\\]/;
-  const VENV_CREATE = /^(python3?|py)\s+.*-m\s+venv\s+|^uv\s+venv(\s|$)/;
-
-  function isAllowedCommand(cmd) {
-    const s = cmd.trim().replace(/^(\w+=\S+\s+)+/, '').replace(/^(sudo|env|time)\s+/, '').trim();
-    return ALLOWED_CMD.test(s) || VENV_EXEC.test(s) || VENV_CREATE.test(s);
-  }
-
-  function isBlockedPath(p) {
-    return p.replace(/\\/g, '/').split('/').some(seg => BLOCKED_DIRS.includes(seg));
-  }
-
-  function isBroadGlob(p) {
-    return BROAD_GLOB.some(r => r.test(p.trim()));
-  }
-
-  function extractPaths(toolName, input) {
-    const out = [];
-    if (!input) return out;
-    if (input.file_path) out.push(input.file_path);
-    if (input.path)      out.push(input.path);
-    if (input.pattern)   out.push(input.pattern);
-    if (typeof input.command === 'string') {
-      const m = input.command.match(/(?:cat|ls|find|head|tail)\s+(\S+)/g);
-      if (m) m.forEach(s => out.push(s.trim().split(/\s+/).pop()));
-    }
-    return out.filter(Boolean);
-  }
+  const { BLOCKED_DIRS, inspectInput } = require('./lib/inspect-paths.cjs');
 
   const { runtimeDirName, runtimeDir, runtimePath } = require('./lib/runtime-dir.cjs');
   function readRuntime(cwd) {
@@ -102,32 +59,24 @@ function denyWithReason(reason) {
 
   if (runtime.scout?.enabled === false || runtime.inspect?.enabled === false) process.exit(0);
 
-  // Allow all-permitted bash commands immediately
-  if (toolInput.command) {
-    const cmds = toolInput.command.split(/\s*(?:&&|\|\||;)\s*/).filter(Boolean);
-    if (cmds.every(c => isAllowedCommand(c))) process.exit(0);
-  }
-
-  // Broad glob check
-  if (toolInput.pattern && isBroadGlob(toolInput.pattern)) {
+  const result = inspectInput(toolName, toolInput, {
+    cwd, projectRoot: process.env.CLAUDE_PROJECT_DIR || cwd
+  });
+  if (result.broadGlob) {
     denyWithReason(
       `SCOPE LIMIT EXCEEDED: Glob pattern is excessively broad\n` +
-      `Requested Pattern: ${toolInput.pattern}\n\n` +
+      `Requested Pattern: ${result.broadGlob}\n\n` +
       `Please narrow your scope (e.g., src/**/*.ts rather than **/*.ts).`
     );
   }
 
-  // Blocked directory check
-  const paths = extractPaths(toolName, toolInput);
-  for (const p of paths) {
-    if (isBlockedPath(p)) {
-      const blocked = p.replace(/\\/g, '/').split('/').find(s => BLOCKED_DIRS.includes(s));
+  if (result.blockedPath) {
+      const { requested, blocked } = result.blockedPath;
       denyWithReason(
         `SCOPE LIMIT EXCEEDED: Directory "${blocked}/" is explicitly forbidden\n` +
-        `Requested Path: ${p}\n` +
-        `Restricted zones: ${BLOCKED_DIRS.join(', ')}`
+        `Requested Path: ${requested}\n` +
+        `Restricted zones: ${[...BLOCKED_DIRS].join(', ')}`
       );
-    }
   }
 
   process.exit(0);

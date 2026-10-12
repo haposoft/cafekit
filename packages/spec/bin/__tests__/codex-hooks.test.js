@@ -71,6 +71,10 @@ function inHookFixture(run, options = {}) {
   try {
     fs.cpSync(CODEX_HOOKS, hooks, { recursive: true });
     fs.copyFileSync(
+      path.join(PACKAGE_ROOT, 'src/claude/hooks/lib/inspect-paths.cjs'),
+      path.join(hooks, 'lib/inspect-paths.cjs'),
+    );
+    fs.copyFileSync(
       path.join(PACKAGE_ROOT, 'src/claude/hooks/lib/privacy-command-analysis.cjs'),
       path.join(hooks, 'lib/privacy-command-analysis.cjs'),
     );

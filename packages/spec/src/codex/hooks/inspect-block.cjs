@@ -6,9 +6,8 @@ const {
   logCrash,
   readPayload
 } = require('./lib/hook-context.cjs');
-const { BLOCKED_DIRS, inspectInput } = require('./lib/inspect-paths.cjs');
 
-function denyPath(requested, blocked) {
+function denyPath(requested, blocked, BLOCKED_DIRS) {
   process.stderr.write(
     `SCOPE LIMIT EXCEEDED: Directory "${blocked}/" is explicitly forbidden\n`
     + `Requested Path: ${requested}\n`
@@ -18,12 +17,13 @@ function denyPath(requested, blocked) {
 }
 
 try {
+  const { BLOCKED_DIRS, inspectInput } = require('./lib/inspect-paths.cjs');
   const payload = readPayload();
   if (!payload) process.exit(0);
-  const { runtime } = getHookContext(payload);
+  const { runtime, sessionCwd, projectRoot } = getHookContext(payload);
   if (runtime.scout?.enabled === false || runtime.inspect?.enabled === false) process.exit(0);
 
-  const result = inspectInput(payload.tool_input || {});
+  const result = inspectInput(payload.tool_name || '', payload.tool_input || {}, { cwd: sessionCwd, projectRoot });
   if (result.broadGlob) {
     process.stderr.write(
       `SCOPE LIMIT EXCEEDED: Glob pattern is excessively broad\n`
@@ -33,7 +33,7 @@ try {
     process.exit(2);
   }
   if (result.blockedPath) {
-    denyPath(result.blockedPath.requested, result.blockedPath.blocked);
+    denyPath(result.blockedPath.requested, result.blockedPath.blocked, BLOCKED_DIRS);
   }
 } catch (error) {
   logCrash('inspect-block', error);
