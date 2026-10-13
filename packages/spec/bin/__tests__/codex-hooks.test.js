@@ -730,15 +730,17 @@ test('Codex inspect hook scans native shell commands and structured paths', () =
     for (const command of [
       'rg secret node_modules',
       "sed -n '1,20p' dist/bundle.js",
-      "rg --glob '**/*' symbol src"
+      "rg --glob '**/*' symbol ."
     ]) {
       const result = runHook(inspect, root, payload(command));
       assert.equal(result.status, 2, command);
       assert.match(result.stderr, /SCOPE LIMIT EXCEEDED/);
     }
 
-    const normal = runHook(inspect, root, payload('rg symbol src packages'));
-    assert.equal(normal.status, 0);
+    for (const command of ['rg symbol src packages', "rg --glob '**/*' symbol src"]) {
+      const normal = runHook(inspect, root, payload(command));
+      assert.equal(normal.status, 0);
+    }
 
     const structured = runHook(inspect, root, {
       ...payload(''),

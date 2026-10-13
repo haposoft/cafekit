@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Inspect cho qua glob rộng khi mọi path nằm hẳn trong project và ngoài thư mục bị chặn; vẫn chặn gốc project, thư mục cha và path ngoài project.
 - Privacy/approve Codex không phụ thuộc đường dẫn Specs; SessionStart ngừng lấy và xuất GIT_URL vào env để tránh lưu userinfo của remote.
 - Privacy yêu cầu duyệt khi ghi runtime hoặc token approve; công tắc Claude/omp chỉ đọc từ gốc cài đặt, không từ thư mục con.
 - Privacy yêu cầu duyệt tìm đệ quy khi thư mục gốc có file mật trực tiếp, xét cờ ẩn, glob include và symlink trên mọi host.

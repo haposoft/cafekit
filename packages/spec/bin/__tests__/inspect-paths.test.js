@@ -28,11 +28,11 @@ function fixture(host, run, variant = '') {
     const cwd = variant === 'nested' ? path.join(root, 'packages/x') : root;
     fs.mkdirSync(cwd, { recursive: true });
     const projectRoot = variant === 'symlink' ? link : root;
-    run({ root, temp, cwd, hook(tool_name, tool_input) {
+    run({ root, temp, cwd, hook(tool_name, tool_input, payload = {}) {
       const log = path.join(hooks, '.logs/hook-log.jsonl');
       const before = fs.existsSync(log) ? fs.readFileSync(log, 'utf8') : '';
       const result = spawnSync(process.execPath, [path.join(hooks, 'inspect-block.cjs')], {
-        cwd, encoding: 'utf8', input: JSON.stringify({ cwd, tool_name, tool_input }),
+        cwd, encoding: 'utf8', input: JSON.stringify({ cwd, tool_name, tool_input, ...payload }),
         env: { ...process.env, CLAUDE_PROJECT_DIR: projectRoot },
       });
       const after = fs.existsSync(log) ? fs.readFileSync(log, 'utf8') : '';
@@ -43,8 +43,8 @@ function fixture(host, run, variant = '') {
 }
 
 const cases = [];
-function add(name, tool, input, deny = false, variant = '') {
-  cases.push({ name, tool, input, deny, variant });
+function add(name, tool, input, deny = false, variant = '', payload = {}) {
+  cases.push({ name, tool, input, deny, variant, payload });
 }
 function shell(command, deny = false) { add(command, 'Bash', { command }, deny); }
 add('Read node_modules', 'Read', { file_path: 'node_modules/x/index.js' }, true);
@@ -121,11 +121,50 @@ for (const command of [
 ]) shell(command);
 for (const command of ['cat < dist/a', 'cat <dist/a']) shell(command, true);
 
+add('Grep glob:"**/*.ts", path:"src"', 'Grep', { pattern: 'x', glob: '**/*.ts', path: 'src' });
+add('Glob pattern:"**/*.ts", path:"src"', 'Glob', { pattern: '**/*.ts', path: 'src' });
+shell("rg -g '**/*.ts' x src");
+add('Glob broad without path', 'Glob', { pattern: '**/*' }, true);
+add('Grep glob:"**/*.ts", path:"."', 'Grep', { pattern: 'x', glob: '**/*.ts', path: '.' }, true);
+add('Glob broad absolute project root', 'Glob', ({ root }) => ({ pattern: '**/*.ts', path: root }), true);
+add('Glob broad path:".."', 'Glob', { pattern: '**/*', path: '..' }, true);
+add('Glob broad filesystem root', 'Glob', { pattern: '**/*', path: '/' }, true);
+add('Glob broad home', 'Glob', { pattern: '**/*', path: '~' }, true);
+add('Glob broad normalized project root', 'Glob', { pattern: '**/*', path: 'src/..' }, true);
+add('Glob broad blocked directory', 'Glob', { pattern: '**/*.ts', path: 'node_modules' }, true);
+shell("rg --glob '**/*' symbol .", true);
+shell("rg --glob '**/*' symbol; cat src/file.ts", true);
+shell("cd ..; rg --glob '**/*' symbol src", true);
+shell("env -C .. rg --glob '**/*' symbol src", true);
+for (const command of [
+  "rg -E utf8 -g '**/*' x", "rg --ignore-file .gitignore -g '**/*' x",
+  "rg --engine pcre2 -g '**/*' x", "rg --type-add 'web:*.html' -g '**/*' x",
+  "echo . | xargs rg -g '**/*' x src", "env -C.. rg -g '**/*' x src",
+  "builtin cd .. && rg -g '**/*' x src",
+]) shell(command, true);
+add('Bash broad glob with non-string session cwd', 'Bash', { command: "rg -g '**/*' x src" }, true, '', { cwd: 1 });
+add('Bash broad glob with non-string input cwd', 'Bash', { command: "rg -g '**/*' x src", cwd: 1 }, true);
+for (const key of ['cwd', 'workdir']) {
+  add(`Bash broad glob with ${key}:".."`, 'Bash', { command: "rg -g '**/*' x src", [key]: '..' }, true);
+}
+for (const flag of [
+  '--json', '-S', '--smart-case', '-N', '--no-heading', '--heading', '--column', '--vimgrep',
+  '--follow', '--no-ignore', '--no-ignore-dot', '--no-ignore-exclude', '--no-ignore-files',
+  '--no-ignore-global', '--no-ignore-parent', '--no-ignore-vcs', '--no-ignore-messages',
+  '--no-ignore-file-case-insensitive', '--count-matches', '-b', '--trim',
+  '-C3', '-A2', '-m5', '-tts',
+]) shell(`rg -g '**/*.ts' ${flag} x src`);
+for (const command of [
+  "eval 'cd ..'; rg -g '**/*' x src", "source setup.sh; rg -g '**/*' x src",
+  ". setup.sh; rg -g '**/*' x src", "env -iC.. rg -g '**/*' x src",
+]) shell(command, true);
+
 for (const host of ['claude', 'codex']) {
   for (const entry of cases) {
+    if (host === 'codex' && entry.payload.cwd === 1) continue;
     test(`inspect-paths ${host}: ${entry.name}`, () => fixture(host, (context) => {
       const input = typeof entry.input === 'function' ? entry.input(context) : entry.input;
-      const result = context.hook(entry.tool, input);
+      const result = context.hook(entry.tool, input, entry.payload);
       assert.equal(result.status, entry.deny ? 2 : 0, result.stderr || result.stdout);
       if (entry.deny) {
         if (host === 'claude') assert.equal(JSON.parse(result.stdout).hookSpecificOutput.permissionDecision, 'deny');
@@ -134,3 +173,11 @@ for (const host of ['claude', 'codex']) {
     }, entry.variant));
   }
 }
+
+test('inspect-paths lib blocks broad glob with non-string context.cwd', () => {
+  const { inspectInput } = require('../../src/claude/hooks/lib/inspect-paths.cjs');
+  const result = inspectInput('Bash', { command: "rg -g '**/*' x src" }, {
+    cwd: 1, projectRoot: process.cwd(),
+  });
+  assert.equal(result.broadGlob, '**/*');
+});

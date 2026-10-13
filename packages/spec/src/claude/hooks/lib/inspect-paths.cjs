@@ -24,13 +24,27 @@ function blockedSegment(value, { cwd, projectRoot }) {
   if (path.isAbsolute(candidate)) {
     // Prefer project root over a nested session cwd. Compare lexical and canonical
     // roots so /var and /private/var (or a symlink install) have the same boundary.
-    for (const base of [projectRoot, cwd].filter(Boolean)) {
+    for (const base of [projectRoot, cwd].filter(base => typeof base === 'string' && base)) {
       const root = path.resolve(base);
       const relative = relativeInside(root, candidate) ?? relativeInside(real(root), candidate);
       if (relative !== null) { candidate = relative; break; }
     }
   } else candidate = path.normalize(candidate);
   return candidate.split('/').find((segment) => BLOCKED_DIRS.has(segment));
+}
+function narrowPath(value, context) {
+  if (context.cwd !== undefined && typeof context.cwd !== 'string') return false;
+  let requested = clean(value).replace(/\\/g, '/');
+  if (!requested) return false;
+  if (requested === '~' || requested.startsWith('~/')) requested = os.homedir() + requested.slice(1);
+  const root = path.resolve(context.projectRoot || context.cwd || process.cwd());
+  const candidate = path.resolve(context.cwd || root, requested);
+  const relative = relativeInside(root, candidate) ?? relativeInside(real(root), candidate);
+  // Both boundaries must hold: a symlink cannot turn an outside read into a
+  // narrow scope, nor point a lexical child at the project root or beyond it.
+  const canonical = relative === null ? candidate : real(path.resolve(real(root), relative));
+  return !!relative && !!relativeInside(real(root), canonical)
+    && !blockedSegment(candidate, context) && !blockedSegment(canonical, context);
 }
 function collectStructured(value, key, toolName, paths, globs) {
   if (typeof value === 'string') {
@@ -114,7 +128,7 @@ function commandGroups(command) {
 const WRAPPER_OPTIONS = {
   sudo: ['-u', '-g', '-h', '-p', '-C', '-T', '-R', '-D', '--user', '--group', '--host', '--prompt', '--chdir', '--chroot'],
   env: ['-u', '--unset', '-C', '--chdir', '-S', '--split-string'],
-  time: ['-f', '--format', '-o', '--output'], command: [],
+  time: ['-f', '--format', '-o', '--output'], command: [], builtin: [],
   nice: ['-n', '--adjustment'], nohup: [],
   xargs: ['-I', '-i', '-n', '-L', '-P', '-s', '-d', '-E', '-a', '--replace', '--max-args', '--max-lines', '--max-procs', '--arg-file', '--delimiter', '--eof'],
   npm: ['-p', '--package', '-c', '--call', '--prefix', '--workspace', '-w'],
@@ -122,17 +136,23 @@ const WRAPPER_OPTIONS = {
   pnpm: ['--dir', '-C', '--filter'], pnpx: ['-p', '--package'],
   yarn: ['--cwd'], bunx: ['-p', '--package'],
 };
-function unwrap(group) {
+function unwrap(group, state) {
   let index = 0;
   while (index < group.length) {
     while (/^[A-Za-z_][A-Za-z0-9_]*=/.test(group[index] || '')) index += 1;
     const name = nameOf(group[index]);
     if (!Object.hasOwn(WRAPPER_OPTIONS, name)) return group.slice(index);
+    if (name === 'xargs') state.unknownCwd = true;
     index += 1;
     // npm/pnpm/yarn only wrap a reader in exec mode; run/build remain opaque.
     let exec = !['npm', 'pnpm', 'yarn'].includes(name);
     while (index < group.length) {
       const token = group[index];
+      const cwdOptions = { env: ['-C', '--chdir'], sudo: ['-D', '--chdir'],
+        npm: ['--prefix'], pnpm: ['-C', '--dir'], yarn: ['--cwd'] };
+      if (cwdOptions[name]?.some(option => String(token).split('=')[0] === option
+        || (option.length === 2 && String(token).startsWith(option)))) state.unknownCwd = true;
+      if (name === 'env' && /^-[^-]*C/.test(token)) state.unknownCwd = true;
       if (token === 'exec' && !exec) { exec = true; index += 1; continue; }
       if (token === '--') { index += 1; break; }
       if (/^[A-Za-z_][A-Za-z0-9_]*=/.test(token)) { index += 1; continue; }
@@ -159,7 +179,30 @@ function positional(tokens, options) {
   }
   return values;
 }
-function commandPaths(group, globs) {
+function knownSearchOptions(tokens, options, name) {
+  const booleans = new Set(['-n', '-i', '-v', '-w', '-x', '-F', '-P', '-l', '-L', '-q', '-s', '-h', '-H', '-o', '-c', '-a', '-u', '-U', '-z',
+    '--line-number', '--ignore-case', '--invert-match', '--word-regexp', '--line-regexp', '--fixed-strings', '--pcre2',
+    '--files-with-matches', '--files-without-match', '--quiet', '--no-messages', '--no-filename', '--with-filename',
+    '--only-matching', '--count', '--text', '--multiline', '--null', '--hidden', '--files', '--stats']);
+  if (name === 'grep') for (const flag of ['-r', '-R', '--recursive', '--dereference-recursive']) booleans.add(flag);
+  if (name === 'rg') for (const flag of ['--json', '-S', '--smart-case', '-N', '--no-heading', '--heading',
+    '--column', '--vimgrep', '--follow', '--no-ignore', '--no-ignore-dot', '--no-ignore-exclude',
+    '--no-ignore-files', '--no-ignore-global', '--no-ignore-parent', '--no-ignore-vcs', '--no-ignore-messages',
+    '--no-ignore-file-case-insensitive', '--count-matches', '-b', '--trim']) booleans.add(flag);
+  for (let index = 1; index < tokens.length; index += 1) {
+    const token = tokens[index];
+    if (token === '--') return true;
+    if (!token.startsWith('-') || token === '-') continue;
+    if (options.has(token)) { index += 1; continue; }
+    if (/^-[ABCmMjdt]\S+/.test(token) && options.has(token.slice(0, 2))) continue;
+    if (token.startsWith('--') && options.has(token.split('=')[0]) && token.includes('=')) continue;
+    if (booleans.has(token)) continue;
+    if (!token.startsWith('--') && [...token.slice(1)].every(flag => booleans.has(`-${flag}`))) continue;
+    return false;
+  }
+  return true;
+}
+function commandPaths(group, globs, scopes, state) {
   const inputs = []; const args = [];
   for (let index = 0; index < group.length; index += 1) {
     const token = group[index];
@@ -168,16 +211,17 @@ function commandPaths(group, globs) {
       if (token.redirect === '<' && typeof operand === 'string') inputs.push(operand);
     } else args.push(token);
   }
-  return [...inputs, ...readerPaths(args, globs)];
+  return [...inputs, ...readerPaths(args, globs, scopes, state)];
 }
-function readerPaths(group, globs) {
-  const tokens = unwrap(group);
+function readerPaths(group, globs, scopes, state) {
+  const tokens = unwrap(group, state);
   if (tokens.command !== undefined) {
     const groups = commandGroups(tokens.command);
     if (groups.length) groups[groups.length - 1].push(...tokens.rest);
-    return groups.flatMap((nested) => commandPaths(nested, globs));
+    return groups.flatMap((nested) => commandPaths(nested, globs, scopes, state));
   }
   const name = nameOf(tokens[0]);
+  if (['cd', 'pushd', 'popd', 'eval', 'source', '.'].includes(name)) state.unknownCwd = true;
   if (!READERS.has(name)) return []; // Executables and non-reader arguments are never paths.
   if (name === 'find') {
     let index = 1;
@@ -189,6 +233,7 @@ function readerPaths(group, globs) {
     return roots; // Expressions such as -path ... -prune are not read roots.
   }
   if (['rg', 'grep'].includes(name)) {
+    const firstGlob = globs.length;
     for (let index = 1; index < tokens.length; index += 1) {
       const token = tokens[index];
       if (['-g', '--glob', '--iglob'].includes(token)) globs.push(tokens[index + 1] || '');
@@ -200,7 +245,9 @@ function readerPaths(group, globs) {
     if (name === 'rg') options.add('-r');
     const values = positional(tokens, options);
     const explicit = tokens.some((token) => /^(?:-[ef]|--(?:regexp|file)(?:=|$))/.test(token)) || tokens.includes('--files');
-    return explicit ? values : values.slice(1);
+    const paths = explicit ? values : values.slice(1);
+    scopes.push({ paths: state.unknownCwd || !knownSearchOptions(tokens, options, name) ? [] : paths, globs: globs.slice(firstGlob) });
+    return paths;
   }
   if (['sed', 'awk'].includes(name)) {
     const options = new Set(['-e', '--expression', '-f', '--file', '-F', '-v']);
@@ -221,19 +268,35 @@ function readerPaths(group, globs) {
   };
   return positional(tokens, new Set(options[name] || []));
 }
+function broadGlobFor(paths, globs, context) {
+  if (paths.length > 0 && paths.every(requested => narrowPath(requested, context))) return undefined;
+  return globs.find(glob => !glob.startsWith('!') && BROAD_GLOBS.some(rule => rule.test(clean(glob))));
+}
 function inspectInput(toolName, toolInput, context = {}) {
   if (WRITE_TOOLS.has(toolName)) return {};
   const paths = []; const globs = [];
   collectStructured(toolInput, '', toolName, paths, globs);
+  let broadGlob = broadGlobFor(paths, globs, context);
+  const scopes = [];
+  const commandContext = { ...context };
+  let unknownCwd = context.cwd !== undefined && typeof context.cwd !== 'string';
+  const overrides = ['cwd', 'workdir'].filter(key => Object.hasOwn(toolInput || {}, key));
+  for (const key of overrides) {
+    if (typeof toolInput[key] !== 'string' || !toolInput[key].trim()) unknownCwd = true;
+    else commandContext.cwd = path.resolve(typeof context.cwd === 'string' ? context.cwd : process.cwd(), toolInput[key]);
+  }
+  if (overrides.length > 1 && toolInput.cwd !== toolInput.workdir) unknownCwd = true;
   for (const key of ['command', 'cmd']) {
     if (typeof toolInput?.[key] === 'string') {
-      for (const group of commandGroups(toolInput[key])) paths.push(...commandPaths(group, globs));
+      const state = { unknownCwd };
+      for (const group of commandGroups(toolInput[key])) paths.push(...commandPaths(group, globs, scopes, state));
     }
   }
   const included = globs.filter((glob) => !glob.startsWith('!'));
+  for (const scope of scopes) broadGlob ||= broadGlobFor(scope.paths, scope.globs, commandContext);
   paths.push(...included);
   return {
-    broadGlob: included.find((glob) => BROAD_GLOBS.some((rule) => rule.test(clean(glob)))),
+    broadGlob,
     blockedPath: paths.map((requested) => ({ requested, blocked: blockedSegment(requested, context) })).find((result) => result.blocked),
   };
 }
