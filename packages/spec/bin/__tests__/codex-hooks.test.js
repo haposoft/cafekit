@@ -154,6 +154,10 @@ function inHookFixture(run, options = {}) {
       path.join(hooks, 'lib/privacy-command-analysis.cjs'),
     );
     fs.copyFileSync(
+      path.join(PACKAGE_ROOT, 'src/claude/hooks/lib/privacy-paths.cjs'),
+      path.join(hooks, 'lib/privacy-paths.cjs'),
+    );
+    fs.copyFileSync(
       path.join(PACKAGE_ROOT, 'src/claude/hooks/lib/runtime-path-safety.cjs'),
       path.join(hooks, 'lib/runtime-path-safety.cjs'),
     );

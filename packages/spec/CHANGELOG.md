@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Privacy dùng chung luật đường dẫn cho Claude, Codex, omp và grok, kiểm glob, notebook, MCP, argv và patch; Codex từ chối khi thiếu lib.
 - Inspect dùng chung bộ phân tích đường dẫn cho Claude, Codex, omp và grok; chỉ kiểm thao tác đọc, không chặn nhầm venv, build, patch hay Grep regex, vẫn chặn reader qua lớp bọc và substitution.
 
 - Codex privacy duyệt đường dẫn trong mảng input MCP; reset grant chỉ cho phiên hiện tại, giữ grant của phiên khác.

@@ -112,6 +112,13 @@ function installRuntimeFiles(ctx, platformKey) {
   writeSourceFile(
     ctx,
     platformKey,
+    path.join(SRC, 'claude', 'hooks', 'lib', 'privacy-paths.cjs'),
+    path.join(platform.folder, 'hooks', 'lib', 'privacy-paths.cjs'),
+    'Codex privacy path analyzer'
+  );
+  writeSourceFile(
+    ctx,
+    platformKey,
     path.join(SRC, 'claude', 'hooks', 'lib', 'secret-keywords.cjs'),
     path.join(platform.folder, 'hooks', 'lib', 'secret-keywords.cjs'),
     'Codex secret keyword matcher'

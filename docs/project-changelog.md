@@ -16,6 +16,7 @@ All notable changes to CafeKit are documented here, following
 - Codex `cf-specs`: bản cài cho Codex thêm ghi chú cổng phạm vi — câu hỏi GATE-SCOPE nằm trong final answer, không tóm tắt sau nó, mỗi mục cần quyết là `[NEEDS CLARIFICATION: …]` có câu hỏi thật, giữ nguyên EXPAND/KEEP/CUT. Đo trên `gpt-6.1-sol`: `specs/mo-ho-c1` marker và bộ ba ở tin cuối 10/10 (mốc 0/10; đối chứng không ghi chú trên runner mới 3/5 và 4/5, marker thật 1/5), 3 ca khác không hồi quy. Skill gốc và Claude không đổi.
 
 ### Fixed
+- Privacy dùng chung luật đường dẫn cho Claude, Codex, omp và grok, kiểm glob, notebook, MCP, argv và patch; Codex từ chối khi thiếu lib.
 - Inspect dùng chung bộ phân tích đường dẫn cho Claude, Codex, omp và grok; chỉ kiểm thao tác đọc, không chặn nhầm venv, build, patch hay Grep regex, vẫn chặn reader qua lớp bọc và substitution.
 
 - Codex privacy duyệt đường dẫn trong mảng input MCP; reset grant chỉ cho phiên hiện tại, giữ grant của phiên khác.

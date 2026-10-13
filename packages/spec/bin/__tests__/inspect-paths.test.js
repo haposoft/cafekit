@@ -19,7 +19,7 @@ function fixture(host, run, variant = '') {
     fs.symlinkSync(root, link, 'dir');
     fs.cpSync(path.join(SOURCE, `${host}/hooks`), hooks, { recursive: true });
     if (host === 'codex') {
-      for (const name of ['runtime-path-safety', 'privacy-command-analysis', 'secret-keywords', 'inspect-paths']) {
+      for (const name of ['runtime-path-safety', 'privacy-command-analysis', 'privacy-paths', 'secret-keywords', 'inspect-paths']) {
         const source = path.join(SOURCE, `claude/hooks/lib/${name}.cjs`);
         // Before the shared lib exists, exercise the original native implementation.
         if (fs.existsSync(source)) fs.copyFileSync(source, path.join(hooks, `lib/${name}.cjs`));

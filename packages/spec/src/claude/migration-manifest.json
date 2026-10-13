@@ -173,6 +173,7 @@
       "hooks/lib/hook-payload.cjs",
       "hooks/lib/inspect-paths.cjs",
       "hooks/lib/privacy-command-analysis.cjs",
+      "hooks/lib/privacy-paths.cjs",
       "hooks/lib/secret-keywords.cjs",
       "hooks/lib/runtime-path-safety.cjs"
     ]
