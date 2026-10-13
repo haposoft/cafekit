@@ -95,6 +95,13 @@ function isSymlinkToSensitive(filePath, cwd) {
   }
 }
 
+function scrubCommand(command) {
+  return String(command).replace(
+    /(<<-?[ \t]*)(['"])([A-Za-z_]\w*)\2[^\n]*\n[\s\S]*?\n[ \t]*\3\b/g,
+    '$1$2$3$2'
+  );
+}
+
 function extractCommandPaths(command) {
   // The analyzer parses the command and returns the operands of every reading
   // command it recognises, nested shells and `find -exec` included. Treating
@@ -107,10 +114,7 @@ function extractCommandPaths(command) {
   // command -- a PR body carrying `cat .env` in backticks -- came back as a real
   // command substitution. Blank those bodies out first. An unquoted delimiter
   // (<<BODY) does expand, so it is left to the analyzer.
-  const scrubbed = String(command).replace(
-    /(<<-?[ \t]*)(['"])([A-Za-z_]\w*)\2[^\n]*\n[\s\S]*?\n[ \t]*\3\b/g,
-    '$1$2$3$2'
-  );
+  const scrubbed = scrubCommand(command);
 
   const paths = new Set(commandAccess(scrubbed).paths);
 
@@ -200,8 +204,43 @@ function sensitiveRequest(filePath, cwd) {
 }
 
 function sensitivePaths(toolName, input, cwd) {
-  return extractPaths(toolName, input)
-    .filter((filePath) => sensitiveRequest(filePath, cwd));
+  const paths = extractPaths(toolName, input).filter(filePath => sensitiveRequest(filePath, cwd));
+  const tool = String(toolName).toLowerCase();
+  const searches = tool === 'grep'
+    ? [{ recursive: true, hidden: true,
+      roots: [typeof input?.path === 'string' && input.path.trim() ? input.path : cwd],
+      includes: [input?.glob, ...(Array.isArray(input?.globs) ? input.globs : [])]
+        .filter(glob => typeof glob === 'string' && glob),
+    }]
+    : ['bash', 'exec_command', 'shell'].includes(tool)
+      ? commandAccess(scrubCommand(shellInput(input))).searches : [];
+  for (const search of searches) {
+    if (!search.recursive) continue;
+    // Negative globs and exclusion/type flags cannot prove a sensitive child is omitted.
+    const includes = search.includes.filter(glob => glob && !glob.startsWith('!'));
+    for (const root of search.roots) {
+      const directory = path.resolve(cwd, root);
+      let entries;
+      try { entries = fs.readdirSync(directory, { withFileTypes: true }); } catch { continue; }
+      for (const entry of entries) {
+        if (entry.isDirectory() || (!search.hidden && entry.name.startsWith('.'))) continue;
+        if (includes.length && !includes.some(glob => matchesInclude(entry.name, glob))) continue;
+        const filePath = path.join(directory, entry.name);
+        if (sensitiveRequest(filePath, cwd)) paths.push(filePath);
+      }
+    }
+  }
+  return [...new Set(paths)];
+}
+
+function matchesInclude(name, glob) {
+  if (typeof path.matchesGlob !== 'function') return true;
+  glob = glob.replace(/^\/+/, '');
+  if (glob.length > 256 || (glob.match(/[*?]/g) || []).length > 4 || /\{[^}]*\.\.[^}]*\}/.test(glob)
+    || !/^[\w.\-\/]*(?:[*?][\w.\-\/]*){0,4}(?:\{[\w.\-*,]*\}[\w.\-\/]*)?$/.test(glob)) return true;
+  // Prefixing both sides removes Node's implicit leading-dot exclusion for a basename.
+  return path.matchesGlob(name, glob)
+    || (name.startsWith('.') && path.matchesGlob(`x${name}`, `x${glob.replace(/^(?:\*\*\/)+/, '')}`));
 }
 
 module.exports = { isSensitive, isSafe, sensitiveRequest, extractPaths, sensitivePaths };

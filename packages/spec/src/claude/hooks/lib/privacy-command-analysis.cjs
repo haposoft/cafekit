@@ -272,8 +272,55 @@ function genericOperands(words, start, result, {
 
 function merge(target, source) {
   source.paths.forEach((value) => target.paths.add(value));
+  target.searches.push(...source.searches);
   target.dynamic ||= source.dynamic;
   target.malformed ||= source.malformed;
+}
+
+// Describe searches separately so the existing read operands stay unchanged.
+function searchDescription(words, start, name) {
+  const grep = ['grep', 'egrep', 'fgrep'].includes(name);
+  const search = { recursive: !grep, hidden: grep, includes: [], excludes: [], roots: [] };
+  const values = new Set([...GREP_OPTION_VALUE, '-g', '--glob', '--iglob', '--include', '--exclude',
+    '--exclude-dir', '-d', '--directories', '-t', '--type', '-T', '--type-not',
+    '--max-depth', '-j', '--threads', '-M', '--max-columns', '--sort', '--sortr',
+    '--max-filesize', '--pre', '--path-separator', '--dfa-size-limit', '--regex-size-limit']);
+  let pattern = !grep && words.slice(start).some(word => word.text === '--files');
+  let unrestricted = 0;
+  let options = true;
+  const positional = [];
+  for (let index = start; index < words.length; index += 1) {
+    const word = words[index];
+    const text = word.text;
+    if (options && text === '--') { options = false; continue; }
+    if (options && text.startsWith('-') && text !== '-') {
+      let option = text.split('=')[0];
+      let value = text.includes('=') ? text.slice(text.indexOf('=') + 1) : null;
+      let shortFlags = /^-[^-]/.test(text) ? text.slice(1) : '';
+      const attached = text.match(/^-([^-]*?)([gef])(.*)$/);
+      if (attached) { shortFlags = attached[1]; option = `-${attached[2]}`; value = attached[3] || null; }
+      if (values.has(option) && value === null) value = words[++index]?.text || '';
+      if (['-e', '--regexp', '-f', '--file'].includes(option)) pattern = true;
+      if (['-g', '--glob', '--include'].includes(option)) search.includes.push(value || '');
+      if (['--exclude', '--exclude-dir'].includes(option)) search.excludes.push(value || '');
+      if (grep && (['--recursive', '--dereference-recursive'].includes(option)
+        || /[rR]/.test(shortFlags)
+        || (['-d', '--directories'].includes(option) && value === 'recurse'))) search.recursive = true;
+      if (!grep) {
+        if (option === '--hidden' || shortFlags.includes('.')) search.hidden = true;
+        unrestricted += (shortFlags.match(/u/g) || []).length + (option === '--unrestricted' ? 1 : 0);
+      }
+      continue;
+    }
+    positional.push(word);
+  }
+  if (!pattern) positional.shift();
+  search.roots = positional.filter(word => !word.activeExpansion && word.text !== '-').map(word => word.text);
+  if (!search.roots.length) search.roots.push('.');
+  if (unrestricted >= (name === 'ag' ? 1 : 2)) search.hidden = true;
+  // Case-insensitive globs are not evidence that a differently cased child is excluded.
+  if (words.slice(start).some(word => ['--glob-case-insensitive', '--iglob'].includes(word.text.split('=')[0]))) search.includes = [];
+  return search;
 }
 
 function analyzeWords(words, result, depth) {
@@ -289,6 +336,7 @@ function analyzeWords(words, result, depth) {
     return;
   }
   if (GREP_READERS.has(name)) {
+    result.searches.push(searchDescription(words, start, name));
     const patternOption = words.slice(start).some((word) => ['-e', '--regexp', '-f', '--file'].includes(word.text.split('=')[0]));
     genericOperands(words, start, result, {
       skipFirst: patternOption ? 0 : 1,
@@ -370,7 +418,7 @@ function analyzeWords(words, result, depth) {
 }
 
 function analyzeCommand(command, depth = 0) {
-  const result = { paths: new Set(), dynamic: false, malformed: false };
+  const result = { paths: new Set(), dynamic: false, malformed: false, searches: [] };
   if (depth > MAX_DEPTH) { result.dynamic = true; return result; }
   const parsed = scanShell(command);
   result.malformed = parsed.malformed;
@@ -387,7 +435,7 @@ function analyzeCommand(command, depth = 0) {
 
 function commandAccess(command) {
   const result = analyzeCommand(command);
-  return { paths: [...result.paths], dynamic: result.dynamic, malformed: result.malformed };
+  return { paths: [...result.paths], dynamic: result.dynamic, malformed: result.malformed, searches: result.searches };
 }
 
 module.exports = { DYNAMIC_READ_PATH, commandAccess };
