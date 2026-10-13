@@ -221,7 +221,6 @@ try {
 
   // Static environment
   const gitBranch  = run('git branch --show-current', '', cwd);
-  const gitUrl     = run('git remote get-url origin', '', cwd);
   const gitRoot    = run('git rev-parse --show-toplevel', '', cwd);
   const nodeVer    = process.version;
   const pythonVer  = run('python3 --version', '', cwd) || run('python --version', '', cwd);
@@ -235,7 +234,6 @@ try {
     writeEnv(envFile, 'PACKAGE_MANAGER', packageManager);
     writeEnv(envFile, 'FRAMEWORK',       framework);
     writeEnv(envFile, 'GIT_BRANCH',      gitBranch);
-    writeEnv(envFile, 'GIT_URL',         gitUrl);
     writeEnv(envFile, 'GIT_ROOT',        gitRoot);
     writeEnv(envFile, 'NODE_VERSION',    nodeVer);
     writeEnv(envFile, 'PYTHON_VERSION',  pythonVer);

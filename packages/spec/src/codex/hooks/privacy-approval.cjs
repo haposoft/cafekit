@@ -1,16 +1,6 @@
 #!/usr/bin/env node
 'use strict';
 
-const {
-  APPROVAL_PREFIX,
-  approvePending,
-  cleanup
-} = require('./lib/privacy-state.cjs');
-const {
-  getHookContext,
-  readPayload
-} = require('./lib/hook-context.cjs');
-
 function context(message) {
   process.stdout.write(`${JSON.stringify({
     hookSpecificOutput: {
@@ -21,9 +11,11 @@ function context(message) {
 }
 
 try {
+  const { APPROVAL_PREFIX, approvePending, cleanup } = require('./lib/privacy-state.cjs');
+  const { PROJECT_ROOT, readPayload } = require('./lib/hook-context.cjs');
   const data = readPayload();
   if (!data) process.exit(0);
-  const { projectRoot } = getHookContext(data);
+  const projectRoot = PROJECT_ROOT;
   // A pasted prompt arrives with whatever whitespace the terminal added around
   // it. Rejecting on a trailing newline made the approval look broken while the
   // id it named was still perfectly valid; the exactness that matters is the

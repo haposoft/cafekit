@@ -17,6 +17,31 @@ const path = require('node:path');
 
 const HOOK = path.join(__dirname, '..', 'session.cjs');
 
+test('session.cjs does not export GIT_URL or remote userinfo', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ck-session-remote-'));
+  const envFile = path.join(dir, 'env.sh');
+  try {
+    git(['init', '-q'], dir);
+    const userinfo = 'fixture-user:fixture-placeholder';
+    const remote = `https://${userinfo}@example.invalid/r.git`;
+    const configured = spawnSync('git', ['remote', 'add', 'origin', remote], { cwd: dir, encoding: 'utf8' });
+    assert.strictEqual(configured.status, 0, 'fake remote setup must succeed');
+    const result = spawnSync(process.execPath, [HOOK], {
+      cwd: dir, input: JSON.stringify({ source: 'startup', cwd: dir }), encoding: 'utf8',
+      env: { ...process.env, CLAUDE_ENV_FILE: envFile },
+    });
+    assert.strictEqual(result.status, 0, 'session hook must exit successfully');
+    assert.ok(fs.existsSync(envFile), 'session env file must exist');
+    const content = fs.readFileSync(envFile, 'utf8');
+    assert.deepStrictEqual({
+      exportsGitUrl: /^\s*(?:export\s+)?GIT_URL=/m.test(content),
+      containsUserInfo: content.includes(userinfo),
+    }, { exportsGitUrl: false, containsUserInfo: false });
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 function git(args, cwd) {
   const res = spawnSync('git', args, { cwd, encoding: 'utf8' });
   if (res.status !== 0) {

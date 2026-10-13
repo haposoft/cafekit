@@ -41,6 +41,39 @@ test('privacy walks nested operation arrays but ignores prose', () => fixture(({
   assert.equal(hook('privacy-block', { tool_name: 'mcp__files__read', tool_input: { messages: ['credentials.json', { text: 'credentials.json' }] } }).stdout, '');
 }));
 
+test('privacy-block allows ls when configured specs escapes the project', () => fixture(({ root, hook }) => {
+  fs.writeFileSync(path.join(root, '.codex/runtime.json'), JSON.stringify({ paths: { specs: '../outside' } }));
+  const result = hook('privacy-block', { tool_name: 'Bash', tool_input: { command: 'ls' } });
+  assert.equal(result.status, 0);
+  assert.equal(result.stdout, '');
+}));
+
+test('privacy-block issues approval for a sensitive read when configured specs escapes the project', () => fixture(({ root, hook }) => {
+  fs.writeFileSync(path.join(root, '.env'), '');
+  fs.writeFileSync(path.join(root, '.codex/runtime.json'), JSON.stringify({ paths: { specs: '../outside' } }));
+  const result = hook('privacy-block', { tool_name: 'Bash', tool_input: { command: 'cat .env' } });
+  assert.equal(result.status, 0);
+  const output = JSON.parse(result.stdout).hookSpecificOutput;
+  assert.equal(output.permissionDecision, 'deny');
+  assert.match(output.permissionDecisionReason, /APPROVE CAFEKIT PRIVACY [a-f0-9]{24}/);
+}));
+
+test('privacy-approval grants a pending read when configured specs escapes the project', () => fixture(({ root, hook }) => {
+  fs.writeFileSync(path.join(root, '.env'), '');
+  const payload = { tool_name: 'Bash', tool_input: { command: 'cat .env' } };
+  const pending = hook('privacy-block', payload);
+  assert.equal(pending.status, 0);
+  const approval = pending.stdout.match(/APPROVE CAFEKIT PRIVACY [a-f0-9]{24}/);
+  assert.ok(approval, 'the sensitive read must issue a pending approval');
+  fs.writeFileSync(path.join(root, '.codex/runtime.json'), JSON.stringify({ paths: { specs: '../outside' } }));
+  const granted = hook('privacy-approval', { prompt: approval[0] });
+  assert.equal(granted.status, 0);
+  assert.match(granted.stdout, /User approved the pending sensitive access/);
+  const allowed = hook('privacy-block', payload);
+  assert.equal(allowed.status, 0);
+  assert.equal(allowed.stdout, '');
+}));
+
 test('session startup revokes only its own pending requests and grants', () => fixture(({ root, hooks, hook }) => {
   const privacy = require(path.join(hooks, 'lib/privacy-state.cjs'));
   const request = { projectRoot: root, sessionCwd: root, sessionId: 'a', filePath: 'credentials.json' };

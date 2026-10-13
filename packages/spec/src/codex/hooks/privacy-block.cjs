@@ -13,11 +13,13 @@ function deny(reason) {
 
 try {
   const { APPROVAL_PREFIX, createPending, hasGrant } = require('./lib/privacy-state.cjs');
-  const { getHookContext, readPayload } = require('./lib/hook-context.cjs');
+  const { PROJECT_ROOT, readRuntime, resolveSessionCwd, readPayload } = require('./lib/hook-context.cjs');
   const { sensitivePaths } = require('./lib/privacy-paths.cjs');
   const data = readPayload();
   if (!data) process.exit(0);
-  const { projectRoot, sessionCwd, runtime } = getHookContext(data);
+  const projectRoot = PROJECT_ROOT;
+  const runtime = readRuntime(PROJECT_ROOT);
+  const sessionCwd = resolveSessionCwd(data);
   if (runtime.privacyBlock === false) process.exit(0);
 
   const filePaths = sensitivePaths(data.tool_name || '', data.tool_input || {}, sessionCwd);
