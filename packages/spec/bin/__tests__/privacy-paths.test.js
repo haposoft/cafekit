@@ -28,8 +28,8 @@ function invoke(f, tool_name, tool_input, spawnOptions = {}) {
   const env = { ...process.env };
   delete env.CLAUDE_PROJECT_DIR;
   const result = spawnSync(process.execPath, [path.join(f.hooks, 'privacy-block.cjs')], {
-    cwd: f.root, encoding: 'utf8', env,
-    input: JSON.stringify({ tool_name, tool_input, cwd: f.root, session_id: 'privacy-paths-probe' }),
+    cwd: f.cwd || f.root, encoding: 'utf8', env,
+    input: JSON.stringify({ tool_name, tool_input, cwd: f.cwd || f.root, session_id: 'privacy-paths-probe' }),
     ...spawnOptions,
   });
   assert.equal(result.status, 0, result.stderr);
@@ -98,6 +98,109 @@ test('privacy-paths: unavailable glob matcher keeps sensitive children', () => {
   } finally {
     path.matchesGlob = original;
   }
+});
+
+const runtimeWrites = [
+  ['Write runtime', 'Write', { file_path: '.claude/runtime.json' }],
+  ['Edit runtime', 'Edit', { file_path: '.codex/runtime.json' }],
+  ['NotebookEdit runtime', 'NotebookEdit', { notebook_path: '.omp/runtime.json' }],
+  ['patch approval directory', 'apply_patch', { command: '*** Begin Patch\n*** Add File: .codex/hooks/.privacy/g.json\n*** End Patch' }],
+  ['MCP runtime', 'mcp__fs__write_file', { path: '.claude/runtime.json' }],
+  ['MultiEdit runtime', 'MultiEdit', { edits: [{ file_path: '.claude/runtime.json' }] }],
+  ['Write backslash runtime', 'Write', { file_path: '.CLAUDE\\RUNTIME.JSON' }],
+  ['symlink directory Write', 'Write', { file_path: 'c/runtime.json' }],
+  ['symlink directory shell', 'Bash', { command: "echo '{}' > c/runtime.json" }],
+  ['dangling approval symlink', 'Write', { file_path: 'links/lnk2' }],
+  ['dangling runtime symlink', 'Write', { file_path: 'links/lnk-runtime' }],
+  ['chained approval symlink', 'Bash', { command: 'echo x > links/t1' }],
+  ['chained runtime symlink', 'Bash', { command: 'echo x > links/r1' }],
+  ['looping write symlink', 'Bash', { command: 'echo x > links/loop1' }],
+  ...[
+    'cp -r evil/.claude .', 'mv evil/.codex .', 'cp -r evil/.omp .', 'mv evil/.privacy .',
+  ].map(command => [`runtime directory source ${command}`, 'Bash', { command }]),
+  ['clobber redirect', 'Bash', { command: 'echo x >| .claude/runtime.json' }],
+  ['quoted heredoc header tail', 'Bash', { command: "cat <<'EOF' > .claude/runtime.json\n{}\nEOF" }],
+  ...[
+    'cd "$PWD/.claude" && echo \'{}\' > runtime.json',
+    'cd $(pwd)/.claude && cp /tmp/r runtime.json',
+  ].map(command => [`dynamic directory ${command}`, 'Bash', { command }]),
+  ...[
+    'cp /tmp/r.json .claude/runtime.json > /dev/null',
+    'cp /tmp/r.json .claude/runtime.json 2>&1',
+    'mv r .codex/runtime.json 2>/dev/null',
+    'install r .omp/runtime.json > /dev/null',
+    'ln r .claude/runtime.json 2>&1',
+    'cp /tmp/r.json .claude/runtime.json < /dev/null',
+    'cp /tmp/r.json .claude/runtime.json <<< x',
+    'cp a .claude/runtime.json 0</dev/null',
+    'cp a .claude/runtime.json 0< /dev/null',
+    'cp a .claude/runtime.json 3</dev/null',
+  ].map(command => [`redirect operands ${command}`, 'Bash', { command }]),
+  ...[
+    "echo '{}' > .claude/runtime.json", "echo '{}' > .CLAUDE/RUNTIME.JSON",
+    'echo x >> .claude/./runtime.json', 'tee .codex//runtime.json',
+    'sed -i s/a/b/ .omp/runtime.json', 'cp r.json .claude/',
+    'mv r.json .codex/runtime.json', 'cp t .codex/hooks/./.privacy/',
+    'cd .claude && cp /tmp/r.json runtime.json', 'echo x > sub/.claude/runtime.json',
+    'install r.json .omp/', 'ln r.json .codex/runtime.json',
+    'pushd .codex && echo x > runtime.json',
+    "sed -ni 's/a/b/p' .claude/runtime.json", 'cp -t.claude r.json',
+    'cd .claude && echo "$(echo x > runtime.json)"',
+  ].map(command => [command, 'Bash', { command }]),
+];
+const runtimeAllowed = [
+  ['Read runtime', 'Read', { file_path: '.claude/runtime.json' }],
+  ['cat .codex/runtime.json', 'Bash', { command: 'cat .codex/runtime.json' }],
+  ['jq .paths .claude/runtime.json', 'Bash', { command: 'jq .paths .claude/runtime.json' }],
+  ['Write ordinary runtime', 'Write', { file_path: 'docs/runtime.json' }],
+  ['Write resolved ordinary runtime', 'Write', { file_path: '.claude/../docs/runtime.json' }],
+];
+
+for (const host of ['claude', 'codex']) {
+  const f = fixture(host);
+  fs.mkdirSync(path.join(f.root, '.claude'), { recursive: true });
+  fs.symlinkSync('.claude', path.join(f.root, 'c'), 'dir');
+  fs.mkdirSync(path.join(f.root, 'links'));
+  fs.symlinkSync('../.codex/hooks/.privacy/g.json', path.join(f.root, 'links/lnk2'));
+  fs.symlinkSync('../.claude/runtime.json', path.join(f.root, 'links/lnk-runtime'));
+  fs.symlinkSync('t2', path.join(f.root, 'links/t1'));
+  fs.symlinkSync('../.codex/hooks/.privacy/g.json', path.join(f.root, 'links/t2'));
+  fs.symlinkSync('r2', path.join(f.root, 'links/r1'));
+  fs.symlinkSync('../.claude/runtime.json', path.join(f.root, 'links/r2'));
+  fs.symlinkSync('loop2', path.join(f.root, 'links/loop1'));
+  fs.symlinkSync('loop1', path.join(f.root, 'links/loop2'));
+  for (const name of ['.claude', '.codex', '.omp', '.privacy']) {
+    const directory = path.join(f.root, 'evil', name);
+    fs.mkdirSync(directory, { recursive: true });
+    fs.writeFileSync(path.join(directory, 'runtime.json'), '{}');
+  }
+  for (const [name, tool, input] of runtimeWrites) {
+    test(`privacy-paths ${host}: runtime writes ${name}`, () => {
+      const output = invoke(f, tool, input);
+      assert.equal(output?.permissionDecision, host === 'claude' ? 'ask' : 'deny');
+      assert.doesNotMatch(output.permissionDecisionReason, /could not be evaluated safely/);
+      if (host === 'codex') assert.match(output.permissionDecisionReason, /APPROVE CAFEKIT PRIVACY /);
+    });
+  }
+  for (const [name, tool, input] of runtimeAllowed) {
+    test(`privacy-paths ${host}: runtime allows ${name}`, () => assert.equal(invoke(f, tool, input), null));
+  }
+}
+
+test('privacy-paths claude: subdirectory switch cannot disable root privacy', () => {
+  const f = fixture('claude');
+  const cwd = path.join(f.root, 'sub');
+  fs.mkdirSync(path.join(cwd, '.claude'), { recursive: true });
+  fs.writeFileSync(path.join(cwd, '.claude/runtime.json'), JSON.stringify({ privacyBlock: false }));
+  fs.writeFileSync(path.join(f.root, '.env'), '');
+  assert.equal(invoke({ ...f, cwd }, 'Read', { file_path: '../.env' })?.permissionDecision, 'ask');
+});
+
+test('privacy-paths claude: root switch still allows a manual opt-out', () => {
+  const f = fixture('claude');
+  fs.writeFileSync(path.join(f.root, '.claude/runtime.json'), JSON.stringify({ privacyBlock: false }));
+  fs.writeFileSync(path.join(f.root, '.env'), '');
+  assert.equal(invoke(f, 'Read', { file_path: '.env' }), null);
 });
 
 const recursiveSensitive = [

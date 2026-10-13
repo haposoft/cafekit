@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Privacy yêu cầu duyệt khi ghi runtime hoặc token approve; công tắc Claude/omp chỉ đọc từ gốc cài đặt, không từ thư mục con.
 - Privacy yêu cầu duyệt tìm đệ quy khi thư mục gốc có file mật trực tiếp, xét cờ ẩn, glob include và symlink trên mọi host.
 - Privacy dùng chung luật đường dẫn cho Claude, Codex, omp và grok, kiểm glob, notebook, MCP, argv và patch; Codex từ chối khi thiếu lib.
 - Inspect dùng chung bộ phân tích đường dẫn cho Claude, Codex, omp và grok; chỉ kiểm thao tác đọc, không chặn nhầm venv, build, patch hay Grep regex, vẫn chặn reader qua lớp bọc và substitution.

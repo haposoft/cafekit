@@ -107,6 +107,7 @@ function scanShell(command) {
   const source = String(command).replace(/\\\r?\n/g, '');
   const segments = [];
   const nested = [];
+  const recordNested = command => nested.push({ command, segment: segments.length });
   let words = [];
   let word = { text: '', activeExpansion: false, started: false };
   let quote = null;
@@ -132,7 +133,7 @@ function scanShell(command) {
         if (source[index + 1] === '(') {
           const end = matchingParen(source, index + 1);
           if (end < 0) { malformed = true; continue; }
-          nested.push(source.slice(index + 2, end));
+          recordNested(source.slice(index + 2, end));
           append('()');
           index = end;
         }
@@ -142,7 +143,7 @@ function scanShell(command) {
         word.activeExpansion = true;
         const end = matchingBacktick(source, index);
         if (end < 0) { malformed = true; continue; }
-        nested.push(source.slice(index + 1, end));
+        recordNested(source.slice(index + 1, end));
         append('\x60\x60');
         index = end;
         continue;
@@ -164,7 +165,7 @@ function scanShell(command) {
       if (source[index + 1] === '(') {
         const end = matchingParen(source, index + 1);
         if (end < 0) { malformed = true; continue; }
-        nested.push(source.slice(index + 2, end));
+        recordNested(source.slice(index + 2, end));
         append('()');
         index = end;
       }
@@ -174,7 +175,7 @@ function scanShell(command) {
       word.activeExpansion = true;
       const end = matchingBacktick(source, index);
       if (end < 0) { malformed = true; continue; }
-      nested.push(source.slice(index + 1, end));
+      recordNested(source.slice(index + 1, end));
       append('\x60\x60');
       index = end;
       continue;
@@ -183,15 +184,31 @@ function scanShell(command) {
       word.activeExpansion = true;
       const end = matchingParen(source, index + 1);
       if (end < 0) { malformed = true; continue; }
-      nested.push(source.slice(index + 2, end));
+      recordNested(source.slice(index + 2, end));
       append(`${ch}()`);
       index = end;
       continue;
     }
     if ((ch === '~' && !word.text) || '*?{['.includes(ch)) { word.activeExpansion = true; append(ch); continue; }
     if (';|&\n()'.includes(ch)) { flushSegment(); continue; }
-    if (ch === '<') { flushWord(); words.push({ text: '<', activeExpansion: false, started: true }); continue; }
-    if (ch === '>') { flushWord(); continue; }
+    if (ch === '<') {
+      const descriptor = /^[0-9]+$/.test(word.text);
+      flushWord();
+      if (descriptor) (words.redirectFds ||= []).push(words.length - 1);
+      (words.inputRedirects ||= []).push(words.length, words.length + 1);
+      words.push({ text: '<', activeExpansion: false, started: true });
+      continue;
+    }
+    if (ch === '>') {
+      const descriptor = /^[0-9]+$/.test(word.text);
+      flushWord();
+      if (descriptor) (words.redirectFds ||= []).push(words.length - 1);
+      (words.redirects ||= []).push(words.length);
+      if (source[index + 1] === '>') index += 1;
+      if (source[index + 1] === '&') index += 1;
+      if (source[index + 1] === '|') index += 1;
+      continue;
+    }
     if (' \t\r'.includes(ch)) { flushWord(); continue; }
     append(ch);
   }
@@ -273,6 +290,8 @@ function genericOperands(words, start, result, {
 function merge(target, source) {
   source.paths.forEach((value) => target.paths.add(value));
   target.searches.push(...source.searches);
+  source.writes.forEach(value => target.writes.add(value));
+  source.unknownWrites.forEach(value => target.unknownWrites.add(value));
   target.dynamic ||= source.dynamic;
   target.malformed ||= source.malformed;
 }
@@ -323,7 +342,97 @@ function searchDescription(words, start, name) {
   return search;
 }
 
-function analyzeWords(words, result, depth) {
+function writeTarget(word, result, directory) {
+  if (!word?.text || word.activeExpansion || word.text === '-') return;
+  if (directory === null && !word.text.startsWith('/')) {
+    result.unknownWrites.add(word.text);
+    return;
+  }
+  result.writes.add(word.text.startsWith('/') || directory === '.' ? word.text : `${directory}/${word.text}`);
+}
+
+function commandWrites(words, start, name, result, directory) {
+  const redirected = new Set([...(words.redirects || []), ...(words.redirectFds || []), ...(words.inputRedirects || [])]);
+  if (name === 'tee') {
+    for (let index = start; index < words.length; index += 1) {
+      if (!redirected.has(index) && !words[index].text.startsWith('-')) writeTarget(words[index], result, directory);
+    }
+  }
+  if (['cp', 'mv', 'install', 'ln'].includes(name)) {
+    const operands = [];
+    let targetDirectory = false;
+    const values = new Set(['-t', '--target-directory', '-S', '--suffix', '-m', '--mode', '-o', '--owner', '-g', '--group']);
+    let options = true;
+    for (let index = start; index < words.length; index += 1) {
+      if (redirected.has(index)) continue;
+      const word = words[index];
+      if (options && word.text === '--') { options = false; continue; }
+      if (options && word.text.startsWith('-')) {
+        let option = word.text.split('=')[0];
+        let value = word.text.includes('=')
+          ? { text: word.text.slice(word.text.indexOf('=') + 1), activeExpansion: word.activeExpansion }
+          : values.has(option) ? words[++index] : null;
+        if (!word.text.startsWith('--') && !values.has(option)) {
+          for (let flag = 1; flag < word.text.length; flag += 1) {
+            const candidate = `-${word.text[flag]}`;
+            if (!values.has(candidate)) continue;
+            option = candidate;
+            value = flag + 1 < word.text.length
+              ? { text: word.text.slice(flag + 1), activeExpansion: word.activeExpansion } : words[++index];
+            break;
+          }
+        }
+        if (['-t', '--target-directory'].includes(option)) {
+          targetDirectory = true;
+          writeTarget(value, result, directory);
+        }
+      } else operands.push(word);
+    }
+    if (!targetDirectory) writeTarget(operands.at(-1), result, directory);
+    if (name === 'cp' || name === 'mv') {
+      const sources = targetDirectory ? operands : operands.slice(0, -1);
+      for (const source of sources) {
+        const basename = source.text.replace(/\\/g, '/').replace(/\/+$/, '').split('/').at(-1).toLowerCase();
+        if (!['.claude', '.codex', '.omp', '.privacy'].includes(basename)) continue;
+        if (source.activeExpansion) result.unknownWrites.add(basename);
+        else writeTarget(source, result, directory);
+      }
+    }
+  }
+  if (name === 'sed') {
+    let inPlace = false;
+    let scriptOption = false;
+    const operands = [];
+    let options = true;
+    for (let index = start; index < words.length; index += 1) {
+      if (redirected.has(index)) continue;
+      const word = words[index];
+      if (options && word.text === '--') { options = false; continue; }
+      if (options && word.text.startsWith('-')) {
+        const option = word.text.split('=')[0];
+        if (option === '--in-place') inPlace = true;
+        if (['--expression', '--file'].includes(option)) {
+          scriptOption = true;
+          if (!word.text.includes('=')) index += 1;
+        } else if (!word.text.startsWith('--')) {
+          for (let flag = 1; flag < word.text.length; flag += 1) {
+            if (word.text[flag] === 'i') { inPlace = true; break; }
+            if (word.text[flag] === 'e' || word.text[flag] === 'f') {
+              scriptOption = true;
+              if (flag + 1 === word.text.length) index += 1;
+              break;
+            }
+          }
+        }
+      } else operands.push(word);
+    }
+    if (operands[0]?.text === '') operands.shift();
+    if (inPlace) for (const word of operands.slice(scriptOption ? 0 : 1)) writeTarget(word, result, directory);
+  }
+}
+
+function analyzeWords(words, result, depth, directory = '.') {
+  for (const index of words.redirects || []) writeTarget(words[index], result, directory);
   for (let index = 0; index + 1 < words.length; index += 1) {
     if (words[index].text === '<') addOperand(result, words[index + 1]);
   }
@@ -331,6 +440,7 @@ function analyzeWords(words, result, depth) {
   if (command.index < 0) return;
   const start = command.index + 1;
   const name = command.name;
+  commandWrites(words, start, name, result, directory);
   if (SIMPLE_READERS.has(name)) {
     genericOperands(words, start, result, { valueOptions: SIMPLE_OPTION_VALUES.get(name) || new Set() });
     return;
@@ -367,7 +477,7 @@ function analyzeWords(words, result, depth) {
   if (SHELLS.has(name)) {
     for (let index = start; index + 1 < words.length; index += 1) {
       if (words[index].text === '-c' || words[index].text === '--command') {
-        merge(result, analyzeCommand(words[index + 1].text, depth + 1));
+        merge(result, analyzeCommand(words[index + 1].text, depth + 1, directory));
         return;
       }
     }
@@ -375,7 +485,7 @@ function analyzeWords(words, result, depth) {
     return;
   }
   if (name === 'eval') {
-    merge(result, analyzeCommand(words.slice(start).map((word) => word.text).join(' '), depth + 1));
+    merge(result, analyzeCommand(words.slice(start).map((word) => word.text).join(' '), depth + 1, directory));
     return;
   }
   if (name === 'find') {
@@ -383,7 +493,7 @@ function analyzeWords(words, result, depth) {
       if (words[index].text !== '-exec' && words[index].text !== '-execdir') continue;
       const nested = [];
       for (index += 1; index < words.length && ![';', '+'].includes(words[index].text); index += 1) nested.push(words[index]);
-      analyzeWords(nested, result, depth + 1);
+      analyzeWords(nested, result, depth + 1, directory);
     }
     return;
   }
@@ -399,7 +509,7 @@ function analyzeWords(words, result, depth) {
       index = skipOption(words, index, XARGS_OPTION_VALUE);
       nestedStart = index;
     }
-    if (nestedStart < words.length) analyzeWords(words.slice(nestedStart), result, depth + 1);
+    if (nestedStart < words.length) analyzeWords(words.slice(nestedStart), result, depth + 1, directory);
     return;
   }
   if (INLINE_RUNTIMES.has(name)) {
@@ -417,13 +527,28 @@ function analyzeWords(words, result, depth) {
   if (name === 'openssl') genericOperands(words, start, result, { pathOptions: new Set(['-in', '-key', '-cert', '-config']) });
 }
 
-function analyzeCommand(command, depth = 0) {
-  const result = { paths: new Set(), dynamic: false, malformed: false, searches: [] };
+function analyzeCommand(command, depth = 0, directory = '.') {
+  const result = { paths: new Set(), dynamic: false, malformed: false, searches: [], writes: new Set(), unknownWrites: new Set() };
   if (depth > MAX_DEPTH) { result.dynamic = true; return result; }
   const parsed = scanShell(command);
   result.malformed = parsed.malformed;
-  for (const words of parsed.segments) analyzeWords(words, result, depth);
-  for (const nested of parsed.nested) merge(result, analyzeCommand(nested, depth + 1));
+  let currentDirectory = directory;
+  const directories = [];
+  for (const words of parsed.segments) {
+    directories.push(currentDirectory);
+    analyzeWords(words, result, depth, currentDirectory);
+    const info = unwrap(words);
+    if (['cd', 'pushd'].includes(info.name)) {
+      const target = words.slice(info.index + 1).find(word => word.text && !word.text.startsWith('-'));
+      if (!target || target.activeExpansion) currentDirectory = null;
+      else if (target.text.startsWith('/')) currentDirectory = target.text;
+      else if (currentDirectory !== null) currentDirectory = `${currentDirectory}/${target.text}`;
+    }
+  }
+  for (const nested of parsed.nested) {
+    const nestedDirectory = directories[nested.segment] === undefined ? directory : directories[nested.segment];
+    merge(result, analyzeCommand(nested.command, depth + 1, nestedDirectory));
+  }
   if (result.malformed && parsed.segments.some((words) => {
     const commandInfo = unwrap(words);
     return SIMPLE_READERS.has(commandInfo.name) || GREP_READERS.has(commandInfo.name)
@@ -435,7 +560,8 @@ function analyzeCommand(command, depth = 0) {
 
 function commandAccess(command) {
   const result = analyzeCommand(command);
-  return { paths: [...result.paths], dynamic: result.dynamic, malformed: result.malformed, searches: result.searches };
+  return { paths: [...result.paths], dynamic: result.dynamic, malformed: result.malformed, searches: result.searches,
+    writes: [...result.writes], unknownWrites: [...result.unknownWrites] };
 }
 
 module.exports = { DYNAMIC_READ_PATH, commandAccess };

@@ -49,7 +49,10 @@ try {
   const toolName = data.tool_name || '';
   const toolInput = data.tool_input || {};
   const cwd = typeof data.cwd === 'string' && data.cwd.trim() ? data.cwd : process.cwd();
-  const runtime = readRuntime(cwd);
+  const installedRuntime = path.resolve(__dirname, '..');
+  const projectRoot = path.basename(installedRuntime).startsWith('.')
+    ? path.dirname(installedRuntime) : process.env.CLAUDE_PROJECT_DIR || cwd;
+  const runtime = readRuntime(projectRoot);
 
   if (runtime.privacyBlock === false) process.exit(0);
 

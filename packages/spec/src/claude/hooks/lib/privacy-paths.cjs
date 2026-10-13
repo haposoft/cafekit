@@ -97,8 +97,8 @@ function isSymlinkToSensitive(filePath, cwd) {
 
 function scrubCommand(command) {
   return String(command).replace(
-    /(<<-?[ \t]*)(['"])([A-Za-z_]\w*)\2[^\n]*\n[\s\S]*?\n[ \t]*\3\b/g,
-    '$1$2$3$2'
+    /(<<-?[ \t]*)(['"])([A-Za-z_]\w*)\2([^\n]*)\n[\s\S]*?\n[ \t]*\3\b/g,
+    '$1$2$3$2$4'
   );
 }
 
@@ -203,9 +203,69 @@ function sensitiveRequest(filePath, cwd) {
   return !isSafe(filePath) && isSensitive(filePath);
 }
 
+function protectedLocation(filePath) {
+  const normalized = path.posix.normalize(filePath).toLowerCase();
+  const parts = normalized.split('/');
+  const runtimes = new Set(['.claude', '.codex', '.omp']);
+  if (runtimes.has(parts.at(-1)) || parts.at(-1) === '.privacy') return true;
+  if (parts.at(-1) === 'runtime.json' && runtimes.has(parts.at(-2))) return true;
+  for (let index = 0; index + 2 < parts.length; index += 1) {
+    if (parts[index] === '.codex' && parts[index + 1] === 'hooks' && parts[index + 2] === '.privacy') return true;
+  }
+  return false;
+}
+
+function protectedWrite(filePath, cwd) {
+  const absolute = path.posix.resolve(cwd.replace(/\\/g, '/'), filePath.replace(/\\/g, '/'));
+  if (protectedLocation(absolute)) return true;
+  let current = absolute;
+  const suffix = [];
+  const links = new Set();
+  for (;;) {
+    try {
+      if (fs.lstatSync(current).isSymbolicLink()) {
+        if (links.has(current) || links.size >= 8) return true;
+        links.add(current);
+        const target = path.posix.resolve(path.posix.dirname(current), fs.readlinkSync(current));
+        if (protectedLocation(path.posix.join(target, ...suffix.slice().reverse()))) return true;
+        current = target;
+        continue;
+      }
+      const real = fs.realpathSync(current);
+      return protectedLocation(path.posix.join(real, ...suffix.reverse()));
+    } catch (error) {
+      if (error.code === 'ELOOP') return true;
+      if (error.code !== 'ENOENT' && error.code !== 'ENOTDIR') return false;
+    }
+    const parent = path.posix.dirname(current);
+    if (parent === current) return false;
+    suffix.push(path.posix.basename(current));
+    current = parent;
+  }
+}
+
+function extractWritePaths(tool, input) {
+  if (['bash', 'exec_command', 'shell'].includes(tool)) return commandAccess(scrubCommand(shellInput(input)));
+  const paths = [];
+  if (['write', 'edit', 'multiedit', 'notebookedit'].includes(tool) || tool.startsWith('mcp__')) {
+    collectPathValues(input, '', paths, tool.startsWith('mcp__'));
+  }
+  if (['apply_patch', 'edit', 'write'].includes(tool)) paths.push(...extractPatchPaths(patchInput(input)));
+  return { writes: paths, unknownWrites: [] };
+}
+
+function protectedUnknownWrite(filePath) {
+  const parts = path.posix.normalize(filePath.replace(/\\/g, '/')).toLowerCase().split('/');
+  return parts.at(-1) === 'runtime.json' || parts.includes('.privacy')
+    || ['.claude', '.codex', '.omp'].includes(parts.at(-1));
+}
+
 function sensitivePaths(toolName, input, cwd) {
   const paths = extractPaths(toolName, input).filter(filePath => sensitiveRequest(filePath, cwd));
   const tool = String(toolName).toLowerCase();
+  const access = extractWritePaths(tool, input);
+  paths.push(...access.writes.filter(filePath => protectedWrite(filePath, cwd)),
+    ...access.unknownWrites.filter(protectedUnknownWrite));
   const searches = tool === 'grep'
     ? [{ recursive: true, hidden: true,
       roots: [typeof input?.path === 'string' && input.path.trim() ? input.path : cwd],
