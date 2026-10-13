@@ -63,7 +63,7 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "Read|Write|Edit|MultiEdit|Bash|Glob|Grep",
+        "matcher": "Read|Write|Edit|MultiEdit|NotebookEdit|Bash|Glob|Grep|mcp__.*",
         "hooks": [
           {
             "type": "command",

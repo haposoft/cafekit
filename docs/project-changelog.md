@@ -7,6 +7,7 @@ All notable changes to CafeKit are documented here, following
 
 ### Changed
 
+- Matcher privacy/inspect Claude phủ NotebookEdit và MCP; installer cập nhật matcher cũ của nhóm chỉ có lệnh template, giữ nguyên nhóm người dùng.
 - Matcher hook Codex theo tên tool đo trên CLI; installer cập nhật matcher template cũ của nhóm CafeKit, giữ nguyên nhóm tùy chỉnh hoặc trộn hook người dùng và cảnh báo.
 
 ### Added

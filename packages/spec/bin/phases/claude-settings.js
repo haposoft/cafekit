@@ -12,6 +12,26 @@ const { PLATFORMS } = require('../lib/context');
 
 const SRC_CLAUDE = path.join(__dirname, '../../src/claude');
 
+const FORMER_MATCHERS = new Set([
+  'Read|Write|Edit|MultiEdit|Bash|Glob',
+  'Read|Write|Edit|MultiEdit|Bash|Glob|Grep',
+]);
+
+function refreshManagedMatchers(settings, template, ctx) {
+  if (!Array.isArray(settings.hooks?.PreToolUse)) return settings;
+  const targets = template.hooks?.PreToolUse || [];
+  const entries = settings.hooks.PreToolUse.map(entry => {
+    if (!FORMER_MATCHERS.has(entry?.matcher) || !Array.isArray(entry.hooks) || !entry.hooks.length) return entry;
+    const candidates = targets.filter(target =>
+      entry.hooks.every(hook => target.hooks.some(managed => managed.command === hook?.command)));
+    if (candidates.length !== 1) return entry;
+    ctx.ui.detail(`  ↻ ${ctx.dryRun ? '[dry-run] ' : ''}Settings: hook PreToolUse matcher updated`);
+    ctx.results.updated++;
+    return { ...entry, matcher: candidates[0].matcher };
+  });
+  return { ...settings, hooks: { ...settings.hooks, PreToolUse: entries } };
+}
+
 /**
  * Remove obsolete hook entries from a settings object whose command matches any
  * manifest-listed substring (e.g. a retired router hook). Returns a possibly
@@ -97,7 +117,8 @@ function mergeClaudeSettings(ctx, platformKey) {
     }
   }
 
-  const mergedSettings = pruneObsoleteSettingsHooks({ ...existingSettings }, ctx);
+  const mergedSettings = refreshManagedMatchers(
+    pruneObsoleteSettingsHooks({ ...existingSettings }, ctx), managedSettings, ctx);
 
   // statusLine: adopt managed value if upgrading, missing, or CafeKit-owned.
   if (managedSettings.statusLine) {
