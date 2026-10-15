@@ -4,6 +4,7 @@ All notable changes to CafeKit are documented here, following
 [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
+- Codex inspect and rules stay active with invalid specs paths; rules reserve only after runtime exists, and a missing secret guardrail library fails open with a crash log.
 - Claude compact restarts release their own rules reservation; session hooks share project-root resolution, log asynchronous failures, and bound precompact git calls.
 - State hooks now track Claude Agent events, lock Claude snapshot writes, log asynchronous failures, and omit secret-related assistant summaries on both hosts.
 - Claude spec-state now reads project-root configuration, shares packet touch helpers with Codex, and keeps tollgate caches separate per session.

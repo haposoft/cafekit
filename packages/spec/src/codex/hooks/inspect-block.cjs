@@ -2,9 +2,11 @@
 'use strict';
 
 const {
-  getHookContext,
+  PROJECT_ROOT,
   logCrash,
-  readPayload
+  readPayload,
+  readRuntime,
+  resolveSessionCwd
 } = require('./lib/hook-context.cjs');
 
 function denyPath(requested, blocked, BLOCKED_DIRS) {
@@ -20,7 +22,9 @@ try {
   const { BLOCKED_DIRS, inspectInput } = require('./lib/inspect-paths.cjs');
   const payload = readPayload();
   if (!payload) process.exit(0);
-  const { runtime, sessionCwd, projectRoot } = getHookContext(payload);
+  const projectRoot = PROJECT_ROOT;
+  const runtime = readRuntime(PROJECT_ROOT);
+  const sessionCwd = resolveSessionCwd(payload);
   if (runtime.scout?.enabled === false || runtime.inspect?.enabled === false) process.exit(0);
 
   const result = inspectInput(payload.tool_name || '', payload.tool_input || {}, { cwd: sessionCwd, projectRoot });

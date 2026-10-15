@@ -4,7 +4,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const {
-  getHookContext,
+  PROJECT_ROOT,
   hookStateDir,
   logCrash,
   readPayload,
@@ -70,10 +70,10 @@ function readRuntime(projectRoot) {
 try {
   const payload = readPayload();
   if (!payload) process.exit(0);
-  const { projectRoot } = getHookContext(payload);
-  if (reserveSession(projectRoot, payload.session_id) !== true) process.exit(0);
+  const projectRoot = PROJECT_ROOT;
   const runtime = readRuntime(projectRoot);
   if (runtime === null) process.exit(0);
+  if (reserveSession(projectRoot, payload.session_id) !== true) process.exit(0);
 
   const respondLang = runtime.locale?.responseLanguage || '';
   const thinkLang = runtime.locale?.thinkingLanguage || (respondLang ? 'en' : '');

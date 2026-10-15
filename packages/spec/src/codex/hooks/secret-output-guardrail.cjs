@@ -15,9 +15,9 @@
  */
 
 const { logCrash, readPayload } = require('./lib/hook-context.cjs');
-const { REMINDER, containsSecretKeyword } = require('./lib/secret-keywords.cjs');
 
 try {
+  const { REMINDER, containsSecretKeyword } = require('./lib/secret-keywords.cjs');
   const payload = readPayload();
   if (!payload) process.exit(0);
 

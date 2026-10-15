@@ -698,6 +698,71 @@ test('Codex resolver accepts unique legacy task numbers, rejects ambiguity, and 
   });
 });
 
+test('Codex inspect still denies blocked reads when the configured specs path escapes', () => {
+  inHookFixture((root, hooks) => {
+    fs.writeFileSync(path.join(root, '.codex/runtime.json'), JSON.stringify({ paths: { specs: '../outside' } }));
+    const result = runHook(path.join(hooks, 'inspect-block.cjs'), root, {
+      cwd: root, hook_event_name: 'PreToolUse', tool_name: 'Read', tool_input: { file_path: 'dist/index.html' },
+    });
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /SCOPE LIMIT EXCEEDED/);
+  });
+});
+
+test('Codex rules still inject when the configured specs path escapes', () => {
+  inHookFixture((root, hooks) => {
+    fs.writeFileSync(path.join(root, '.codex/runtime.json'), JSON.stringify({ paths: { specs: '../outside' } }));
+    const result = runHook(path.join(hooks, 'rules.cjs'), root, {
+      cwd: root, hook_event_name: 'UserPromptSubmit', session_id: 'invalid-specs-rules',
+    });
+    assert.equal(result.status, 0);
+    assert.match(result.stdout, /## Rules/);
+    assert.ok(result.stdout.includes(`${fs.realpathSync(root)}/specs/`));
+  });
+});
+
+test('Codex rules wait for runtime before reserving the same session', () => {
+  inHookFixture((root, hooks) => {
+    const file = path.join(root, '.codex/runtime.json');
+    const payload = { cwd: root, hook_event_name: 'UserPromptSubmit', session_id: 'waiting-for-runtime' };
+    const hook = path.join(hooks, 'rules.cjs');
+    assert.equal(fs.existsSync(file), false);
+    const absent = runHook(hook, root, payload);
+    assert.equal(absent.status, 0);
+    assert.equal(absent.stdout, '');
+    fs.writeFileSync(file, JSON.stringify({ paths: { specs: 'specs' } }));
+    const present = runHook(hook, root, payload);
+    assert.equal(present.status, 0);
+    assert.match(present.stdout, /## Rules/);
+    assert.equal(runHook(hook, root, payload).stdout, '');
+  });
+});
+
+test('Codex secret guardrail runs from source with its shared keyword shim', () => {
+  const env = { ...process.env };
+  delete env.CLAUDE_PROJECT_DIR;
+  delete env.PROJECT_ROOT;
+  const result = spawnSync(process.execPath, [path.join(CODEX_HOOKS, 'secret-output-guardrail.cjs')], {
+    cwd: PACKAGE_ROOT, env, encoding: 'utf8', input: JSON.stringify({ prompt: 'Explain secret handling.' }),
+  });
+  assert.equal(result.status, 0);
+  assert.equal(result.stderr, '');
+  assert.match(result.stdout, /## Secret handling/);
+});
+
+test('Codex secret guardrail fails open without a keyword library or a stack', () => {
+  inHookFixture((root, hooks) => {
+    fs.unlinkSync(path.join(hooks, 'lib/secret-keywords.cjs'));
+    const result = runHook(path.join(hooks, 'secret-output-guardrail.cjs'), root, { prompt: 'Explain secret handling.' });
+    assert.equal(result.status, 0);
+    assert.equal(result.stdout, '');
+    assert.equal(result.stderr, '');
+    const rows = fs.readFileSync(path.join(hooks, '.logs/hook-log.jsonl'), 'utf8').trim().split('\n').map(line => JSON.parse(line));
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0].hook, 'secret-output-guardrail');
+  });
+});
+
 test('Codex privacy approval is exact, session-bound, and reusable within its window', () => {
   inHookFixture((root, hooks) => {
     const nested = path.join(root, 'packages', 'app');
