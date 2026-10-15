@@ -903,6 +903,32 @@ test('Codex update failure still clears pending privacy for the session', () => 
   });
 });
 
+test('Codex Stop describes an escaping specs root as an invalid workflow packet', () => {
+  inHookFixture((root, hooks) => {
+    fs.writeFileSync(path.join(root, '.codex/runtime.json'), JSON.stringify({ paths: { specs: '../outside' } }));
+    const result = runHook(path.join(hooks, 'spec-gate.cjs'), root, {
+      cwd: root, session_id: 'invalid-root-message', hook_event_name: 'Stop', stop_hook_active: false,
+    });
+    assert.equal(result.status, 0);
+    const output = JSON.parse(result.stdout);
+    assert.equal(output.decision, 'block');
+    assert.match(output.reason, /^Completion gate: invalid workflow packet detected \(<specs>\):/);
+    assert.doesNotMatch(output.reason, /controlled failure/);
+  });
+});
+
+test('Codex spec-state shows detailed task status counts on its Phase line', () => {
+  inInstalledProcessSpecStateFixture(({ writeTask, runState }) => {
+    for (const [name, status] of [['task-01-active.md', 'in_progress'], ['task-02-next.md', 'pending'],
+      ['task-03-blocked.md', 'blocked'], ['task-04-later.md', 'pending']]) {
+      writeTask(name, name, status);
+    }
+    const result = runState();
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /^- Phase: .* \| Tasks: 0 done \/ 4 total \(1 in_progress, 2 pending, 1 blocked\)$/m);
+  });
+});
+
 test('Codex privacy approval is exact, session-bound, and reusable within its window', () => {
   inHookFixture((root, hooks) => {
     const nested = path.join(root, 'packages', 'app');

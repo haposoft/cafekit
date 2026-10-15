@@ -174,6 +174,7 @@ try {
   const lines = [
     `### Spec state changed: \`${active.featureName}\``,
     `- Phase: \`${phase}\` | Tasks: ${counts.done || 0} done / ${tasks.length} total`
+      + (tasks.length > 0 ? ` (${counts.in_progress || 0} in_progress, ${counts.pending || 0} pending, ${counts.blocked || 0} blocked)` : '')
   ];
   if (next) lines.push(`- Next unblocked: \`${next[0]}\``);
   if (active.queueReady === false) {

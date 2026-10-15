@@ -314,6 +314,7 @@ try {
   }
   lines.push('- Sync each flat task `Status:` only after verified work; task proof belongs in that task\'s inline `## Receipt`.');
   lines.push(`- Workflow source: \`specs/${featureName}/plan.md\`; Stop re-checks every done receipt, binding Base/Head to the runtime only while a committed task file no longer matches its committed bytes.`);
+  lines.push('- Hooks revalidate receipt bytes but never grant approval.');
   lines.push('');
 
   console.log(lines.join('\n'));

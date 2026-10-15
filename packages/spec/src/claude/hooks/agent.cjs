@@ -77,6 +77,8 @@ try {
 
   lines.push('## Rules');
   lines.push(`- Specs → ${specsPath}/ | Plans → ${plansPath}/ | Docs → ${docsPath}/`);
+  lines.push('- YAGNI · KISS · DRY');
+  lines.push('- Be concise. List unresolved questions at end.');
   if (venv) {
     lines.push(`- Python in ${skillsDir()}/: use \`${venv}\``);
     lines.push('- Never use global pip install');

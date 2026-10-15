@@ -187,5 +187,9 @@ try {
     process.exit(0);
   }
   logCrash('spec-gate', error);
-  emitBlock(`Completion gate controlled failure: ${error.message}. Completion is blocked until the hook is repaired.`);
+  if (/^(?:runtime\.paths\.specs|configured specs root)/.test(error.message)) {
+    emitBlock(`Completion gate: invalid workflow packet detected (<specs>): ${error.message}. Fix the packet's plan.md or task files before completing tasks.`);
+  } else {
+    emitBlock(`Completion gate controlled failure: ${error.message}. Completion is blocked until the hook is repaired.`);
+  }
 }

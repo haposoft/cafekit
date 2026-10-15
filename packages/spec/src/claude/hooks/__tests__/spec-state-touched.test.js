@@ -79,6 +79,31 @@ function within(fx, fn) {
   try { return fn(fx); } finally { fx.cleanup(); }
 }
 
+test('Claude spec-state says receipt revalidation never grants approval', () => {
+  within(fixture(['auth-flow']), fx => {
+    assert.match(fx.prompt('message-session', 'specs/auth-flow'), /^- Hooks revalidate receipt bytes but never grant approval\.$/m);
+  });
+});
+
+test('Claude subagent rules include the shared simplicity and reporting instructions', () => {
+  within(fixture([]), fx => {
+    fs.copyFileSync(path.join(CLAUDE_ROOT, 'hooks/agent.cjs'), path.join(fx.hooks, 'agent.cjs'));
+    fs.writeFileSync(path.join(fx.root, '.claude/runtime.json'), '{}');
+    const env = { ...process.env };
+    delete env.CLAUDE_PROJECT_DIR;
+    delete env.PROJECT_ROOT;
+    const result = spawnSync(process.execPath, [path.join(fx.hooks, 'agent.cjs')], {
+      cwd: fx.root, env, encoding: 'utf8', input: JSON.stringify({ cwd: fx.root, hook_event_name: 'SubagentStart', agent_type: 'checker' }),
+    });
+    assert.strictEqual(result.status, 0, result.stderr);
+    const context = JSON.parse(result.stdout).hookSpecificOutput.additionalContext;
+    const rules = context.split('## Rules\n')[1];
+    assert.ok(rules, 'the rules section must be present');
+    assert.match(rules, /^- YAGNI · KISS · DRY$/m);
+    assert.match(rules, /^- Be concise\. List unresolved questions at end\.$/m);
+  });
+});
+
 test('an untouched packet prints nothing on Claude', () => {
   within(fixture(['auth-flow']), (fx) => {
     assert.strictEqual(fx.prompt('s1', 'Continue'), '');

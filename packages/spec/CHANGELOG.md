@@ -6,6 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+- Claude and Codex now align invalid-spec completion messages, detailed tollgate counts, receipt authority reminders, and subagent rule wording.
 - Privacy prompts now share sorted, deduplicated basename lists; Claude uses one native ask emitter and asks on empty input, while omp retains its deny and empty-input contracts.
 - Claude and Codex now share the CafeKit update notice, using a twelve-hour version-only cache and rejecting legacy notice text, invalid versions, and future timestamps.
 - Codex compact restarts invalidate pending approvals despite invalid specs configuration, release their own rules reservation, and restore session-matched PreCompact anchors.
