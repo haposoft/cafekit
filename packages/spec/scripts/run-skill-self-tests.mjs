@@ -4869,7 +4869,7 @@ async function runStaticSemanticTests() {
     },
     {
       label: "state cache carries full project, session, and spec identity",
-      files: ["src/claude/hooks/spec-state.cjs"],
+      files: ["src/claude/hooks/spec-state.cjs", "src/claude/hooks/lib/spec-touch.cjs"],
       assert: (content) =>
         content.includes("sessionID") &&
         content.includes("session_id") &&

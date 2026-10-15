@@ -145,6 +145,7 @@ function inHookFixture(run, options = {}) {
   const hooks = path.join(root, '.codex', 'hooks');
   try {
     fs.cpSync(CODEX_HOOKS, hooks, { recursive: true });
+    fs.copyFileSync(path.join(PACKAGE_ROOT, 'src/claude/hooks/lib/spec-touch.cjs'), path.join(hooks, 'lib/spec-touch.cjs'));
     fs.copyFileSync(
       path.join(PACKAGE_ROOT, 'src/claude/hooks/lib/inspect-paths.cjs'),
       path.join(hooks, 'lib/inspect-paths.cjs'),
@@ -208,6 +209,7 @@ function inNoCommitCodexFixture(run) {
   const hooks = path.join(root, '.codex/hooks');
   try {
     fs.cpSync(CODEX_HOOKS, hooks, { recursive: true });
+    fs.copyFileSync(path.join(PACKAGE_ROOT, 'src/claude/hooks/lib/spec-touch.cjs'), path.join(hooks, 'lib/spec-touch.cjs'));
     fs.copyFileSync(path.join(PACKAGE_ROOT, 'src/claude/hooks/lib/runtime-path-safety.cjs'),
       path.join(hooks, 'lib/runtime-path-safety.cjs'));
     const scripts = path.join(root, '.codex/scripts');

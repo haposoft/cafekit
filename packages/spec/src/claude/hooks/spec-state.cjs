@@ -13,6 +13,8 @@
 
 const fs = require('fs');
 const path = require('path');
+const { projectRoot } = require('./lib/project-root.cjs');
+const { packetAt, namedPackets, explicitFailure } = require('./lib/spec-touch.cjs');
 const { runtimeDirName, runtimeDir, runtimePath } = require('./lib/runtime-dir.cjs');
 
 function logCrash(error) {
@@ -38,44 +40,6 @@ function sessionIdentity(payload) {
     payload && payload.session && payload.session.id,
   ];
   return candidates.find((value) => typeof value === 'string' && value.length > 0) || null;
-}
-
-function canonicalPath(value) {
-  try { return fs.realpathSync(value); } catch { return null; }
-}
-
-/** Real path of `value`, resolving its deepest existing ancestor (the file may not exist yet). */
-function canonicalTarget(value) {
-  if (typeof value !== 'string' || !value) return null;
-  let current = path.resolve(value);
-  const rest = [];
-  while (!fs.existsSync(current)) {
-    const parent = path.dirname(current);
-    if (parent === current) return null;
-    rest.unshift(path.basename(current));
-    current = parent;
-  }
-  const real = canonicalPath(current);
-  return real ? path.join(real, ...rest) : null;
-}
-
-function escapeRegExp(text) {
-  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-/**
- * Packets the prompt names: `specs/<name>`, a `/cf:<command> <name>` token, or the bare
- * name when it carries `-`, `_` or a digit. A plain word such as `docs` must use `specs/`,
- * so an ordinary sentence does not touch a packet.
- */
-function packetsNamedIn(text, names) {
-  if (typeof text !== 'string' || !text) return [];
-  return names.filter((name) => {
-    const n = escapeRegExp(name);
-    if (new RegExp(`(^|[^\\w-])specs/${n}(?![\\w-])`).test(text)) return true;
-    if (new RegExp(`/cf:[\\w-]+\\s+(?:specs/)?${n}(?![\\w-])`).test(text)) return true;
-    return /[-_0-9]/.test(name) && new RegExp(`(^|[^\\w/-])${n}(?![\\w-])`).test(text);
-  });
 }
 
 try {
@@ -104,10 +68,12 @@ try {
     process.exit(0);
   }
 
+  const baseDir = projectRoot(payload);
+
   // Read runtime configuration if exists
   let runtime = {};
   try {
-    const p = runtimePath(cwd, 'runtime.json');
+    const p = runtimePath(baseDir, 'runtime.json');
     if (fs.existsSync(p)) runtime = JSON.parse(fs.readFileSync(p, 'utf8'));
   } catch { /* ignore */ }
 
@@ -115,11 +81,8 @@ try {
   // (The Stop completion gate has its own toggle: spec.completion_gate.)
   if (runtime.spec && runtime.spec.tollgate === false) process.exit(0);
 
-  // Same rule as spec-gate: an installed hook trusts its own location over the environment.
-  const installedRoot = path.basename(path.resolve(__dirname, '..')).startsWith('.') ? path.resolve(__dirname, '..', '..') : null;
-  const baseDir   = installedRoot || process.env.PROJECT_ROOT || cwd;
   const explicitFeature = payload.featureName || payload.feature || payload.explicitFeature || null;
-  const explicitPath = payload.specPath || payload.spec_path || payload.featurePath || null;
+  const explicitPath = payload.explicitPath || payload.specPath || payload.spec_path || payload.featurePath || null;
 
   // ── Per-session touch set (Claude only) ───────────────────────────────────
   // Several sessions can share one checkout. On Claude the tollgate speaks only about a
@@ -156,14 +119,9 @@ try {
 
   if (payload.hook_event_name === 'PostToolUse') {
     // Record only; no resolve, no git, no tollgate cache.
-    if (touchFilter && specsRoot && /^(Edit|Write|MultiEdit)$/.test(payload.tool_name || '')) {
-      const realRoot = canonicalPath(specsRoot);
-      const realTarget = canonicalTarget(payload.tool_input && payload.tool_input.file_path);
-      if (realRoot && realTarget) {
-        const rel = path.relative(realRoot, realTarget);
-        const parts = rel.split(path.sep);
-        if (rel && parts[0] !== '..' && !path.isAbsolute(rel) && parts.length > 1) addTouched([parts[0]]);
-      }
+    if (touchFilter && specsRoot && !explicitFailure(payload) && /^(Edit|Write|MultiEdit)$/.test(payload.tool_name || '')) {
+      const name = packetAt(payload.tool_input && payload.tool_input.file_path, specsRoot, cwd);
+      if (name) addTouched([name]);
     }
     process.exit(0);
   }
@@ -205,8 +163,10 @@ try {
     try {
       packets = fs.readdirSync(specsRoot, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name);
     } catch { /* no specs root */ }
-    const named = packetsNamedIn(payload.prompt, packets);
+    const named = specsRoot ? namedPackets(payload.prompt || payload.user_prompt, packets, specsRoot, baseDir) : [];
     if (typeof explicitFeature === 'string' && explicitFeature) named.push(explicitFeature);
+    const fromPath = specsRoot ? packetAt(explicitPath, specsRoot, baseDir) : null;
+    if (fromPath) named.push(fromPath);
     if (named.length) addTouched(named);
   }
 
@@ -315,7 +275,10 @@ try {
     done: taskCounts.done || 0,
     total: taskEntries.length,
   });
-  const cacheFile = path.join(require('./lib/hook-state-dir.cjs').hookStateDir(), 'tollgate-last.txt');
+  const cacheName = touchFilter
+    ? `tollgate-last-${require('crypto').createHash('sha256').update(claudeSession).digest('hex').slice(0, 16)}.txt`
+    : 'tollgate-last.txt';
+  const cacheFile = path.join(require('./lib/hook-state-dir.cjs').hookStateDir(), cacheName);
 
   let lastKey = '';
   if (stateKey) {

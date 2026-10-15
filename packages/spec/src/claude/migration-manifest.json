@@ -171,6 +171,7 @@
       "hooks/lib/config.cjs",
       "hooks/lib/hook-state-dir.cjs",
       "hooks/lib/runtime-dir.cjs",
+      "hooks/lib/spec-touch.cjs",
       "hooks/lib/project-root.cjs",
       "hooks/lib/hook-payload.cjs",
       "hooks/lib/inspect-paths.cjs",

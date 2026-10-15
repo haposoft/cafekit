@@ -45,6 +45,9 @@ function inInstalledProcessSpecStateFixture(run) {
     fs.mkdirSync(scripts, { recursive: true });
     fs.copyFileSync(path.join(CLAUDE_ROOT, 'hooks', 'spec-state.cjs'), path.join(hooks, 'spec-state.cjs'));
     fs.mkdirSync(path.join(hooks, 'lib'), { recursive: true });
+    for (const lib of ['project-root.cjs', 'spec-touch.cjs']) {
+      fs.copyFileSync(path.join(CLAUDE_ROOT, 'hooks', 'lib', lib), path.join(hooks, 'lib', lib));
+    }
     fs.copyFileSync(path.join(CLAUDE_ROOT, 'hooks', 'lib', 'runtime-dir.cjs'), path.join(hooks, 'lib', 'runtime-dir.cjs'));
     fs.copyFileSync(path.join(CLAUDE_ROOT, 'hooks', 'lib', 'hook-payload.cjs'), path.join(hooks, 'lib', 'hook-payload.cjs'));
     fs.copyFileSync(
@@ -93,7 +96,7 @@ function inInstalledProcessSpecStateFixture(run) {
       encoding: 'utf8',
     });
     return run({
-      cacheFile: path.join(hooks, '.logs', 'tollgate-last.txt'),
+      cacheFile: path.join(hooks, '.logs', `tollgate-last-${crypto.createHash('sha256').update('session-auth-state').digest('hex').slice(0, 16)}.txt`),
       dir,
       feature,
       hooks,

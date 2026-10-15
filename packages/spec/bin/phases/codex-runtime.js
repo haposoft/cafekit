@@ -137,6 +137,13 @@ function installRuntimeFiles(ctx, platformKey) {
     path.join(platform.folder, 'hooks', 'lib', 'inspect-paths.cjs'),
     'Codex inspection path analyzer'
   );
+  writeSourceFile(
+    ctx,
+    platformKey,
+    path.join(SRC, 'claude', 'hooks', 'lib', 'spec-touch.cjs'),
+    path.join(platform.folder, 'hooks', 'lib', 'spec-touch.cjs'),
+    'Codex spec touch helpers'
+  );
 }
 
 function installNativeRuleOverrides(ctx, platformKey) {

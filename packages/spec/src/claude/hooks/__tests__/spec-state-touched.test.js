@@ -12,6 +12,7 @@ const { spawnSync } = require('node:child_process');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const crypto = require('node:crypto');
 
 const CLAUDE_ROOT = path.join(__dirname, '..', '..');
 
@@ -36,7 +37,7 @@ function fixture(packets, runtimeDir = '.claude') {
   fs.mkdirSync(path.join(hooks, 'lib'), { recursive: true });
   fs.mkdirSync(scripts, { recursive: true });
   fs.copyFileSync(path.join(CLAUDE_ROOT, 'hooks', 'spec-state.cjs'), path.join(hooks, 'spec-state.cjs'));
-  for (const lib of ['runtime-dir.cjs', 'hook-payload.cjs', 'hook-state-dir.cjs']) {
+  for (const lib of ['runtime-dir.cjs', 'hook-payload.cjs', 'hook-state-dir.cjs', 'project-root.cjs', 'spec-touch.cjs']) {
     fs.copyFileSync(path.join(CLAUDE_ROOT, 'hooks', 'lib', lib), path.join(hooks, 'lib', lib));
   }
   for (const file of ['provenance.cjs', 'spec-receipt.cjs', 'spec-resolver.cjs', 'workflow-policy.cjs']) {
@@ -48,17 +49,30 @@ function fixture(packets, runtimeDir = '.claude') {
     const git = spawnSync('git', ['-C', root, ...args], { encoding: 'utf8' });
     assert.strictEqual(git.status, 0, git.stderr);
   }
+  let lastSession = null;
   const run = (payload) => {
+    lastSession = payload.session_id;
+    const env = { ...process.env };
+    delete env.CLAUDE_PROJECT_DIR;
+    delete env.PROJECT_ROOT;
     const result = spawnSync(process.execPath, [path.join(hooks, 'spec-state.cjs')], {
-      cwd: root, env: { ...process.env, PROJECT_ROOT: root },
+      cwd: root, env,
       input: JSON.stringify({ cwd: root, ...payload }), encoding: 'utf8',
     });
     assert.strictEqual(result.status, 0, result.stderr);
     return result.stdout.trim();
   };
   const prompt = (session, text) => run({ hook_event_name: 'UserPromptSubmit', session_id: session, prompt: text });
-  const cacheFile = path.join(hooks, '.logs', 'tollgate-last.txt');
-  return { root, hooks, run, prompt, cacheFile, cleanup: () => fs.rmSync(root, { recursive: true, force: true }) };
+  return {
+    root, hooks, run, prompt,
+    get cacheFile() {
+      const name = runtimeDir === '.claude' && typeof lastSession === 'string' && lastSession
+        ? `tollgate-last-${crypto.createHash('sha256').update(lastSession).digest('hex').slice(0, 16)}.txt`
+        : 'tollgate-last.txt';
+      return path.join(hooks, '.logs', name);
+    },
+    cleanup: () => fs.rmSync(root, { recursive: true, force: true }),
+  };
 }
 
 function within(fx, fn) {
@@ -69,6 +83,58 @@ test('an untouched packet prints nothing on Claude', () => {
   within(fixture(['auth-flow']), (fx) => {
     assert.strictEqual(fx.prompt('s1', 'Continue'), '');
     assert.strictEqual(fs.existsSync(fx.cacheFile), false, 'a filtered session must not claim the cache slot');
+  });
+});
+
+test('a touched packet respects the project tollgate toggle from a nested cwd', () => {
+  within(fixture(['auth-flow']), fx => {
+    assert.match(fx.prompt('s1', 'specs/auth-flow'), /Spec state changed/);
+    fs.writeFileSync(path.join(fx.root, '.claude/runtime.json'), JSON.stringify({ spec: { tollgate: false } }));
+    const cwd = path.join(fx.root, 'sub/dir');
+    fs.mkdirSync(cwd, { recursive: true });
+    assert.strictEqual(fx.run({ cwd, session_id: 's1', hook_event_name: 'UserPromptSubmit', prompt: 'Continue' }), '');
+  });
+});
+
+test('an explicitly failed edit does not touch its packet', () => {
+  within(fixture(['auth-flow']), fx => {
+    fx.run({ session_id: 's1', hook_event_name: 'PostToolUse', tool_name: 'Edit',
+      tool_input: { file_path: path.join(fx.root, 'specs/auth-flow/plan.md') }, tool_response: { is_error: true } });
+    assert.strictEqual(fx.prompt('s1', 'Continue'), '');
+  });
+});
+
+test('written content mentioning failure still touches its packet', () => {
+  within(fixture(['auth-flow']), fx => {
+    fx.run({ session_id: 's1', hook_event_name: 'PostToolUse', tool_name: 'Write',
+      tool_input: { file_path: path.join(fx.root, 'specs/auth-flow/plan.md') }, tool_response: { content: 'Failed x' } });
+    assert.match(fx.prompt('s1', 'Continue'), /Spec state changed/);
+  });
+});
+
+test('a configured specs prefix names a plain lowercase packet', () => {
+  within(fixture(['auth']), fx => {
+    fs.renameSync(path.join(fx.root, 'specs'), path.join(fx.root, 'planning'));
+    fs.writeFileSync(path.join(fx.root, '.claude/runtime.json'), JSON.stringify({ paths: { specs: 'planning' } }));
+    assert.match(fx.prompt('s1', 'Continue planning/auth'), /Spec state changed: `auth`/);
+  });
+});
+
+test('an explicit packet path records the session touch', () => {
+  within(fixture(['auth']), fx => {
+    assert.match(fx.run({ session_id: 's1', hook_event_name: 'UserPromptSubmit',
+      specPath: path.join(fs.realpathSync(fx.root), 'specs/auth'), prompt: 'Continue' }), /Spec state changed: `auth`/);
+    assert.match(fx.prompt('s1', 'Continue'), /Tollgate active/);
+  });
+});
+
+test('another session does not displace the compact tollgate cache', () => {
+  within(fixture(['auth-flow']), fx => {
+    assert.match(fx.prompt('session-a', 'specs/auth-flow'), /Spec state changed/);
+    assert.match(fx.prompt('session-b', 'specs/auth-flow'), /Spec state changed/);
+    const again = fx.prompt('session-a', 'Continue');
+    assert.match(again, /Tollgate active/);
+    assert.doesNotMatch(again, /Spec state changed/);
   });
 });
 
