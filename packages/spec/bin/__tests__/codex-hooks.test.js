@@ -203,6 +203,74 @@ function processTaskContent(title, status, dependency = 'none') {
   ].join('\n');
 }
 
+function inNoCommitCodexFixture(run) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cafekit-codex-no-commit-'));
+  const hooks = path.join(root, '.codex/hooks');
+  try {
+    fs.cpSync(CODEX_HOOKS, hooks, { recursive: true });
+    fs.copyFileSync(path.join(PACKAGE_ROOT, 'src/claude/hooks/lib/runtime-path-safety.cjs'),
+      path.join(hooks, 'lib/runtime-path-safety.cjs'));
+    const scripts = path.join(root, '.codex/scripts');
+    fs.mkdirSync(scripts, { recursive: true });
+    for (const name of ['workflow-policy.cjs', 'provenance.cjs', 'spec-receipt.cjs', 'spec-resolver.cjs']) {
+      fs.copyFileSync(path.join(PACKAGE_ROOT, 'src/claude/scripts', name), path.join(scripts, name));
+    }
+    for (const args of [['init', '-q'], ['config', 'user.email', 'cafekit@example.invalid'], ['config', 'user.name', 'CafeKit Test']]) {
+      const result = spawnSync('git', ['-C', root, ...args], { encoding: 'utf8' });
+      assert.equal(result.status, 0, result.stderr);
+    }
+    const writePacket = (feature, status) => {
+      const dir = path.join(root, 'specs', feature);
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(path.join(dir, 'plan.md'), '# Plan\nSpecs-Contract: process-first-ready-v1\n');
+      fs.writeFileSync(path.join(dir, 'task-01-work.md'), processTaskContent('Task 01: work', status)
+        + (status === 'done' ? '\n## Receipt\n\nVerification: PASS\n' : ''));
+    };
+    const invoke = (hook, event) => runHook(path.join(hooks, `${hook}.cjs`), root, {
+      cwd: root, session_id: 'no-commit-codex', hook_event_name: event, prompt: 'Continue specs/auth',
+    });
+    run({ writePacket, gate: () => invoke('spec-gate', 'Stop'), state: () => invoke('spec-state', 'UserPromptSubmit') });
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+}
+
+test('Codex no commits allows Stop without done tasks and prints one reminder', () => {
+  inNoCommitCodexFixture(({ writePacket, gate, state }) => {
+    writePacket('auth', 'in_progress');
+    const stopped = gate();
+    assert.equal(stopped.status, 0, stopped.stderr);
+    assert.equal(stopped.stdout.trim(), '');
+    const prompted = state();
+    assert.equal(prompted.status, 0, prompted.stderr);
+    assert.match(prompted.stdout, /no commits/);
+    assert.equal(prompted.stdout.trim().split('\n').length, 1);
+    assert.doesNotMatch(prompted.stdout, /Spec tollgate unavailable/);
+  });
+});
+
+test('Codex no commits blocks a done task with first commit guidance', () => {
+  inNoCommitCodexFixture(({ writePacket, gate }) => {
+    writePacket('auth', 'done');
+    const result = gate();
+    assert.equal(result.status, 0, result.stderr);
+    const body = JSON.parse(result.stdout);
+    assert.equal(body.decision, 'block');
+    assert.match(body.reason, /first commit/);
+    assert.doesNotMatch(body.reason, /controlled failure/);
+  });
+});
+
+test('Codex no commits blocks two completed packets with first commit guidance', () => {
+  inNoCommitCodexFixture(({ writePacket, gate }) => {
+    for (const feature of ['auth', 'billing']) writePacket(feature, 'done');
+    const result = gate();
+    assert.equal(result.status, 0, result.stderr);
+    const body = JSON.parse(result.stdout);
+    assert.equal(body.decision, 'block');
+    assert.match(body.reason, /first commit/);
+    assert.doesNotMatch(body.reason, /controlled failure/);
+  });
+});
+
 function canonicalProcessTask(root, title, dependency = 'none') {
   const context = workflowRuntimeContext(root, 'auth', 'session-auth-state');
   return [

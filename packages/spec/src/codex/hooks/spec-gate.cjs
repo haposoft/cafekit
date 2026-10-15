@@ -31,6 +31,7 @@ function sessionIdentity(payload) {
   return candidates.find((value) => typeof value === 'string' && value.trim() !== '') || null;
 }
 
+let hasDoneTasks = false;
 try {
   const payload = readPayload();
   if (payload.stop_hook_active === true) process.exit(0);
@@ -58,6 +59,8 @@ try {
   }
   if (!resolved) process.exit(0);
   if (resolved.layoutKind === 'process-v3-completed-set') {
+    hasDoneTasks = resolved.candidates.some(candidate =>
+      Object.values(candidate.taskRegistry || {}).some(task => task?.status === 'done'));
     const configuredGate = runtime.spec?.completion_gate;
     if (configuredGate !== undefined && configuredGate !== true) {
       emitBlock('Completion gate: runtime.spec.completion_gate is a worker-writable flag, not an authorization; no completion-gate bypass is supported. Remove the flag and satisfy the gate.');
@@ -100,6 +103,7 @@ try {
   }
   if (resolved.error) process.exit(0);
   const active = resolved;
+  hasDoneTasks = Object.values(active.taskRegistry || {}).some(task => task?.status === 'done');
   const runtimeContext = POLICY.deriveRuntimeContext({
     projectRoot,
     specsRoot: active.specsDir,
@@ -178,6 +182,10 @@ try {
     reason: lines.slice(0, 8).join('\n')
   })}\n`);
 } catch (error) {
+  if (error.code === 'no_git_history') {
+    if (hasDoneTasks) emitBlock('Completion gate: repo has no commits yet; create the first commit, then record Base/Head after it.');
+    process.exit(0);
+  }
   logCrash('spec-gate', error);
   emitBlock(`Completion gate controlled failure: ${error.message}. Completion is blocked until the hook is repaired.`);
 }

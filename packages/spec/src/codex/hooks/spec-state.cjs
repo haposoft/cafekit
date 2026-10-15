@@ -186,6 +186,10 @@ try {
   );
   process.stdout.write(`${lines.join('\n')}\n`);
 } catch (error) {
+  if (error.code === 'no_git_history') {
+    console.log('Repo has no commits yet; create the first commit, then record Base/Head after it.');
+    process.exit(0);
+  }
   logCrash('spec-state', error);
   if (!mutationObserver) emitControlledFailure(error.message);
 }
