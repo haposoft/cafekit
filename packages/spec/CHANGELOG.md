@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Repo chưa có commit: tollgate Claude nhắc tạo commit đầu; Stop chỉ chặn task done với hướng dẫn lấy Base/Head sau commit, các lỗi git khác vẫn chặn.
 - Spec-state Claude và Codex dùng chung một snapshot worktree mỗi prompt khi kiểm Receipt của nhiều task.
 - Inspect cho qua glob rộng khi mọi path nằm hẳn trong project và ngoài thư mục bị chặn; vẫn chặn gốc project, thư mục cha và path ngoài project.
 - Privacy/approve Codex không phụ thuộc đường dẫn Specs; SessionStart ngừng lấy và xuất GIT_URL vào env để tránh lưu userinfo của remote.

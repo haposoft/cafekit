@@ -342,6 +342,10 @@ try {
   process.exit(0);
 
 } catch (e) {
+  if (e.code === 'no_git_history') {
+    console.log('Repo has no commits yet; create the first commit, then record Base/Head after it.');
+    process.exit(0);
+  }
   logCrash(e);
   emitControlledFailure(e.message);
   process.exit(0);

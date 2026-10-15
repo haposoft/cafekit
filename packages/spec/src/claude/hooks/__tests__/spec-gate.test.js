@@ -1371,15 +1371,124 @@ test('41. unborn HEAD fails closed before any receipt check', () => {
     clearCache();
     const body = parseBlock(runHook({}, dir).stdout);
     assert.ok(body && body.decision === 'block', 'an unborn HEAD must block');
-    // The block arrives from provenance derivation, which cannot resolve a base
-    // commit here, so the receipt check is never reached. Asserting the reason
-    // keeps this case honest: it guards fail-closed behavior on an unborn HEAD,
-    // not the binding-mode selector. The selector's own HEAD-unreadable branch
-    // is guarded by cases 38 and 39.
-    assert.match(body.reason, /controlled failure/);
+    // A done task still blocks before receipt validation, with guidance to
+    // create the first commit before recording its Base/Head.
+    assert.match(body.reason, /first commit/);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
+});
+
+function noHistoryFixture() {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ck-spec-no-history-'));
+  for (const args of [['init', '-q'], ['config', 'user.email', 'cafekit@example.invalid'], ['config', 'user.name', 'CafeKit Test']]) {
+    const result = spawnSync('git', ['-C', dir, ...args], { encoding: 'utf8' });
+    assert.strictEqual(result.status, 0, result.stderr);
+  }
+  installClaudeGate(dir);
+  fs.copyFileSync(path.join(__dirname, '..', 'spec-state.cjs'), path.join(dir, '.claude/hooks/spec-state.cjs'));
+  return dir;
+}
+
+function writeNoHistoryPacket(dir, feature, status) {
+  const packet = path.join(dir, 'specs', feature);
+  fs.mkdirSync(packet, { recursive: true });
+  fs.writeFileSync(path.join(packet, 'plan.md'), `# ${feature}\nSpecs-Contract: process-first-ready-v1\n`);
+  fs.writeFileSync(path.join(packet, 'task-01-work.md'), [
+    '# Task 01: work', '', `Status: ${status}`, '', '## Dependencies', '', '- none', '',
+    '## Verification Plan', '', '- Command: node --test', '',
+    ...(status === 'done' ? ['## Receipt', '', 'Verification: PASS', ''] : []),
+  ].join('\n'));
+}
+
+function runInstalledHistoryHook(dir, hook = 'spec-gate', extraEnv = {}) {
+  return spawnSync(process.execPath, [path.join(dir, '.claude/hooks', `${hook}.cjs`)], {
+    cwd: dir, encoding: 'utf8',
+    env: { ...process.env, PROJECT_ROOT: dir, CLAUDE_PROJECT_DIR: dir, ...extraEnv },
+    input: JSON.stringify({ cwd: dir, session_id: 'no-history',
+      hook_event_name: hook === 'spec-state' ? 'UserPromptSubmit' : 'Stop', prompt: 'Continue specs/demo' }),
+  });
+}
+
+test('no commits allows Stop without done tasks and prints one reminder', () => {
+  const dir = noHistoryFixture();
+  try {
+    writeNoHistoryPacket(dir, 'demo', 'in_progress');
+    const gate = runInstalledHistoryHook(dir);
+    assert.strictEqual(gate.status, 0, gate.stderr);
+    assert.strictEqual(gate.stdout.trim(), '');
+    const state = runInstalledHistoryHook(dir, 'spec-state');
+    assert.strictEqual(state.status, 0, state.stderr);
+    assert.match(state.stdout, /no commits/);
+    assert.strictEqual(state.stdout.trim().split('\n').length, 1);
+    assert.doesNotMatch(state.stdout, /Spec tollgate unavailable/);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('no commits blocks a done task with first commit guidance', () => {
+  const dir = noHistoryFixture();
+  try {
+    writeNoHistoryPacket(dir, 'demo', 'done');
+    const result = runInstalledHistoryHook(dir);
+    assert.strictEqual(result.status, 0, result.stderr);
+    const body = parseBlock(result.stdout);
+    assert.strictEqual(body.decision, 'block');
+    assert.match(body.reason, /first commit/);
+    assert.doesNotMatch(body.reason, /controlled failure/);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('no commits blocks two completed packets with first commit guidance', () => {
+  const dir = noHistoryFixture();
+  try {
+    for (const feature of ['demo', 'other']) writeNoHistoryPacket(dir, feature, 'done');
+    const result = runInstalledHistoryHook(dir);
+    assert.strictEqual(result.status, 0, result.stderr);
+    const body = parseBlock(result.stdout);
+    assert.strictEqual(body.decision, 'block');
+    assert.match(body.reason, /first commit/);
+    assert.doesNotMatch(body.reason, /controlled failure/);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('a corrupt current branch ref remains a controlled failure', () => {
+  const dir = tmpDir();
+  try {
+    installClaudeGate(dir);
+    writeNoHistoryPacket(dir, 'demo', 'in_progress');
+    const ref = spawnSync('git', ['-C', dir, 'symbolic-ref', '-q', 'HEAD'], { encoding: 'utf8' });
+    assert.strictEqual(ref.status, 0, ref.stderr);
+    fs.writeFileSync(path.join(dir, '.git', ref.stdout.trim()), 'corrupt-ref\n');
+    const result = runInstalledHistoryHook(dir);
+    assert.strictEqual(result.status, 0, result.stderr);
+    const body = parseBlock(result.stdout);
+    assert.strictEqual(body.decision, 'block');
+    assert.match(body.reason, /controlled failure/);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('unavailable git remains a controlled failure in a repo without commits', () => {
+  const dir = noHistoryFixture();
+  try {
+    writeNoHistoryPacket(dir, 'demo', 'in_progress');
+    const emptyPath = path.join(dir, 'empty-path');
+    fs.mkdirSync(emptyPath);
+    const result = runInstalledHistoryHook(dir, 'spec-gate', { PATH: emptyPath });
+    assert.strictEqual(result.status, 0, result.stderr);
+    const body = parseBlock(result.stdout);
+    assert.strictEqual(body.decision, 'block');
+    assert.match(body.reason, /controlled failure/);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('a committed repo still accepts a valid done task receipt', () => {
+  const dir = makeFixture({ evidence: 'valid' });
+  try {
+    installClaudeGate(dir);
+    const result = runInstalledHistoryHook(dir);
+    assert.strictEqual(result.status, 0, result.stderr);
+    assert.strictEqual(result.stdout.trim(), '');
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
 test('42. a dirty tree outside specs does not reopen a committed receipt', () => {

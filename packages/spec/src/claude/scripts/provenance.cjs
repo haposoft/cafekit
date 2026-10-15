@@ -84,6 +84,19 @@ function oneLine(value, label) {
 }
 
 function gitBase(root, specsRoot) {
+  const symbolic = spawnSync('git', ['-C', root, 'symbolic-ref', '-q', 'HEAD'], { encoding: 'buffer' });
+  if (!symbolic.error && !symbolic.signal && symbolic.status === 0) {
+    const ref = oneLine(symbolic.stdout, 'git symbolic-ref HEAD');
+    const exists = spawnSync('git', ['-C', root, 'show-ref', '--verify', '-q', ref], { encoding: 'buffer' });
+    if (!exists.error && !exists.signal && exists.status === 1) {
+      fail('no_git_history', 'repo has no commits yet; create the first commit, then record Base/Head after it');
+    }
+    if (exists.error || exists.signal || exists.status !== 0) {
+      fail('git_command_failed', `git show-ref HEAD failed: ${exists.error?.message || String(exists.stderr || '').trim() || `exit ${exists.status}`}`);
+    }
+  } else if (symbolic.error || symbolic.signal || symbolic.status !== 1) {
+    fail('git_command_failed', `git symbolic-ref HEAD failed: ${symbolic.error?.message || String(symbolic.stderr || '').trim() || `exit ${symbolic.status}`}`);
+  }
   const specsRelative = path.relative(root, specsRoot).split(path.sep).join('/');
   const sourceHistory = decode(runGit(
     root,
