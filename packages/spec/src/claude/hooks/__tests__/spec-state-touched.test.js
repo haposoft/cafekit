@@ -133,6 +133,53 @@ test('a prompt touch is remembered even when two packets are active', () => {
   });
 });
 
+test('an untouched session stays quiet with two active packets', () => {
+  within(fixture(['auth-flow', 'billing-2']), (fx) => {
+    assert.strictEqual(fx.prompt('s1', 'Continue'), '');
+  });
+});
+
+function invalidateTask(root, feature) {
+  fs.writeFileSync(path.join(root, 'specs', feature, 'task-01-work.md'),
+    '# Task 01: broken\n\n## Verification Plan\n\n- Command: node --test\n');
+}
+
+test('an untouched session stays quiet when a packet is invalid', () => {
+  within(fixture(['broken-flow']), (fx) => {
+    invalidateTask(fx.root, 'broken-flow');
+    assert.strictEqual(fx.prompt('s1', 'Continue'), '');
+  });
+});
+
+test('touching an invalid packet still prints its warning', () => {
+  within(fixture(['broken-flow']), (fx) => {
+    invalidateTask(fx.root, 'broken-flow');
+    assert.match(fx.prompt('s1', 'Continue specs/broken-flow'), /Invalid workflow packet/);
+  });
+});
+
+test('a session-less prompt still warns about two active packets', () => {
+  within(fixture(['auth-flow', 'billing-2']), (fx) => {
+    assert.match(fx.run({ hook_event_name: 'UserPromptSubmit', prompt: 'Continue' }), /Multiple active specs/);
+  });
+});
+
+test('a touched valid packet prints its tollgate when another packet is invalid', () => {
+  within(fixture(['auth-flow', 'broken-flow']), (fx) => {
+    invalidateTask(fx.root, 'broken-flow');
+    const output = fx.prompt('s1', 'Continue specs/auth-flow');
+    assert.match(output, /Spec state changed: `auth-flow`/);
+    assert.doesNotMatch(output, /Invalid workflow packet/);
+  });
+});
+
+test('an invalid specs root still warns an untouched session', () => {
+  within(fixture(['auth-flow']), (fx) => {
+    fs.writeFileSync(path.join(fx.root, '.claude/runtime.json'), JSON.stringify({ paths: { specs: '../outside' } }));
+    assert.match(fx.prompt('s1', 'Continue'), /Invalid workflow packet detected: <specs>/);
+  });
+});
+
 function writeLegacyPacket(root, name) {
   const dir = path.join(root, 'specs', name);
   fs.mkdirSync(path.join(dir, 'tasks'), { recursive: true });

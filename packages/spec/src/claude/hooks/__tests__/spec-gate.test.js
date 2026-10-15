@@ -1390,6 +1390,22 @@ function noHistoryFixture() {
   return dir;
 }
 
+test('Stop still blocks multiple active specs for an untouched session', () => {
+  const dir = tmpDir();
+  try {
+    const gate = installClaudeGate(dir);
+    for (const feature of ['demo', 'other']) writeNoHistoryPacket(dir, feature, 'in_progress');
+    const result = spawnSync(process.execPath, [gate], {
+      cwd: dir, encoding: 'utf8', env: { ...process.env, PROJECT_ROOT: dir, CLAUDE_PROJECT_DIR: dir },
+      input: JSON.stringify({ cwd: dir, session_id: 'untouched-session', hook_event_name: 'Stop', prompt: 'Continue' }),
+    });
+    assert.strictEqual(result.status, 0, result.stderr);
+    const body = parseBlock(result.stdout);
+    assert.strictEqual(body.decision, 'block');
+    assert.match(body.reason, /multiple active specs/);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
 function writeNoHistoryPacket(dir, feature, status) {
   const packet = path.join(dir, 'specs', feature);
   fs.mkdirSync(packet, { recursive: true });

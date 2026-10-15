@@ -210,7 +210,22 @@ try {
     if (named.length) addTouched(named);
   }
 
-  const resolved = RESOLVER.resolveWorkflowCandidate({ projectRoot: baseDir, runtime, explicitFeature, explicitPath });
+  let resolved = RESOLVER.resolveWorkflowCandidate({ projectRoot: baseDir, runtime, explicitFeature, explicitPath });
+  if (touchFilter && !explicitFeature && !explicitPath
+    && ['multiple_active', 'invalid_specs'].includes(resolved?.error)) {
+    const touched = readTouched();
+    const candidates = resolved.candidates || [];
+    if (!candidates.includes('<specs>') && !candidates.some(name => touched.has(name))) {
+      const selected = [...touched].map(name => RESOLVER.resolveWorkflowCandidate({
+        projectRoot: baseDir, runtime, explicitFeature: name,
+      }));
+      resolved = selected.find(candidate => candidate?.error);
+      const active = selected.filter(candidate => candidate && !candidate.error && !candidate.allTasksDone);
+      if (!resolved) resolved = active.length > 1
+        ? { error: 'multiple_active', candidates: active.map(candidate => candidate.featureName) }
+        : active[0] || null;
+    }
+  }
 
   if (!resolved) {
     process.exit(0); // No active spec, do nothing
