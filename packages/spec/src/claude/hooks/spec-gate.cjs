@@ -16,32 +16,7 @@
 const fs = require('fs');
 const path = require('path');
 const { runtimeDirName, runtimeDir, runtimePath } = require('./lib/runtime-dir.cjs');
-
-function projectRoot(payload = {}) {
-  const configured = typeof process.env.CLAUDE_PROJECT_DIR === 'string'
-    ? process.env.CLAUDE_PROJECT_DIR.trim()
-    : '';
-  if (configured) {
-    try { return fs.realpathSync(path.resolve(configured)); } catch { /* continue */ }
-  }
-
-  const installedRoot = path.resolve(__dirname, '..', '..');
-  const installedHook = runtimePath(installedRoot, 'hooks', path.basename(__filename));
-  if (fs.existsSync(installedHook)) return installedRoot;
-
-  const sourceFixture = typeof process.env.PROJECT_ROOT === 'string'
-    ? process.env.PROJECT_ROOT.trim()
-    : '';
-  if (sourceFixture) {
-    try { return fs.realpathSync(path.resolve(sourceFixture)); } catch { /* continue */ }
-  }
-
-  const legacy = typeof payload.cwd === 'string' ? payload.cwd.trim() : '';
-  if (legacy) {
-    try { return fs.realpathSync(path.resolve(legacy)); } catch { /* continue */ }
-  }
-  try { return fs.realpathSync(process.cwd()); } catch { return path.resolve(process.cwd()); }
-}
+const { projectRoot } = require('./lib/project-root.cjs');
 
 function logCrash(error) {
   try {

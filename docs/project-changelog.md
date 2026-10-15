@@ -17,6 +17,7 @@ All notable changes to CafeKit are documented here, following
 - Codex `cf-specs`: bản cài cho Codex thêm ghi chú cổng phạm vi — câu hỏi GATE-SCOPE nằm trong final answer, không tóm tắt sau nó, mỗi mục cần quyết là `[NEEDS CLARIFICATION: …]` có câu hỏi thật, giữ nguyên EXPAND/KEEP/CUT. Đo trên `gpt-6.1-sol`: `specs/mo-ho-c1` marker và bộ ba ở tin cuối 10/10 (mốc 0/10; đối chứng không ghi chú trên runner mới 3/5 và 4/5, marker thật 1/5), 3 ca khác không hồi quy. Skill gốc và Claude không đổi.
 
 ### Fixed
+- Hooks Claude dùng root đã cài để đọc runtime và dựng context; rules chỉ giữ chỗ tiêm khi runtime đã có, kể cả khi phiên đứng ở thư mục con.
 - State Codex theo dõi collaborationspawn_agent; các tool spawn chỉ ghi sự kiện gần nhất, không biến metadata thành todo.
 - Session compact chỉ khôi phục anchor của cùng phiên; khác hoặc thiếu session_id vẫn giữ cảnh báo xác nhận và bỏ anchor.
 - State Claude lưu theo phiên để không rò context giữa các pane; SessionStart chỉ đọc và không tạo thư mục state.

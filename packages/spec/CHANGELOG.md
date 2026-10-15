@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Hooks Claude dùng root đã cài để đọc runtime và dựng context; rules chỉ giữ chỗ tiêm khi runtime đã có, kể cả khi phiên đứng ở thư mục con.
 - State Codex theo dõi collaborationspawn_agent; các tool spawn chỉ ghi sự kiện gần nhất, không biến metadata thành todo.
 - Session compact chỉ khôi phục anchor của cùng phiên; khác hoặc thiếu session_id vẫn giữ cảnh báo xác nhận và bỏ anchor.
 - State Claude lưu theo phiên để không rò context giữa các pane; SessionStart chỉ đọc và không tạo thư mục state.

@@ -17,6 +17,7 @@ try {
   const path = require('path');
 
   const { runtimeDirName, runtimeDir, runtimePath } = require('./lib/runtime-dir.cjs');
+  const { projectRoot } = require('./lib/project-root.cjs');
   function readRuntime(cwd) {
     try {
       const p = runtimePath(cwd, 'runtime.json');
@@ -52,14 +53,12 @@ try {
   const { normalizeHookPayload } = require('./lib/hook-payload.cjs');
   const payload   = normalizeHookPayload(JSON.parse(stdin));
   const sessionId = payload.session_id || null;
-  const payloadCwd = typeof payload.cwd === 'string' ? payload.cwd.trim() : '';
-  const cwd       = payloadCwd || process.env.PROJECT_ROOT || process.cwd();
+  const root = projectRoot(payload);
+  const runtime = readRuntime(root);
+  if (runtime === null) process.exit(0);
 
   // No session identity or reservation means no injection. Fail open.
   if (reserveSession(sessionId) !== true) process.exit(0);
-
-  const runtime = readRuntime(cwd);
-  if (runtime === null) process.exit(0);
 
   // Language
   const thinkLang   = runtime.locale?.thinkingLanguage || '';
@@ -67,7 +66,7 @@ try {
   const effectThink = thinkLang || (respondLang ? 'en' : '');
 
   // Paths
-  const baseDir   = cwd;
+  const baseDir   = root;
   const plansPath = path.join(baseDir, runtime.paths?.plans || 'plans');
   const docsPath  = path.join(baseDir, runtime.paths?.docs  || 'docs');
   const specsPath = path.join(baseDir, runtime.paths?.specs || 'specs');

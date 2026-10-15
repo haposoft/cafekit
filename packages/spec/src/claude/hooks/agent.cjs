@@ -17,6 +17,7 @@ try {
 
   /** Read <runtime>/runtime.json */
   const { runtimeDirName, runtimeDir, runtimePath } = require('./lib/runtime-dir.cjs');
+  const { projectRoot } = require('./lib/project-root.cjs');
   function readRuntime(cwd) {
     try {
       const p = runtimePath(cwd, 'runtime.json');
@@ -43,10 +44,8 @@ try {
 
   const { normalizeHookPayload } = require('./lib/hook-payload.cjs');
   const payload    = normalizeHookPayload(JSON.parse(stdin));
-  // Use payload.cwd for monorepo support — subagent may run in a different dir
-  const payloadCwd = typeof payload.cwd === 'string' ? payload.cwd.trim() : '';
-  const agentCwd   = payloadCwd || process.env.PROJECT_ROOT || process.cwd();
-  const runtime    = readRuntime(agentCwd);
+  const root = projectRoot(payload);
+  const runtime = readRuntime(root);
   if (runtime === null) process.exit(0);
 
   // Language config from runtime.json
@@ -56,7 +55,7 @@ try {
   const effectThink  = thinkLang || (respondLang ? 'en' : '');
 
   // Resolve paths from env (set by session.cjs) or runtime defaults
-  const baseDir    = agentCwd;
+  const baseDir    = root;
   const plansPath  = path.join(baseDir, runtime.paths?.plans || 'plans');
   const docsPath   = path.join(baseDir, runtime.paths?.docs  || 'docs');
   const specsPath  = path.join(baseDir, runtime.paths?.specs || 'specs');
@@ -74,7 +73,7 @@ try {
   }
 
   // Python venv (optional — if <skills>/.venv exists)
-  const venv = resolveVenv(agentCwd);
+  const venv = resolveVenv(root);
 
   lines.push('## Rules');
   lines.push(`- Specs → ${specsPath}/ | Plans → ${plansPath}/ | Docs → ${docsPath}/`);

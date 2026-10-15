@@ -6441,16 +6441,21 @@ async function runWave1InstructionFixtureTests() {
     }
   };
 
-  const runHook = (root, hook, payload, env) => spawnSync(
-    process.execPath,
-    [join(packageRoot, hook)],
-    {
-      cwd: root,
-      input: JSON.stringify(payload),
-      encoding: "utf8",
-      env: { ...process.env, PROJECT_ROOT: env },
-    },
-  );
+  const runHook = (root, hook, payload) => {
+    const env = { ...process.env };
+    delete env.CLAUDE_PROJECT_DIR;
+    delete env.PROJECT_ROOT;
+    return spawnSync(
+      process.execPath,
+      [join(packageRoot, hook)],
+      {
+        cwd: root,
+        input: JSON.stringify(payload),
+        encoding: "utf8",
+        env,
+      },
+    );
+  };
 
   try {
     const standalone = [

@@ -16,6 +16,7 @@
 try {
   const fs   = require('fs');
   const { BLOCKED_DIRS, inspectInput } = require('./lib/inspect-paths.cjs');
+  const { projectRoot } = require('./lib/project-root.cjs');
 
   const { runtimeDirName, runtimeDir, runtimePath } = require('./lib/runtime-dir.cjs');
   function readRuntime(cwd) {
@@ -54,13 +55,15 @@ function denyWithReason(reason) {
   const data      = normalizeHookPayload(JSON.parse(stdin));
   const toolName  = data.tool_name  || '';
   const toolInput = data.tool_input || {};
-  const cwd       = data.cwd        || process.cwd();
-  const runtime   = readRuntime(cwd);
+  let cwd         = data.cwd        || process.cwd();
+  try { cwd = fs.realpathSync(cwd); } catch { /* retain the payload cwd when unavailable */ }
+  const root      = projectRoot(data);
+  const runtime   = readRuntime(root);
 
   if (runtime.scout?.enabled === false || runtime.inspect?.enabled === false) process.exit(0);
 
   const result = inspectInput(toolName, toolInput, {
-    cwd, projectRoot: process.env.CLAUDE_PROJECT_DIR || cwd
+    cwd, projectRoot: root
   });
   if (result.broadGlob) {
     denyWithReason(

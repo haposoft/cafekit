@@ -78,7 +78,7 @@ function installClaudeRuntimeClosure(fixtureRoot, entry = 'hooks/spec-gate.cjs')
     fs.copyFileSync(path.join(hooksRoot, hook), target);
   }
   // Hook helpers the raw-copied hooks require at runtime.
-  for (const helper of ['hook-state-dir.cjs', 'runtime-dir.cjs', 'hook-payload.cjs']) {
+  for (const helper of ['hook-state-dir.cjs', 'runtime-dir.cjs', 'hook-payload.cjs', 'project-root.cjs']) {
     const target = path.join(destinationRoot, 'hooks', 'lib', helper);
     fs.mkdirSync(path.dirname(target), { recursive: true });
     fs.copyFileSync(path.join(hooksRoot, 'lib', helper), target);

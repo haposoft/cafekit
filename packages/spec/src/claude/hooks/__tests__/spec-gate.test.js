@@ -29,9 +29,10 @@ const FIXTURE_ARTIFACT_DIGEST = crypto.createHash('sha256').update(FIXTURE_ARTIF
 function runHook(payload, cwd) {
   const projectRoot = cwd || payload.cwd;
   const specsRoot = path.join(projectRoot, 'specs');
-  // PROJECT_ROOT wins over cwd in the hook; pin it to the fixture so a host
-  // monorepo's real specs/ cannot leak into the test (e.g. active rtk-* specs).
-  const env = { ...process.env, PROJECT_ROOT: projectRoot };
+  // Source hooks use payload.cwd without inherited root overrides.
+  const env = { ...process.env };
+  delete env.CLAUDE_PROJECT_DIR;
+  delete env.PROJECT_ROOT;
   const res = spawnSync(process.execPath, [HOOK], {
     input: JSON.stringify({
       hook_event_name: 'Stop',
@@ -235,6 +236,7 @@ function installClaudeGate(root, policyMode = 'valid') {
   fs.copyFileSync(HOOK, path.join(hooks, 'spec-gate.cjs'));
   fs.mkdirSync(path.join(hooks, 'lib'), { recursive: true });
   fs.copyFileSync(path.join(__dirname, '..', 'lib', 'runtime-dir.cjs'), path.join(hooks, 'lib', 'runtime-dir.cjs'));
+  fs.copyFileSync(path.join(__dirname, '..', 'lib', 'project-root.cjs'), path.join(hooks, 'lib', 'project-root.cjs'));
   fs.copyFileSync(path.join(__dirname, '..', 'lib', 'hook-payload.cjs'), path.join(hooks, 'lib', 'hook-payload.cjs'));
   fs.copyFileSync(
     path.join(__dirname, '..', 'lib', 'hook-state-dir.cjs'),
@@ -1264,11 +1266,14 @@ function boundReceipt(base = VALID_BASE, head = VALID_HEAD) {
 }
 
 function runHookFrom(dir, cwd) {
+  const env = { ...process.env };
+  delete env.CLAUDE_PROJECT_DIR;
+  delete env.PROJECT_ROOT;
   const res = spawnSync(process.execPath, [HOOK], {
     cwd,
     input: JSON.stringify({ hook_event_name: 'Stop', session_id: 'test', transcript_path: '/tmp/t', stop_hook_active: false, cwd: dir }),
     encoding: 'utf8',
-    env: { ...process.env, PROJECT_ROOT: dir },
+    env,
   });
   return { code: res.status, stdout: (res.stdout || '').trim(), stderr: res.stderr || '' };
 }
