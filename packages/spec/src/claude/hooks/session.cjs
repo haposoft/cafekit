@@ -27,6 +27,7 @@ try {
   const { runtimeDirName, runtimeDir, runtimePath } = require('./lib/runtime-dir.cjs');
   const os   = require('os');
   const { projectRoot } = require('./lib/project-root.cjs');
+  const { checkCafeKitUpdate } = require('./lib/update-check.cjs');
   const { clearSessionReservation } = require('./lib/rules-reservation.cjs');
   const { execSync } = require('child_process');
 
@@ -101,94 +102,6 @@ try {
     return '';
   }
 
-  // ── CafeKit Update Check ──────────────────────────────────────────────────
-
-  /**
-   * Fetch the latest published version of @haposoft/cafekit from the npm registry.
-   * Returns a string (e.g. "0.11.2") or null on any failure. Timeout: 3 s.
-   */
-  function fetchLatestVersion() {
-    try {
-      const https = require('https');
-      return new Promise((resolve) => {
-        const req = https.get(
-          'https://registry.npmjs.org/@haposoft/cafekit/latest',
-          { timeout: 3000, headers: { Accept: 'application/json' } },
-          (res) => {
-            let body = '';
-            res.on('data', (chunk) => { body += chunk; });
-            res.on('end', () => {
-              try { resolve(JSON.parse(body).version || null); }
-              catch { resolve(null); }
-            });
-          }
-        );
-        req.on('error', () => resolve(null));
-        req.on('timeout', () => { req.destroy(); resolve(null); });
-      });
-    } catch { return Promise.resolve(null); }
-  }
-
-  /** Simple semver compare: returns true when b > a. */
-  function isNewer(a, b) {
-    const n = (v) => String(v).split('.').map((x) => parseInt(x, 10) || 0);
-    const [aN, bN] = [n(a), n(b)];
-    for (let i = 0; i < 3; i++) {
-      if (bN[i] > aN[i]) return true;
-      if (bN[i] < aN[i]) return false;
-    }
-    return false;
-  }
-
-  /**
-   * Read the installed CafeKit version from <runtime>/cafekit.json.
-   * Returns null if not found.
-   */
-  function getInstalledVersion(cwd) {
-    try {
-      const p = runtimePath(cwd, 'cafekit.json');
-      if (!fs.existsSync(p)) return null;
-      const meta = JSON.parse(fs.readFileSync(p, 'utf8'));
-      return typeof meta.version === 'string' ? meta.version : null;
-    } catch { return null; }
-  }
-
-  /**
-   * Check for a newer CafeKit version and return an update notice string,
-   * or an empty string if already up to date or check fails.
-   * Result is cached in <runtime>/.cafekit-update-cache.json for 12 hours.
-   */
-  async function checkCafeKitUpdate(cwd) {
-    const installed = getInstalledVersion(cwd);
-    if (!installed) return '';
-
-    const CACHE_TTL = 12 * 60 * 60 * 1000; // 12 hours
-    const cachePath = runtimePath(cwd, '.cafekit-update-cache.json');
-
-    // Return cached result if still fresh.
-    try {
-      if (fs.existsSync(cachePath)) {
-        const cache = JSON.parse(fs.readFileSync(cachePath, 'utf8'));
-        if (Date.now() - (cache.ts || 0) < CACHE_TTL) {
-          return cache.notice || '';
-        }
-      }
-    } catch { /* stale or corrupt — refetch */ }
-
-    // Fetch from npm registry.
-    const latest = await fetchLatestVersion();
-    const notice = (latest && isNewer(installed, latest))
-      ? `\n⚡ CafeKit update available: ${installed} → ${latest}\n   Run: npx @haposoft/cafekit\n`
-      : '';
-
-    // Persist cache (fail-open if write fails).
-    try {
-      fs.writeFileSync(cachePath, JSON.stringify({ ts: Date.now(), notice }), 'utf8');
-    } catch { /* fail-open */ }
-
-    return notice;
-  }
-
   // ── Main ──────────────────────────────────────────────────────────────────
 
   (async () => {
@@ -202,7 +115,7 @@ try {
   const runtime = readRuntime(cwd);
 
   // Check CafeKit update in parallel with project detection (async, fail-open).
-  const updateCheckPromise = checkCafeKitUpdate(cwd);
+  const updateCheckPromise = checkCafeKitUpdate(runtimeDir(cwd)).catch(() => '');
 
   // Project detection
   const projectType = runtime.project?.type !== 'auto'

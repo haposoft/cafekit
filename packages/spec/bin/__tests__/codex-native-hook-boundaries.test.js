@@ -13,7 +13,7 @@ function fixture(run) {
   const hooks = path.join(root, '.codex/hooks');
   try {
     fs.cpSync(path.join(SOURCE, 'codex/hooks'), hooks, { recursive: true });
-    for (const name of ['runtime-path-safety', 'privacy-command-analysis', 'privacy-paths', 'secret-keywords', 'inspect-paths']) {
+    for (const name of ['runtime-path-safety', 'privacy-command-analysis', 'privacy-paths', 'secret-keywords', 'inspect-paths', 'update-check']) {
       fs.copyFileSync(path.join(SOURCE, `claude/hooks/lib/${name}.cjs`), path.join(hooks, `lib/${name}.cjs`));
     }
     fs.cpSync(path.join(SOURCE, 'claude/scripts'), path.join(root, '.codex/scripts'), { recursive: true });

@@ -147,6 +147,7 @@ function inHookFixture(run, options = {}) {
     fs.cpSync(CODEX_HOOKS, hooks, { recursive: true });
     fs.copyFileSync(path.join(PACKAGE_ROOT, 'src/claude/hooks/lib/spec-touch.cjs'), path.join(hooks, 'lib/spec-touch.cjs'));
     fs.copyFileSync(path.join(PACKAGE_ROOT, 'src/claude/hooks/lib/secret-keywords.cjs'), path.join(hooks, 'lib/secret-keywords.cjs'));
+    fs.copyFileSync(path.join(PACKAGE_ROOT, 'src/claude/hooks/lib/update-check.cjs'), path.join(hooks, 'lib/update-check.cjs'));
     fs.copyFileSync(
       path.join(PACKAGE_ROOT, 'src/claude/hooks/lib/inspect-paths.cjs'),
       path.join(hooks, 'lib/inspect-paths.cjs'),
@@ -212,6 +213,7 @@ function inNoCommitCodexFixture(run) {
     fs.cpSync(CODEX_HOOKS, hooks, { recursive: true });
     fs.copyFileSync(path.join(PACKAGE_ROOT, 'src/claude/hooks/lib/spec-touch.cjs'), path.join(hooks, 'lib/spec-touch.cjs'));
     fs.copyFileSync(path.join(PACKAGE_ROOT, 'src/claude/hooks/lib/secret-keywords.cjs'), path.join(hooks, 'lib/secret-keywords.cjs'));
+    fs.copyFileSync(path.join(PACKAGE_ROOT, 'src/claude/hooks/lib/update-check.cjs'), path.join(hooks, 'lib/update-check.cjs'));
     fs.copyFileSync(path.join(PACKAGE_ROOT, 'src/claude/hooks/lib/runtime-path-safety.cjs'),
       path.join(hooks, 'lib/runtime-path-safety.cjs'));
     const scripts = path.join(root, '.codex/scripts');
@@ -847,6 +849,54 @@ test('Codex precompact anchors are restored only to the matching session', () =>
     assert.equal(other.status, 0);
     assert.match(other.stdout, /Pending/i);
     assert.doesNotMatch(other.stdout, /State before compaction/);
+  });
+});
+
+function sessionWithoutUpdateNetwork(root, hooks, session_id) {
+  const marker = path.join(root, 'update-network-attempted');
+  const preload = path.join(root, 'block-update-network.cjs');
+  fs.writeFileSync(preload, `require('https').get = () => {
+    require('fs').writeFileSync(${JSON.stringify(marker)}, 'attempted');
+    throw new Error('network disabled in update test');
+  };\n`);
+  const result = spawnSync(process.execPath, ['--require', preload, path.join(hooks, 'session.cjs')], {
+    cwd: root, encoding: 'utf8', input: JSON.stringify({ cwd: root, hook_event_name: 'SessionStart', source: 'startup', session_id }),
+  });
+  assert.equal(fs.existsSync(marker), false, 'the cached update check must not attempt a network request');
+  return result;
+}
+
+test('Codex SessionStart prints a newer cached CafeKit version', () => {
+  inHookFixture((root, hooks) => {
+    fs.writeFileSync(path.join(root, '.codex/cafekit.json'), JSON.stringify({ version: '1.2.3' }));
+    fs.writeFileSync(path.join(root, '.codex/.cafekit-update-cache.json'), JSON.stringify({ ts: Date.now(), latest: '1.3.0' }));
+    const result = sessionWithoutUpdateNetwork(root, hooks, 'cached-update');
+    assert.equal(result.status, 0);
+    assert.ok(result.stdout.includes('\n⚡ CafeKit update available: 1.2.3 → 1.3.0\n   Run: npx @haposoft/cafekit\n'));
+  });
+});
+
+test('Codex SessionStart stays silent about an equal cached CafeKit version', () => {
+  inHookFixture((root, hooks) => {
+    fs.writeFileSync(path.join(root, '.codex/cafekit.json'), JSON.stringify({ version: '1.2.3' }));
+    fs.writeFileSync(path.join(root, '.codex/.cafekit-update-cache.json'), JSON.stringify({ ts: Date.now(), latest: '1.2.3' }));
+    const result = sessionWithoutUpdateNetwork(root, hooks, 'equal-update');
+    assert.equal(result.status, 0);
+    assert.doesNotMatch(result.stdout, /CafeKit update available/);
+  });
+});
+
+test('Codex update failure still clears pending privacy for the session', () => {
+  inHookFixture((root, hooks) => {
+    const privacy = require(path.join(hooks, 'lib/privacy-state.cjs'));
+    privacy.createPending({ projectRoot: root, sessionCwd: root, sessionId: 'failed-update', filePaths: ['.env'] });
+    fs.writeFileSync(path.join(root, '.codex/cafekit.json'), JSON.stringify({ version: '1.2.3' }));
+    fs.writeFileSync(path.join(hooks, 'lib/update-check.cjs'), "module.exports = { checkCafeKitUpdate() { throw new Error('synthetic update failure'); } };\n");
+    const result = sessionWithoutUpdateNetwork(root, hooks, 'failed-update');
+    assert.equal(result.status, 0);
+    assert.equal(result.stderr, '');
+    const pending = fs.readdirSync(path.join(hooks, '.privacy')).filter(name => name.startsWith('pending-'));
+    assert.equal(pending.length, 0);
   });
 });
 

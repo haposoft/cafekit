@@ -93,6 +93,7 @@ function printCompactAnchors(projectRoot, sessionId) {
   } catch { /* no matching capture available */ }
 }
 
+(async () => {
 try {
   const payload = readPayload();
   if (!payload) process.exit(0);
@@ -100,6 +101,11 @@ try {
   const sessionId = [payload.session_id, payload.sessionId, payload.sessionID, payload.session?.id]
     .find((value) => typeof value === 'string' && value.trim());
   clearState(PROJECT_ROOT, sessionId);
+  let updateNotice = '';
+  try {
+    const { checkCafeKitUpdate } = require('./lib/update-check.cjs');
+    updateNotice = await checkCafeKitUpdate(path.join(PROJECT_ROOT, '.codex'));
+  } catch { /* an update failure must not interrupt session startup */ }
   if (payload.source === 'compact') {
     clearSessionReservation(PROJECT_ROOT, sessionId);
     process.stdout.write(
@@ -135,7 +141,7 @@ try {
     insideOrcaPane && 'Orca: pane'
   ].filter(Boolean);
   process.stdout.write(
-    `Session ${payload.source || 'unknown'}. ${parts.join(' | ') || 'No project info detected.'}\n`
+    `Session ${payload.source || 'unknown'}. ${parts.join(' | ') || 'No project info detected.'}${updateNotice}\n`
   );
 
   if (sessionCwd !== projectRoot) {
@@ -146,3 +152,4 @@ try {
 } catch (error) {
   logCrash('session', error);
 }
+})();
