@@ -1,6 +1,6 @@
 # Task 09 — Thông điệp thống nhất
 
-Status: in_progress
+Status: done
 
 ## Outcome
 spec-gate, tollgate và context subagent in cùng nội dung ở hai host theo D-08.
@@ -49,3 +49,27 @@ spec-gate, tollgate và context subagent in cùng nội dung ở hai host theo D
 On a failed Step or Verification Plan run: stop; do not widen scope, change the Command, or weaken a test; record observed versus expected; repair only the cited cause; after three failed rounds, stop and ask the user.
 
 ## Receipt
+
+Verification: PASS
+Command: `node --test packages/spec/bin/__tests__/codex-hooks.test.js packages/spec/src/claude/hooks/__tests__/spec-state-touched.test.js`
+Exit: 0
+Base: 66bfaa25036b959d8a701f288f645fee650564f1
+Head: 4bc9cd92452d6c0fae7f295eb1e1e5104ae44302bbb8f3d0c66a103f7db78e82
+
+```text
+ok 36 - Codex Stop describes an escaping specs root as an invalid workflow packet
+ok 37 - Codex spec-state shows detailed task status counts on its Phase line
+ok 70 - Claude spec-state says receipt revalidation never grants approval
+ok 71 - Claude subagent rules include the shared simplicity and reporting instructions
+# tests 93
+# pass 93
+# fail 0
+```
+
+- Đỏ trước sửa (Codex báo): 4 fail / 93.
+- Counterexample (Codex báo): khôi phục câu `controlled failure` → ca `paths.specs` đỏ; đã hoàn tác, file khớp byte.
+- Đối chiếu chữ (controller chạy): Claude spec-gate trên layout `.claude` với `paths.specs: "../outside"` in `Completion gate: invalid workflow packet detected (<specs>): configured specs root escapes project root. Fix the packet's plan.md or task files before completing tasks.`; Codex nay in cùng câu cho lỗi `runtime.paths.specs`/`configured specs root`, các lỗi khác giữ `controlled failure`.
+- Lệnh phụ (controller chạy): spec-gate + codex-quiet-hooks + installed-root 89 pass, 0 fail.
+- Self-test (controller chạy): `PASS: 2125 tests executed`, exit 0; `cmp` `.claude/hooks/agent.cjs`, `spec-state.cjs` khớp nguồn; `git diff --check` sạch.
+- Probe tĩnh không đổi; không thêm `require`.
+- Review controller: quyết định block và khoá cache không đổi; chỉ đổi chữ theo D-08. Commit 66bfaa25.
