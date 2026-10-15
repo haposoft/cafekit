@@ -1,6 +1,6 @@
 # Task 03 — Codex ghi state khi tạo subagent
 
-Status: in_progress
+Status: done
 
 ## Outcome
 Khi Codex 0.162.1 gọi `collaborationspawn_agent`, hook state Codex ghi lần gọi đó vào state của phiên, như đã làm với `spawn_agent`.
@@ -42,3 +42,22 @@ Khi Codex 0.162.1 gọi `collaborationspawn_agent`, hook state Codex ghi lần g
 On a failed Step or Verification Plan run: stop; do not widen scope, change the Command, or weaken a test; record observed versus expected; repair only the cited cause; after three failed rounds, stop and ask the user.
 
 ## Receipt
+
+Verification: PASS
+Command: `node --test packages/spec/bin/__tests__/codex-hooks.test.js`
+Exit: 0
+Base: 0b15e2f6742971e0121ae1c4a2ea372817cac1b8
+Head: 357c83aad8f1fcdbf469317fdd36dcb0081f5e70b1c6fc75cf4a69b96c657f11
+
+```text
+ok 7 - Codex collaborationspawn_agent appears as the latest tracked tool on resume
+ok 8 - Codex collaborationspawn_agent input does not create a pending todo
+# tests 52
+# pass 52
+# fail 0
+```
+
+- Đỏ trước sửa (Codex báo, Step 1): 2 test đỏ — 50 pass, 2 fail.
+- Counterexample (Codex báo): bỏ tên mới khỏi `isTrackedTool` → 2 test đỏ; cho spawn gọi lại `updateTaskState` → test thứ hai đỏ; đã hoàn tác.
+- Self-test (controller chạy): `PASS: 2074 tests executed`, exit 0; `git diff --check` sạch.
+- Review controller: `isTrackedTool` thêm đúng một tên; tool spawn bỏ qua `updateTaskState` nhưng vẫn ghi `lastToolEvent`; assertion todo giới hạn trong mục "What's Left". Commit 0b15e2f6.

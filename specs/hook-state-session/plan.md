@@ -58,7 +58,7 @@ Specs-Contract: process-first-ready-v1
 |---|---|---|---|---|---|---|
 | 01 | Claude state lưu theo phiên | P1 | AC-01 | Claude `state.cjs`, `state.test.js` | - | done |
 | 02 | Anchor compact đúng phiên | P2 | AC-02 | Claude `session.cjs`, `precompact.test.js` | task-01-claude-state-per-session.md | done |
-| 03 | Codex theo dõi `collaborationspawn_agent` | P2 | AC-03 | Codex `state.cjs`, `codex-hooks.test.js` | task-02-compact-anchor-session.md | in_progress |
+| 03 | Codex theo dõi `collaborationspawn_agent` | P2 | AC-03 | Codex `state.cjs`, `codex-hooks.test.js` | task-02-compact-anchor-session.md | done |
 
 Command của mỗi task chạy từ gốc repo; self-test chạy trong `packages/spec`. Chạy tuần tự: các task dùng chung hai changelog (`CHANGELOG.md`, `../../docs/project-changelog.md`, mục Unreleased).
 
