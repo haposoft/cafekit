@@ -1,6 +1,6 @@
 # Task 04 — session/precompact Claude bền + rules sau compact
 
-Status: pending
+Status: in_progress
 
 ## Outcome
 Sau compact, prompt kế tiếp của phiên Claude nhận lại rules; session và precompact không bao giờ làm hỏng phiên.

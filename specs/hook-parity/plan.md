@@ -86,8 +86,8 @@ Specs-Contract: process-first-ready-v1
 |---|---|---|---|---|---|---|
 | 01 | Một luật root cho hook Claude | P1 | AC-01 | `lib/project-root.cjs`, rules, inspect-block, agent, spec-gate, manifest | - | done |
 | 02 | spec-state Claude khớp Codex | P1 | AC-02 | Claude spec-state, `lib/spec-touch.cjs`, Codex touch | task-01-claude-installed-root.md | done |
-| 03 | state: Agent, khoá, log, tin nhắn cuối | P2 | AC-03 | Claude state, parser; Codex state | task-02-claude-spec-state-parity.md | in_progress |
-| 04 | session/precompact Claude bền + rules sau compact | P2 | AC-04 | Claude session, precompact, rules, `lib/rules-reservation.cjs` | task-03-claude-state-robust.md | pending |
+| 03 | state: Agent, khoá, log, tin nhắn cuối | P2 | AC-03 | Claude state, parser; Codex state | task-02-claude-spec-state-parity.md | done |
+| 04 | session/precompact Claude bền + rules sau compact | P2 | AC-04 | Claude session, precompact, rules, `lib/rules-reservation.cjs` | task-03-claude-state-robust.md | in_progress |
 | 05 | Codex inspect, rules, guardrail | P1 | AC-05 | Codex inspect-block, rules, guardrail, shim | task-04-claude-session-compact.md | pending |
 | 06 | Codex compact | P2 | AC-06 | Codex session, rules reservation, precompact, hooks.json | task-05-codex-gate-robust.md | pending |
 | 07 | Thông báo cập nhật cho Codex | P3 | AC-07 | `lib/update-check.cjs`, session hai host | task-06-codex-compact.md | pending |
