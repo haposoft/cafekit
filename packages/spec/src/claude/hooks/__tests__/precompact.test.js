@@ -93,8 +93,8 @@ test('a compact restart prints the captured anchors alongside the authorization 
   const dir = fixture();
   try {
     clearCapture();
-    assert.strictEqual(run(PRECOMPACT, dir, { hook_event_name: 'PreCompact', trigger: 'manual', cwd: dir }).code, 0);
-    const restart = run(SESSION, dir, { hook_event_name: 'SessionStart', source: 'compact', cwd: dir });
+    assert.strictEqual(run(PRECOMPACT, dir, { hook_event_name: 'PreCompact', trigger: 'manual', session_id: 'compact-session', cwd: dir }).code, 0);
+    const restart = run(SESSION, dir, { hook_event_name: 'SessionStart', source: 'compact', session_id: 'compact-session', cwd: dir });
     assert.strictEqual(restart.code, 0, restart.stderr);
     assert.match(restart.stdout, /VERIFY PENDING AUTHORIZATIONS/, 'the existing warning must survive');
     assert.match(restart.stdout, /State before compaction/);
@@ -118,6 +118,53 @@ test('a compact restart without a capture still prints the warning and nothing i
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('a compact restart in another session prints the warning without foreign anchors', () => {
+  const dir = fixture();
+  try {
+    clearCapture();
+    assert.strictEqual(run(PRECOMPACT, dir, { hook_event_name: 'PreCompact', session_id: 'session-a', cwd: dir }).code, 0);
+    const restart = run(SESSION, dir, { hook_event_name: 'SessionStart', source: 'compact', session_id: 'session-b', cwd: dir });
+    assert.strictEqual(restart.code, 0, restart.stderr);
+    assert.match(restart.stdout, /SESSION COMPRESSED/);
+    assert.doesNotMatch(restart.stdout, /State before compaction/);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+    clearCapture();
+  }
+});
+
+test('a compact restart in the same session restores its captured anchors', () => {
+  const dir = fixture();
+  try {
+    clearCapture();
+    assert.strictEqual(run(PRECOMPACT, dir, { hook_event_name: 'PreCompact', session_id: 'session-a', cwd: dir }).code, 0);
+    const restart = run(SESSION, dir, { hook_event_name: 'SessionStart', source: 'compact', session_id: 'session-a', cwd: dir });
+    assert.strictEqual(restart.code, 0, restart.stderr);
+    assert.match(restart.stdout, /SESSION COMPRESSED/);
+    assert.match(restart.stdout, /State before compaction[\s\S]*branch work/);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+    clearCapture();
+  }
+});
+
+for (const [captureId, restartId] of [[undefined, 'session-a'], ['session-a', undefined], [undefined, undefined]]) {
+  test(`a compact restart without ${captureId ? 'restart' : restartId ? 'capture' : 'either'} session identity keeps only the warning`, () => {
+    const dir = fixture();
+    try {
+      clearCapture();
+      assert.strictEqual(run(PRECOMPACT, dir, { hook_event_name: 'PreCompact', session_id: captureId, cwd: dir }).code, 0);
+      const restart = run(SESSION, dir, { hook_event_name: 'SessionStart', source: 'compact', session_id: restartId, cwd: dir });
+      assert.strictEqual(restart.code, 0, restart.stderr);
+      assert.match(restart.stdout, /SESSION COMPRESSED/);
+      assert.doesNotMatch(restart.stdout, /State before compaction/);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+      clearCapture();
+    }
+  });
+}
 
 test('a normal session start prints no compaction anchors', () => {
   const dir = fixture();
