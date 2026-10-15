@@ -71,3 +71,4 @@ Command của mỗi task chạy từ gốc repo; self-test chạy trong `package
   - G4 Low: Ownership thêm bản copy `.claude`; ghi cwd của Command; lưu ý fixture test; giới hạn D-02 khi thiếu `session_id`.
   - G5 Low: tool spawn chỉ ghi `lastToolEvent`.
 - 15/10 vòng giấy 2 (lượt đóng, ngữ cảnh mới): DONE — G1–G5 đóng, chạy lại phản ví dụ trên code hiện tại; đỏ-trước của task-03 hai ca đã chạy thử. Ba ghi chú Low đã sửa chữ: fixture chỉ đổi cho `.claude`, assertion todo giới hạn trong "What's Left", parser nhận cả `TaskCreate`/`TaskUpdate`.
+- GATE-DONE 15/10: Bro chấp nhận hoàn thành, giữ giới hạn ở trên; commit 6af9f894, 1f255733, 0b15e2f6; self-test cuối PASS 2074; chạy hook đã cài trên repo thật: phiên mới không in context phiên khác, payload không có session_id giữ hành vi cũ.
