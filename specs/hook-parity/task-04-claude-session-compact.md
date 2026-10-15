@@ -1,6 +1,6 @@
 # Task 04 — session/precompact Claude bền + rules sau compact
 
-Status: in_progress
+Status: done
 
 ## Outcome
 Sau compact, prompt kế tiếp của phiên Claude nhận lại rules; session và precompact không bao giờ làm hỏng phiên.
@@ -53,3 +53,27 @@ Sau compact, prompt kế tiếp của phiên Claude nhận lại rules; session 
 On a failed Step or Verification Plan run: stop; do not widen scope, change the Command, or weaken a test; record observed versus expected; repair only the cited cause; after three failed rounds, stop and ask the user.
 
 ## Receipt
+
+Verification: PASS
+Command: `node --test packages/spec/src/claude/hooks/__tests__/precompact.test.js`
+Exit: 0
+Base: aaa4f9defea82bfa66cba72c01ae3f0218f1064d
+Head: f0c2d9ac32d271f63e2f9b713a5fa9df408e5809987cf608989179f135b7542b
+
+```text
+ok 10 - PreCompact fails open outside a repository and on malformed input
+ok 11 - compact reinjects rules only for its own session even without matching anchors
+ok 12 - malformed session input fails open without a stack and logs its crash
+ok 13 - installed session explains a nested cwd but omits the root line without a cwd
+ok 14 - PreCompact bounds slow git calls and finishes within ten seconds
+# tests 14
+# pass 14
+# fail 0
+```
+
+- Đỏ trước sửa (Codex báo, Step 1): 4 fail / 14.
+- Counterexample (Codex báo): chuyển bước xoá chỗ giữ xuống sau nhánh thoát sớm → ca tiêm lại đỏ; đã hoàn tác, file khớp byte.
+- Lệnh phụ (controller chạy): orca-session + session-writeenv + omp-hooks + installed-root 22 pass, 0 fail (output Orca giữ nguyên byte).
+- Self-test (controller chạy): `PASS: 2098 tests executed`, exit 0; `cmp` bốn file `.claude/hooks` khớp nguồn; `git diff --check` sạch.
+- Probe tĩnh không đổi (`rules.cjs` vẫn chứa `reserveSession` qua require). Fixture mới dựng theo manifest.
+- Review controller: chỗ giữ rules dưới `hookStateDir`, khoá sha256 của `session_id`; SessionStart `compact` xoá chỗ giữ ngay sau khi parse payload, trước mọi nhánh thoát; dòng project root chỉ khi `payload.cwd` có và realpath khác root; `.catch` của IIFE ghi crash `hook: 'session'`; git trong precompact `timeout: 3000`. Commit aaa4f9de.

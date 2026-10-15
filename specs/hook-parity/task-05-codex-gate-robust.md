@@ -1,6 +1,6 @@
 # Task 05 — Codex inspect, rules, guardrail
 
-Status: pending
+Status: in_progress
 
 ## Outcome
 Inspect và rules của Codex vẫn chạy khi `paths.specs` cấu hình sai; guardrail secret chạy được cả từ source.
