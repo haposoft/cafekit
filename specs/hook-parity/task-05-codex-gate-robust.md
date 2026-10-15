@@ -1,6 +1,6 @@
 # Task 05 — Codex inspect, rules, guardrail
 
-Status: in_progress
+Status: done
 
 ## Outcome
 Inspect và rules của Codex vẫn chạy khi `paths.specs` cấu hình sai; guardrail secret chạy được cả từ source.
@@ -49,3 +49,27 @@ Inspect và rules của Codex vẫn chạy khi `paths.specs` cấu hình sai; gu
 On a failed Step or Verification Plan run: stop; do not widen scope, change the Command, or weaken a test; record observed versus expected; repair only the cited cause; after three failed rounds, stop and ask the user.
 
 ## Receipt
+
+Verification: PASS
+Command: `node --test packages/spec/bin/__tests__/codex-hooks.test.js`
+Exit: 0
+Base: 9bbbd089c71633e58a7af6bac8be684fd3640c70
+Head: 969c90f216676a0a7136548839ac336367cad06769637e630a9771bafbe3b1a1
+
+```text
+ok 22 - Codex inspect still denies blocked reads when the configured specs path escapes
+ok 23 - Codex rules still inject when the configured specs path escapes
+ok 24 - Codex rules wait for runtime before reserving the same session
+ok 25 - Codex secret guardrail runs from source with its shared keyword shim
+ok 26 - Codex secret guardrail fails open without a keyword library or a stack
+# tests 58
+# pass 58
+# fail 0
+```
+
+- Đỏ trước sửa (Codex báo, Step 1): 4 fail / 58; ca guardrail từ source xanh sẵn (regression guard, shim có từ task-03).
+- Counterexample (Codex báo): khôi phục `getHookContext` ở inspect → ca specs thoát root đỏ; đã hoàn tác, file khớp byte.
+- Lệnh phụ (controller chạy): codex-quiet-hooks + orca-session 18 pass, 0 fail.
+- Self-test (controller chạy): `PASS: 2103 tests executed`, exit 0; `git diff --check` sạch.
+- Probe tĩnh và fixture không đổi (không thêm `require` mới).
+- Review controller: inspect dùng `PROJECT_ROOT` + `readRuntime` + `resolveSessionCwd` như privacy; rules đọc runtime trước khi giữ chỗ; require `secret-keywords` trong `try`. Commit 9bbbd089.
