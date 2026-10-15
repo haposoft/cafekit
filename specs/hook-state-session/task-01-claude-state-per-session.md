@@ -1,6 +1,6 @@
 # Task 01 — Claude state lưu theo phiên
 
-Status: pending
+Status: done
 
 ## Outcome
 Mỗi phiên Claude chỉ thấy "Prior Execution Context" do chính nó ghi. Phiên mới không còn thấy context của pane khác cùng project.
@@ -53,3 +53,28 @@ Mỗi phiên Claude chỉ thấy "Prior Execution Context" do chính nó ghi. Ph
 On a failed Step or Verification Plan run: stop; do not widen scope, change the Command, or weaken a test; record observed versus expected; repair only the cited cause; after three failed rounds, stop and ask the user.
 
 ## Receipt
+
+Verification: PASS
+Command: `node --test packages/spec/src/claude/hooks/__tests__/state.test.js`
+Exit: 0
+Base: 6af9f89461e43a57acf0428206a4eb3fb0b69103
+Head: 78e9e9cb7b916c3072165cf96cced7dc8be5eb92590c38b441fdbf33b5e54496
+
+```text
+ok 8 - SessionStart prints nothing when prior context is only placeholders
+ok 9 - SessionStart prints prior context that has a completed todo
+ok 10 - SessionStart under .omp keeps printing placeholder-only context
+ok 11 - a new Claude session startup does not inherit another session context
+ok 12 - a Claude session resumes its own saved todo
+ok 13 - two Claude sessions resume only their own completed todos
+ok 14 - a session-less payload still reads project-level context
+ok 15 - Claude SessionStart does not create state directories
+# tests 15
+# pass 15
+# fail 0
+```
+
+- Đỏ trước sửa (Codex báo, Step 1): 5 test mới đỏ — 10 pass, 5 fail.
+- Counterexample (Codex báo): bỏ khoá `session_id` → ca phiên B startup đỏ; đã hoàn tác.
+- Self-test (controller chạy): `PASS: 2067 tests executed`, exit 0; `cmp .claude/hooks/state.cjs` với nguồn khớp; `git diff --check` sạch.
+- Review controller: khoá phiên chỉ khi runtime `.claude` và payload thô có `session_id`; SessionStart gọi `stateDir(..., create=false)`; `loadLatest` nhận cùng `dir` với mọi sự kiện; không có assertion cũ nào bị xoá, fixture `sessionStartWith` chỉ đổi đường ghi. Commit 6af9f894.
