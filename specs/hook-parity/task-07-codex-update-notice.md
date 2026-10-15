@@ -1,6 +1,6 @@
 # Task 07 — Thông báo cập nhật cho Codex
 
-Status: pending
+Status: in_progress
 
 ## Outcome
 Phiên Codex báo khi có bản CafeKit mới, cùng chữ và cùng cache 12 giờ như Claude, và cache không thể bị dùng để chèn câu tuỳ ý.

@@ -90,8 +90,8 @@ Specs-Contract: process-first-ready-v1
 | 03 | state: Agent, khoá, log, tin nhắn cuối | P2 | AC-03 | Claude state, parser; Codex state | task-02-claude-spec-state-parity.md | done |
 | 04 | session/precompact Claude bền + rules sau compact | P2 | AC-04 | Claude session, precompact, rules, `lib/rules-reservation.cjs` | task-03-claude-state-robust.md | done |
 | 05 | Codex inspect, rules, guardrail | P1 | AC-05 | Codex inspect-block, rules, guardrail, shim | task-04-claude-session-compact.md | done |
-| 06 | Codex compact | P2 | AC-06 | Codex session, rules reservation, precompact, hooks.json | task-05-codex-gate-robust.md | in_progress |
-| 07 | Thông báo cập nhật cho Codex | P3 | AC-07 | `lib/update-check.cjs`, session hai host | task-06-codex-compact.md | pending |
+| 06 | Codex compact | P2 | AC-06 | Codex session, rules reservation, precompact, hooks.json | task-05-codex-gate-robust.md | done |
+| 07 | Thông báo cập nhật cho Codex | P3 | AC-07 | `lib/update-check.cjs`, session hai host | task-06-codex-compact.md | in_progress |
 | 08 | Privacy hiển thị thống nhất | P1 | AC-08 | privacy-block Claude + omp, lib tên | task-07-codex-update-notice.md | pending |
 | 09 | Thông điệp thống nhất | P3 | AC-09 | spec-gate, spec-state, agent | task-08-privacy-display.md | pending |
 

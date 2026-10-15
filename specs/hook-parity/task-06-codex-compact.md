@@ -1,6 +1,6 @@
 # Task 06 — Codex compact
 
-Status: in_progress
+Status: done
 
 ## Outcome
 Sau compact, Codex nhắc rằng xác nhận đang chờ có thể đã mất, prompt kế tiếp nhận lại rules, và anchor được in nếu host gọi PreCompact.
@@ -57,3 +57,30 @@ Sau compact, Codex nhắc rằng xác nhận đang chờ có thể đã mất, p
 On a failed Step or Verification Plan run: stop; do not widen scope, change the Command, or weaken a test; record observed versus expected; repair only the cited cause; after three failed rounds, stop and ask the user.
 
 ## Receipt
+
+Verification: PASS
+Command: `node --test packages/spec/bin/__tests__/codex-hooks.test.js`
+Exit: 0
+Base: 256da6f126c655af328eceeb9789e6d137d5201e
+Head: 51d359d12a7eba7f7416cdf455fc9db0ff70372d67df6ae0617c837e78ff0c26
+
+```text
+ok 27 - Codex compact warns about pending confirmations
+ok 28 - Codex compact warns about pending confirmations with an invalid specs path
+ok 29 - Codex compact clears its pending privacy request even with an invalid specs path
+ok 30 - Codex compact releases only its own rules reservation
+ok 31 - Codex precompact ignores empty stdin without recording a crash
+ok 32 - Codex precompact anchors are restored only to the matching session
+# tests 64
+# pass 64
+# fail 0
+```
+
+- Probe host (controller chạy, Step 1, D-06): codex-cli 0.162.1, `codex exec` trong `CODEX_HOME` tạm (`auth.json` chép không in nội dung; thư mục đã xoá sau probe), `model_auto_compact_token_limit=20000`. Hook ghi: SessionStart `startup` (đối chứng dương), UserPromptSubmit, rồi hai lần PreCompact `trigger: auto` → PostCompact → SessionStart `compact`; cả 8 sự kiện cùng một `session_id`. Kết luận: host gọi PreCompact; ghi ở Known limitations của plan.md.
+- Đỏ trước sửa (Codex báo): Command 4 fail / 63; ca đăng ký installer đỏ 1/1; ca stdin rỗng (vòng review) đỏ 1/1.
+- Counterexample (Codex báo): cho `getHookContext` chạy trước nhánh compact → 2 ca `paths.specs` sai đỏ; đã hoàn tác, file khớp byte.
+- Vòng review 1 (controller): `precompact.cjs` ghi crash giả khi stdin rỗng → Codex thêm guard + ca 31; xanh.
+- Lệnh phụ (controller chạy): orca-session + codex-quiet-hooks + codex-hooks-ownership 31 pass, 0 fail.
+- Self-test (controller chạy): `PASS: 2110 tests executed`, exit 0; `git diff --check` sạch.
+- Probe tĩnh không đổi. Fixture `orca-session` thêm `rules-reservation.cjs`. Installer đăng ký PreCompact qua template `hooks.json` (ca ownership mới), không sửa `bin/phases/codex-hooks.js`.
+- Review controller: `clearState` và nhánh compact chạy trước khi đọc runtime; chỗ giữ rules chuyển sang `lib/rules-reservation.cjs`; anchor tên sha256 phiên dưới `hookStateDir`, in khi `session_id` khớp; git `timeout: 3000`. Commit 256da6f1.
