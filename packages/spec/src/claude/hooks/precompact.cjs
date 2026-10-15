@@ -28,20 +28,10 @@ const { spawnSync } = require('child_process');
 const RECOVERY_FILE = 'compact-recovery.json';
 
 function gitLine(root, args) {
-  const result = spawnSync('git', ['-C', root, ...args], { encoding: 'utf8' });
+  const result = spawnSync('git', ['-C', root, ...args], { encoding: 'utf8', timeout: 3000 });
   if (result.error || result.status !== 0) return null;
   const value = String(result.stdout || '').trim();
   return value === '' ? null : value;
-}
-
-function projectRoot(payload) {
-  const configured = typeof process.env.CLAUDE_PROJECT_DIR === 'string' ? process.env.CLAUDE_PROJECT_DIR.trim() : '';
-  const candidates = [configured, typeof payload.cwd === 'string' ? payload.cwd.trim() : '', process.cwd()];
-  for (const candidate of candidates) {
-    if (!candidate) continue;
-    try { return fs.realpathSync(path.resolve(candidate)); } catch { /* next */ }
-  }
-  return process.cwd();
 }
 
 /** The one task the packet currently says is in flight, if any. */
@@ -73,6 +63,7 @@ try {
   const payload = stdin ? normalizeHookPayload(JSON.parse(stdin)) : {};
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) process.exit(0);
 
+  const { projectRoot } = require('./lib/project-root.cjs');
   const root = projectRoot(payload);
   const status = gitLine(root, ['status', '--porcelain']);
   const record = {

@@ -11,11 +11,15 @@ const { spawnSync } = require('node:child_process');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const crypto = require('node:crypto');
 
 const PRECOMPACT = path.join(__dirname, '..', 'precompact.cjs');
 const SESSION = path.join(__dirname, '..', 'session.cjs');
 const { hookStateDir } = require(path.join(__dirname, '..', 'lib', 'hook-state-dir.cjs'));
 const RECOVERY = path.join(hookStateDir(), 'compact-recovery.json');
+const HOOK_ENV = { ...process.env };
+delete HOOK_ENV.CLAUDE_PROJECT_DIR;
+delete HOOK_ENV.PROJECT_ROOT;
 
 function fixture() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ck-precompact-'));
@@ -40,7 +44,7 @@ function run(hook, dir, payload) {
     cwd: dir,
     input: JSON.stringify(payload),
     encoding: 'utf8',
-    env: { ...process.env, CLAUDE_PROJECT_DIR: dir },
+    env: HOOK_ENV,
   });
   return { code: result.status, stdout: result.stdout || '', stderr: result.stderr || '' };
 }
@@ -194,7 +198,7 @@ test('PreCompact fails open outside a repository and on malformed input', () => 
 
     clearCapture();
     const malformed = spawnSync(process.execPath, [PRECOMPACT], {
-      cwd: dir, input: 'not json', encoding: 'utf8', env: { ...process.env, CLAUDE_PROJECT_DIR: dir },
+      cwd: dir, input: 'not json', encoding: 'utf8', env: HOOK_ENV,
     });
     assert.strictEqual(malformed.status, 0, 'malformed payload must fail open');
     assert.strictEqual(fs.existsSync(RECOVERY), false, 'a malformed payload writes no capture');
@@ -202,4 +206,99 @@ test('PreCompact fails open outside a repository and on malformed input', () => 
     fs.rmSync(dir, { recursive: true, force: true });
     clearCapture();
   }
+});
+
+function installedFixture(callback) {
+  const root = fixture();
+  const source = path.resolve(__dirname, '../..');
+  const manifest = require('../../migration-manifest.json');
+  const sessions = new Set();
+  try {
+    for (const relative of manifest.runtime.files) {
+      const target = path.join(root, '.claude', relative);
+      fs.mkdirSync(path.dirname(target), { recursive: true });
+      fs.copyFileSync(path.join(source, relative), target);
+    }
+    for (const relative of manifest.scripts.required) {
+      const target = path.join(root, '.claude/scripts', relative);
+      fs.mkdirSync(path.dirname(target), { recursive: true });
+      fs.copyFileSync(path.join(source, 'scripts', relative), target);
+    }
+    const hooks = path.join(root, '.claude/hooks');
+    const invoke = (name, payload, overrides = {}) => {
+      if (payload?.session_id) sessions.add(payload.session_id);
+      return spawnSync(process.execPath, [path.join(hooks, `${name}.cjs`)], {
+        cwd: root, env: HOOK_ENV, encoding: 'utf8', timeout: 10000,
+        input: typeof payload === 'string' ? payload : JSON.stringify(payload), ...overrides,
+      });
+    };
+    callback({ root: fs.realpathSync(root), hooks, invoke });
+  } finally {
+    for (const session of sessions) {
+      const key = crypto.createHash('sha256').update(session).digest('hex').slice(0, 16);
+      fs.rmSync(path.join(os.tmpdir(), `cafekit-rules-${key}.json`), { force: true });
+    }
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+}
+
+test('compact reinjects rules only for its own session even without matching anchors', () => {
+  installedFixture(({ root, hooks, invoke }) => {
+    const session = crypto.randomUUID();
+    const other = crypto.randomUUID();
+    const prompt = id => invoke('rules', { hook_event_name: 'UserPromptSubmit', session_id: id, cwd: root });
+    for (const id of [session, other]) {
+      const first = prompt(id);
+      assert.strictEqual(first.status, 0, first.stderr);
+      assert.match(first.stdout, /## Rules/);
+      assert.strictEqual(prompt(id).stdout, '');
+    }
+    fs.mkdirSync(path.join(hooks, '.logs'), { recursive: true });
+    fs.writeFileSync(path.join(hooks, '.logs/compact-recovery.json'), JSON.stringify({ session_id: other }));
+    const compact = invoke('session', { hook_event_name: 'SessionStart', source: 'compact', session_id: session, cwd: root });
+    assert.strictEqual(compact.status, 0, compact.stderr);
+    assert.match(compact.stdout, /SESSION COMPRESSED/);
+    assert.doesNotMatch(compact.stdout, /State before compaction/);
+    const again = prompt(session);
+    assert.strictEqual(again.status, 0, again.stderr);
+    assert.match(again.stdout, /## Rules/);
+    assert.strictEqual(prompt(other).stdout, '');
+  });
+});
+
+test('malformed session input fails open without a stack and logs its crash', () => {
+  installedFixture(({ hooks, invoke }) => {
+    const result = invoke('session', '{');
+    assert.strictEqual(result.status, 0);
+    assert.strictEqual(result.stderr, '');
+    const rows = fs.readFileSync(path.join(hooks, '.logs/hook-log.jsonl'), 'utf8').trim().split('\n').map(line => JSON.parse(line));
+    assert.strictEqual(rows.length, 1);
+    assert.strictEqual(rows[0].hook, 'session');
+    assert.strictEqual(rows[0].status, 'crash');
+  });
+});
+
+test('installed session explains a nested cwd but omits the root line without a cwd', () => {
+  installedFixture(({ root, invoke }) => {
+    const cwd = path.join(root, 'sub/dir');
+    fs.mkdirSync(cwd, { recursive: true });
+    const nested = invoke('session', { source: 'startup', cwd }, { cwd });
+    assert.strictEqual(nested.status, 0, nested.stderr);
+    assert.ok(nested.stdout.includes(`CafeKit project root: ${root} (session working directory: ${cwd}).`));
+    const missing = invoke('session', { source: 'startup' }, { cwd });
+    assert.strictEqual(missing.status, 0, missing.stderr);
+    assert.doesNotMatch(missing.stdout, /CafeKit project root:/);
+  });
+});
+
+test('PreCompact bounds slow git calls and finishes within ten seconds', { timeout: 15000 }, () => {
+  installedFixture(({ root, invoke }) => {
+    const bin = path.join(root, 'fake-bin');
+    fs.mkdirSync(bin);
+    fs.writeFileSync(path.join(bin, 'git'), '#!/bin/sh\nexec /bin/sleep 30\n', { mode: 0o755 });
+    const start = Date.now();
+    const result = invoke('precompact', { hook_event_name: 'PreCompact', cwd: root }, { env: { ...HOOK_ENV, PATH: bin } });
+    assert.strictEqual(result.status, 0, 'slow git must not exhaust the hook timeout');
+    assert.ok(Date.now() - start < 10000);
+  });
 });

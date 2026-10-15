@@ -11,11 +11,23 @@
  * Exit: 0 always (fail-open)
  */
 
+function logCrash(error) {
+  try {
+    const fs = require('fs'), path = require('path');
+    const dir = require('./lib/hook-state-dir.cjs').hookStateDir();
+    fs.mkdirSync(dir, { recursive: true });
+    fs.appendFileSync(path.join(dir, 'hook-log.jsonl'),
+      JSON.stringify({ ts: new Date().toISOString(), hook: 'session', status: 'crash', error: error.message }) + '\n');
+  } catch (_) {}
+}
+
 try {
   const fs   = require('fs');
   const path = require('path');
   const { runtimeDirName, runtimeDir, runtimePath } = require('./lib/runtime-dir.cjs');
   const os   = require('os');
+  const { projectRoot } = require('./lib/project-root.cjs');
+  const { clearSessionReservation } = require('./lib/rules-reservation.cjs');
   const { execSync } = require('child_process');
 
   // ── Utilities ─────────────────────────────────────────────────────────────
@@ -39,21 +51,6 @@ try {
       const safe = String(value ?? '').replace(/([\\$`"])/g, '\\$1');
       fs.appendFileSync(file, `export ${key}="${safe}"\n`);
     } catch { /* fail-open */ }
-  }
-
-  function projectRoot() {
-    const configured = typeof process.env.CLAUDE_PROJECT_DIR === 'string'
-      ? process.env.CLAUDE_PROJECT_DIR.trim()
-      : '';
-    if (configured) {
-      try { return fs.realpathSync(path.resolve(configured)); } catch { /* continue */ }
-    }
-
-    const installedRoot = path.resolve(__dirname, '..', '..');
-    const installedHook = runtimePath(installedRoot, 'hooks', path.basename(__filename));
-    if (fs.existsSync(installedHook)) return installedRoot;
-
-    try { return fs.realpathSync(process.cwd()); } catch { return path.resolve(process.cwd()); }
   }
 
   /** Read <runtime>/runtime.json config */
@@ -199,8 +196,9 @@ try {
   const { normalizeHookPayload } = require('./lib/hook-payload.cjs');
   const payload = stdin ? normalizeHookPayload(JSON.parse(stdin)) : {};
   const source  = payload.source || 'unknown';
+  if (source === 'compact') clearSessionReservation(payload.session_id);
   const envFile = process.env.CLAUDE_ENV_FILE;
-  const cwd     = projectRoot();
+  const cwd     = projectRoot(payload);
   const runtime = readRuntime(cwd);
 
   // Check CafeKit update in parallel with project detection (async, fail-open).
@@ -260,6 +258,14 @@ try {
 
   console.log(`Session ${source}. ${parts.length ? parts.join(' | ') : 'No project info detected.'}${updateNotice}`);
 
+  if (typeof payload.cwd === 'string' && payload.cwd) {
+    let sessionCwd = path.resolve(payload.cwd);
+    try { sessionCwd = fs.realpathSync(sessionCwd); } catch { /* lexical fallback */ }
+    if (sessionCwd !== cwd) {
+      console.log(`CafeKit project root: ${cwd} (session working directory: ${sessionCwd}).`);
+    }
+  }
+
   // Compact warning — context compaction can lose pending approval state
   if (source === 'compact') {
     console.log('\n🚨 SESSION COMPRESSED — VERIFY PENDING AUTHORIZATIONS:');
@@ -296,15 +302,12 @@ try {
   }
 
   process.exit(0);
-  })(); // end async IIFE
+  })().catch((error) => {
+    logCrash(error);
+    process.exit(0);
+  });
 
-} catch (e) {
-  try {
-    const fs = require('fs'), p = require('path');
-    const d = require('./lib/hook-state-dir.cjs').hookStateDir();
-    if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
-    fs.appendFileSync(p.join(d, 'hook-log.jsonl'),
-      JSON.stringify({ ts: new Date().toISOString(), hook: 'session', status: 'crash', error: e.message }) + '\n');
-  } catch (_) {}
+} catch (error) {
+  logCrash(error);
   process.exit(0);
 }

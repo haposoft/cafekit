@@ -6,6 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+- Claude compact restarts release their own rules reservation; session hooks share project-root resolution, log asynchronous failures, and bound precompact git calls.
 - State hooks now track Claude Agent events, lock Claude snapshot writes, log asynchronous failures, and omit secret-related assistant summaries on both hosts.
 - Claude spec-state now reads project-root configuration, shares packet touch helpers with Codex, and keeps tollgate caches separate per session.
 

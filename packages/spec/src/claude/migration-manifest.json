@@ -173,6 +173,7 @@
       "hooks/lib/runtime-dir.cjs",
       "hooks/lib/spec-touch.cjs",
       "hooks/lib/project-root.cjs",
+      "hooks/lib/rules-reservation.cjs",
       "hooks/lib/hook-payload.cjs",
       "hooks/lib/inspect-paths.cjs",
       "hooks/lib/privacy-command-analysis.cjs",

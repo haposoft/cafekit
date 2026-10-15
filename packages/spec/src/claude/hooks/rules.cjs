@@ -11,38 +11,17 @@
  */
 
 try {
-  const crypto = require('crypto');
   const fs   = require('fs');
-  const os   = require('os');
   const path = require('path');
 
   const { runtimeDirName, runtimeDir, runtimePath } = require('./lib/runtime-dir.cjs');
   const { projectRoot } = require('./lib/project-root.cjs');
+  const { reserveSession } = require('./lib/rules-reservation.cjs');
   function readRuntime(cwd) {
     try {
       const p = runtimePath(cwd, 'runtime.json');
       return fs.existsSync(p) ? JSON.parse(fs.readFileSync(p, 'utf8')) : null;
     } catch { return null; }
-  }
-
-  /** Reserve one injection slot per session. Returns null on reservation errors. */
-  function reserveSession(sessionId) {
-    if (!sessionId) return null;
-    try {
-      const key = crypto.createHash('sha256')
-        .update(String(sessionId))
-        .digest('hex')
-        .slice(0, 16);
-      const file = path.join(os.tmpdir(), `cafekit-rules-${key}.json`);
-      fs.writeFileSync(file, JSON.stringify({ sessionId: String(sessionId) }), {
-        encoding: 'utf8',
-        flag: 'wx',
-        mode: 0o600
-      });
-      return true;
-    } catch (error) {
-      return error.code === 'EEXIST' ? false : null;
-    }
   }
 
   // ── Main ──────────────────────────────────────────────────────────────────
