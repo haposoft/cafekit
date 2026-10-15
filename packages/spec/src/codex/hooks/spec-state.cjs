@@ -42,6 +42,7 @@ try {
     process.exit(0);
   }
   const POLICY = loaded.policy;
+  require(path.join(path.dirname(loaded.path), 'provenance.cjs')).enableSnapshotMemo();
   const receiptLoaded = loadSharedReceipt();
   if (!receiptLoaded.receipt) throw receiptLoaded.error;
   const RECEIPT = receiptLoaded.receipt;

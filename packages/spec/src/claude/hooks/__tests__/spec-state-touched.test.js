@@ -158,3 +158,56 @@ test('a legacy packet is noticed even when it is the only packet', () => {
     assert.match(fx.prompt('s1', 'Continue'), LEGACY_NOTICE);
   });
 });
+
+test('Claude spec-state uses one snapshot for done task receipts', (t) => {
+  within(fixture(['auth-flow']), (fx) => {
+    const trace = fs.mkdtempSync(path.join(os.tmpdir(), 'ck-snapshot-count-'));
+    try {
+      const feature = path.join(fx.root, 'specs/auth-flow');
+      const tasks = ['task-01-work.md', 'task-02-work.md'];
+      for (const name of tasks) fs.writeFileSync(path.join(feature, name), taskContent('done'));
+      fs.writeFileSync(path.join(feature, 'task-03-work.md'), taskContent('in_progress'));
+      const scripts = path.join(fx.root, '.claude/scripts');
+      const provenance = require(path.join(scripts, 'provenance.cjs'));
+      const policy = require(path.join(scripts, 'workflow-policy.cjs'));
+      const receipt = require(path.join(scripts, 'spec-receipt.cjs'));
+      const context = provenance.deriveRuntimeContext({ projectRoot: fx.root,
+        specsRoot: path.join(fx.root, 'specs'), specFile: path.join(feature, 'plan.md'),
+        featureName: 'auth-flow', runtimeSession: 'one-snapshot' });
+      for (const name of tasks) {
+        fs.appendFileSync(path.join(feature, name), [
+          '\n## Receipt', '', 'Verification: PASS', 'Command: node --test', 'Exit: 0',
+          `Base: ${context.base}`, `Head: ${context.head}`, '```text', '1 test passed', '```', '',
+        ].join('\n'));
+        assert.deepStrictEqual(receipt.checkWorkflowTaskReceipt(feature, name, context, policy).failures, []);
+      }
+      const countFile = path.join(trace, 'git-status.txt');
+      const preload = path.join(trace, 'count.cjs');
+      fs.writeFileSync(preload, `
+const cp = require('node:child_process');
+const fs = require('node:fs');
+const path = require('node:path');
+for (const method of ['spawnSync', 'execFileSync']) {
+  const original = cp[method];
+  cp[method] = function(command, args, ...rest) {
+    if (path.basename(String(command)) === 'git' && Array.isArray(args) && args.includes('status'))
+      fs.appendFileSync(${JSON.stringify(countFile)}, 'status\\n');
+    return original.call(this, command, args, ...rest);
+  };
+}
+`);
+      const result = spawnSync(process.execPath, [path.join(fx.hooks, 'spec-state.cjs')], {
+        cwd: fx.root, encoding: 'utf8',
+        env: { ...process.env, PROJECT_ROOT: fx.root,
+          NODE_OPTIONS: `${process.env.NODE_OPTIONS || ''} --require ${JSON.stringify(preload)}` },
+        input: JSON.stringify({ cwd: fx.root, hook_event_name: 'UserPromptSubmit',
+          session_id: 'one-snapshot', prompt: 'Continue specs/auth-flow' }),
+      });
+      assert.strictEqual(result.status, 0, result.stderr);
+      assert.match(result.stdout, /Spec state changed/);
+      const count = fs.readFileSync(countFile, 'utf8').trim().split('\n').length;
+      t.diagnostic(`Claude git status calls: ${count}`);
+      assert.ok(count > 0 && count <= 2, `git status calls: ${count}; expected at most 2`);
+    } finally { fs.rmSync(trace, { recursive: true, force: true }); }
+  });
+});

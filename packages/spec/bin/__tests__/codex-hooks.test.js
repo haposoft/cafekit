@@ -383,6 +383,57 @@ test('Codex Stop still blocks a recorded missing packet and reads a plan.md + sp
   });
 });
 
+test('Codex installed spec-state uses one snapshot for done task receipts', (t) => {
+  inInstalledProcessSpecStateFixture(({ feature, hooks, root, writeTask }) => {
+    const trace = fs.mkdtempSync(path.join(os.tmpdir(), 'ck-codex-snapshot-count-'));
+    try {
+      const tasks = ['task-01-work.md', 'task-02-work.md'];
+      for (const name of tasks) writeTask(name, name, 'done');
+      writeTask('task-03-work.md', 'Task 03: work', 'in_progress');
+      const scripts = path.join(root, '.codex/scripts');
+      const provenance = require(path.join(scripts, 'provenance.cjs'));
+      const policy = require(path.join(scripts, 'workflow-policy.cjs'));
+      const receipt = require(path.join(scripts, 'spec-receipt.cjs'));
+      const context = provenance.deriveRuntimeContext({ projectRoot: root,
+        specsRoot: path.join(root, 'specs'), specFile: path.join(feature, 'plan.md'),
+        featureName: 'auth', runtimeSession: 'one-snapshot' });
+      for (const name of tasks) {
+        fs.appendFileSync(path.join(feature, name), [
+          '\n## Receipt', '', 'Verification: PASS', 'Command: node --test', 'Exit: 0',
+          `Base: ${context.base}`, `Head: ${context.head}`, '```text', '1 test passed', '```', '',
+        ].join('\n'));
+        assert.deepEqual(receipt.checkWorkflowTaskReceipt(feature, name, context, policy).failures, []);
+      }
+      const countFile = path.join(trace, 'git-status.txt');
+      const preload = path.join(trace, 'count.cjs');
+      fs.writeFileSync(preload, `
+const cp = require('node:child_process');
+const fs = require('node:fs');
+const path = require('node:path');
+for (const method of ['spawnSync', 'execFileSync']) {
+  const original = cp[method];
+  cp[method] = function(command, args, ...rest) {
+    if (path.basename(String(command)) === 'git' && Array.isArray(args) && args.includes('status'))
+      fs.appendFileSync(${JSON.stringify(countFile)}, 'status\\n');
+    return original.call(this, command, args, ...rest);
+  };
+}
+`);
+      const result = spawnSync(process.execPath, [path.join(hooks, 'spec-state.cjs')], {
+        cwd: root, encoding: 'utf8',
+        env: { ...process.env, NODE_OPTIONS: `${process.env.NODE_OPTIONS || ''} --require ${JSON.stringify(preload)}` },
+        input: JSON.stringify({ cwd: root, featureName: 'auth', hook_event_name: 'UserPromptSubmit',
+          session_id: 'one-snapshot', prompt: 'Continue specs/auth' }),
+      });
+      assert.equal(result.status, 0, result.stderr);
+      assert.match(result.stdout, /Spec state changed/);
+      const count = fs.readFileSync(countFile, 'utf8').trim().split('\n').length;
+      t.diagnostic(`Codex git status calls: ${count}`);
+      assert.ok(count > 0 && count <= 2, `git status calls: ${count}; expected at most 2`);
+    } finally { fs.rmSync(trace, { recursive: true, force: true }); }
+  });
+});
+
 test('Codex installed spec-state re-evaluates a standalone task when blocked becomes pending', () => {
   inInstalledProcessSpecStateFixture(({ findCacheFile, hooks, runState, writeTask }) => {
     writeTask('task-01-auth.md', 'Task 01: auth', 'blocked');

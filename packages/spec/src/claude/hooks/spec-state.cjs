@@ -94,6 +94,7 @@ try {
   let RECEIPT;
   try {
     POLICY = require(path.join(__dirname, '..', 'scripts', 'workflow-policy.cjs'));
+    require(path.join(__dirname, '..', 'scripts', 'provenance.cjs')).enableSnapshotMemo();
     RESOLVER = require(path.join(__dirname, '..', 'scripts', 'spec-resolver.cjs'));
     RECEIPT = require(path.join(__dirname, '..', 'scripts', 'spec-receipt.cjs'));
     if (typeof RESOLVER.resolveWorkflowCandidate !== 'function') throw new Error('shared spec resolver has no resolveWorkflowCandidate function');
