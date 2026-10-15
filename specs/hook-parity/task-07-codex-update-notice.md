@@ -1,6 +1,6 @@
 # Task 07 — Thông báo cập nhật cho Codex
 
-Status: in_progress
+Status: done
 
 ## Outcome
 Phiên Codex báo khi có bản CafeKit mới, cùng chữ và cùng cache 12 giờ như Claude, và cache không thể bị dùng để chèn câu tuỳ ý.
@@ -49,3 +49,32 @@ Phiên Codex báo khi có bản CafeKit mới, cùng chữ và cùng cache 12 gi
 On a failed Step or Verification Plan run: stop; do not widen scope, change the Command, or weaken a test; record observed versus expected; repair only the cited cause; after three failed rounds, stop and ask the user.
 
 ## Receipt
+
+Verification: PASS
+Command: `node --test packages/spec/src/claude/hooks/__tests__/update-check.test.js packages/spec/bin/__tests__/codex-hooks.test.js`
+Exit: 0
+Base: 2bfbfeaacbfdb56f35c74f68d893070b3c748e6d
+Head: c5bd7d817e8a6f575cdb3f7a6f63a238065a6f2efb8bc251414b5dd623b14647
+
+```text
+ok 33 - Codex SessionStart prints a newer cached CafeKit version
+ok 34 - Codex SessionStart stays silent about an equal cached CafeKit version
+ok 35 - Codex update failure still clears pending privacy for the session
+ok 68 - a newer version produces the existing notice and caches only version data
+ok 69 - the installed version produces no update notice
+ok 70 - an invalid cached latest version is refetched instead of printed
+ok 71 - a cache timestamp in the future requires a fresh version fetch
+ok 72 - a legacy notice cache cannot inject its stored text into the session
+ok 73 - an interrupted version response fails open without an unhandled error
+# tests 73
+# pass 73
+# fail 0
+```
+
+- Đỏ trước sửa (Codex báo): 6/72; ca response bị ngắt (thêm trong lúc làm) đỏ 1/1 trước khi sửa.
+- Counterexample (Codex báo): lib trả nguyên `cache.notice` → ca cache cũ đỏ; đã hoàn tác, file khớp byte.
+- Vòng review 1 (controller): lib có nhánh `EISDIR` rethrow chỉ để test ép lỗi → bỏ nhánh, ca "update failure" ghi đè `update-check.cjs` trong fixture bằng module throw; assertion giữ nguyên.
+- Lệnh phụ (controller chạy): codex-hooks-ownership + codex-native-hook-boundaries + orca-session + omp-hooks + session-writeenv 38 pass, 0 fail.
+- Self-test (controller chạy): `PASS: 2119 tests executed`, exit 0; `cmp` `.claude/hooks/session.cjs`, `lib/update-check.cjs` khớp nguồn; `git diff --check` sạch.
+- Probe tĩnh không đổi. Fixture chép lib: `codex-hooks`, `codex-quiet-hooks`, `codex-native-hook-boundaries`, `orca-session` thêm `update-check.cjs`. Installer Codex chép `update-check.cjs` đè shim.
+- Review controller: không ca nào gọi mạng thật; cache chỉ `{ts, latest}`, `latest` khớp `^\d+\.\d+\.\d+$`, `ts` tương lai bị bỏ; Codex gọi sau `clearState`, trong `try` riêng; Claude `.catch(() => '')`. Commit 2bfbfeaa.

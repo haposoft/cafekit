@@ -1,6 +1,6 @@
 # Task 08 — Privacy hiển thị thống nhất
 
-Status: pending
+Status: in_progress
 
 ## Outcome
 Khi hỏi quyền đọc file nhạy cảm, Claude, omp và Codex nêu cùng danh sách tên; Claude hỏi lại thay vì cho qua khi không đọc được payload.
