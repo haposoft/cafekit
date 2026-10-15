@@ -1,6 +1,6 @@
 # Task 03 — Codex ghi state khi tạo subagent
 
-Status: pending
+Status: in_progress
 
 ## Outcome
 Khi Codex 0.162.1 gọi `collaborationspawn_agent`, hook state Codex ghi lần gọi đó vào state của phiên, như đã làm với `spawn_agent`.

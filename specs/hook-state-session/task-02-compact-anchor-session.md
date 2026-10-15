@@ -1,6 +1,6 @@
 # Task 02 — Anchor compact chỉ in cho đúng phiên
 
-Status: pending
+Status: done
 
 ## Outcome
 Sau compact, Claude chỉ in "State before compaction" khi anchor do chính phiên đó ghi. Cảnh báo xác nhận vẫn in mọi lần compact.
@@ -48,3 +48,28 @@ Sau compact, Claude chỉ in "State before compaction" khi anchor do chính phi�
 On a failed Step or Verification Plan run: stop; do not widen scope, change the Command, or weaken a test; record observed versus expected; repair only the cited cause; after three failed rounds, stop and ask the user.
 
 ## Receipt
+
+Verification: PASS
+Command: `node --test packages/spec/src/claude/hooks/__tests__/precompact.test.js packages/spec/src/claude/hooks/__tests__/session-writeenv.test.js`
+Exit: 0
+Base: 1f2557337343e0a07d2b524465b1edf425991951
+Head: a9bf9643e09722e232c83dd1616e61a143cbb6022bd02cd7280b0ada139c5aee
+
+```text
+ok 2 - a compact restart prints the captured anchors alongside the authorization warning
+ok 3 - a compact restart without a capture still prints the warning and nothing invented
+ok 4 - a compact restart in another session prints the warning without foreign anchors
+ok 5 - a compact restart in the same session restores its captured anchors
+ok 6 - a compact restart without capture session identity keeps only the warning
+ok 7 - a compact restart without restart session identity keeps only the warning
+ok 8 - a compact restart without either session identity keeps only the warning
+ok 9 - a normal session start prints no compaction anchors
+# tests 12
+# pass 12
+# fail 0
+```
+
+- Đỏ trước sửa (Codex báo, Step 1): 4 test đỏ — 8 pass, 4 fail.
+- Counterexample (Codex báo): bỏ phép so `session_id` → ca phiên khác đỏ; đã hoàn tác.
+- Self-test (controller chạy): `PASS: 2072 tests executed`, exit 0; `cmp .claude/hooks/session.cjs` với nguồn khớp; `git diff --check` sạch.
+- Review controller: một dòng so `record.session_id` với `payload.session_id` đã normalize (grok `sessionId` vẫn khớp); thoát sớm tương đương vì khối anchor là bước cuối trước `process.exit(0)`; test cũ chỉ thêm cùng `session_id` vào hai payload, assertion giữ nguyên. Commit 1f255733.
