@@ -3,13 +3,18 @@
 
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const { execFileSync } = require('child_process');
 const {
-  getHookContext,
+  PROJECT_ROOT,
+  hookStateDir,
+  readRuntime,
+  resolveSessionCwd,
   logCrash,
   readPayload
 } = require('./lib/hook-context.cjs');
 const { clearState } = require('./lib/privacy-state.cjs');
+const { clearSessionReservation } = require('./lib/rules-reservation.cjs');
 
 function readPackage(projectRoot) {
   try {
@@ -69,10 +74,42 @@ function gitBranch(projectRoot) {
   }
 }
 
+function printCompactAnchors(projectRoot, sessionId) {
+  if (!sessionId) return;
+  try {
+    const key = crypto.createHash('sha256').update(sessionId).digest('hex');
+    const file = path.join(hookStateDir(projectRoot), `compact-recovery-${key}.json`);
+    const record = JSON.parse(fs.readFileSync(file, 'utf8'));
+    if (record.session_id !== sessionId) return;
+    const parts = [];
+    if (record.branch) parts.push(`branch ${record.branch}`);
+    if (record.head) parts.push(`HEAD ${record.head}`);
+    if (typeof record.dirty_count === 'number') parts.push(`${record.dirty_count} uncommitted path(s)`);
+    process.stdout.write('\n=== State before compaction ===\n');
+    if (record.captured_at) process.stdout.write(`Captured: ${record.captured_at}\n`);
+    if (parts.length) process.stdout.write(`Repository: ${parts.join(' | ')}\n`);
+    process.stdout.write('Re-read these from disk before acting; they describe the moment before compaction.\n');
+    process.stdout.write('=== End of pre-compaction state ===\n');
+  } catch { /* no matching capture available */ }
+}
+
 try {
   const payload = readPayload();
   if (!payload) process.exit(0);
-  const { projectRoot, runtime, sessionCwd } = getHookContext(payload);
+  // Invalidate this session before runtime configuration can interrupt startup.
+  const sessionId = [payload.session_id, payload.sessionId, payload.sessionID, payload.session?.id]
+    .find((value) => typeof value === 'string' && value.trim());
+  clearState(PROJECT_ROOT, sessionId);
+  if (payload.source === 'compact') {
+    clearSessionReservation(PROJECT_ROOT, sessionId);
+    process.stdout.write(
+      'Session compacted. Pending confirmations may have been lost. Pending CafeKit privacy approvals were invalidated; request fresh user approval before continuing.\n'
+    );
+    printCompactAnchors(PROJECT_ROOT, sessionId);
+  }
+  const projectRoot = PROJECT_ROOT;
+  const runtime = readRuntime(PROJECT_ROOT);
+  const sessionCwd = resolveSessionCwd(payload);
   const pkg = readPackage(projectRoot);
   const configured = runtime.project || {};
   const projectType = configured.type && configured.type !== 'auto'
@@ -85,11 +122,6 @@ try {
     ? configured.framework
     : detectFramework(pkg);
   const branch = gitBranch(projectRoot);
-
-  // Invalidate this session only; another pane retains its own approvals.
-  const sessionId = [payload.session_id, payload.sessionId, payload.sessionID, payload.session?.id]
-    .find((value) => typeof value === 'string' && value.trim());
-  clearState(projectRoot, sessionId);
 
   // Orca (onorca.dev) sets ORCA_PANE_KEY in every pane; it is a presence marker, not a
   // secret. ORCA_AGENT_HOOK_TOKEN and ORCA_AGENT_LAUNCH_TOKEN live in the same
@@ -109,11 +141,6 @@ try {
   if (sessionCwd !== projectRoot) {
     process.stdout.write(
       `CafeKit project root: ${projectRoot} (session working directory: ${sessionCwd}).\n`
-    );
-  }
-  if (payload.source === 'compact') {
-    process.stdout.write(
-      'Session compacted. Pending CafeKit privacy approvals were invalidated; request fresh user approval if needed.\n'
     );
   }
 } catch (error) {

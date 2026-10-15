@@ -149,6 +149,8 @@ function composeCodexHookTree(root) {
     path.join(hooksDir, 'lib', 'hook-context.cjs'));
   fs.copyFileSync(path.join(PACKAGE_ROOT, 'src/codex/hooks/lib/privacy-state.cjs'),
     path.join(hooksDir, 'lib', 'privacy-state.cjs'));
+  fs.copyFileSync(path.join(PACKAGE_ROOT, 'src/codex/hooks/lib/rules-reservation.cjs'),
+    path.join(hooksDir, 'lib', 'rules-reservation.cjs'));
   fs.copyFileSync(path.join(PACKAGE_ROOT, 'src/claude/hooks/lib/runtime-path-safety.cjs'),
     path.join(hooksDir, 'lib', 'runtime-path-safety.cjs'));
   return path.join(hooksDir, 'session.cjs');

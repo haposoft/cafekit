@@ -79,6 +79,17 @@ function addUserHooks(root) {
   fs.writeFileSync(hooksPath(root), `${JSON.stringify(config, null, 2)}\n`);
 }
 
+test('a fresh install registers the precompact capture hook', () => {
+  inTempProject((root) => {
+    assert.ok(managedScripts().PreCompact?.includes('precompact.cjs'));
+    const result = install(root);
+    assert.equal(result.status, 0, result.stderr);
+    const scripts = (readHooks(root).hooks.PreCompact || []).flatMap(group => group.hooks || []).map(handler => hookScript(handler.command));
+    assert.ok(scripts.includes('precompact.cjs'));
+    assert.ok(fs.existsSync(path.join(root, '.codex/hooks/precompact.cjs')));
+  });
+});
+
 test('a fresh install registers every CafeKit hook under its own event', () => {
   inTempProject((root) => {
     const result = install(root);

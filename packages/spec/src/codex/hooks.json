@@ -18,6 +18,18 @@
         ]
       }
     ],
+    "PreCompact": [
+      {
+        "matcher": "auto|manual",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \".codex/hooks/precompact.cjs\"",
+            "commandWindows": "node \".codex/hooks/precompact.cjs\""
+          }
+        ]
+      }
+    ],
     "SubagentStart": [
       {
         "matcher": "*",

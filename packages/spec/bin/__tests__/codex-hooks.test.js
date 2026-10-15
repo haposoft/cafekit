@@ -763,6 +763,93 @@ test('Codex secret guardrail fails open without a keyword library or a stack', (
   });
 });
 
+for (const invalidSpecs of [false, true]) {
+  test(`Codex compact warns about pending confirmations${invalidSpecs ? ' with an invalid specs path' : ''}`, () => {
+    inHookFixture((root, hooks) => {
+      fs.writeFileSync(path.join(root, '.codex/runtime.json'), JSON.stringify({ paths: { specs: invalidSpecs ? '../outside' : 'specs' } }));
+      const result = runHook(path.join(hooks, 'session.cjs'), root, {
+        cwd: root, hook_event_name: 'SessionStart', source: 'compact', session_id: 'compact-session',
+      });
+      assert.equal(result.status, 0);
+      assert.match(result.stdout, /Pending.*(?:confirmation|approval)/i);
+      assert.match(result.stdout, /(?:request|ask).*?(?:fresh|again|user)/i);
+    });
+  });
+}
+
+test('Codex compact clears its pending privacy request even with an invalid specs path', () => {
+  inHookFixture((root, hooks) => {
+    const privacy = require(path.join(hooks, 'lib/privacy-state.cjs'));
+    privacy.createPending({ projectRoot: root, sessionCwd: root, sessionId: 'compact-session', filePaths: ['.env'] });
+    const dir = path.join(hooks, '.privacy');
+    const pending = () => fs.readdirSync(dir).filter(name => name.startsWith('pending-'));
+    assert.equal(pending().length, 1);
+    fs.writeFileSync(path.join(root, '.codex/runtime.json'), JSON.stringify({ paths: { specs: '../outside' } }));
+    const result = runHook(path.join(hooks, 'session.cjs'), root, {
+      cwd: root, hook_event_name: 'SessionStart', source: 'compact', session_id: 'compact-session',
+    });
+    assert.equal(result.status, 0);
+    assert.equal(pending().length, 0);
+  });
+});
+
+test('Codex compact releases only its own rules reservation', () => {
+  inHookFixture((root, hooks) => {
+    fs.writeFileSync(path.join(root, '.codex/runtime.json'), '{}');
+    const prompt = session_id => runHook(path.join(hooks, 'rules.cjs'), root, { cwd: root, hook_event_name: 'UserPromptSubmit', session_id });
+    for (const id of ['session-s', 'session-t']) {
+      assert.match(prompt(id).stdout, /## Rules/);
+      assert.equal(prompt(id).stdout, '');
+    }
+    const compact = runHook(path.join(hooks, 'session.cjs'), root, {
+      cwd: root, hook_event_name: 'SessionStart', source: 'compact', session_id: 'session-s',
+    });
+    assert.equal(compact.status, 0);
+    assert.match(prompt('session-s').stdout, /## Rules/);
+    assert.equal(prompt('session-t').stdout, '');
+  });
+});
+
+test('Codex precompact ignores empty stdin without recording a crash', () => {
+  inHookFixture((root, hooks) => {
+    const result = spawnSync(process.execPath, [path.join(hooks, 'precompact.cjs')], {
+      cwd: root, input: '', encoding: 'utf8',
+    });
+    assert.equal(result.status, 0);
+    assert.equal(result.stderr, '');
+    const file = path.join(hooks, '.logs/hook-log.jsonl');
+    const rows = fs.existsSync(file)
+      ? fs.readFileSync(file, 'utf8').trim().split('\n').filter(Boolean).map(line => JSON.parse(line))
+      : [];
+    assert.equal(rows.filter(row => row.hook === 'precompact' && row.status === 'crash').length, 0);
+  });
+});
+
+test('Codex precompact anchors are restored only to the matching session', () => {
+  inHookFixture((root, hooks) => {
+    const head = spawnSync('git', ['rev-parse', '--short', 'HEAD'], { cwd: root, encoding: 'utf8' }).stdout.trim();
+    const status = spawnSync('git', ['status', '--porcelain'], { cwd: root, encoding: 'utf8' });
+    assert.equal(status.status, 0);
+    const dirty = status.stdout.trim().split('\n').filter(Boolean).length;
+    const capture = runHook(path.join(hooks, 'precompact.cjs'), root, {
+      cwd: root, hook_event_name: 'PreCompact', trigger: 'auto', session_id: 'session-s',
+    });
+    assert.equal(capture.status, 0, capture.stderr);
+    const restart = session_id => runHook(path.join(hooks, 'session.cjs'), root, {
+      cwd: root, hook_event_name: 'SessionStart', source: 'compact', session_id,
+    });
+    const own = restart('session-s');
+    assert.equal(own.status, 0);
+    assert.match(own.stdout, /State before compaction/);
+    assert.ok(own.stdout.includes(`HEAD ${head}`));
+    assert.ok(own.stdout.includes(`${dirty} uncommitted path(s)`));
+    const other = restart('session-t');
+    assert.equal(other.status, 0);
+    assert.match(other.stdout, /Pending/i);
+    assert.doesNotMatch(other.stdout, /State before compaction/);
+  });
+});
+
 test('Codex privacy approval is exact, session-bound, and reusable within its window', () => {
   inHookFixture((root, hooks) => {
     const nested = path.join(root, 'packages', 'app');
