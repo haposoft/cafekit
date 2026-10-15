@@ -74,6 +74,7 @@ function isTrackedTool(toolName) {
   const name = String(toolName || '').toLowerCase();
   return name === 'agent'
     || name === 'spawn_agent'
+    || name === 'collaborationspawn_agent'
     || name === 'update_plan'
     || name.includes('task')
     || name.includes('todo');
@@ -132,7 +133,7 @@ try {
       const data = readData(dir);
       const input = payload.tool_input || {};
       const response = payload.tool_response;
-      updateTaskState(data, input, response);
+      if (!['spawn_agent', 'collaborationspawn_agent'].includes(String(toolName).toLowerCase())) updateTaskState(data, input, response);
       data.lastToolEvent = `${toolName}: ${summary(response) || summary(input)}`.slice(0, 700);
       refreshGit(data, projectRoot);
       writeData(dir, data);

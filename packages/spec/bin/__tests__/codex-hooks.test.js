@@ -233,6 +233,42 @@ function inNoCommitCodexFixture(run) {
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 }
 
+test('Codex collaborationspawn_agent appears as the latest tracked tool on resume', () => {
+  inHookFixture((root, hooks) => {
+    const state = path.join(hooks, 'state.cjs');
+    const session = { cwd: root, session_id: 'spawn-tracking' };
+    const tracked = runHook(state, root, {
+      ...session, hook_event_name: 'PostToolUse', tool_name: 'collaborationspawn_agent',
+      tool_input: { message: 'Inspect the parser behavior' },
+    });
+    assert.equal(tracked.status, 0, tracked.stderr);
+    const resumed = runHook(state, root, { ...session, hook_event_name: 'SessionStart', source: 'resume' });
+    assert.equal(resumed.status, 0, resumed.stderr);
+    assert.match(resumed.stdout, /Latest Tracked Tool/);
+    assert.match(resumed.stdout, /collaborationspawn_agent/);
+  });
+});
+
+test('Codex collaborationspawn_agent input does not create a pending todo', () => {
+  inHookFixture((root, hooks) => {
+    const state = path.join(hooks, 'state.cjs');
+    const session = { cwd: root, session_id: 'spawn-no-todo' };
+    const title = 'Inspect parser without creating a todo';
+    const tracked = runHook(state, root, {
+      ...session, hook_event_name: 'PostToolUse', tool_name: 'collaborationspawn_agent',
+      tool_input: { id: 'spawn-child', title },
+    });
+    assert.equal(tracked.status, 0, tracked.stderr);
+    const resumed = runHook(state, root, { ...session, hook_event_name: 'SessionStart', source: 'resume' });
+    assert.equal(resumed.status, 0, resumed.stderr);
+    assert.match(resumed.stdout, /Latest Tracked Tool/);
+    assert.match(resumed.stdout, /collaborationspawn_agent/);
+    const pending = resumed.stdout.match(/## What's Left\n([\s\S]*?)(?=\n## |$)/);
+    assert.ok(pending, 'the pending task section must be present');
+    assert.ok(!pending[1].includes(title), 'spawn metadata must not become a pending task');
+  });
+});
+
 test('Codex no commits allows Stop without done tasks and prints one reminder', () => {
   inNoCommitCodexFixture(({ writePacket, gate, state }) => {
     writePacket('auth', 'in_progress');
