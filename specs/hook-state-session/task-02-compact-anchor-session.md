@@ -36,7 +36,8 @@ Sau compact, Claude chỉ in "State before compaction" khi anchor do chính phi�
 - task-01-claude-state-per-session.md
 
 ## Verification Plan
-- Command (chạy từ gốc repo): `node --test packages/spec/src/claude/hooks/__tests__/precompact.test.js packages/spec/src/claude/hooks/__tests__/session-writeenv.test.js`
+- Command: `node --test packages/spec/src/claude/hooks/__tests__/precompact.test.js packages/spec/src/claude/hooks/__tests__/session-writeenv.test.js`
+- Cwd: gốc repo.
 - Named probe: ca phiên khác không in anchor; ca cùng phiên in anchor.
 - Reachability: PreCompact và SessionStart chạy bằng subprocess như test hiện có.
 - Oracle: exit 0, `# fail 0`, output có tên các ca.

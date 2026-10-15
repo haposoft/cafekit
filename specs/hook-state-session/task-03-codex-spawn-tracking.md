@@ -30,7 +30,8 @@ Khi Codex 0.162.1 gọi `collaborationspawn_agent`, hook state Codex ghi lần g
 - task-02-compact-anchor-session.md
 
 ## Verification Plan
-- Command (chạy từ gốc repo): `node --test packages/spec/bin/__tests__/codex-hooks.test.js`
+- Command: `node --test packages/spec/bin/__tests__/codex-hooks.test.js`
+- Cwd: gốc repo.
 - Named probe: test mới có `collaborationspawn_agent` trong tên.
 - Reachability: hook chạy từ layout `.codex/hooks` như các test Codex hiện có.
 - Oracle: exit 0, `# fail 0`, output có tên test mới.

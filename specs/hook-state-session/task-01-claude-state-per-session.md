@@ -42,7 +42,8 @@ Mỗi phiên Claude chỉ thấy "Prior Execution Context" do chính nó ghi. Ph
 - none
 
 ## Verification Plan
-- Command (chạy từ gốc repo): `node --test packages/spec/src/claude/hooks/__tests__/state.test.js`
+- Command: `node --test packages/spec/src/claude/hooks/__tests__/state.test.js`
+- Cwd: gốc repo.
 - Named probe: các test mới về tách phiên; tên test mô tả hành vi, không chứa mã plan.
 - Reachability: hook chạy bằng `spawnSync(process.execPath, [state.cjs])` với payload JSON qua stdin, như test hiện có.
 - Oracle: exit 0, `# fail 0`, output có tên các ca.
