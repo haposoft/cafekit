@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- State Claude lưu theo phiên để không rò context giữa các pane; SessionStart chỉ đọc và không tạo thư mục state.
 - Spec-state Claude chỉ cảnh báo packet liên quan tới phiên đã chạm; vẫn hiện tollgate packet hợp lệ và luôn báo lỗi cấu hình Specs.
 - Repo chưa có commit: tollgate Codex nhắc tạo commit đầu; Stop chỉ chặn task done với hướng dẫn lấy Base/Head sau commit.
 - Repo chưa có commit: tollgate Claude nhắc tạo commit đầu; Stop chỉ chặn task done với hướng dẫn lấy Base/Head sau commit, các lỗi git khác vẫn chặn.

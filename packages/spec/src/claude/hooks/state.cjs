@@ -12,7 +12,7 @@
  *   Stop          → persist full session state and archive
  *   SubagentStop  → append agent completion note to current state
  *
- * Storage: <runtime>/session-state/latest.md (+ archive/)
+ * Storage: <runtime>/session-state/[session hash/]latest.md (+ archive/)
  * Exit: 0 always (fail-open)
  */
 
@@ -31,26 +31,25 @@ try {
   const MAX_MODIFIED_FILES_DISPLAY = 5;
   const TRACKED_POST_TOOL_EVENTS = new Set(['Task', 'TaskCreate', 'TaskUpdate', 'TodoWrite']);
 
-  function stateDir(cwd) {
+  function stateDir(cwd, sessionId, create = true) {
     try {
-      const local = runtimePath(cwd, 'session-state');
+      let dir;
       if (fs.existsSync(runtimeDir(cwd))) {
-        if (!fs.existsSync(local)) fs.mkdirSync(local, { recursive: true });
-        return local;
+        dir = runtimePath(cwd, 'session-state');
+      } else {
+        const hash = crypto.createHash('md5').update(cwd).digest('hex').slice(0, 12);
+        dir = path.join(os.homedir(), '.claude', 'session-states', hash);
       }
-
-      const hash = crypto.createHash('md5').update(cwd).digest('hex').slice(0, 12);
-      const global = path.join(os.homedir(), '.claude', 'session-states', hash);
-      if (!fs.existsSync(global)) fs.mkdirSync(global, { recursive: true });
-      return global;
+      if (sessionId) dir = path.join(dir, crypto.createHash('sha256').update(sessionId).digest('hex').slice(0, 16));
+      if (create && !fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      return dir;
     } catch {
       return null;
     }
   }
 
-  function loadLatest(cwd) {
+  function loadLatest(dir) {
     try {
-      const dir = stateDir(cwd);
       if (!dir) return null;
 
       const file = path.join(dir, 'latest.md');
@@ -245,13 +244,13 @@ try {
     const data = normalizeHookPayload(rawPayload);
     const event = data.hook_event_name || '';
     const cwd = data.cwd || process.cwd();
-    const dir = stateDir(cwd);
+    const claudeSession = runtimeDirName() === '.claude'
+      && typeof rawPayload.session_id === 'string' && rawPayload.session_id.length > 0;
+    const dir = stateDir(cwd, claudeSession ? rawPayload.session_id : null, event !== 'SessionStart');
 
     if (event === 'SessionStart') {
-      const previous = loadLatest(cwd);
+      const previous = loadLatest(dir);
       // Claude only: grok (camelCase sessionId), omp and Codex keep printing the block.
-      const claudeSession = runtimeDirName() === '.claude'
-        && typeof rawPayload.session_id === 'string' && rawPayload.session_id.length > 0;
       if (previous && (!claudeSession || hasPriorContent(previous))) {
         console.log('\n=== Prior Execution Context ===');
         console.log(previous.trim());

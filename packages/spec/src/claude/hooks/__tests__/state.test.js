@@ -6,6 +6,7 @@ const { spawnSync } = require('node:child_process');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const crypto = require('node:crypto');
 
 const CLAUDE_ROOT = path.join(__dirname, '..', '..');
 const STATE_HOOK = path.join(CLAUDE_ROOT, 'hooks', 'state.cjs');
@@ -357,7 +358,8 @@ function sessionStartWith(content, runtimeFolder = '.claude') {
       }
       hook = path.join(hooks, 'state.cjs');
     }
-    const stateFolder = path.join(dir, runtimeFolder, 'session-state');
+    const stateFolder = path.join(dir, runtimeFolder, 'session-state',
+      ...(runtimeFolder === '.claude' ? [crypto.createHash('sha256').update('start-1').digest('hex').slice(0, 16)] : []));
     fs.mkdirSync(stateFolder, { recursive: true });
     fs.writeFileSync(path.join(stateFolder, 'latest.md'), content.replace('GENERATED', new Date().toISOString()));
     const result = spawnSync(process.execPath, [hook], {
@@ -383,4 +385,81 @@ test('SessionStart prints prior context that has a completed todo', () => {
 
 test('SessionStart under .omp keeps printing placeholder-only context', () => {
   assert.match(sessionStartWith(PLACEHOLDER_STATE, '.omp'), /Prior Execution Context/);
+});
+
+function inSessionStateFixture(run) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ck-state-sessions-'));
+  try {
+    const hooks = path.join(dir, '.claude/hooks');
+    fs.mkdirSync(path.join(hooks, 'lib'), { recursive: true });
+    fs.copyFileSync(STATE_HOOK, path.join(hooks, 'state.cjs'));
+    for (const lib of ['parser.cjs', 'runtime-dir.cjs', 'hook-payload.cjs', 'hook-state-dir.cjs']) {
+      fs.copyFileSync(path.join(CLAUDE_ROOT, 'hooks/lib', lib), path.join(hooks, 'lib', lib));
+    }
+    const invoke = (payload) => {
+      const result = spawnSync(process.execPath, [path.join(hooks, 'state.cjs')], {
+        cwd: dir, encoding: 'utf8', input: JSON.stringify({ cwd: dir, ...payload }),
+      });
+      assert.strictEqual(result.status, 0, result.stderr);
+      return result.stdout;
+    };
+    const write = (session, todo) => {
+      const transcript = path.join(dir, `${session}.jsonl`);
+      fs.writeFileSync(transcript, JSON.stringify({ message: { content: [{
+        type: 'tool_use', id: 'todo-write', name: 'TodoWrite',
+        input: { todos: [{ content: todo, status: 'completed' }] },
+      }] } }) + '\n');
+      invoke({ hook_event_name: 'PostToolUse', session_id: session, tool_name: 'TodoWrite', transcript_path: transcript });
+    };
+    run({ dir, invoke, write, stateRoot: path.join(dir, '.claude/session-state') });
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+}
+
+test('a new Claude session startup does not inherit another session context', () => {
+  inSessionStateFixture(({ write, invoke }) => {
+    write('session-a', 'Completed work for session A');
+    const output = invoke({ hook_event_name: 'SessionStart', session_id: 'session-b', source: 'startup' });
+    assert.doesNotMatch(output, /Prior Execution Context/);
+  });
+});
+
+test('a Claude session resumes its own saved todo', () => {
+  inSessionStateFixture(({ write, invoke, stateRoot }) => {
+    write('session-a', 'Completed work for session A');
+    const key = crypto.createHash('sha256').update('session-a').digest('hex').slice(0, 16);
+    assert.match(fs.readFileSync(path.join(stateRoot, key, 'latest.md'), 'utf8'), /Completed work for session A/);
+    const output = invoke({ hook_event_name: 'SessionStart', session_id: 'session-a', source: 'resume' });
+    assert.match(output, /Prior Execution Context[\s\S]*Completed work for session A/);
+  });
+});
+
+test('two Claude sessions resume only their own completed todos', () => {
+  inSessionStateFixture(({ write, invoke }) => {
+    write('session-a', 'Completed work for session A');
+    write('session-b', 'Completed work for session B');
+    for (const [session, own, other] of [['session-a', 'session A', 'session B'], ['session-b', 'session B', 'session A']]) {
+      const output = invoke({ hook_event_name: 'SessionStart', session_id: session, source: 'resume' });
+      const verified = output.split('## What Worked (Verified)')[1]?.split("## What's Left")[0] || '';
+      assert.match(output, /Prior Execution Context/);
+      assert.ok(verified.includes(own));
+      assert.ok(!verified.includes(other));
+    }
+  });
+});
+
+test('a session-less payload still reads project-level context', () => {
+  inSessionStateFixture(({ stateRoot, invoke }) => {
+    fs.mkdirSync(stateRoot, { recursive: true });
+    fs.writeFileSync(path.join(stateRoot, 'latest.md'), PLACEHOLDER_STATE.replace('GENERATED', new Date().toISOString())
+      .replace('- (No completed tasks recorded)', '- Legacy project todo'));
+    assert.match(invoke({ hook_event_name: 'SessionStart' }), /Prior Execution Context[\s\S]*Legacy project todo/);
+  });
+});
+
+test('Claude SessionStart does not create state directories', () => {
+  inSessionStateFixture(({ stateRoot, invoke }) => {
+    assert.strictEqual(fs.existsSync(stateRoot), false);
+    assert.strictEqual(invoke({ hook_event_name: 'SessionStart', session_id: 'new-session', source: 'startup' }).trim(), '');
+    assert.strictEqual(fs.existsSync(stateRoot), false);
+  });
 });
