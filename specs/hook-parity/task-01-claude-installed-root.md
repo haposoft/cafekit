@@ -1,6 +1,6 @@
 # Task 01 — Một luật root cho hook Claude
 
-Status: pending
+Status: done
 
 ## Outcome
 Phiên Claude đứng ở thư mục con vẫn nhận rules, vẫn tôn trọng `inspect.enabled:false`, subagent vẫn nhận context, và spec-gate tìm đúng root; bản cài từ manifest chạy được.
@@ -55,3 +55,27 @@ Phiên Claude đứng ở thư mục con vẫn nhận rules, vẫn tôn trọng 
 On a failed Step or Verification Plan run: stop; do not widen scope, change the Command, or weaken a test; record observed versus expected; repair only the cited cause; after three failed rounds, stop and ask the user.
 
 ## Receipt
+
+Verification: PASS
+Command: `node --test packages/spec/src/claude/hooks/__tests__/installed-root.test.js`
+Exit: 0
+Base: e4db86d6dc669069141a89528aaf1f1efdf08776
+Head: 592219d40074d770ddc3552d2e48bf2330630632f224520468237ac0ed510034
+
+```text
+ok 1 - installed rules read the project runtime from a nested session cwd
+ok 2 - rules wait for runtime before reserving the session injection
+ok 3 - installed inspect respects a disabled project runtime from a nested cwd
+ok 4 - installed agent context uses project paths from a nested session cwd
+ok 5 - installed spec gate checks root packet receipts from a nested session cwd
+# tests 5
+# pass 5
+# fail 0
+```
+
+- Đỏ trước sửa (Codex báo, Step 1): 4 fail, 1 pass (ca spec-gate là regression guard).
+- Counterexample (Codex báo): bỏ `project-root.cjs` khỏi manifest → 4 test đỏ; rules đọc runtime theo `payload.cwd` → 1 test đỏ; đã hoàn tác.
+- Lệnh phụ (controller chạy): omp-hooks + spec-gate + develop-contract 123 pass, 0 fail.
+- Self-test (controller chạy): `PASS: 2079 tests executed`, exit 0; `cmp` năm file `.claude/hooks` với nguồn khớp.
+- Probe tĩnh: `scripts/run-skill-self-tests.mjs` `runHook` của probe rules/agent từ source bỏ `CLAUDE_PROJECT_DIR`/`PROJECT_ROOT` khỏi env (Luật fixture); fixture `spec-gate.test.js`, `develop-contract.test.js` chép thêm `project-root.cjs`.
+- Review controller: thứ tự root đúng D-01; rules đọc runtime trước khi giữ chỗ; inspect lấy realpath của `cwd` để so khớp với root đã realpath (macOS `/var` → `/private/var`); không assertion cũ nào bị xoá. Commit e4db86d6.

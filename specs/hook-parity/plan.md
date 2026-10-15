@@ -84,7 +84,7 @@ Specs-Contract: process-first-ready-v1
 ## Tasks
 | # | Task | Priority | Criteria | Primary ownership | Dependencies | Status |
 |---|---|---|---|---|---|---|
-| 01 | Một luật root cho hook Claude | P1 | AC-01 | `lib/project-root.cjs`, rules, inspect-block, agent, spec-gate, manifest | - | pending |
+| 01 | Một luật root cho hook Claude | P1 | AC-01 | `lib/project-root.cjs`, rules, inspect-block, agent, spec-gate, manifest | - | done |
 | 02 | spec-state Claude khớp Codex | P1 | AC-02 | Claude spec-state, `lib/spec-touch.cjs`, Codex touch | task-01-claude-installed-root.md | pending |
 | 03 | state: Agent, khoá, log, tin nhắn cuối | P2 | AC-03 | Claude state, parser; Codex state | task-02-claude-spec-state-parity.md | pending |
 | 04 | session/precompact Claude bền + rules sau compact | P2 | AC-04 | Claude session, precompact, rules, `lib/rules-reservation.cjs` | task-03-claude-state-robust.md | pending |
