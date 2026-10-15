@@ -1,6 +1,6 @@
 # Task 03 — state: Agent, khoá, log, tin nhắn cuối
 
-Status: pending
+Status: in_progress
 
 ## Outcome
 State của Claude được làm mới khi gọi `Agent`, không hỏng khi hai sự kiện ghi gần nhau, ghi log khi crash; cả hai host giữ tóm tắt tin nhắn cuối mà không lưu bí mật.

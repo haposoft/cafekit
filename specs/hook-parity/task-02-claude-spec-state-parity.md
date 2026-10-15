@@ -1,6 +1,6 @@
 # Task 02 — spec-state Claude khớp Codex
 
-Status: pending
+Status: done
 
 ## Outcome
 Tollgate của Claude đọc đúng cấu hình project, không lẫn cache giữa các phiên và nhận packet theo cùng luật với Codex.
@@ -56,3 +56,32 @@ Tollgate của Claude đọc đúng cấu hình project, không lẫn cache gi�
 On a failed Step or Verification Plan run: stop; do not widen scope, change the Command, or weaken a test; record observed versus expected; repair only the cited cause; after three failed rounds, stop and ask the user.
 
 ## Receipt
+
+Verification: PASS
+Command: `node --test packages/spec/src/claude/hooks/__tests__/spec-state-touched.test.js`
+Exit: 0
+Base: 8c47ff9a210142f706d626f53508ec14d55d661f
+Head: 717606b8c0abb2cc45921a02d864a5fba3f1d6b3117385bc7bf1ddc2f13fef58
+
+```text
+ok 1 - an untouched packet prints nothing on Claude
+ok 2 - a touched packet respects the project tollgate toggle from a nested cwd
+ok 3 - an explicitly failed edit does not touch its packet
+ok 4 - written content mentioning failure still touches its packet
+ok 5 - a configured specs prefix names a plain lowercase packet
+ok 6 - an explicit packet path records the session touch
+ok 7 - another session does not displace the compact tollgate cache
+ok 8 - naming the packet in the prompt touches it and keeps the full block
+ok 22 - Claude spec-state uses one snapshot for done task receipts
+# tests 22
+# pass 22
+# fail 0
+```
+
+- Đỏ trước sửa (Codex báo, Step 1): 5 đỏ, 17 xanh trên 22.
+- Counterexample (Codex báo): cache tollgate dùng file chung → ca A → B → A đỏ; đã hoàn tác, file khớp byte.
+- Codex không đổi hành vi (Codex báo): so `successfulMutation` cũ/mới trên 729 input, 0 khác biệt.
+- Lệnh phụ (controller chạy): state + codex-hooks + codex-hooks-ownership + codex-quiet-hooks + orca-session + omp-hooks 103 pass, 0 fail.
+- Self-test (controller chạy): `PASS: 2085 tests executed`, exit 0; `cmp` `.claude/hooks/spec-state.cjs` và `lib/spec-touch.cjs` khớp nguồn; `git diff --check` sạch.
+- Probe tĩnh: nhãn "state cache carries full project, session, and spec identity" thêm `lib/spec-touch.cjs` vào danh sách file, assertion giữ nguyên. Fixture chép lib: `codex-hooks`, `codex-quiet-hooks`, `spec-gate`, `state` thêm `spec-touch.cjs` (và `project-root.cjs` ở `state`).
+- Review controller: hàm thuần chuyển nguyên văn từ Codex; Claude bỏ chạm chỉ khi `explicitFailure`; cache theo phiên chỉ khi có bộ lọc chạm (`.claude` + `session_id` thô); installer chép `spec-touch.cjs` cho Codex. Ghi nhận: `packetAt` nay ghi chạm cả file nằm thẳng dưới specs root (như Codex), tên đó không phải packet nên không ảnh hưởng tollgate. Commit 8c47ff9a.
