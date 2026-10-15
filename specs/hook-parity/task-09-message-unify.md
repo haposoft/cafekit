@@ -1,6 +1,6 @@
 # Task 09 — Thông điệp thống nhất
 
-Status: pending
+Status: in_progress
 
 ## Outcome
 spec-gate, tollgate và context subagent in cùng nội dung ở hai host theo D-08.
