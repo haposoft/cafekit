@@ -54,6 +54,7 @@ Specs-Contract: process-first-ready-v1
 - Hook Codex gọi npm có bị sandbox chặn mạng hay đi qua `HTTPS_PROXY` không: chưa kiểm; lỗi mạng chỉ làm thiếu thông báo.
 - omp giữ hành vi riêng ở stdin rỗng của privacy (`src/omp/hooks/privacy-block.cjs:44-45`): cho qua, khác Claude (task-08).
 - Bản copy ở `.claude/` gốc repo bị gitignore, không vào commit; sau GATE-DONE nên cài lại bằng installer.
+- Probe Codex host (task-06, 15/10, codex-cli 0.162.1, `codex exec` với `model_auto_compact_token_limit=20000`, `CODEX_HOME` tạm đã xoá): đối chứng dương có SessionStart `startup`; host gọi PreCompact (`trigger: auto`), rồi PostCompact và SessionStart `compact` ở mỗi lần compact; `session_id` của UserPromptSubmit và SessionStart `compact` trùng nhau. → Nhánh "host gọi PreCompact" của D-06 áp dụng.
 
 ## Coverage profile
 | ID | Outcome | Change kinds | Material surfaces | Ambiguity/action | Risk/evidence | Required proof |
@@ -89,7 +90,7 @@ Specs-Contract: process-first-ready-v1
 | 03 | state: Agent, khoá, log, tin nhắn cuối | P2 | AC-03 | Claude state, parser; Codex state | task-02-claude-spec-state-parity.md | done |
 | 04 | session/precompact Claude bền + rules sau compact | P2 | AC-04 | Claude session, precompact, rules, `lib/rules-reservation.cjs` | task-03-claude-state-robust.md | done |
 | 05 | Codex inspect, rules, guardrail | P1 | AC-05 | Codex inspect-block, rules, guardrail, shim | task-04-claude-session-compact.md | done |
-| 06 | Codex compact | P2 | AC-06 | Codex session, rules reservation, precompact, hooks.json | task-05-codex-gate-robust.md | pending |
+| 06 | Codex compact | P2 | AC-06 | Codex session, rules reservation, precompact, hooks.json | task-05-codex-gate-robust.md | in_progress |
 | 07 | Thông báo cập nhật cho Codex | P3 | AC-07 | `lib/update-check.cjs`, session hai host | task-06-codex-compact.md | pending |
 | 08 | Privacy hiển thị thống nhất | P1 | AC-08 | privacy-block Claude + omp, lib tên | task-07-codex-update-notice.md | pending |
 | 09 | Thông điệp thống nhất | P3 | AC-09 | spec-gate, spec-state, agent | task-08-privacy-display.md | pending |

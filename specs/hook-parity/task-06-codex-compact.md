@@ -1,6 +1,6 @@
 # Task 06 — Codex compact
 
-Status: pending
+Status: in_progress
 
 ## Outcome
 Sau compact, Codex nhắc rằng xác nhận đang chờ có thể đã mất, prompt kế tiếp nhận lại rules, và anchor được in nếu host gọi PreCompact.
