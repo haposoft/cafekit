@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const PATH_SAFETY = require('./runtime-path-safety.cjs');
+const { displayNames } = require('./privacy-paths.cjs');
 
 // Codex cannot raise an interactive prompt from a hook -- PreToolUse honours no
 // "ask" decision -- so approval costs a full round trip: the agent has to relay
@@ -59,13 +60,6 @@ function samePathKeys(left, right) {
   return Array.isArray(left)
     && left.length === right.length
     && left.every((value, index) => value === right[index]);
-}
-
-function displayNames(filePaths) {
-  const names = [...new Set(filePaths.map((filePath) => path.basename(filePath)))].sort();
-  return names.length <= 3
-    ? names.join(', ')
-    : `${names.slice(0, 3).join(', ')} (+${names.length - 3} more)`;
 }
 
 function atomicWrite(dir, file, payload) {

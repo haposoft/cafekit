@@ -133,11 +133,11 @@ function expectedOverlay(name) {
     source = source.replace(from, to);
   };
   if (name === 'privacy-block.cjs') {
-    edit("        permissionDecision: 'ask',\n        permissionDecisionReason: `Sensitive file access requires approval: ${basename}`\n",
-      "        // omp has no ask state on tool_call, so an ask under Claude becomes a denial here.\n"
-      + "        permissionDecision: 'deny',\n        permissionDecisionReason: `Sensitive file access requires approval: ${basename}`\n");
-    edit("      permissionDecision: 'ask',\n      permissionDecisionReason: 'Sensitive access could not be evaluated safely.'\n",
-      "      permissionDecision: 'deny',\n      permissionDecisionReason: 'Sensitive access could not be evaluated safely.'\n");
+    edit("      permissionDecision: 'ask',\n",
+      "      // omp has no ask state on tool_call, so an ask under Claude becomes a denial here.\n"
+      + "      permissionDecision: 'deny',\n");
+    edit("  if (!stdin) {\n    askForPermission(EVALUATION_FAILURE);\n    process.exit(0);\n  }",
+      "  if (!stdin) process.exit(0);");
   }
   return source;
 }

@@ -11,12 +11,16 @@ const os = require('node:os');
 const path = require('node:path');
 
 const HOOK = path.join(__dirname, '..', 'privacy-block.cjs');
+const HOOK_ENV = { ...process.env };
+delete HOOK_ENV.CLAUDE_PROJECT_DIR;
+delete HOOK_ENV.PROJECT_ROOT;
 
 /** Run the hook with a tool payload; return process output. */
 function runHook(payload, cwd) {
   const res = spawnSync(process.execPath, [HOOK], {
     input: JSON.stringify({ ...payload, cwd: cwd || payload.cwd }),
     encoding: 'utf8',
+    env: HOOK_ENV,
   });
   return { code: res.status, stdout: res.stdout || '', stderr: res.stderr || '' };
 }
@@ -29,6 +33,29 @@ function permissionDecision(stdout) {
   if (!stdout.trim()) return null;
   return JSON.parse(stdout).hookSpecificOutput?.permissionDecision || null;
 }
+
+test('sensitive reads list sorted distinct basenames and the remaining count', () => {
+  const dir = tmpDir();
+  try {
+    const command = 'cat token.json nested/.env secrets.json credentials.json .env';
+    const { code, stdout } = runHook({ tool_name: 'Bash', tool_input: { command } }, dir);
+    assert.strictEqual(code, 0);
+    const output = JSON.parse(stdout).hookSpecificOutput;
+    assert.strictEqual(output.permissionDecision, 'ask');
+    assert.strictEqual(output.permissionDecisionReason,
+      'Sensitive file access requires approval: .env, credentials.json, secrets.json (+1 more)');
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('empty stdin asks because sensitive access cannot be evaluated safely', () => {
+  const result = spawnSync(process.execPath, [HOOK], { input: '', encoding: 'utf8', env: HOOK_ENV });
+  assert.strictEqual(result.status, 0);
+  assert.strictEqual(result.stderr, '');
+  assert.deepStrictEqual(JSON.parse(result.stdout).hookSpecificOutput, {
+    hookEventName: 'PreToolUse', permissionDecision: 'ask',
+    permissionDecisionReason: 'Sensitive access could not be evaluated safely.',
+  });
+});
 
 test('asks natively for a direct Read of .env', () => {
   const dir = tmpDir();

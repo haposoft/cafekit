@@ -303,4 +303,11 @@ function matchesInclude(name, glob) {
     || (name.startsWith('.') && path.matchesGlob(`x${name}`, `x${glob.replace(/^(?:\*\*\/)+/, '')}`));
 }
 
-module.exports = { isSensitive, isSafe, sensitiveRequest, extractPaths, sensitivePaths };
+function displayNames(filePaths) {
+  const names = [...new Set(filePaths.map((filePath) => path.basename(filePath)))].sort();
+  return names.length <= 3
+    ? names.join(', ')
+    : `${names.slice(0, 3).join(', ')} (+${names.length - 3} more)`;
+}
+
+module.exports = { isSensitive, isSafe, sensitiveRequest, extractPaths, sensitivePaths, displayNames };

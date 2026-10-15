@@ -155,6 +155,9 @@ function composeCodexHookTree(root) {
     path.join(hooksDir, 'lib', 'update-check.cjs'));
   fs.copyFileSync(path.join(PACKAGE_ROOT, 'src/claude/hooks/lib/runtime-path-safety.cjs'),
     path.join(hooksDir, 'lib', 'runtime-path-safety.cjs'));
+  for (const name of ['privacy-paths.cjs', 'privacy-command-analysis.cjs']) {
+    fs.copyFileSync(path.join(PACKAGE_ROOT, 'src/claude/hooks/lib', name), path.join(hooksDir, 'lib', name));
+  }
   return path.join(hooksDir, 'session.cjs');
 }
 

@@ -13,6 +13,9 @@ function fixture({ specs = 'specs', packets = ['auth-flow'] } = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ck-codex-quiet-'));
   const hooks = path.join(root, '.codex/hooks');
   fs.cpSync(path.join(SOURCE, 'codex/hooks'), hooks, { recursive: true });
+  for (const name of ['privacy-paths.cjs', 'privacy-command-analysis.cjs']) {
+    fs.copyFileSync(path.join(SOURCE, 'claude/hooks/lib', name), path.join(hooks, 'lib', name));
+  }
   fs.copyFileSync(path.join(SOURCE, 'claude/hooks/lib/spec-touch.cjs'), path.join(hooks, 'lib/spec-touch.cjs'));
   fs.copyFileSync(path.join(SOURCE, 'claude/hooks/lib/secret-keywords.cjs'), path.join(hooks, 'lib/secret-keywords.cjs'));
   fs.copyFileSync(path.join(SOURCE, 'claude/hooks/lib/update-check.cjs'), path.join(hooks, 'lib/update-check.cjs'));

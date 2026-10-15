@@ -211,6 +211,9 @@ function inNoCommitCodexFixture(run) {
   const hooks = path.join(root, '.codex/hooks');
   try {
     fs.cpSync(CODEX_HOOKS, hooks, { recursive: true });
+    for (const name of ['privacy-paths.cjs', 'privacy-command-analysis.cjs']) {
+      fs.copyFileSync(path.join(PACKAGE_ROOT, 'src/claude/hooks/lib', name), path.join(hooks, 'lib', name));
+    }
     fs.copyFileSync(path.join(PACKAGE_ROOT, 'src/claude/hooks/lib/spec-touch.cjs'), path.join(hooks, 'lib/spec-touch.cjs'));
     fs.copyFileSync(path.join(PACKAGE_ROOT, 'src/claude/hooks/lib/secret-keywords.cjs'), path.join(hooks, 'lib/secret-keywords.cjs'));
     fs.copyFileSync(path.join(PACKAGE_ROOT, 'src/claude/hooks/lib/update-check.cjs'), path.join(hooks, 'lib/update-check.cjs'));

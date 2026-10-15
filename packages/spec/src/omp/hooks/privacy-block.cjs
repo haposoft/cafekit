@@ -14,10 +14,23 @@
  * Exit: 0 (the JSON hook output carries the permission decision)
  */
 
+const EVALUATION_FAILURE = 'Sensitive access could not be evaluated safely.';
+
+function askForPermission(reason) {
+  process.stdout.write(JSON.stringify({
+    hookSpecificOutput: {
+      hookEventName: 'PreToolUse',
+      // omp has no ask state on tool_call, so an ask under Claude becomes a denial here.
+      permissionDecision: 'deny',
+      permissionDecisionReason: reason
+    }
+  }) + '\n');
+}
+
 try {
   const fs = require('fs');
-  const path = require('path');
-  const { sensitivePaths } = require('./lib/privacy-paths.cjs');
+  const { sensitivePaths, displayNames } = require('./lib/privacy-paths.cjs');
+  const { projectRoot: resolveProjectRoot } = require('./lib/project-root.cjs');
 
   const { runtimeDirName, runtimeDir, runtimePath } = require('./lib/runtime-dir.cjs');
   function readRuntime(cwd) {
@@ -29,18 +42,6 @@ try {
     }
   }
 
-  function askForPermission(filePath) {
-    const basename = path.basename(filePath);
-    process.stdout.write(JSON.stringify({
-      hookSpecificOutput: {
-        hookEventName: 'PreToolUse',
-        // omp has no ask state on tool_call, so an ask under Claude becomes a denial here.
-        permissionDecision: 'deny',
-        permissionDecisionReason: `Sensitive file access requires approval: ${basename}`
-      }
-    }) + '\n');
-  }
-
   const stdin = fs.readFileSync(0, 'utf8').trim();
   if (!stdin) process.exit(0);
 
@@ -49,24 +50,16 @@ try {
   const toolName = data.tool_name || '';
   const toolInput = data.tool_input || {};
   const cwd = typeof data.cwd === 'string' && data.cwd.trim() ? data.cwd : process.cwd();
-  const installedRuntime = path.resolve(__dirname, '..');
-  const projectRoot = path.basename(installedRuntime).startsWith('.')
-    ? path.dirname(installedRuntime) : process.env.CLAUDE_PROJECT_DIR || cwd;
+  const projectRoot = resolveProjectRoot(data);
   const runtime = readRuntime(projectRoot);
 
   if (runtime.privacyBlock === false) process.exit(0);
 
   const paths = sensitivePaths(toolName, toolInput, cwd);
-  if (paths.length) askForPermission(paths[0]);
+  if (paths.length) askForPermission(`Sensitive file access requires approval: ${displayNames(paths)}`);
 
   process.exit(0);
 } catch (_) {
-  process.stdout.write(JSON.stringify({
-    hookSpecificOutput: {
-      hookEventName: 'PreToolUse',
-      permissionDecision: 'deny',
-      permissionDecisionReason: 'Sensitive access could not be evaluated safely.'
-    }
-  }) + '\n');
+  askForPermission(EVALUATION_FAILURE);
   process.exit(0);
 }
