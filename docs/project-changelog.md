@@ -4,6 +4,7 @@ All notable changes to CafeKit are documented here, following
 [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
+- State hooks now track Claude Agent events, lock Claude snapshot writes, log asynchronous failures, and omit secret-related assistant summaries on both hosts.
 - Claude spec-state now reads project-root configuration, shares packet touch helpers with Codex, and keeps tollgate caches separate per session.
 
 ### Changed

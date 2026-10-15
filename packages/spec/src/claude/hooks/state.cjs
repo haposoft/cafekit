@@ -8,13 +8,25 @@
  *
  * Events:
  *   SessionStart  → load previous state and print to context
- *   PostToolUse   → refresh state after Task/TaskCreate/TaskUpdate/TodoWrite
+ *   PostToolUse   → refresh state after Agent/Task/TaskCreate/TaskUpdate/TodoWrite
  *   Stop          → persist full session state and archive
  *   SubagentStop  → append agent completion note to current state
  *
  * Storage: <runtime>/session-state/[session hash/]latest.md (+ archive/)
  * Exit: 0 always (fail-open)
  */
+
+function logCrash(error) {
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const logDir = require('./lib/hook-state-dir.cjs').hookStateDir();
+    fs.mkdirSync(logDir, { recursive: true });
+    fs.appendFileSync(path.join(logDir, 'hook-log.jsonl'), JSON.stringify({
+      ts: new Date().toISOString(), hook: 'state', status: 'crash', error: error.message,
+    }) + '\n');
+  } catch (_) {}
+}
 
 try {
   const fs = require('fs');
@@ -23,13 +35,53 @@ try {
   const crypto = require('crypto');
   const { execSync } = require('child_process');
   const { parseTranscript } = require('./lib/parser.cjs');
+  const { projectRoot } = require('./lib/project-root.cjs');
+  const { containsSecretKeyword } = require('./lib/secret-keywords.cjs');
   const { runtimeDirName, runtimeDir, runtimePath } = require('./lib/runtime-dir.cjs');
 
   const EXPIRY_DAYS = 7;
   const MAX_ARCHIVES = 5;
   const MAX_AGENT_SECTIONS = 3;
   const MAX_MODIFIED_FILES_DISPLAY = 5;
-  const TRACKED_POST_TOOL_EVENTS = new Set(['Task', 'TaskCreate', 'TaskUpdate', 'TodoWrite']);
+  const TRACKED_POST_TOOL_EVENTS = new Set(['Agent', 'Task', 'TaskCreate', 'TaskUpdate', 'TodoWrite']);
+  const WAIT_BUFFER = new Int32Array(new SharedArrayBuffer(4));
+
+  function withStateLock(dir, callback) {
+    const lock = path.join(dir, '.write-lock');
+    const deadline = Date.now() + 3000;
+    while (Date.now() < deadline) {
+      try {
+        fs.mkdirSync(lock);
+      } catch (error) {
+        if (error.code !== 'EEXIST') return;
+        try {
+          if (Date.now() - fs.statSync(lock).mtimeMs > 15000) {
+            fs.rmSync(lock, { recursive: true, force: true });
+            continue;
+          }
+        } catch { continue; }
+        Atomics.wait(WAIT_BUFFER, 0, 0, 20);
+        continue;
+      }
+      try { return callback(); } finally {
+        try { fs.rmdirSync(lock); } catch { /* already released */ }
+      }
+    }
+  }
+
+  function assistantSummary(value) {
+    if (value === null || value === undefined) return '';
+    let text;
+    if (typeof value === 'object') {
+      const preferred = value.message ?? value.output ?? value.result ?? value.content;
+      text = typeof preferred === 'string' ? preferred : JSON.stringify(value);
+    } else {
+      text = String(value);
+    }
+    if (containsSecretKeyword(text)) return '[omitted: possible secret]';
+    const clean = text.replace(/\0/g, '').trim();
+    return clean.length > 600 ? `${clean.slice(0, 600)}…` : clean;
+  }
 
   function stateDir(cwd, sessionId, create = true) {
     try {
@@ -108,7 +160,8 @@ try {
       timestamp: new Date().toISOString(),
       branch: process.env.GIT_BRANCH || '',
       todos: [],
-      modifiedFiles: []
+      modifiedFiles: [],
+      lastAssistant: assistantSummary(stdinData.last_assistant_message),
     };
 
     if (stdinData.transcript_path && fs.existsSync(stdinData.transcript_path)) {
@@ -177,6 +230,7 @@ try {
       "## What's Left",
       ...(pending.length ? pending.map((todo) => `- [ ] ${todo.content}`) : ['- (All tasks completed)']),
       '',
+      ...(data.lastAssistant ? ['## Latest Assistant Message', data.lastAssistant, ''] : []),
       '## Key Files Modified',
       ...(data.modifiedFiles.length ? data.modifiedFiles.map((file) => `- ${file}`) : ['- (No file changes detected)']),
       ''
@@ -185,9 +239,10 @@ try {
 
   function buildAgentSection(data) {
     const agentType = data.agent_type || '';
-    if (!agentType || agentType === 'unknown') return '';
+    const message = assistantSummary(data.last_assistant_message);
+    if (!agentType || agentType === 'unknown') return message ? `\n## Latest Assistant Message\n${message}\n` : '';
     const time = new Date().toISOString().slice(11, 19);
-    return `\n## Agent Result: ${agentType} (${time})\n- Completed at ${time}\n`;
+    return `\n## Agent Result: ${agentType} (${time})\n- ${message || `Completed at ${time}`}\n`;
   }
 
   function takeRecentAgentSections(sections) {
@@ -228,11 +283,13 @@ try {
   }
 
   async function persistSnapshot(dir, data, options = {}) {
-    const file = path.join(dir, 'latest.md');
-    const existing = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
-    const content = mergeAgentSections(existing, buildStateContent(data));
-    writeAtomic(file, content);
-    if (options.archive) archive(dir);
+    withStateLock(dir, () => {
+      const file = path.join(dir, 'latest.md');
+      const existing = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
+      const content = mergeAgentSections(existing, buildStateContent(data));
+      writeAtomic(file, content);
+      if (options.archive) archive(dir);
+    });
   }
 
   async function main() {
@@ -243,7 +300,7 @@ try {
     const rawPayload = JSON.parse(stdin);
     const data = normalizeHookPayload(rawPayload);
     const event = data.hook_event_name || '';
-    const cwd = data.cwd || process.cwd();
+    const cwd = projectRoot(data);
     const claudeSession = runtimeDirName() === '.claude'
       && typeof rawPayload.session_id === 'string' && rawPayload.session_id.length > 0;
     const dir = stateDir(cwd, claudeSession ? rawPayload.session_id : null, event !== 'SessionStart');
@@ -274,13 +331,15 @@ try {
       const agentSection = buildAgentSection(data);
       if (!agentSection) process.exit(0);
 
-      const file = path.join(dir, 'latest.md');
-      const existing = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
-      const updated = existing
-        ? appendAgentSection(existing, agentSection)
-        : `${buildStateContent(await extractSessionData(data))}\n${agentSection}`;
-
-      writeAtomic(file, updated);
+      const sessionData = await extractSessionData(data);
+      withStateLock(dir, () => {
+        const file = path.join(dir, 'latest.md');
+        const existing = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
+        const updated = existing
+          ? appendAgentSection(existing, agentSection)
+          : `${buildStateContent(sessionData)}\n${agentSection}`;
+        writeAtomic(file, updated);
+      });
       process.exit(0);
     }
 
@@ -293,24 +352,11 @@ try {
     process.exit(0);
   }
 
-  main().catch(() => {
+  main().catch((error) => {
+    logCrash(error);
     process.exit(0);
   });
 } catch (error) {
-  try {
-    const fs = require('fs');
-    const path = require('path');
-    const logDir = require('./lib/hook-state-dir.cjs').hookStateDir();
-    if (!fs.existsSync(logDir)) fs.mkdirSync(logDir, { recursive: true });
-    fs.appendFileSync(
-      path.join(logDir, 'hook-log.jsonl'),
-      JSON.stringify({
-        ts: new Date().toISOString(),
-        hook: 'state',
-        status: 'crash',
-        error: error.message
-      }) + '\n'
-    );
-  } catch (_) {}
+  logCrash(error);
   process.exit(0);
 }

@@ -80,7 +80,7 @@ function processEntry(entry, toolMap, agentMap, latestTodos, result) {
   for (const block of content) {
     // Handle tool_use blocks
     if (block.type === 'tool_use' && block.id && block.name) {
-      if (block.name === 'Task') {
+      if (block.name === 'Task' || block.name === 'Agent') {
         // Agent spawn
         agentMap.set(block.id, {
           id: block.id,

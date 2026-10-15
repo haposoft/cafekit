@@ -10,6 +10,9 @@ const crypto = require('node:crypto');
 
 const CLAUDE_ROOT = path.join(__dirname, '..', '..');
 const STATE_HOOK = path.join(CLAUDE_ROOT, 'hooks', 'state.cjs');
+const HOOK_ENV = { ...process.env };
+delete HOOK_ENV.CLAUDE_PROJECT_DIR;
+delete HOOK_ENV.PROJECT_ROOT;
 const POLICY = require(path.join(CLAUDE_ROOT, 'scripts', 'workflow-policy.cjs'));
 
 function processTaskContent(title, status, dependency = 'none') {
@@ -281,6 +284,7 @@ test('Stop snapshot includes tracked modifications and untracked files', () => {
     fs.writeFileSync(path.join(dir, 'new-untracked.json'), '{}\n');
     const result = spawnSync(process.execPath, [STATE_HOOK], {
       cwd: dir,
+      env: HOOK_ENV,
       input: JSON.stringify({ hook_event_name: 'Stop', cwd: dir }),
       encoding: 'utf8',
     });
@@ -306,6 +310,7 @@ test('Stop snapshot includes untracked files before the first commit', () => {
 
     const result = spawnSync(process.execPath, [STATE_HOOK], {
       cwd: dir,
+      env: HOOK_ENV,
       input: JSON.stringify({ hook_event_name: 'Stop', cwd: dir }),
       encoding: 'utf8',
     });
@@ -356,7 +361,7 @@ function sessionStartWith(content, runtimeFolder = '.claude') {
       const hooks = path.join(dir, runtimeFolder, 'hooks');
       fs.mkdirSync(path.join(hooks, 'lib'), { recursive: true });
       fs.copyFileSync(STATE_HOOK, path.join(hooks, 'state.cjs'));
-      for (const lib of ['parser.cjs', 'runtime-dir.cjs', 'hook-payload.cjs', 'hook-state-dir.cjs']) {
+      for (const lib of ['parser.cjs', 'runtime-dir.cjs', 'hook-payload.cjs', 'hook-state-dir.cjs', 'project-root.cjs', 'secret-keywords.cjs']) {
         fs.copyFileSync(path.join(path.dirname(STATE_HOOK), 'lib', lib), path.join(hooks, 'lib', lib));
       }
       hook = path.join(hooks, 'state.cjs');
@@ -367,6 +372,7 @@ function sessionStartWith(content, runtimeFolder = '.claude') {
     fs.writeFileSync(path.join(stateFolder, 'latest.md'), content.replace('GENERATED', new Date().toISOString()));
     const result = spawnSync(process.execPath, [hook], {
       cwd: dir,
+      env: HOOK_ENV,
       input: JSON.stringify({ hook_event_name: 'SessionStart', session_id: 'start-1', cwd: dir }),
       encoding: 'utf8',
     });
@@ -396,12 +402,12 @@ function inSessionStateFixture(run) {
     const hooks = path.join(dir, '.claude/hooks');
     fs.mkdirSync(path.join(hooks, 'lib'), { recursive: true });
     fs.copyFileSync(STATE_HOOK, path.join(hooks, 'state.cjs'));
-    for (const lib of ['parser.cjs', 'runtime-dir.cjs', 'hook-payload.cjs', 'hook-state-dir.cjs']) {
+    for (const lib of ['parser.cjs', 'runtime-dir.cjs', 'hook-payload.cjs', 'hook-state-dir.cjs', 'project-root.cjs', 'secret-keywords.cjs']) {
       fs.copyFileSync(path.join(CLAUDE_ROOT, 'hooks/lib', lib), path.join(hooks, 'lib', lib));
     }
     const invoke = (payload) => {
       const result = spawnSync(process.execPath, [path.join(hooks, 'state.cjs')], {
-        cwd: dir, encoding: 'utf8', input: JSON.stringify({ cwd: dir, ...payload }),
+        cwd: dir, env: HOOK_ENV, encoding: 'utf8', input: JSON.stringify({ cwd: dir, ...payload }),
       });
       assert.strictEqual(result.status, 0, result.stderr);
       return result.stdout;
@@ -417,6 +423,112 @@ function inSessionStateFixture(run) {
     run({ dir, invoke, write, stateRoot: path.join(dir, '.claude/session-state') });
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 }
+
+function savedSession(stateRoot, session = 'robust-session') {
+  return path.join(stateRoot, crypto.createHash('sha256').update(session).digest('hex').slice(0, 16));
+}
+
+test('Agent refreshes the installed state from transcript todos and is parsed as an agent', () => {
+  inSessionStateFixture(({ dir, invoke, stateRoot }) => {
+    const transcript = path.join(dir, 'agent.jsonl');
+    const agent = { type: 'tool_use', id: 'agent-call', name: 'Agent', input: { subagent_type: 'tester' } };
+    fs.writeFileSync(transcript, JSON.stringify({ message: { content: [agent, {
+      type: 'tool_use', id: 'todos', name: 'TodoWrite', input: { todos: [{ content: 'Verify agent snapshot', status: 'pending' }] },
+    }] } }) + '\n');
+    invoke({ hook_event_name: 'PostToolUse', tool_name: 'Agent', session_id: 'robust-session', transcript_path: transcript });
+    const file = path.join(savedSession(stateRoot), 'latest.md');
+    assert.ok(fs.existsSync(file), 'Agent must create the state snapshot');
+    assert.match(fs.readFileSync(file, 'utf8'), /Verify agent snapshot/);
+    const agents = new Map();
+    const tools = new Map();
+    require('../lib/parser.cjs').processEntry({ message: { content: [agent] } }, tools, agents, [], {});
+    assert.ok(agents.has('agent-call'));
+    assert.ok(!tools.has('agent-call'));
+  });
+});
+
+test('Stop persists a bounded summary of the last assistant message', () => {
+  inSessionStateFixture(({ invoke, stateRoot }) => {
+    invoke({ hook_event_name: 'Stop', session_id: 'robust-session', last_assistant_message: 'Verified the change. ' + 'x'.repeat(700) });
+    const state = fs.readFileSync(path.join(savedSession(stateRoot), 'latest.md'), 'utf8');
+    assert.match(state, /## Latest Assistant Message\nVerified the change\./);
+    assert.ok(!state.includes('x'.repeat(601)), 'the summary must be bounded');
+  });
+});
+
+test('Stop omits secret-related assistant messages before saving state', () => {
+  inSessionStateFixture(({ invoke, stateRoot }) => {
+    const message = 'API key handling was discussed in this synthetic test.';
+    invoke({ hook_event_name: 'Stop', session_id: 'robust-session', last_assistant_message: message });
+    const state = fs.readFileSync(path.join(savedSession(stateRoot), 'latest.md'), 'utf8');
+    assert.ok(state.includes('[omitted: possible secret]'));
+    assert.ok(!state.includes(message));
+  });
+});
+
+test('SubagentStop saves the assistant summary and omits secret-related content', () => {
+  inSessionStateFixture(({ invoke, stateRoot }) => {
+    invoke({ hook_event_name: 'SubagentStop', session_id: 'robust-session', agent_type: 'tester', last_assistant_message: 'Checks passed.' });
+    const file = path.join(savedSession(stateRoot), 'latest.md');
+    assert.match(fs.readFileSync(file, 'utf8'), /Checks passed\./);
+    const message = 'Credentials handling was discussed in this synthetic test.';
+    invoke({ hook_event_name: 'SubagentStop', session_id: 'robust-session', agent_type: 'reviewer', last_assistant_message: message });
+    const state = fs.readFileSync(file, 'utf8');
+    assert.ok(state.includes('[omitted: possible secret]'));
+    assert.ok(!state.includes(message));
+  });
+});
+
+test('a fresh state write lock skips the snapshot without changing existing bytes', () => {
+  inSessionStateFixture(({ invoke, stateRoot }) => {
+    const dir = savedSession(stateRoot);
+    fs.mkdirSync(path.join(dir, '.write-lock'), { recursive: true });
+    const file = path.join(dir, 'latest.md');
+    fs.writeFileSync(file, 'Prior state must survive\n');
+    const before = fs.readFileSync(file);
+    invoke({ hook_event_name: 'Stop', session_id: 'robust-session', last_assistant_message: 'New snapshot' });
+    assert.deepStrictEqual(fs.readFileSync(file), before);
+    assert.ok(fs.existsSync(path.join(dir, '.write-lock')));
+  });
+});
+
+test('a stale state write lock is removed and the snapshot is saved', () => {
+  inSessionStateFixture(({ invoke, stateRoot }) => {
+    const dir = savedSession(stateRoot);
+    const lock = path.join(dir, '.write-lock');
+    fs.mkdirSync(lock, { recursive: true });
+    const old = new Date(Date.now() - 20000);
+    fs.utimesSync(lock, old, old);
+    invoke({ hook_event_name: 'Stop', session_id: 'robust-session' });
+    assert.ok(fs.existsSync(path.join(dir, 'latest.md')));
+    assert.ok(!fs.existsSync(lock), 'the stale lock must be released');
+  });
+});
+
+test('consecutive PostToolUse snapshots both save their todos and release the write lock', () => {
+  inSessionStateFixture(({ write, stateRoot }) => {
+    const dir = savedSession(stateRoot);
+    for (const todo of ['First saved todo', 'Second saved todo']) {
+      write('robust-session', todo);
+      assert.ok(fs.readFileSync(path.join(dir, 'latest.md'), 'utf8').includes(todo));
+      assert.ok(!fs.existsSync(path.join(dir, '.write-lock')));
+    }
+  });
+});
+
+test('malformed state input exits successfully and records a crash', () => {
+  inSessionStateFixture(({ dir }) => {
+    const hooks = path.join(dir, '.claude/hooks');
+    const result = spawnSync(process.execPath, [path.join(hooks, 'state.cjs')], { cwd: dir, input: '{', encoding: 'utf8' });
+    assert.strictEqual(result.status, 0);
+    const file = path.join(hooks, '.logs/hook-log.jsonl');
+    assert.ok(fs.existsSync(file), 'the asynchronous failure must be logged');
+    const rows = fs.readFileSync(file, 'utf8').trim().split('\n').map(line => JSON.parse(line));
+    assert.strictEqual(rows.length, 1);
+    assert.strictEqual(rows[0].hook, 'state');
+    assert.strictEqual(rows[0].status, 'crash');
+  });
+});
 
 test('a new Claude session startup does not inherit another session context', () => {
   inSessionStateFixture(({ write, invoke }) => {

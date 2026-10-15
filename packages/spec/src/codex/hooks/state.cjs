@@ -3,6 +3,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { containsSecretKeyword } = require('./lib/secret-keywords.cjs');
 const {
   getHookContext,
   logCrash,
@@ -32,6 +33,11 @@ function summary(value, limit = 600) {
   }
   const clean = text.replace(/\0/g, '').trim();
   return clean.length > limit ? `${clean.slice(0, limit)}…` : clean;
+}
+
+function assistantSummary(value) {
+  const text = summary(value, Number.MAX_SAFE_INTEGER);
+  return containsSecretKeyword(text) ? '[omitted: possible secret]' : summary(text);
 }
 
 function normalizeTodos(items) {
@@ -150,7 +156,7 @@ try {
       data.agentResults.push({
         id,
         type: String(payload.agent_type || 'unknown'),
-        message: summary(payload.last_assistant_message)
+        message: assistantSummary(payload.last_assistant_message)
       });
       refreshGit(data, projectRoot);
       writeData(dir, data);
@@ -162,7 +168,7 @@ try {
   if (event === 'Stop') {
     withStateLock(projectRoot, sessionId, (dir) => {
       const data = readData(dir);
-      data.lastAssistant = summary(payload.last_assistant_message);
+      data.lastAssistant = assistantSummary(payload.last_assistant_message);
       refreshGit(data, projectRoot);
       writeData(dir, data);
       archive(dir);

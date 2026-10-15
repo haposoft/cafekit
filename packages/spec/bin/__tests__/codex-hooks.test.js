@@ -146,6 +146,7 @@ function inHookFixture(run, options = {}) {
   try {
     fs.cpSync(CODEX_HOOKS, hooks, { recursive: true });
     fs.copyFileSync(path.join(PACKAGE_ROOT, 'src/claude/hooks/lib/spec-touch.cjs'), path.join(hooks, 'lib/spec-touch.cjs'));
+    fs.copyFileSync(path.join(PACKAGE_ROOT, 'src/claude/hooks/lib/secret-keywords.cjs'), path.join(hooks, 'lib/secret-keywords.cjs'));
     fs.copyFileSync(
       path.join(PACKAGE_ROOT, 'src/claude/hooks/lib/inspect-paths.cjs'),
       path.join(hooks, 'lib/inspect-paths.cjs'),
@@ -210,6 +211,7 @@ function inNoCommitCodexFixture(run) {
   try {
     fs.cpSync(CODEX_HOOKS, hooks, { recursive: true });
     fs.copyFileSync(path.join(PACKAGE_ROOT, 'src/claude/hooks/lib/spec-touch.cjs'), path.join(hooks, 'lib/spec-touch.cjs'));
+    fs.copyFileSync(path.join(PACKAGE_ROOT, 'src/claude/hooks/lib/secret-keywords.cjs'), path.join(hooks, 'lib/secret-keywords.cjs'));
     fs.copyFileSync(path.join(PACKAGE_ROOT, 'src/claude/hooks/lib/runtime-path-safety.cjs'),
       path.join(hooks, 'lib/runtime-path-safety.cjs'));
     const scripts = path.join(root, '.codex/scripts');
@@ -1168,6 +1170,22 @@ test('empty or forged Codex hook authority fails closed', () => {
     const block = JSON.parse(forged.stdout);
     assert.equal(block.decision, 'block');
     assert.match(block.reason, /no completion-gate bypass is supported/i);
+  });
+});
+
+test('Codex Stop omits secret-related assistant messages from saved state', () => {
+  inHookFixture((root, hooks) => {
+    const message = 'API key handling was discussed in this synthetic test.';
+    const result = runHook(path.join(hooks, 'state.cjs'), root, {
+      hook_event_name: 'Stop', session_id: 'secret-summary', last_assistant_message: message,
+    });
+    assert.equal(result.status, 0);
+    const dir = codexStateDir(root, 'secret-summary');
+    for (const name of ['data.json', 'latest.md']) {
+      const content = fs.readFileSync(path.join(dir, name), 'utf8');
+      assert.ok(content.includes('[omitted: possible secret]'));
+      assert.ok(!content.includes(message));
+    }
   });
 });
 
