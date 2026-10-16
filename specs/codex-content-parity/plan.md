@@ -80,7 +80,7 @@ Specs-Contract: process-first-ready-v1
 |---|---|---|---|---|---|---|
 | 01 | Agent Codex read-only | P1 | AC-01 | `bin/lib/codex-install.js` (agent), `codex-native.test.js` | - | done |
 | 02 | `when_to_use` cho Codex | P1 | AC-02 | `bin/lib/codex-install.js` (skill), catalog, `codex-projection-parity.test.js` | task-01-codex-agent-sandbox.md | done |
-| 03 | Rule Codex đủ, rule/gitignore khớp, xoá file cũ | P1 | AC-03 | `src/codex/AGENTS.md`, rules, gitignore | task-02-codex-when-to-use.md | pending |
+| 03 | Rule Codex đủ, rule/gitignore khớp, xoá file cũ | P1 | AC-03 | `src/codex/AGENTS.md`, rules, gitignore | task-02-codex-when-to-use.md | done |
 | 04 | Bộ chuyển đổi văn bản | P1 | AC-04 | `bin/lib/codex-install.js` (body), nguồn skill, `codex-native.test.js` | task-03-codex-rules-reach.md | pending |
 | 05 | Installer ghi một lần, bỏ cấu hình chết | P2 | AC-05 | `bin/phases/codex-runtime.js`, manifest, runtime.json, ai-multimodal | task-04-codex-text-converter.md | pending |
 | 06 | Obsolete an toàn | P1 | AC-06 | `bin/phases/{claude,codex}-runtime.js` (nhánh obsolete) | task-05-installer-write-once.md | pending |

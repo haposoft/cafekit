@@ -1,6 +1,6 @@
 # Task 03 — Codex đọc đủ rule; rule và gitignore hai host khớp; xoá file cũ
 
-Status: pending
+Status: done
 
 ## Outcome
 AGENTS block Codex trỏ đủ 10 rule; orchestrator trên Codex không hứa model mạnh nhất; `hook-protocols.md` và gitignore khớp theo D-04; hai file cũ trong `packages/spec` bị xoá.
@@ -46,4 +46,27 @@ AGENTS block Codex trỏ đủ 10 rule; orchestrator trên Codex không hứa mo
 On a failed Step or Verification Plan run: stop; do not widen scope, change the Command, or weaken a test; record observed versus expected; repair only the cited cause; after three failed rounds, stop and ask the user.
 
 ## Receipt
-<!-- Fill only after execution. -->
+
+Verification: PASS
+Command: `node --test packages/spec/bin/__tests__/codex-native.test.js && test ! -e packages/spec/CLAUDE.md && test ! -e packages/spec/AGENTS.md && node packages/spec/scripts/run-skill-self-tests.mjs`
+Exit: 0
+Base: 27a61cb56d00f67a5e3211d9259acb4f714c2e0d
+Head: 9f8922f515e4738f44ac45d33b6160917bba5154c65296a2b49efff0bc89af0e
+
+```text
+ok 1 - installed Codex instructions reference all ten runtime rules
+ok 2 - installed Codex orchestrator describes high reasoning on the session model
+ok 3 - installed hook protocols share malformed-output handling and Codex receipt guidance
+ok 4 - installed Claude ignore rules preserve env samples and ignore temporary files
+# tests 45
+# pass 45
+# fail 0
+# skipped 0
+# todo 0
+[skill-test] PASS: 2141 tests executed
+```
+
+- Đỏ trước sửa (Codex báo): 4/45.
+- Counterexample (Codex báo): bỏ dòng trỏ `workflow.md` → ca 10 rule đỏ; khôi phục → xanh, khớp byte.
+- `test ! -e` cho hai file cũ nằm trong Command; hai file xoá trong commit 27a61cb5.
+- Review controller: đoạn Model Escalation chỉ đổi trên Codex (`normalizeCodexBody`, nhánh `rules/orchestrator.md`), nguồn Claude giữ nguyên; câu malformed giống nhau hai host; bản `.claude/rules/hook-protocols.md` gốc repo (gitignored) chưa đồng bộ, sẽ cập nhật khi cài lại.
