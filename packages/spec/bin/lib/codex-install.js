@@ -363,6 +363,10 @@ function convertCodexAgentContent(content, fileName = '') {
     frontmatter.description || `CafeKit Codex agent: ${name}`
   );
   let instructions = normalizeCodexBody(body).trim();
+  const readOnly = ['brainstormer', 'code_auditor', 'inspector', 'researcher'].includes(name);
+  if (readOnly) {
+    instructions += '\n\n## Read-only role\n\nRead-only role: never create, never edit, and never delete files, and never run commands that write to disk; return findings in your reply.';
+  }
   const reasoning = [];
   if (name === 'strategist') {
     description = 'Autonomous advisory counsel with high reasoning effort; inherits the session model unless native spawn or agent defaults select another. No session model switch or user interview. Mention @strategist or spawn it for hard design, debugging, or trade-off calls. Advisory-only; returns advice, not code.';
@@ -377,6 +381,7 @@ function convertCodexAgentContent(content, fileName = '') {
   return [
     `name = ${JSON.stringify(name)}`,
     `description = ${JSON.stringify(description)}`,
+    ...(readOnly ? ['sandbox_mode = "read-only"'] : []),
     ...reasoning,
     `developer_instructions = ${JSON.stringify(instructions)}`,
     ''

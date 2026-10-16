@@ -6,6 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+- Codex agent projections retain sandbox_mode and append read-only instructions for brainstormer, code_auditor, inspector, and researcher; Codex 0.162.1 does not enforce agent sandbox_mode. Other agent defaults are preserved.
 - Claude and Codex now align invalid-spec completion messages, detailed tollgate counts, receipt authority reminders, and subagent rule wording.
 - Privacy prompts now share sorted, deduplicated basename lists; Claude uses one native ask emitter and asks on empty input, while omp retains its deny and empty-input contracts.
 - Claude and Codex now share the CafeKit update notice, using a twelve-hour version-only cache and rejecting legacy notice text, invalid versions, and future timestamps.

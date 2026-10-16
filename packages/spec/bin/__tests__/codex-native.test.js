@@ -260,6 +260,47 @@ function parseGeneratedTomlString(content, key) {
   return JSON.parse(match[1]);
 }
 
+const READ_ONLY_ROLE_SUFFIX = '\n\n## Read-only role\n\nRead-only role: never create, never edit, and never delete files, and never run commands that write to disk; return findings in your reply.';
+
+function assertInstalledAgentFields(content, name) {
+  const source = fs.readFileSync(path.join(PACKAGE_ROOT, 'src/claude/agents', `${name.replace(/_/g, '-')}.md`), 'utf8');
+  const { frontmatter, body } = require('../lib/codex-frontmatter').splitFrontmatter(source);
+  for (const key of ['name', 'description', 'developer_instructions']) {
+    assert.equal((content.match(new RegExp(`^${key} =`, 'gm')) || []).length, 1);
+  }
+  assert.equal(parseGeneratedTomlString(content, 'name'), name);
+  assert.equal(parseGeneratedTomlString(content, 'description'), normalizeCodexBody(frontmatter.description));
+  const suffix = ['brainstormer', 'code_auditor', 'inspector', 'researcher'].includes(name)
+    ? READ_ONLY_ROLE_SUFFIX : '';
+  assert.equal(parseGeneratedTomlString(content, 'developer_instructions'), normalizeCodexBody(body).trim() + suffix);
+}
+
+for (const name of ['brainstormer', 'code_auditor', 'inspector', 'researcher']) {
+  test(`installed ${name} agent has exactly one read-only sandbox setting`, () => {
+    inTempProject(root => {
+      const result = install(root);
+      assert.equal(result.status, 0, result.stderr);
+      const content = fs.readFileSync(path.join(root, '.codex/agents', `${name}.toml`), 'utf8');
+      assert.deepEqual(content.match(/^sandbox_mode\s*=.*$/gm) || [], ['sandbox_mode = "read-only"']);
+      assert.ok(parseGeneratedTomlString(content, 'developer_instructions').endsWith(READ_ONLY_ROLE_SUFFIX));
+      assertInstalledAgentFields(content, name);
+    });
+  });
+}
+
+test('installed implementation agents retain their sandbox defaults', () => {
+  inTempProject(root => {
+    const result = install(root);
+    assert.equal(result.status, 0, result.stderr);
+    for (const name of ['implementer', 'test_runner', 'debugger', 'git_ops']) {
+      const content = fs.readFileSync(path.join(root, '.codex/agents', `${name}.toml`), 'utf8');
+      assert.doesNotMatch(content, /^sandbox_mode\s*=/m);
+      assert.doesNotMatch(parseGeneratedTomlString(content, 'developer_instructions'), /## Read-only role/);
+      assertInstalledAgentFields(content, name);
+    }
+  });
+});
+
 function replaceGeneratedTomlString(content, key, value) {
   const pattern = new RegExp(`^${key} = .+$`, 'gm');
   const matches = [...content.matchAll(pattern)];
