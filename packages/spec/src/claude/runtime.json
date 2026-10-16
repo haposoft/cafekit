@@ -26,9 +26,6 @@
     "thinkingLanguage": null,
     "responseLanguage": null
   },
-  "usage": {
-    "enabled": true
-  },
   "hooks": {},
   "assertions": []
 }

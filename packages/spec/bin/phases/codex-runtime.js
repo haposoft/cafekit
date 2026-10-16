@@ -5,6 +5,7 @@ const path = require('path');
 const { PLATFORMS } = require('../lib/context');
 const { writeManagedFile, copyManagedTree } = require('../lib/managed-writer');
 const { report, treeAction } = require('./report');
+const { isGeneratedArtifact } = require('../lib/copy-utils');
 const { copyRulesDirectory, copyOutputStylesDirectory } = require('./claude-runtime');
 const {
   managedRange,
@@ -82,13 +83,32 @@ function installRuntimeFiles(ctx, platformKey) {
 
   mergeCodexHooks(ctx, platformKey);
 
-  const agg = copyManagedTree({
-    src: path.join(CODEX_SRC, 'hooks'),
-    dest: path.join(platform.folder, 'hooks'),
-    platformFolder: platform.folder,
-    ctx,
-    tracker: ctx.trackers[platformKey]
+  const hooksSource = path.join(CODEX_SRC, 'hooks');
+  const libsSource = path.join(hooksSource, 'lib');
+  const shimPattern = /^(?:['"]use strict['"];?\s*)?module\.exports\s*=\s*require\(['"]\.\.\/\.\.\/\.\.\/claude\/hooks\/lib\/([^'"/]+)['"]\);?\s*$/;
+  const sharedLibraries = fs.readdirSync(libsSource).filter(name => {
+    const file = path.join(libsSource, name);
+    if (!fs.lstatSync(file).isFile()) return false;
+    const match = fs.readFileSync(file, 'utf8').match(shimPattern);
+    return match && match[1] === name;
   });
+  const agg = { created: 0, updated: 0, unchanged: 0, preserved: 0, missing: 0 };
+  const copyHookEntry = relative => {
+    if (isGeneratedArtifact(path.basename(relative))) return;
+    const child = copyManagedTree({
+      src: path.join(hooksSource, relative),
+      dest: path.join(platform.folder, 'hooks', relative),
+      sourceRoot: hooksSource,
+      platformFolder: platform.folder, ctx, tracker: ctx.trackers[platformKey]
+    });
+    for (const key of Object.keys(agg)) agg[key] += child[key];
+  };
+  for (const name of fs.readdirSync(hooksSource)) {
+    if (name !== 'lib') copyHookEntry(name);
+    else for (const lib of fs.readdirSync(libsSource)) {
+      if (!sharedLibraries.includes(lib)) copyHookEntry(path.join('lib', lib));
+    }
+  }
   report(ctx, treeAction(agg), 'Codex native hooks');
   removeObsoleteCodexHooks(ctx, platformKey);
   // Keep one canonical command analyzer in the Claude source tree, then
@@ -102,55 +122,21 @@ function installRuntimeFiles(ctx, platformKey) {
     path.join(platform.folder, 'runtime.schema.json'),
     'Codex runtime schema'
   );
-  writeSourceFile(
-    ctx,
-    platformKey,
-    path.join(SRC, 'claude', 'hooks', 'lib', 'privacy-command-analysis.cjs'),
-    path.join(platform.folder, 'hooks', 'lib', 'privacy-command-analysis.cjs'),
-    'Codex privacy command analyzer'
-  );
-  writeSourceFile(
-    ctx,
-    platformKey,
-    path.join(SRC, 'claude', 'hooks', 'lib', 'privacy-paths.cjs'),
-    path.join(platform.folder, 'hooks', 'lib', 'privacy-paths.cjs'),
-    'Codex privacy path analyzer'
-  );
-  writeSourceFile(
-    ctx,
-    platformKey,
-    path.join(SRC, 'claude', 'hooks', 'lib', 'secret-keywords.cjs'),
-    path.join(platform.folder, 'hooks', 'lib', 'secret-keywords.cjs'),
-    'Codex secret keyword matcher'
-  );
-  writeSourceFile(
-    ctx,
-    platformKey,
-    path.join(SRC, 'claude', 'hooks', 'lib', 'runtime-path-safety.cjs'),
-    path.join(platform.folder, 'hooks', 'lib', 'runtime-path-safety.cjs'),
-    'Codex runtime path safety'
-  );
-  writeSourceFile(
-    ctx,
-    platformKey,
-    path.join(SRC, 'claude', 'hooks', 'lib', 'inspect-paths.cjs'),
-    path.join(platform.folder, 'hooks', 'lib', 'inspect-paths.cjs'),
-    'Codex inspection path analyzer'
-  );
-  writeSourceFile(
-    ctx,
-    platformKey,
-    path.join(SRC, 'claude', 'hooks', 'lib', 'spec-touch.cjs'),
-    path.join(platform.folder, 'hooks', 'lib', 'spec-touch.cjs'),
-    'Codex spec touch helpers'
-  );
-  writeSourceFile(
-    ctx,
-    platformKey,
-    path.join(SRC, 'claude', 'hooks', 'lib', 'update-check.cjs'),
-    path.join(platform.folder, 'hooks', 'lib', 'update-check.cjs'),
-    'Codex update check'
-  );
+  const helperLabels = {
+    'privacy-command-analysis.cjs': 'Codex privacy command analyzer',
+    'privacy-paths.cjs': 'Codex privacy path analyzer',
+    'secret-keywords.cjs': 'Codex secret keyword matcher',
+    'runtime-path-safety.cjs': 'Codex runtime path safety',
+    'inspect-paths.cjs': 'Codex inspection path analyzer',
+    'spec-touch.cjs': 'Codex spec touch helpers',
+    'update-check.cjs': 'Codex update check'
+  };
+  for (const name of sharedLibraries) {
+    writeSourceFile(ctx, platformKey,
+      path.join(SRC, 'claude', 'hooks', 'lib', name),
+      path.join(platform.folder, 'hooks', 'lib', name),
+      helperLabels[name] || `Codex hook helper: ${name}`);
+  }
 }
 
 function installNativeRuleOverrides(ctx, platformKey) {
@@ -198,7 +184,7 @@ function installManagedAgentsMd(ctx) {
 function installCodexRuntime(ctx, platformKey) {
   if (platformKey !== 'codex') return ctx;
   installRuntimeFiles(ctx, platformKey);
-  copyRulesDirectory(ctx, platformKey);
+  copyRulesDirectory(ctx, platformKey, new Set(fs.readdirSync(path.join(CODEX_SRC, 'rules'))));
   copyOutputStylesDirectory(ctx, platformKey);
   installNativeRuleOverrides(ctx, platformKey);
   installManagedAgentsMd(ctx);

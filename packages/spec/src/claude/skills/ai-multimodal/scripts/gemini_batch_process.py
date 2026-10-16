@@ -23,19 +23,10 @@ from typing import List, Dict, Any, Optional
 import csv
 import shutil
 
-# Import centralized environment resolver (works for both local and global installs)
-CLAUDE_ROOT = Path(__file__).parent.parent.parent.parent
-sys.path.insert(0, str(CLAUDE_ROOT / 'scripts'))
 try:
-    from resolve_env import resolve_env
-    CENTRALIZED_RESOLVER_AVAILABLE = True
+    from dotenv import load_dotenv
 except ImportError:
-    # Fallback if centralized resolver not available
-    CENTRALIZED_RESOLVER_AVAILABLE = False
-    try:
-        from dotenv import load_dotenv
-    except ImportError:
-        load_dotenv = None
+    load_dotenv = None
 
 # Import key rotation support
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / 'common'))
@@ -74,10 +65,7 @@ IMAGEN_MODELS = {
 
 
 def find_api_key() -> Optional[str]:
-    """Find Gemini API key using centralized resolver or fallback.
-
-    Uses ~/packages/spec/src/claude/scripts/resolve_env.py for consistent resolution across all skills.
-    Falls back to local resolution if centralized resolver not available.
+    """Find Gemini API key using local environment resolution.
 
     Priority order (highest to lowest):
     1. process.env (runtime environment variables)
@@ -88,11 +76,6 @@ def find_api_key() -> Optional[str]:
     6. ~/packages/spec/src/claude/skills/.env (user shared)
     7. ~/packages/spec/src/claude/.env (user global)
     """
-    if CENTRALIZED_RESOLVER_AVAILABLE:
-        # Use centralized resolver (recommended)
-        return resolve_env('GEMINI_API_KEY', skill='ai-multimodal')
-
-    # Fallback: Local resolution (legacy)
     api_key = os.getenv('GEMINI_API_KEY')
     if api_key:
         return api_key
@@ -751,18 +734,13 @@ def batch_process(
         print("Error: GEMINI_API_KEY not found in any location")
         print("\nSearched locations (highest to lowest priority):")
         print("  1. OS environment (process.env)")
-        if CENTRALIZED_RESOLVER_AVAILABLE:
-            from resolve_env import get_env_file_paths
-            for i, (desc, path) in enumerate(get_env_file_paths('ai-multimodal'), 2):
-                exists = "[OK]" if path.exists() else "[  ]"
-                print(f"  {i}. {exists} {path}")
-        else:
-            print("  2-7. .env files (centralized resolver unavailable)")
+        print("  2. Runtime .env file")
+        print("  3. Shared skills .env file")
+        print("  4. Skill-specific .env file")
         print("\nQuick fix — add your key to any .env file above:")
         print("  echo 'GEMINI_API_KEY=your-key' >> ~/packages/spec/src/claude/.env")
         print("\nOther options:")
         print("  - Run setup checker: python scripts/check_setup.py")
-        print("  - Show full hierarchy: python ~/packages/spec/src/claude/scripts/resolve_env.py --show-hierarchy --skill ai-multimodal -v")
         print("\nFor key rotation, add multiple keys to any .env:")
         print("   GEMINI_API_KEY=key1")
         print("   GEMINI_API_KEY_2=key2")

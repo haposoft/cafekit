@@ -4,6 +4,7 @@ All notable changes to CafeKit are documented here, following
 [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
+- Codex installation writes shared hook libraries and overridden rules once; retired usage configuration and missing multimodal resolver references are removed while local resolution and the fixture script list remain available.
 - Codex text projections preserve both host names in shared lists, omit Team-only agent instructions, and place user questions in the turn's final answer; worktree and catalog wording is runtime-neutral.
 - Codex instructions reference all runtime rules and describe session-model strategist counsel; hook failure guidance and Claude ignore rules are aligned, and obsolete package instruction files are removed.
 - Codex skill descriptions include routing guidance when it fits 1024 characters, serialize it as a JSON string, and avoid repeating that guidance in the catalog.

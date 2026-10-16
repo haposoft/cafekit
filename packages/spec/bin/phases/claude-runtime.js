@@ -258,7 +258,7 @@ function copyClaudeMdFile(ctx, platformKey) {
 }
 
 /** Copy the rules/ tree (ownership-aware; no longer force-overwrites). */
-function copyRulesDirectory(ctx, platformKey) {
+function copyRulesDirectory(ctx, platformKey, excludedNames = new Set()) {
   if (!hasPlatformCapability(platformKey, 'rules')) return;
 
   const src = path.join(SRC, 'claude/rules');
@@ -270,9 +270,19 @@ function copyRulesDirectory(ctx, platformKey) {
   }
 
   const transform = getCopyOptions(platformKey, {}).transform;
-  const agg = copyManagedTree({
+  const options = {
     src, dest, platformFolder: PLATFORMS[platformKey].folder, ctx, tracker: ctx.trackers[platformKey], transform
-  });
+  };
+  let agg;
+  if (excludedNames.size === 0) agg = copyManagedTree(options);
+  else {
+    agg = { created: 0, updated: 0, unchanged: 0, preserved: 0, missing: 0 };
+    for (const name of fs.readdirSync(src)) {
+      if (excludedNames.has(name)) continue;
+      const child = copyManagedTree({ ...options, sourceRoot: src, src: path.join(src, name), dest: path.join(dest, name) });
+      for (const key of Object.keys(agg)) agg[key] += child[key];
+    }
+  }
   report(ctx, treeAction(agg), 'rules/ directory');
 }
 

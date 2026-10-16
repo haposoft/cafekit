@@ -5,7 +5,6 @@ Validate ai-multimodal skill setup and configuration.
 Checks:
 - API key presence and format
 - Python dependencies
-- Centralized resolver availability
 - Directory structure
 """
 
@@ -85,69 +84,16 @@ def check_dependencies():
     return True
 
 
-def check_centralized_resolver():
-    """Check if centralized resolver is available."""
-    print_header("Checking Centralized Resolver")
-
-    claude_root = Path(__file__).parent.parent.parent.parent
-    resolver_path = claude_root / 'scripts' / 'resolve_env.py'
-
-    if resolver_path.exists():
-        print_success(f"Centralized resolver found: {resolver_path}")
-
-        # Try to import it
-        sys.path.insert(0, str(resolver_path.parent))
-        try:
-            from resolve_env import resolve_env
-            print_success("Centralized resolver can be imported")
-            return True
-        except ImportError as e:
-            print_error(f"Centralized resolver exists but cannot be imported: {e}")
-            return False
-    else:
-        print_warning(f"Centralized resolver not found: {resolver_path}")
-        print_info("Skill will use fallback resolution logic")
-        return True  # Not critical, fallback works
-
-
 def find_api_key():
-    """Find and validate API key using centralized resolver."""
+    """Find the API key in the runtime environment."""
     print_header("Checking API Key Configuration")
-
-    # Try to use centralized resolver
-    claude_root = Path(__file__).parent.parent.parent.parent
-    sys.path.insert(0, str(claude_root / 'scripts'))
-    try:
-        from resolve_env import resolve_env
-
-        print_info("Using centralized resolver...")
-        api_key = resolve_env('GEMINI_API_KEY', skill='ai-multimodal')
-
-        if api_key:
-            print_success("API key found via centralized resolver")
-            print_info(f"Key preview: {api_key[:20]}...{api_key[-4:]}")
-
-            # Show hierarchy
-            print_info("\nTo see where the key was found, run:")
-            print_info("python ~/packages/spec/src/claude/scripts/resolve_env.py GEMINI_API_KEY --skill ai-multimodal --verbose")
-
-            return api_key
-        else:
-            print_error("API key not found in any location")
-            return None
-
-    except ImportError:
-        print_warning("Centralized resolver not available, using fallback")
-
-        # Fallback: check environment
-        api_key = os.getenv('GEMINI_API_KEY')
-        if api_key:
-            print_success("API key found in process.env")
-            print_info(f"Key preview: {api_key[:20]}...{api_key[-4:]}")
-            return api_key
-        else:
-            print_error("API key not found")
-            return None
+    api_key = os.getenv('GEMINI_API_KEY')
+    if api_key:
+        print_success("API key found in process.env")
+        print_info(f"Key preview: {api_key[:20]}...{api_key[-4:]}")
+        return api_key
+    print_error("API key not found")
+    return None
 
 
 def validate_api_key_format(api_key):
@@ -250,9 +196,6 @@ def provide_setup_instructions():
     print("\n3. Verify setup:")
     print(f"   $ python {Path(__file__)}")
 
-    print("\n4. Debug if needed:")
-    print(f"   $ python ~/packages/spec/src/claude/scripts/resolve_env.py --show-hierarchy --skill ai-multimodal")
-    print(f"   $ python ~/packages/spec/src/claude/scripts/resolve_env.py GEMINI_API_KEY --skill ai-multimodal --verbose")
 
 
 def main():
@@ -264,9 +207,6 @@ def main():
     # Check directory structure
     if not check_directory_structure():
         all_passed = False
-
-    # Check centralized resolver
-    check_centralized_resolver()
 
     # Check dependencies
     if not check_dependencies():

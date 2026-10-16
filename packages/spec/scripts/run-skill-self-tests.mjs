@@ -2878,7 +2878,7 @@ async function runAuthoringInstructionContractTests(fail) {
     ["develop", "src/claude/skills/develop/SKILL.md"],
     ["sync", "src/claude/skills/sync/SKILL.md"],
     ["claudeState", "src/claude/rules/state-sync.md"],
-    ["codexState", "src/codex/rules/state-sync.md"],
+    ["codexState", "src/claude/rules/state-sync.md"],
     ["claudeRuntime", "src/claude/CLAUDE.md"],
     ["codexRuntime", "src/codex/AGENTS.md"],
     ["commonRuntime", "src/common/AGENTS.md"],
@@ -5082,7 +5082,7 @@ async function runStaticSemanticTests() {
     },
     {
       label: "Codex carries the same completion policy, since it does not auto-load Claude rules",
-      file: "src/codex/rules/state-sync.md",
+      file: "src/claude/rules/state-sync.md",
       assert: (content) =>
         content.includes("bound to live Base and Head only while its own task file has a copy in") &&
         content.includes("committing a packet is the user's choice") &&

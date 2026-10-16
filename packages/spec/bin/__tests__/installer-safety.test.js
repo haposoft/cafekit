@@ -97,6 +97,63 @@ function inTempProject(run) {
   }
 }
 
+function runCodexInstaller(root) {
+  return spawnSync(process.execPath, [INSTALLER, '--platform', 'codex', '--yes'], {
+    cwd: root, encoding: 'utf8', env: { ...process.env, PATH: '/usr/bin:/bin' }
+  });
+}
+
+test('identical Codex reinstall does not report hook helpers or rules updated', () => {
+  inTempProject(root => {
+    const first = runCodexInstaller(root);
+    assert.equal(first.status, 0, first.stderr);
+    const second = runCodexInstaller(root);
+    assert.equal(second.status, 0, second.stderr);
+    const labels = ['Codex native hooks', 'Codex privacy command analyzer', 'Codex privacy path analyzer',
+      'Codex secret keyword matcher', 'Codex runtime path safety', 'Codex inspection path analyzer',
+      'Codex spec touch helpers', 'Codex update check', 'Codex native rule overrides', 'rules/ directory'];
+    const updates = `${second.stdout}\n${second.stderr}`.split('\n')
+      .filter(line => line.includes('↻') && labels.some(label => line.includes(label)));
+    assert.deepEqual(updates, []);
+  });
+});
+
+test('installed Codex hook libraries match canonical bytes and contain no source shims', () => {
+  inTempProject(root => {
+    const result = runCodexInstaller(root);
+    assert.equal(result.status, 0, result.stderr);
+    const sourceRoot = path.join(__dirname, '../../src');
+    const libs = path.join(sourceRoot, 'codex/hooks/lib');
+    const shim = /^(?:['"]use strict['"];?\s*)?module\.exports\s*=\s*require\(['"]\.\.\/\.\.\/\.\.\/claude\/hooks\/lib\/([^'"]+)['"]\);?\s*$/;
+    for (const name of fs.readdirSync(libs)) {
+      const source = fs.readFileSync(path.join(libs, name), 'utf8');
+      const match = source.match(shim);
+      if (match) assert.equal(match[1], name);
+      const expected = path.join(sourceRoot, match ? 'claude/hooks/lib' : 'codex/hooks/lib', name);
+      const installed = fs.readFileSync(path.join(root, '.codex/hooks/lib', name));
+      assert.doesNotMatch(installed.toString(), shim, name);
+      assert.deepEqual(installed, fs.readFileSync(expected), name);
+    }
+  });
+});
+
+test('installed Claude runtime omits retired usage configuration', () => {
+  inTempProject(root => {
+    const result = runCombinedInstaller(root);
+    assert.equal(result.status, 0, result.stderr);
+    const runtime = JSON.parse(fs.readFileSync(path.join(root, '.claude/runtime.json'), 'utf8'));
+    assert.equal(Object.hasOwn(runtime, 'usage'), false);
+  });
+});
+
+test('multimodal setup scripts keep local resolution without the missing resolver', () => {
+  for (const name of ['check_setup.py', 'gemini_batch_process.py']) {
+    const content = fs.readFileSync(path.join(__dirname, '../../src/claude/skills/ai-multimodal/scripts', name), 'utf8');
+    assert.doesNotMatch(content, /resolve_env|CENTRALIZED_RESOLVER_AVAILABLE/, name);
+    assert.ok(content.includes("os.getenv('GEMINI_API_KEY')"), name);
+  }
+});
+
 test('legacy managed root gitignore migrates A13 plan patterns and preserves user content', () => {
   inTempProject((root) => {
     fs.writeFileSync('.gitignore', [
