@@ -1,6 +1,6 @@
 # Task 07 — Anchor compact Claude theo phiên
 
-Status: pending
+Status: done
 
 ## Outcome
 PreCompact Claude ghi anchor riêng theo phiên như Codex; SessionStart compact chỉ in anchor của chính phiên.
@@ -42,4 +42,25 @@ PreCompact Claude ghi anchor riêng theo phiên như Codex; SessionStart compact
 On a failed Step or Verification Plan run: stop; do not widen scope, change the Command, or weaken a test; record observed versus expected; repair only the cited cause; after three failed rounds, stop and ask the user.
 
 ## Receipt
-<!-- Fill only after execution. -->
+
+Verification: PASS
+Command: `node --test packages/spec/src/claude/hooks/__tests__/precompact.test.js packages/spec/bin/__tests__/orca-session.test.js && cmp packages/spec/src/claude/hooks/precompact.cjs .claude/hooks/precompact.cjs && cmp packages/spec/src/claude/hooks/session.cjs .claude/hooks/session.cjs && node packages/spec/scripts/run-skill-self-tests.mjs`
+Exit: 0
+Base: d0cf0ade6e0f79b0e0a58f8a4ab945f9e2a8558b
+Head: 6093741dd9d6464e20ea084603b9e79a8f923496c5c5c5e4325fc1a11ae81918
+
+```text
+ok 20 - two compacting sessions keep separate anchors and restore only their own branch
+ok 21 - PreCompact without a usable session identity creates no anchor or state directory
+# tests 25
+# pass 25
+# fail 0
+# skipped 0
+# todo 0
+[skill-test] PASS: 2184 tests executed
+```
+
+- Đỏ trước sửa (Codex báo): 4/25.
+- Counterexample (Codex báo): quay lại tên file chung → ca hai phiên đỏ; hoàn tác khớp byte.
+- `cmp` hai hook `.claude/` (gitignored, đã đồng bộ) nằm trong Command.
+- Review controller: tên anchor `compact-recovery-<sha256(session_id)>.json` như Codex; không có `session_id` thì không ghi và SessionStart thoát sớm; ca `precompact.test.js:257` ghi anchor phiên kia dưới tên hash của nó; probe self-test đổi sang `compact-recovery-`. Commit d0cf0ade.

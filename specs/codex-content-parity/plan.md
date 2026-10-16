@@ -84,7 +84,7 @@ Specs-Contract: process-first-ready-v1
 | 04 | Bộ chuyển đổi văn bản | P1 | AC-04 | `bin/lib/codex-install.js` (body), nguồn skill, `codex-native.test.js` | task-03-codex-rules-reach.md | done |
 | 05 | Installer ghi một lần, bỏ cấu hình chết | P2 | AC-05 | `bin/phases/codex-runtime.js`, manifest, runtime.json, ai-multimodal | task-04-codex-text-converter.md | done |
 | 06 | Obsolete an toàn | P1 | AC-06 | `bin/phases/{claude,codex}-runtime.js` (nhánh obsolete) | task-05-installer-write-once.md | done |
-| 07 | Anchor compact Claude theo phiên | P3 | AC-07 | `src/claude/hooks/{precompact,session}.cjs` | task-06-obsolete-safe-removal.md | pending |
+| 07 | Anchor compact Claude theo phiên | P3 | AC-07 | `src/claude/hooks/{precompact,session}.cjs` | task-06-obsolete-safe-removal.md | done |
 
 Command chạy từ gốc repo; self-test là `node packages/spec/scripts/run-skill-self-tests.mjs` đặt cuối mỗi Command. Oracle chung: mọi lệnh exit 0; output `node --test` có `# fail 0`, `# skipped 0`, `# todo 0`, và tên từng test mới hiện thành dòng `ok`; self-test in `PASS:`. Chạy tuần tự: task 01, 02, 04 cùng sửa `bin/lib/codex-install.js`, task 01/04/06 cùng sửa `codex-native.test.js`, task 05/06 cùng sửa `codex-runtime.js`; mọi task sửa hai changelog (`CHANGELOG.md`, `../../docs/project-changelog.md`, mục Unreleased). Probe tĩnh trong `scripts/run-skill-self-tests.mjs` chỉ được cập nhật ở dòng task ghi rõ trong Ownership, nêu trong Receipt. Không đưa mã task/quyết định vào tên test, comment hay commit.
 
