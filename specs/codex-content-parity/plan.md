@@ -41,7 +41,7 @@ Specs-Contract: process-first-ready-v1
 | D-07 | Codex: `AskUserQuestion` và "native structured user-input tool"/"native input tool" thành cụm danh từ "a question in the turn's final answer" (giữ logic mạo từ); không nhắc `request_user_input` | Cụm động từ; giữ chữ cũ | Khớp note specs | — | — |
 | D-08 | Shim = file chỉ có (tuỳ chọn `'use strict';`) và `module.exports = require('../../../claude/hooks/lib/<cùng tên>')`. Installer Codex không chép shim trong copy cây, chỉ ghi bản Claude một lần, danh sách suy ra từ shim. Chỉ Codex: `copyRulesDirectory` bỏ qua tên có trong `src/codex/rules`; xoá `src/codex/rules/state-sync.md`, self-test đọc bản Claude | Giữ ghi hai lần | Cài đè y nguyên không báo lib/rule cập nhật | — | — |
 | D-09 | `obsolete.runtimeFiles`: `lstat`/`assertNoSymlinkPath` trước mọi bước, symlink → giữ + cảnh báo. File chỉ xoá khi tracker có hash và khớp. Thư mục chỉ xoá khi mọi file trong đó có hash khớp và không có file lạ. Phần giữ lại: một dòng cảnh báo gộp mỗi lần cài, nêu số mục và cách tự xoá; không prune tracker | Xoá như cũ; trừ hook legacy | Quyết định của Bro (G1) | Tracker ghi sha256 file đã cài | — |
-| D-10 | Bỏ `usage` khỏi `src/claude/runtime.json` (giữ node schema); bỏ `scripts.required` khỏi manifest và probe self-test đọc nó; bỏ nhánh `resolve_env.py` trong `ai-multimodal`, giữ đường dự phòng | Cài thêm `resolve_env.py` | Không có nguồn để cài | — | — |
+| D-10 | Bỏ `usage` khỏi `src/claude/runtime.json` (giữ node schema); giữ `scripts.required` (develop 16/10: là danh sách fixture của `installed-root.test.js:24`, `precompact.test.js:222`, self-test `:5027`, không phải cấu hình chết); bỏ nhánh `resolve_env.py` trong `ai-multimodal`, giữ đường dự phòng | Cài thêm `resolve_env.py` | Không có nguồn để cài | — | — |
 | D-11 | Claude anchor compact `compact-recovery-<sha256(session_id) hex>.json` dưới `hookStateDir`, như Codex; không có `session_id` thì không ghi | Giữ file chung | Hai phiên không đè anchor của nhau | — | — |
 
 ## Known limitations
@@ -71,7 +71,7 @@ Specs-Contract: process-first-ready-v1
 | AC-02 | When a skill with `when_to_use` is converted for Codex, its description shall end with `Use when: <when_to_use>` and parse as a JSON string whenever the total fits 1024; the Codex catalog shall not repeat it. | task-02 Command |
 | AC-03 | When Codex is installed, AGENTS.md shall name all ten installed rules, orchestrator shall not promise the strongest model, both hook-protocols shall share the malformed-output sentence, Claude gitignore shall carry the env exceptions; `packages/spec/CLAUDE.md` and `AGENTS.md` shall not exist. | task-03 Command |
 | AC-04 | When Claude text is converted for Codex, it shall contain no Team tool protocol yet keep the non-Team rules, no duplicated host list, no `AskUserQuestion`, structured user-input or native input tool wording, no "Codex CLI's own worktree", and the catalog usage shall name the right root per host. | task-04 Command |
-| AC-05 | When Codex is reinstalled over an identical install, no lib or rule line shall be reported updated and no installed lib shall be a shim; runtime.json and manifest shall carry no `usage` or `scripts.required`. | task-05 Command |
+| AC-05 | When Codex is reinstalled over an identical install, no lib or rule line shall be reported updated and no installed lib shall be a shim; runtime.json shall carry no `usage`. | task-05 Command |
 | AC-06 | When an obsolete runtime entry is user-modified, untracked, a symlink, or a directory with a foreign or modified file, both hosts shall keep it and print one aggregated warning; an unmodified tracked entry shall be removed. | task-06 Command |
 | AC-07 | When Claude PreCompact runs for two sessions, each shall keep its own anchor and SessionStart compact shall print only its own. | task-07 Command |
 
@@ -82,13 +82,14 @@ Specs-Contract: process-first-ready-v1
 | 02 | `when_to_use` cho Codex | P1 | AC-02 | `bin/lib/codex-install.js` (skill), catalog, `codex-projection-parity.test.js` | task-01-codex-agent-sandbox.md | done |
 | 03 | Rule Codex đủ, rule/gitignore khớp, xoá file cũ | P1 | AC-03 | `src/codex/AGENTS.md`, rules, gitignore | task-02-codex-when-to-use.md | done |
 | 04 | Bộ chuyển đổi văn bản | P1 | AC-04 | `bin/lib/codex-install.js` (body), nguồn skill, `codex-native.test.js` | task-03-codex-rules-reach.md | done |
-| 05 | Installer ghi một lần, bỏ cấu hình chết | P2 | AC-05 | `bin/phases/codex-runtime.js`, manifest, runtime.json, ai-multimodal | task-04-codex-text-converter.md | pending |
+| 05 | Installer ghi một lần, bỏ cấu hình chết | P2 | AC-05 | `bin/phases/codex-runtime.js`, manifest, runtime.json, ai-multimodal | task-04-codex-text-converter.md | done |
 | 06 | Obsolete an toàn | P1 | AC-06 | `bin/phases/{claude,codex}-runtime.js` (nhánh obsolete) | task-05-installer-write-once.md | pending |
 | 07 | Anchor compact Claude theo phiên | P3 | AC-07 | `src/claude/hooks/{precompact,session}.cjs` | task-06-obsolete-safe-removal.md | pending |
 
 Command chạy từ gốc repo; self-test là `node packages/spec/scripts/run-skill-self-tests.mjs` đặt cuối mỗi Command. Oracle chung: mọi lệnh exit 0; output `node --test` có `# fail 0`, `# skipped 0`, `# todo 0`, và tên từng test mới hiện thành dòng `ok`; self-test in `PASS:`. Chạy tuần tự: task 01, 02, 04 cùng sửa `bin/lib/codex-install.js`, task 01/04/06 cùng sửa `codex-native.test.js`, task 05/06 cùng sửa `codex-runtime.js`; mọi task sửa hai changelog (`CHANGELOG.md`, `../../docs/project-changelog.md`, mục Unreleased). Probe tĩnh trong `scripts/run-skill-self-tests.mjs` chỉ được cập nhật ở dòng task ghi rõ trong Ownership, nêu trong Receipt. Không đưa mã task/quyết định vào tên test, comment hay commit.
 
 ## Review log
+- 16/10 develop task-05: `scripts.required` hoá ra là danh sách fixture của 3 test/probe → controller giữ khối này (D-10 sửa), báo Bro ở GATE-DONE.
 - 16/10 develop: probe task-01 chạy được (đối chứng dương ghi file, cả hai agent trả đúng token) nhưng `probe_ro` vẫn ghi file ở cả hai biến thể → task-01 `blocked`; Bro chọn giữ dòng TOML + thêm lời dặn, AC-01 kiểm tĩnh.
 - 16/10 vòng giấy 1: ba reviewer ngữ cảnh mới (Fact Checker + Contract Verifier; Failure-mode + Assumption destroyer; Security + Scope), cả ba CONCERNS; gộp 15 nhóm. Lệnh Verification gốc đều xanh trên `97816221` (codex-native 36, projection-parity 8, installer-safety 24, precompact + orca-session 23; self-test 2125). Controller chạy lại trích dẫn `legacy-hooks-retired.test.js:85-88`, `run-skill-self-tests.mjs:2881,5067-5073,5193`, `project-manager.md:55` (heading cuối, file 63 dòng): đúng.
 - GATE-REVIEW 16/10, Bro chấp nhận cả 15:
