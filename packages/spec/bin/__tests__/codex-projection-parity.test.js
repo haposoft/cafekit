@@ -25,6 +25,99 @@ function withInstalledSkills(check) {
   }
 }
 
+function installedInstructionText(temp) {
+  const read = directory => fs.readdirSync(directory, { withFileTypes: true }).flatMap(entry => {
+    const file = path.join(directory, entry.name);
+    if (entry.isDirectory()) return read(file);
+    if (!/\.(?:md|toml)$/.test(file)) return [];
+    let content = fs.readFileSync(file, 'utf8');
+    if (file.endsWith('.toml')) {
+      content = content.replace(/^developer_instructions = (.+)$/m, (_line, value) => JSON.parse(value));
+    }
+    return [[path.relative(temp, file), content.replace(/\s+/g, ' ')]];
+  });
+  return [...read(path.join(temp, '.agents/skills')), ...read(path.join(temp, '.codex'))];
+}
+
+for (const [label, needle] of [
+  ['duplicate runtime roots', /(\.codex\/?)[\s,`]+\1/],
+  ['duplicate instruction filenames', /(`?AGENTS\.md`?)[\s,]+\1/],
+  ['AskUserQuestion', /AskUserQuestion/],
+  ['structured user-input', /structured user-input/],
+  ['native input tool', /native input tool/],
+  ['native structured', /native structured/],
+  ['Codex CLI own worktree', /Codex CLI's own worktree/],
+  ['runtime-specific nested worktree path', /\.codex\/worktrees\//]
+]) {
+  test(`installed Codex instruction corpus excludes ${label}`, () => {
+    withInstalledSkills(temp => {
+      const matches = installedInstructionText(temp).filter(([_file, text]) => needle.test(text)).map(([file]) => file);
+      assert.deepEqual(matches, [], label);
+    });
+  });
+}
+
+for (const needle of ['send_message(type', 'shutdown_', 'task-state inspection']) {
+  test(`installed Codex agents omit Team protocol ${needle}`, () => {
+    withInstalledSkills(temp => {
+      for (const name of ['git_ops', 'project_manager']) {
+        const text = fs.readFileSync(path.join(temp, '.codex/agents', `${name}.toml`), 'utf8');
+        assert.ok(!text.includes(needle), name);
+      }
+    });
+  });
+}
+
+test('installed Codex agents retain force-push and planning-owner boundaries', () => {
+  withInstalledSkills(temp => {
+    const texts = new Map(installedInstructionText(temp));
+    assert.ok(texts.get('.codex/agents/git_ops.toml').includes('NEVER arbitrarily use `force push` unless explicitly and securely designated.'));
+    assert.ok(texts.get('.codex/agents/project_manager.toml').includes('You aggregate after GATE-REVIEW and during explicitly invoked execution. An incomplete packet returns to the planning owner; do not expand it yourself.'));
+    assert.doesNotMatch(texts.get('.codex/agents/git_ops.toml'), /## Team Mode\s+3\. /);
+  });
+});
+
+test('installed Brainstorm asks a question in the final answer without a runtime possessive', () => {
+  withInstalledSkills(temp => {
+    for (const relative of ['SKILL.md', 'references/question-framework.md']) {
+      const text = fs.readFileSync(path.join(temp, '.agents/skills/brainstorm', relative), 'utf8').replace(/\s+/g, ' ');
+      assert.ok(text.includes("Use a question in the turn's final answer when available."), relative);
+      assert.ok(!text.includes("the runtime's question"), relative);
+    }
+  });
+});
+
+test('installed Codex host lists retain Claude names alongside converted single-host paths', () => {
+  withInstalledSkills(temp => {
+    const texts = new Map(installedInstructionText(temp));
+    assert.match(texts.get('.agents/skills/git/references/worktree-blueprint.md'), /\.claude/);
+    assert.match(texts.get('.agents/skills/ask/SKILL.md'), /CLAUDE\.md/);
+    assert.match(texts.get('.agents/skills/docs/references/init-workflow.md'), /\.codex\/scripts\//);
+  });
+});
+
+test('host-list preservation applies only to instruction assets including a missing source path', () => {
+  const source = 'Copy `.claude/`, `.codex/`; read `CLAUDE.md`, `AGENTS.md`; run `.claude/scripts/check.cjs`.';
+  const expected = 'Copy `.claude/`, `.codex/`; read `CLAUDE.md`, `AGENTS.md`; run `.codex/scripts/check.cjs`.';
+  assert.equal(normalizeCodexBody(source), expected);
+  assert.equal(normalizeCodexBody(source, 'guide.md'), expected);
+  assert.equal(normalizeCodexBody(source, 'script.cjs'), 'Copy `.codex/`, `.codex/`; read `AGENTS.md`, `AGENTS.md`; run `.codex/scripts/check.cjs`.');
+});
+
+test('standalone host filenames do not prevent conversion of a single-host file path on the same line', () => {
+  assert.equal(normalizeCodexBody('Read `CLAUDE.md`, `AGENTS.md`; load `.claude/CLAUDE.md`.', 'guide.md'),
+    'Read `CLAUDE.md`, `AGENTS.md`; load `.codex/AGENTS.md`.');
+});
+
+test('installed Codex catalog help labels the shared skills root for Codex', () => {
+  withInstalledSkills(temp => {
+    const result = spawnSync(process.execPath, ['.codex/scripts/generate-skill-catalog.cjs', '--help'], { cwd: temp, encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr);
+    assert.doesNotMatch(result.stdout.replace(/\s+/g, ' '), /\.agents\/skills for Claude/);
+    assert.match(result.stdout, /\.agents\/skills for Codex/);
+  });
+});
+
 test('installed skill descriptions carry Use when within the routing length limit', () => {
   withInstalledSkills(temp => {
     let checked = 0;

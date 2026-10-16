@@ -3874,7 +3874,7 @@ const GIT_SKILL_PINS = [
     "label": "cf:git worktree is git-only with optional shortcuts and a lifecycle",
     "file": "src/claude/skills/git/SKILL.md",
     "includes": [
-      "Git alone is enough (plus `rsync`); Orca, Herdr and Claude Code's own worktree are optional shortcuts, never required.",
+      "Git alone is enough (plus `rsync`); Orca, Herdr and the host's own worktree are optional shortcuts, never required.",
       "`worktree list | remove <dir> | prune`",
       "before `git worktree remove`, check `git -C <dir> status --porcelain --ignored` and `git -C <dir> log --oneline <base>..HEAD`, never `--force`",
       "`remove <dir-name>` / `delete <branch>`"

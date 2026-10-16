@@ -216,11 +216,15 @@ function normalizeAskUserQuestion(content) {
   const oneSeparator = '(?:[^\\S\\r\\n]+|[^\\S\\r\\n]*\\r?\\n[^\\S\\r\\n]*)';
   const pattern = new RegExp(
     `(?:(\\b(?:${determinerPattern}|[0-9]+)\\b)(${oneSeparator}))?`
-      + `(\\bAskUserQuestion\\b|${masked.askMarkerPattern})`,
+      + `(\\bAskUserQuestion\\b|${masked.askMarkerPattern}|\\bnative(?:\\s+structured user-input|\\s+input)\\s+tool\\b)`,
     'g'
   );
-  const normalized = masked.content.replace(pattern, (match, determiner, spacing, _token, offset, source) => {
-    const literalIndex = match.indexOf('AskUserQuestion');
+  const withoutRuntimePossessive = masked.content.replace(
+    /\bthe runtime['’]s\s+native(?:\s+structured user-input|\s+input)\s+tool\b/g,
+    "a question in the turn's final answer"
+  );
+  const normalized = withoutRuntimePossessive.replace(pattern, (match, determiner, spacing, _token, offset, source) => {
+    const literalIndex = match.search(/AskUserQuestion|\bnative\b/);
     const tokenOffset = offset + (literalIndex >= 0
       ? literalIndex
       : match.indexOf(masked.askMarkerPrefix));
@@ -235,12 +239,12 @@ function normalizeAskUserQuestion(content) {
       const normalizedDeterminer = /^an$/i.test(determiner)
         ? (determiner[0] === 'A' ? 'A' : 'a')
         : determiner;
-      return `${normalizedDeterminer}${spacing}structured user-input request`;
+      return `${normalizedDeterminer}${spacing}question in the turn's final answer`;
     }
 
     const trailing = source.slice(offset + match.length);
     const pluralContext = new RegExp(`^${oneSeparator}(?:calls|batches)\\b`, 'i').test(trailing);
-    return `${pluralContext ? '' : 'a '}structured user-input request`;
+    return `${pluralContext ? '' : 'a '}question in the turn's final answer`;
   });
   return masked.restore(normalized);
 }
@@ -249,7 +253,19 @@ function normalizeRuntimePaths(content, sourcePath = '') {
   const stateRootsPattern = /const RUNTIME_STATE_ROOTS = Object\.freeze\(\[[\s\S]*?\]\);/;
   const sharedStateRoots = path.basename(sourcePath) === 'provenance.cjs'
     ? content.match(stateRootsPattern)?.[0] : null;
-  let next = normalizeSourcePaths(content, {
+  const preservedRoots = [];
+  let markerPrefix = '\uE000CAFEKIT_HOST_';
+  while (content.includes(markerPrefix)) markerPrefix += '_';
+  const rootToken = /(?<![\w/\\])\.claude(?:[/\\])?(?![\w/\\.-])/g;
+  const instruction = isInstructionAsset(sourcePath) ? content.replace(/^.*$/gm, line => {
+    if (!/(?<![\w/\\])\.codex(?:[/\\])?(?![\w/\\.-])/.test(line)) return line;
+    return line.replace(rootToken, original => {
+      const marker = `${markerPrefix}${preservedRoots.length}\uE001`;
+      preservedRoots.push([marker, original]);
+      return marker;
+    });
+  }) : content;
+  let next = normalizeSourcePaths(instruction, {
     runtimeRoot: '.codex',
     skillsRoot: '.agents/skills'
   })
@@ -265,6 +281,7 @@ function normalizeRuntimePaths(content, sourcePath = '') {
     next = next.replace(/\bclaude_dir = skills_dir\.parent\b/g,
       "claude_dir = skills_dir.parent.parent / '.codex'");
   }
+  for (const [marker, original] of preservedRoots) next = next.split(marker).join(original);
   return next;
 }
 
@@ -316,7 +333,10 @@ function isInstructionAsset(sourcePath) {
 function normalizeCodexBody(content, sourcePath = '') {
   let next = normalizeRuntimePaths(String(content), sourcePath);
   next = next
-    .replace(/\bCLAUDE\.md\b/g, 'AGENTS.md')
+    .replace(/^.*$/gm, line => line.replace(/\bCLAUDE\.md\b/g, (name, offset) => (
+      isInstructionAsset(sourcePath) && /(?<![\w/\\])AGENTS\.md\b/.test(line)
+        && !/[\w/\\]/.test(line[offset - 1] || '') ? name : 'AGENTS.md'
+    )))
     .replace(/\bClaude Code\b/g, 'Codex CLI');
 
   if (!isInstructionAsset(sourcePath)) return next;
@@ -380,7 +400,19 @@ function convertCodexAgentContent(content, fileName = '') {
   let description = normalizeCodexBody(
     frontmatter.description || `CafeKit Codex agent: ${name}`
   );
-  let instructions = normalizeCodexBody(body).trim();
+  let agentBody = body;
+  if (['git_ops', 'project_manager'].includes(name)) {
+    let inTeamSection = false;
+    agentBody = body.split('\n').flatMap(line => {
+      if (/^## /.test(line)) {
+        inTeamSection = /^## (?:Team Mode|Collaborative Interlocking \(Swarm Protocol\))\s*$/.test(line);
+      }
+      if (!inTeamSection) return [line];
+      if (/\b(?:TaskList|TaskGet|TaskUpdate|SendMessage|shutdown_request)\b|When instantiated as a team member|When triggered as an active teammate/.test(line)) return [];
+      return [line.replace(/^(\s*)\d+\. /, '$1- ')];
+    }).join('\n');
+  }
+  let instructions = normalizeCodexBody(agentBody).trim();
   const readOnly = ['brainstormer', 'code_auditor', 'inspector', 'researcher'].includes(name);
   if (readOnly) {
     instructions += '\n\n## Read-only role\n\nRead-only role: never create, never edit, and never delete files, and never run commands that write to disk; return findings in your reply.';

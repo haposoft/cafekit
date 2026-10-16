@@ -27,7 +27,7 @@ function usage() {
   console.log(`Usage:
   node <runtime>/scripts/generate-skill-catalog.cjs [--skills] [--json] [--root <skills-dir>]
 
-The default root is bound to the script runtime: .claude/skills for Claude,
+The default root is bound to the script runtime: the Claude runtime skills directory for Claude,
 .agents/skills for Codex, and ../skills for the source tree.`);
 }
 

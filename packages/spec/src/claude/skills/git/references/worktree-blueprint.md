@@ -19,7 +19,7 @@ Tuỳ theo `<feature-description>`, hãy sinh ra một cái tên nhánh dạng K
 *Lưu ý: Nếu User chủ động gõ tên có sẵn mã Jira (TD-1234) hoặc tên tuyệt đối thì bỏ qua prefix Type.*
 
 ### Bước 3: Khởi Sinh Worktree (Sibling Pattern)
-**Mặc định luôn là cấp Sibling (`../`)**: skill không bao giờ tự tạo worktree lồng bên trong repo. Một đường dẫn lồng (dưới `.claude/worktrees/` đã bị ignore) chỉ chấp nhận khi chính người dùng hoặc công cụ host đã đặt tên và tạo ra nó; khi còn worktree lồng, không chạy `git clean -fdx` ở root repo vì nó xoá cả thư mục bị ignore.
+**Mặc định luôn là cấp Sibling (`../`)**: skill không bao giờ tự tạo worktree lồng bên trong repo. Một đường dẫn lồng dưới runtime đã bị ignore chỉ chấp nhận khi chính người dùng hoặc công cụ host đã đặt tên và tạo ra nó; khi còn worktree lồng, không chạy `git clean -fdx` ở root repo vì nó xoá cả thư mục bị ignore.
 
 Lối tắt tùy chọn (không bắt buộc, không phải điều kiện): `claude --worktree`, Orca, Herdr. Chỉ cần `git` (thêm `rsync` cho Bước 4); máy không có công cụ nào khác vẫn làm đủ mọi bước.
 

@@ -24,7 +24,7 @@ Present options via AskUserQuestion — header "Git Operation": commit / push / 
   `gh repo view --json defaultBranchRef` or `origin/HEAD`; never assume `main`/`develop`.
 - `finish`: fresh `git status` + verification, then present exactly 4 options:
   merge locally / push + PR / keep branch-worktree / discard (typed confirmation, as in the worktree lifecycle: `remove <dir-name>` / `delete <branch>`).
-- `worktree <desc>`: sibling dir `../<project>-<branch>` for isolated setup, branched from the current branch unless the user names a base, hydrating the installer-ignored `.claude/`, `.codex/`, `.agents/` it lacks. Git alone is enough (plus `rsync`); Orca, Herdr and Claude Code's own worktree are optional shortcuts, never required.
+- `worktree <desc>`: sibling dir `../<project>-<branch>` for isolated setup, branched from the current branch unless the user names a base, hydrating the installer-ignored `.claude/`, `.codex/`, `.agents/` it lacks. Git alone is enough (plus `rsync`); Orca, Herdr and the host's own worktree are optional shortcuts, never required.
 - `worktree list | remove <dir> | prune`: lifecycle in `references/worktree-blueprint.md` — never lose uncommitted, ignored or unmerged work: before `git worktree remove`, check `git -C <dir> status --porcelain --ignored` and `git -C <dir> log --oneline <base>..HEAD`, never `--force`, and anything they show needs the typed `remove <dir-name>`; use `git worktree prune` for a missing directory, never `rm -rf`.
 
 ## Hard rules for `commit`

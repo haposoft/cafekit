@@ -320,7 +320,11 @@ function assertInstalledAgentFields(content, name) {
   assert.equal(parseGeneratedTomlString(content, 'description'), normalizeCodexBody(frontmatter.description));
   const suffix = ['brainstormer', 'code_auditor', 'inspector', 'researcher'].includes(name)
     ? READ_ONLY_ROLE_SUFFIX : '';
-  assert.equal(parseGeneratedTomlString(content, 'developer_instructions'), normalizeCodexBody(body).trim() + suffix);
+  const expectedBody = name === 'git_ops'
+    ? body.slice(0, body.indexOf('When instantiated as a team member'))
+      + body.split('\n').find(line => line.includes('NEVER arbitrarily use `force push`')).replace(/^3\. /, '- ') + '\n'
+    : body;
+  assert.equal(parseGeneratedTomlString(content, 'developer_instructions'), normalizeCodexBody(expectedBody).trim() + suffix);
 }
 
 for (const name of ['brainstormer', 'code_auditor', 'inspector', 'researcher']) {
@@ -905,7 +909,7 @@ function brainstormProjectionIssues(files) {
   }
   if (!skill.includes('Persist only approved decisions and semantics, only with user authority')
     || !skill.includes('redact live secrets, credentials, private keys, access tokens, and unnecessary PII;')
-    || !framework.includes('Do not write "user selected" unless direct user text or the native input tool confirms it.')) {
+    || !framework.includes('Do not write "user selected" unless direct user text or the question in the turn\'s final answer confirms it.')) {
     issues.add('approval-persistence');
   }
   for (const [issue, clause] of Object.entries(adaptiveClauses)) {
@@ -913,9 +917,9 @@ function brainstormProjectionIssues(files) {
   }
   const visible = `${skill}\n${framework}\n${agent}`;
   if (/\bAskUserQuestion\b/.test(visible)
-    || /\b(?:a|an|one|each|every|another|this|that|the|[0-9]+)\s+a structured user-input request\b/i.test(visible)
-    || /\ban structured user-input request\b/i.test(visible)
-    || /\ba structured user-input request\s+(?:calls|batches)\b/i.test(visible)) {
+    || /\b(?:a|an|one|each|every|another|this|that|the|[0-9]+)\s+a question in the turn\'s final answer\b/i.test(visible)
+    || /\ban question in the turn\'s final answer\b/i.test(visible)
+    || /\ba question in the turn\'s final answer\s+(?:calls|batches)\b/i.test(visible)) {
     issues.add('projection-grammar');
   }
   return [...issues].sort();
@@ -1468,26 +1472,26 @@ test('Codex payload transform emits native skill and subagent syntax', () => {
 
 test('Codex payload transform keeps structured user-input grammar across determiners', () => {
   const cases = [
-    ['standalone bare token', 'AskUserQuestion', 'a structured user-input request'],
-    ['standalone code token', '`AskUserQuestion`', 'a structured user-input request'],
-    ['standalone multi-backtick token', '``AskUserQuestion``', 'a structured user-input request'],
-    ['standalone padded multi-backtick token', '`` AskUserQuestion ``', 'a structured user-input request'],
-    ['one', 'one AskUserQuestion call', 'one structured user-input request call'],
-    ['one multi-backtick', 'one ``AskUserQuestion`` call', 'one structured user-input request call'],
-    ['one padded multi-backtick', 'one `` AskUserQuestion `` call', 'one structured user-input request call'],
-    ['each', 'each AskUserQuestion call', 'each structured user-input request call'],
-    ['every', 'every AskUserQuestion batch', 'every structured user-input request batch'],
-    ['another', 'another AskUserQuestion call', 'another structured user-input request call'],
-    ['this', 'this AskUserQuestion call', 'this structured user-input request call'],
-    ['that', 'that AskUserQuestion call', 'that structured user-input request call'],
-    ['a', 'a AskUserQuestion call', 'a structured user-input request call'],
-    ['an', 'an AskUserQuestion call', 'a structured user-input request call'],
-    ['capitalized each', 'Each AskUserQuestion call', 'Each structured user-input request call'],
-    ['capitalized an', 'An AskUserQuestion call', 'A structured user-input request call'],
-    ['the', 'the AskUserQuestion call', 'the structured user-input request call'],
-    ['numeric', '27 AskUserQuestion calls', '27 structured user-input request calls'],
-    ['plural calls', 'AskUserQuestion calls', 'structured user-input request calls'],
-    ['plural batches', 'AskUserQuestion batches', 'structured user-input request batches']
+    ['standalone bare token', 'AskUserQuestion', 'a question in the turn\'s final answer'],
+    ['standalone code token', '`AskUserQuestion`', 'a question in the turn\'s final answer'],
+    ['standalone multi-backtick token', '``AskUserQuestion``', 'a question in the turn\'s final answer'],
+    ['standalone padded multi-backtick token', '`` AskUserQuestion ``', 'a question in the turn\'s final answer'],
+    ['one', 'one AskUserQuestion call', 'one question in the turn\'s final answer call'],
+    ['one multi-backtick', 'one ``AskUserQuestion`` call', 'one question in the turn\'s final answer call'],
+    ['one padded multi-backtick', 'one `` AskUserQuestion `` call', 'one question in the turn\'s final answer call'],
+    ['each', 'each AskUserQuestion call', 'each question in the turn\'s final answer call'],
+    ['every', 'every AskUserQuestion batch', 'every question in the turn\'s final answer batch'],
+    ['another', 'another AskUserQuestion call', 'another question in the turn\'s final answer call'],
+    ['this', 'this AskUserQuestion call', 'this question in the turn\'s final answer call'],
+    ['that', 'that AskUserQuestion call', 'that question in the turn\'s final answer call'],
+    ['a', 'a AskUserQuestion call', 'a question in the turn\'s final answer call'],
+    ['an', 'an AskUserQuestion call', 'a question in the turn\'s final answer call'],
+    ['capitalized each', 'Each AskUserQuestion call', 'Each question in the turn\'s final answer call'],
+    ['capitalized an', 'An AskUserQuestion call', 'A question in the turn\'s final answer call'],
+    ['the', 'the AskUserQuestion call', 'the question in the turn\'s final answer call'],
+    ['numeric', '27 AskUserQuestion calls', '27 question in the turn\'s final answer calls'],
+    ['plural calls', 'AskUserQuestion calls', 'question in the turn\'s final answer calls'],
+    ['plural batches', 'AskUserQuestion batches', 'question in the turn\'s final answer batches']
   ];
 
   for (const [name, input, expected] of cases) {
@@ -1495,27 +1499,27 @@ test('Codex payload transform keeps structured user-input grammar across determi
     assert.equal(actual, expected, name);
     assert.equal(normalizeCodexBody(actual, '/fixture/instructions.md'), expected, `${name} idempotence`);
     assert.doesNotMatch(actual, /\bAskUserQuestion\b/, `${name} Claude-only token`);
-    assert.doesNotMatch(actual, /\ban structured user-input request\b/i, `${name} incompatible article`);
+    assert.doesNotMatch(actual, /\ban question in the turn\'s final answer\b/i, `${name} incompatible article`);
     assert.doesNotMatch(
       actual,
-      /\b(?:a|an|one|each|every|another|this|that|the|[0-9]+)\s+a structured user-input request\b/i,
+      /\b(?:a|an|one|each|every|another|this|that|the|[0-9]+)\s+a question in the turn\'s final answer\b/i,
       `${name} doubled article`
     );
   }
 
   assert.equal(
     normalizeCodexBody('one\nAskUserQuestion call', '/fixture/instructions.md'),
-    'one\nstructured user-input request call',
+    'one\nquestion in the turn\'s final answer call',
     'a single Markdown soft break must preserve its determiner relationship'
   );
   assert.equal(
     normalizeCodexBody('AskUserQuestion\nCalls', '/fixture/instructions.md'),
-    'structured user-input request\nCalls',
+    'question in the turn\'s final answer\nCalls',
     'a single Markdown soft break must preserve a plural relationship'
   );
   assert.equal(
     normalizeCodexBody('one\n\nAskUserQuestion call', '/fixture/instructions.md'),
-    'one\n\na structured user-input request call',
+    'one\n\na question in the turn\'s final answer call',
     'a paragraph break must not bind a prior determiner'
   );
   assert.equal(
@@ -1593,9 +1597,9 @@ test('Codex structured-input corpus oracle stays differential and production-awa
   assert.deepEqual(actualPaths, expectedPaths, 'every source occurrence needs an explicit projection oracle');
 
   const instructionExpectedSnippets = new Map([
-    ['src/claude/skills/git/SKILL.md', 'Present options via a structured user-input request — header'],
-    ['src/claude/skills/scout/SKILL.md', '**Fallback to a structured user-input request:**'],
-    ['src/claude/skills/sync/references/rebind-and-audit.md', 'End by asking with a structured user-input request when the host has']
+    ['src/claude/skills/git/SKILL.md', 'Present options via a question in the turn\'s final answer — header'],
+    ['src/claude/skills/scout/SKILL.md', '**Fallback to a question in the turn\'s final answer:**'],
+    ['src/claude/skills/sync/references/rebind-and-audit.md', 'End by asking with a question in the turn\'s final answer when the host has']
   ]);
   for (const [relativePath, expectedSnippet] of instructionExpectedSnippets) {
     const sourcePath = path.join(PACKAGE_ROOT, relativePath);
@@ -1604,7 +1608,7 @@ test('Codex structured-input corpus oracle stays differential and production-awa
     const withSentinel = source.replace(/`?\bAskUserQuestion\b`?/g, sentinel);
     assert.notEqual(withSentinel, source, `${relativePath} differential control must replace a token`);
     const expected = normalizeCodexBody(withSentinel, sourcePath)
-      .replaceAll(sentinel, 'a structured user-input request');
+      .replaceAll(sentinel, 'a question in the turn\'s final answer');
     const actual = normalizeCodexBody(source, sourcePath);
     assert.equal(actual, expected, `${relativePath} independent differential oracle`);
     assert.match(actual, new RegExp(expectedSnippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
@@ -1613,7 +1617,7 @@ test('Codex structured-input corpus oracle stays differential and production-awa
   const specMaker = fs.readFileSync(SPEC_MAKER_SOURCE_PATH, 'utf8');
   const convertedAgent = convertCodexAgentContent(specMaker, path.basename(SPEC_MAKER_SOURCE_PATH));
   assert.doesNotMatch(convertedAgent, /\bAskUserQuestion\b/);
-  assert.doesNotMatch(convertedAgent, /structured user-input request/);
+  assert.doesNotMatch(convertedAgent, /question in the turn\'s final answer/);
 
   const sessionPath = path.join(PACKAGE_ROOT, 'src/claude/hooks/session.cjs');
   const session = normalizeCodexBody(fs.readFileSync(sessionPath, 'utf8'), sessionPath);
@@ -2637,7 +2641,7 @@ test('Codex installed Brainstorm skill reference and agent preserve proportional
       {
         name: 'decision-provenance-removed',
         source: 'framework',
-        from: 'Do not write "user selected" unless direct user text or the native input tool\n  confirms it.',
+        from: 'Do not write "user selected" unless direct user text or the question in the turn\'s final answer\n  confirms it.',
         to: 'Write "user selected" for inferred defaults.',
         expected: ['approval-persistence']
       },
@@ -2645,7 +2649,7 @@ test('Codex installed Brainstorm skill reference and agent preserve proportional
         name: 'installed-grammar-corruption',
         source: 'skill',
         from: '## Completion bar',
-        to: 'one a structured user-input request call\n\n## Completion bar',
+        to: 'one a question in the turn\'s final answer call\n\n## Completion bar',
         expected: ['projection-grammar']
       }
     ];
