@@ -1,6 +1,6 @@
 # Task 06 — File obsolete đã sửa được giữ, kèm cảnh báo
 
-Status: pending
+Status: done
 
 ## Outcome
 Ở cả hai host, mục obsolete chỉ bị xoá khi còn đúng bản CafeKit đã cài; mục đã sửa, chưa có hash, symlink, hoặc thư mục có file lạ/đã sửa được giữ, và mỗi lần cài in một dòng cảnh báo gộp.
@@ -41,4 +41,43 @@ Status: pending
 On a failed Step or Verification Plan run: stop; do not widen scope, change the Command, or weaken a test; record observed versus expected; repair only the cited cause; after three failed rounds, stop and ask the user.
 
 ## Receipt
-<!-- Fill only after execution. -->
+
+Verification: PASS
+Command: `node --test packages/spec/bin/__tests__/installer-safety.test.js packages/spec/bin/__tests__/legacy-hooks-retired.test.js packages/spec/bin/__tests__/codex-native.test.js packages/spec/bin/__tests__/usage-hook-retired.test.js && node packages/spec/scripts/run-skill-self-tests.mjs`
+Exit: 0
+Base: e6a6708986b86b6aaacf71d62e603548113e29c2
+Head: 14a9b3ca9df872feb7c72e5062be5353fb83589ef10028cb0fb6d1e71dd8ccc9
+
+```text
+ok 48 - claude obsolete cleanup safely handles a pristine file
+ok 49 - claude obsolete cleanup safely handles a modified file
+ok 50 - claude obsolete cleanup safely handles a untracked file
+ok 51 - claude obsolete cleanup safely handles a external symlink
+ok 52 - claude obsolete cleanup safely handles a dangling symlink
+ok 53 - claude obsolete cleanup safely handles a pristine directory
+ok 54 - claude obsolete cleanup safely handles a directory with an extra file
+ok 55 - claude obsolete cleanup safely handles a directory with a modified file
+ok 56 - claude obsolete cleanup safely handles a directory with a symlink
+ok 57 - codex obsolete cleanup safely handles a pristine file
+ok 58 - codex obsolete cleanup safely handles a modified file
+ok 59 - codex obsolete cleanup safely handles a untracked file
+ok 60 - codex obsolete cleanup safely handles a external symlink
+ok 61 - codex obsolete cleanup safely handles a dangling symlink
+ok 62 - codex obsolete cleanup safely handles a pristine directory
+ok 63 - codex obsolete cleanup safely handles a directory with an extra file
+ok 64 - codex obsolete cleanup safely handles a directory with a modified file
+ok 65 - codex obsolete cleanup safely handles a directory with a symlink
+ok 66 - combined install emits one aggregate warning for preserved obsolete runtime items
+ok 67 - combined install removes pristine obsolete files after each host tracker is available
+# tests 103
+# pass 103
+# fail 0
+# skipped 0
+# todo 0
+[skill-test] PASS: 2182 tests executed
+```
+
+- Đỏ trước sửa: Codex báo các ca mới đỏ trên code cũ (file đã sửa, chưa tracked, symlink, thư mục có file lạ).
+- Ca cũ đổi kỳ vọng (Ownership): legacy Claude/Codex giữ file đã sửa (vẫn gỡ đăng ký hook); Codex Specs refresh/upgrade và native reinstall giữ file chưa tracked kèm cảnh báo; usage Claude giữ file đã sửa; self-test migration fixture giữ hai file router chưa tracked, kiểm cảnh báo gộp; probe chữ `rmSync`/`prunePrefix` theo code mới.
+- Counterexample (Codex báo): bỏ kiểm hash → 2 ca đỏ; bỏ `lstat` → 2 ca symlink đỏ; hoàn tác khớp byte.
+- Review controller: `assertNoSymlinkPath` kiểm chứa trong gốc project và từng đoạn không là symlink; symlink treo được giữ; chỉ xoá khi sha256 khớp tracker; cảnh báo một dòng sau khi mọi host đã chọn xong. Commit e6a67089.
