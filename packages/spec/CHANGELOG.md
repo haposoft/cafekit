@@ -6,6 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+- Claude compact recovery anchors use full session-ID hashes so sessions retain separate captures; compact restarts read only their own anchor, and captures without a session identity are skipped.
 - Claude and Codex preserve obsolete runtime files without matching ownership hashes, symlinks, and directories with changed or foreign contents; installation reports one aggregate warning with manual cleanup guidance.
 - Codex installation writes shared hook libraries and overridden rules once; retired usage configuration and missing multimodal resolver references are removed while local resolution and the fixture script list remain available.
 - Codex text projections preserve both host names in shared lists, omit Team-only agent instructions, and place user questions in the turn's final answer; worktree and catalog wording is runtime-neutral.

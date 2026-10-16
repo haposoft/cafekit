@@ -16,7 +16,13 @@ const crypto = require('node:crypto');
 const PRECOMPACT = path.join(__dirname, '..', 'precompact.cjs');
 const SESSION = path.join(__dirname, '..', 'session.cjs');
 const { hookStateDir } = require(path.join(__dirname, '..', 'lib', 'hook-state-dir.cjs'));
-const RECOVERY = path.join(hookStateDir(), 'compact-recovery.json');
+const CAPTURES = new Set([path.join(hookStateDir(), 'compact-recovery.json')]);
+function recoveryPath(session = 'compact-session') {
+  const key = crypto.createHash('sha256').update(session).digest('hex');
+  const file = path.join(hookStateDir(), `compact-recovery-${key}.json`);
+  CAPTURES.add(file);
+  return file;
+}
 const HOOK_ENV = { ...process.env };
 delete HOOK_ENV.CLAUDE_PROJECT_DIR;
 delete HOOK_ENV.PROJECT_ROOT;
@@ -40,6 +46,7 @@ function fixture() {
 }
 
 function run(hook, dir, payload) {
+  if (typeof payload?.session_id === 'string' && payload.session_id.trim()) recoveryPath(payload.session_id);
   const result = spawnSync(process.execPath, [hook], {
     cwd: dir,
     input: JSON.stringify(payload),
@@ -50,11 +57,13 @@ function run(hook, dir, payload) {
 }
 
 function clearCapture() {
-  try { fs.unlinkSync(RECOVERY); } catch { /* absent */ }
+  for (const file of CAPTURES) {
+    try { fs.unlinkSync(file); } catch { /* absent */ }
+  }
 }
 
-function readCapture() {
-  return JSON.parse(fs.readFileSync(RECOVERY, 'utf8'));
+function readCapture(session) {
+  return JSON.parse(fs.readFileSync(recoveryPath(session), 'utf8'));
 }
 
 test('PreCompact records branch, HEAD, dirty count and the in-flight task', () => {
@@ -189,7 +198,7 @@ test('PreCompact fails open outside a repository and on malformed input', () => 
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ck-precompact-bare-'));
   try {
     clearCapture();
-    const noGit = run(PRECOMPACT, dir, { hook_event_name: 'PreCompact', cwd: dir });
+    const noGit = run(PRECOMPACT, dir, { hook_event_name: 'PreCompact', session_id: 'compact-session', cwd: dir });
     assert.strictEqual(noGit.code, 0, 'a directory outside git must not fail the hook');
     const record = readCapture();
     assert.strictEqual(record.branch, null, 'unavailable git facts are recorded as null, never guessed');
@@ -201,7 +210,7 @@ test('PreCompact fails open outside a repository and on malformed input', () => 
       cwd: dir, input: 'not json', encoding: 'utf8', env: HOOK_ENV,
     });
     assert.strictEqual(malformed.status, 0, 'malformed payload must fail open');
-    assert.strictEqual(fs.existsSync(RECOVERY), false, 'a malformed payload writes no capture');
+    assert.strictEqual(fs.existsSync(recoveryPath()), false, 'a malformed payload writes no capture');
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
     clearCapture();
@@ -226,7 +235,7 @@ function installedFixture(callback) {
     }
     const hooks = path.join(root, '.claude/hooks');
     const invoke = (name, payload, overrides = {}) => {
-      if (payload?.session_id) sessions.add(payload.session_id);
+      if (typeof payload?.session_id === 'string' && payload.session_id.trim()) sessions.add(payload.session_id);
       return spawnSync(process.execPath, [path.join(hooks, `${name}.cjs`)], {
         cwd: root, env: HOOK_ENV, encoding: 'utf8', timeout: 10000,
         input: typeof payload === 'string' ? payload : JSON.stringify(payload), ...overrides,
@@ -242,6 +251,46 @@ function installedFixture(callback) {
   }
 }
 
+test('two compacting sessions keep separate anchors and restore only their own branch', () => {
+  installedFixture(({ root, hooks, invoke }) => {
+    const sessions = [crypto.randomUUID(), crypto.randomUUID()];
+    const files = [];
+    for (const [index, session_id] of sessions.entries()) {
+      const branch = `anchor-${index === 0 ? 'first' : 'second'}`;
+      const checkout = spawnSync('git', ['-C', root, 'checkout', '-qb', branch], { encoding: 'utf8' });
+      assert.strictEqual(checkout.status, 0, checkout.stderr);
+      const capture = invoke('precompact', { hook_event_name: 'PreCompact', session_id, cwd: root });
+      assert.strictEqual(capture.status, 0, capture.stderr);
+      const hash = crypto.createHash('sha256').update(session_id).digest('hex');
+      files.push(path.join(hooks, '.logs', `compact-recovery-${hash}.json`));
+    }
+    for (const [index, file] of files.entries()) {
+      assert.ok(fs.existsSync(file), 'both session captures must survive');
+      const record = JSON.parse(fs.readFileSync(file, 'utf8'));
+      assert.strictEqual(record.session_id, sessions[index]);
+      assert.strictEqual(record.branch, `anchor-${index === 0 ? 'first' : 'second'}`);
+    }
+    for (const [index, session_id] of sessions.entries()) {
+      const compact = invoke('session', { hook_event_name: 'SessionStart', source: 'compact', session_id, cwd: root });
+      assert.strictEqual(compact.status, 0, compact.stderr);
+      assert.match(compact.stdout, /SESSION COMPRESSED/);
+      assert.match(compact.stdout, /State before compaction/);
+      assert.ok(compact.stdout.includes(`branch anchor-${index === 0 ? 'first' : 'second'}`));
+      assert.ok(!compact.stdout.includes(`branch anchor-${index === 0 ? 'second' : 'first'}`));
+    }
+  });
+});
+
+test('PreCompact without a usable session identity creates no anchor or state directory', () => {
+  installedFixture(({ root, hooks, invoke }) => {
+    for (const session_id of [undefined, null, '', 42, '   ']) {
+      const capture = invoke('precompact', { hook_event_name: 'PreCompact', session_id, cwd: root });
+      assert.strictEqual(capture.status, 0, capture.stderr);
+      assert.strictEqual(fs.existsSync(path.join(hooks, '.logs')), false);
+    }
+  });
+});
+
 test('compact reinjects rules only for its own session even without matching anchors', () => {
   installedFixture(({ root, hooks, invoke }) => {
     const session = crypto.randomUUID();
@@ -254,7 +303,8 @@ test('compact reinjects rules only for its own session even without matching anc
       assert.strictEqual(prompt(id).stdout, '');
     }
     fs.mkdirSync(path.join(hooks, '.logs'), { recursive: true });
-    fs.writeFileSync(path.join(hooks, '.logs/compact-recovery.json'), JSON.stringify({ session_id: other }));
+    const otherHash = crypto.createHash('sha256').update(other).digest('hex');
+    fs.writeFileSync(path.join(hooks, '.logs', `compact-recovery-${otherHash}.json`), JSON.stringify({ session_id: other }));
     const compact = invoke('session', { hook_event_name: 'SessionStart', source: 'compact', session_id: session, cwd: root });
     assert.strictEqual(compact.status, 0, compact.stderr);
     assert.match(compact.stdout, /SESSION COMPRESSED/);
@@ -297,7 +347,7 @@ test('PreCompact bounds slow git calls and finishes within ten seconds', { timeo
     fs.mkdirSync(bin);
     fs.writeFileSync(path.join(bin, 'git'), '#!/bin/sh\nexec /bin/sleep 30\n', { mode: 0o755 });
     const start = Date.now();
-    const result = invoke('precompact', { hook_event_name: 'PreCompact', cwd: root }, { env: { ...HOOK_ENV, PATH: bin } });
+    const result = invoke('precompact', { hook_event_name: 'PreCompact', session_id: crypto.randomUUID(), cwd: root }, { env: { ...HOOK_ENV, PATH: bin } });
     assert.strictEqual(result.status, 0, 'slow git must not exhaust the hook timeout');
     assert.ok(Date.now() - start < 10000);
   });

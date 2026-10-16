@@ -5069,7 +5069,7 @@ async function runStaticSemanticTests() {
       assert: (content) =>
         content.includes("Only facts the runtime can re-derive are recorded") &&
         content.includes("nothing here grants an authorization") &&
-        content.includes("compact-recovery.json") &&
+        content.includes("compact-recovery-") &&
         content.includes("hook-state-dir.cjs"),
       label: "completion policy states both receipt modes and the invention limit",
       file: "src/claude/rules/state-sync.md",

@@ -191,9 +191,11 @@ try {
     // bearings, and nothing more.
     try {
       const fs2 = require('fs'), p2 = require('path');
-      const file = p2.join(require('./lib/hook-state-dir.cjs').hookStateDir(), 'compact-recovery.json');
+      if (typeof payload.session_id !== 'string' || !payload.session_id.trim()) process.exit(0);
+      const key = require('crypto').createHash('sha256').update(payload.session_id).digest('hex');
+      const file = p2.join(require('./lib/hook-state-dir.cjs').hookStateDir(), `compact-recovery-${key}.json`);
       const record = JSON.parse(fs2.readFileSync(file, 'utf8'));
-      if (typeof payload.session_id !== 'string' || !payload.session_id || record.session_id !== payload.session_id) process.exit(0);
+      if (record.session_id !== payload.session_id) process.exit(0);
       const parts = [];
       if (record.branch) parts.push(`branch ${record.branch}`);
       if (record.head) parts.push(`HEAD ${record.head}`);

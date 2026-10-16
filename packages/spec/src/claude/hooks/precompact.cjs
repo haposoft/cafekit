@@ -23,9 +23,8 @@
 
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const { spawnSync } = require('child_process');
-
-const RECOVERY_FILE = 'compact-recovery.json';
 
 function gitLine(root, args) {
   const result = spawnSync('git', ['-C', root, ...args], { encoding: 'utf8', timeout: 3000 });
@@ -62,6 +61,8 @@ try {
   const { normalizeHookPayload } = require('./lib/hook-payload.cjs');
   const payload = stdin ? normalizeHookPayload(JSON.parse(stdin)) : {};
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) process.exit(0);
+  const sessionId = payload.session_id;
+  if (typeof sessionId !== 'string' || !sessionId.trim()) process.exit(0);
 
   const { projectRoot } = require('./lib/project-root.cjs');
   const root = projectRoot(payload);
@@ -69,7 +70,7 @@ try {
   const record = {
     captured_at: new Date().toISOString(),
     trigger: typeof payload.trigger === 'string' ? payload.trigger : null,
-    session_id: typeof payload.session_id === 'string' ? payload.session_id : null,
+    session_id: sessionId,
     project_root: root,
     branch: gitLine(root, ['rev-parse', '--abbrev-ref', 'HEAD']),
     head: gitLine(root, ['rev-parse', '--short', 'HEAD']),
@@ -79,7 +80,8 @@ try {
 
   const dir = require('./lib/hook-state-dir.cjs').hookStateDir();
   fs.mkdirSync(dir, { recursive: true });
-  const target = path.join(dir, RECOVERY_FILE);
+  const key = crypto.createHash('sha256').update(sessionId).digest('hex');
+  const target = path.join(dir, `compact-recovery-${key}.json`);
   const temp = `${target}.${process.pid}.tmp`;
   fs.writeFileSync(temp, `${JSON.stringify(record, null, 2)}\n`);
   fs.renameSync(temp, target);
