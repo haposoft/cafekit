@@ -16,7 +16,7 @@ Specs-Contract: process-first-ready-v1
 - Minimum change: sửa D1–D7, anchor compact, các mục L sửa được, hai file cũ.
 - Expansion signals: khoảng 35 file, một đường giao (npm) → 7 task tuần tự.
 - User decision (16/10): **KEEP**.
-  - Read-only trên Codex: brainstormer, code-auditor, inspector, researcher.
+  - Read-only trên Codex: brainstormer, code-auditor, inspector, researcher. Sau probe 16/10 (Codex bỏ qua `sandbox_mode`), Bro chọn giữ dòng TOML và thêm lời dặn; AC-01 thành kiểm tĩnh.
   - Xoá `packages/spec/CLAUDE.md`, `packages/spec/AGENTS.md`.
   - File obsolete người dùng đã sửa: giữ và cảnh báo cho mọi file, kể cả hook legacy (GATE-REVIEW G1 đảo quyết định gỡ hẳn của gói dọn hook).
   - Probe Codex thật: `CODEX_HOME` tạm trong scratchpad, chép `auth.json` không in nội dung, xoá sau probe.
@@ -32,7 +32,7 @@ Specs-Contract: process-first-ready-v1
 ## Decisions
 | ID | Chosen | Rejected | Why | Load-bearing assumption | Break signal → response |
 |---|---|---|---|---|---|
-| D-01 | TOML của `brainstormer`, `code_auditor`, `inspector`, `researcher` có `sandbox_mode = "read-only"`; agent khác không đổi | Mọi agent không có Edit/Write; chỉ brainstormer | Quyết định của Bro | Codex 0.162.1 áp `sandbox_mode` của agent TOML | Probe task-01 không chứng minh được agent đã chạy, hoặc agent read-only vẫn ghi file → task `blocked`, báo Bro |
+| D-01 | TOML của `brainstormer`, `code_auditor`, `inspector`, `researcher` có `sandbox_mode = "read-only"` và `developer_instructions` kết thúc bằng mục `## Read-only role` chứa câu `Read-only role: never create, never edit, and never delete files, and never run commands that write to disk; return findings in your reply.`; agent khác không đổi (sửa sau probe 16/10, Bro chọn) | Mọi agent không có Edit/Write; chỉ brainstormer | Quyết định của Bro | Codex 0.162.1 áp `sandbox_mode` của agent TOML | Probe task-01 không chứng minh được agent đã chạy, hoặc agent read-only vẫn ghi file → task `blocked`, báo Bro |
 | D-02 | Codex: mọi nội dung có frontmatter `when_to_use` (không phụ thuộc `sourcePath`) nối `description` + ` Use when: ` + `when_to_use` khi tổng ≤ 1024, ghi lại bằng `JSON.stringify`; vượt thì giữ nguyên. Áp trước câu ranh giới ask. Catalog Codex bỏ phần ` Use:` khi description đã chứa `when_to_use` | Dòng trong thân; theo path | Định tuyến đọc `description`; giữ test projection | Codex chọn skill theo `description` | — |
 | D-03 | `src/codex/AGENTS.md` trỏ đủ 10 rule. Đoạn Model Escalation của orchestrator trên Codex đổi qua bộ chuyển đổi: strategist chạy reasoning effort cao trên model của phiên trừ khi cấu hình chọn khác; bỏ mốc "below `fable`" | File override | Một nguồn; khớp runtime note strategist (`codex-install.js:372-373`) | — | — |
 | D-04 | Hai `hook-protocols.md`: `If hook output is malformed, stop and report the exact failure instead of guessing.`; Codex thêm trỏ `state-sync.md`. Claude gitignore thêm `!.env.sample`, `!.env.template`, `*.tmp` | Giữ lệch | Câu đích kiểm được | — | — |
@@ -47,7 +47,7 @@ Specs-Contract: process-first-ready-v1
 ## Known limitations
 - `brainstorm` trên Codex không có `when_to_use` trong `description` (vượt 1024); trần 1024 của Codex là giả định kế thừa từ nhánh ask, chưa thấy trong binary.
 - Đổi `description` Codex có thể đổi tỉ lệ gọi skill; gói này không đo lại eval.
-- Read-only trên Codex cũng tắt mạng của shell (researcher không `curl` được; web search native vẫn chạy); ở chế độ `on-request` agent con có thể xin leo quyền và người dùng duyệt. `sandbox_mode` chỉ probe trên codex-cli 0.162.1.
+- Codex 0.162.1 không áp `sandbox_mode` của agent TOML: probe 16/10 (`codex exec`, approval never, cờ `--sandbox workspace-write` và `sandbox_mode` trong `config.toml`) cho thấy agent read-only vẫn tạo được file; bốn agent chỉ bị ràng bằng lời dặn. Nếu bản Codex sau áp trường này: read-only cũng tắt mạng của shell (researcher không `curl` được; web search native vẫn chạy); ở chế độ `on-request` agent con có thể xin leo quyền và người dùng duyệt. `sandbox_mode` chỉ probe trên codex-cli 0.162.1.
 - Bản cài cũ không có manifest/hash: mọi mục obsolete còn trên đĩa bị giữ, mỗi lần cài in một dòng cảnh báo gộp.
 - File anchor theo phiên tích tụ trong `.logs`, như Codex.
 - Catalog đọc `description` đã `JSON.stringify` không giải mã escape: skill có dấu `"` (ví dụ `orca`) hiện `\"` trong catalog Codex.
@@ -56,7 +56,7 @@ Specs-Contract: process-first-ready-v1
 ## Coverage profile
 | ID | Outcome | Change kinds | Material surfaces | Ambiguity/action | Risk/evidence | Required proof |
 |---|---|---|---|---|---|---|
-| CP-01 | Agent review/tra cứu trên Codex không ghi được file | fix | agent TOML, Codex host | none (D-01) | elevated; host chưa thử | unit TOML + probe Codex có bằng chứng chạy và đối chứng dương |
+| CP-01 | Agent review/tra cứu trên Codex mang khai báo read-only và lời dặn không ghi | fix | agent TOML | none (D-01) | elevated; host không cưỡng chế (probe 16/10) | unit TOML |
 | CP-02 | Codex thấy "khi nào dùng" của skill | fix | SKILL.md Codex, catalog | none (D-02) | elevated (định tuyến, YAML) | test projection |
 | CP-03 | Codex đọc đủ rule, không hứa sai model; rule/gitignore khớp; hai file cũ biến mất | fix + remove | AGENTS Codex, rules, gitignore | none (D-03, D-04) | routine | test cài + kiểm file |
 | CP-04 | Văn bản Codex không nhắc tool không có, không trùng host, hỏi người dùng nhất quán | fix | bộ chuyển đổi, nguồn skill | none (D-05–D-07) | elevated | test projection + codex-native |
@@ -67,7 +67,7 @@ Specs-Contract: process-first-ready-v1
 ## Acceptance criteria
 | ID | EARS criterion | Proof |
 |---|---|---|
-| AC-01 | When Codex agents are installed, brainstormer, code_auditor, inspector and researcher shall carry `sandbox_mode = "read-only"`, and a live Codex subagent from the installed file shall prove it ran yet fail to create a file that the same agent without the key creates. | task-01 Command + probe |
+| AC-01 | When Codex agents are installed, brainstormer, code_auditor, inspector and researcher shall carry `sandbox_mode = "read-only"` and end their instructions with the read-only role sentence; other agents shall carry neither. | task-01 Command |
 | AC-02 | When a skill with `when_to_use` is converted for Codex, its description shall end with `Use when: <when_to_use>` and parse as a JSON string whenever the total fits 1024; the Codex catalog shall not repeat it. | task-02 Command |
 | AC-03 | When Codex is installed, AGENTS.md shall name all ten installed rules, orchestrator shall not promise the strongest model, both hook-protocols shall share the malformed-output sentence, Claude gitignore shall carry the env exceptions; `packages/spec/CLAUDE.md` and `AGENTS.md` shall not exist. | task-03 Command |
 | AC-04 | When Claude text is converted for Codex, it shall contain no Team tool protocol yet keep the non-Team rules, no duplicated host list, no `AskUserQuestion`, structured user-input or native input tool wording, no "Codex CLI's own worktree", and the catalog usage shall name the right root per host. | task-04 Command |
@@ -78,7 +78,7 @@ Specs-Contract: process-first-ready-v1
 ## Tasks
 | # | Task | Priority | Criteria | Primary ownership | Dependencies | Status |
 |---|---|---|---|---|---|---|
-| 01 | Agent Codex read-only | P1 | AC-01 | `bin/lib/codex-install.js` (agent), `codex-native.test.js` | - | pending |
+| 01 | Agent Codex read-only | P1 | AC-01 | `bin/lib/codex-install.js` (agent), `codex-native.test.js` | - | done |
 | 02 | `when_to_use` cho Codex | P1 | AC-02 | `bin/lib/codex-install.js` (skill), catalog, `codex-projection-parity.test.js` | task-01-codex-agent-sandbox.md | pending |
 | 03 | Rule Codex đủ, rule/gitignore khớp, xoá file cũ | P1 | AC-03 | `src/codex/AGENTS.md`, rules, gitignore | task-02-codex-when-to-use.md | pending |
 | 04 | Bộ chuyển đổi văn bản | P1 | AC-04 | `bin/lib/codex-install.js` (body), nguồn skill, `codex-native.test.js` | task-03-codex-rules-reach.md | pending |
@@ -89,6 +89,7 @@ Specs-Contract: process-first-ready-v1
 Command chạy từ gốc repo; self-test là `node packages/spec/scripts/run-skill-self-tests.mjs` đặt cuối mỗi Command. Oracle chung: mọi lệnh exit 0; output `node --test` có `# fail 0`, `# skipped 0`, `# todo 0`, và tên từng test mới hiện thành dòng `ok`; self-test in `PASS:`. Chạy tuần tự: task 01, 02, 04 cùng sửa `bin/lib/codex-install.js`, task 01/04/06 cùng sửa `codex-native.test.js`, task 05/06 cùng sửa `codex-runtime.js`; mọi task sửa hai changelog (`CHANGELOG.md`, `../../docs/project-changelog.md`, mục Unreleased). Probe tĩnh trong `scripts/run-skill-self-tests.mjs` chỉ được cập nhật ở dòng task ghi rõ trong Ownership, nêu trong Receipt. Không đưa mã task/quyết định vào tên test, comment hay commit.
 
 ## Review log
+- 16/10 develop: probe task-01 chạy được (đối chứng dương ghi file, cả hai agent trả đúng token) nhưng `probe_ro` vẫn ghi file ở cả hai biến thể → task-01 `blocked`; Bro chọn giữ dòng TOML + thêm lời dặn, AC-01 kiểm tĩnh.
 - 16/10 vòng giấy 1: ba reviewer ngữ cảnh mới (Fact Checker + Contract Verifier; Failure-mode + Assumption destroyer; Security + Scope), cả ba CONCERNS; gộp 15 nhóm. Lệnh Verification gốc đều xanh trên `97816221` (codex-native 36, projection-parity 8, installer-safety 24, precompact + orca-session 23; self-test 2125). Controller chạy lại trích dẫn `legacy-hooks-retired.test.js:85-88`, `run-skill-self-tests.mjs:2881,5067-5073,5193`, `project-manager.md:55` (heading cuối, file 63 dòng): đúng.
 - GATE-REVIEW 16/10, Bro chấp nhận cả 15:
   - G1 Critical: giữ + cảnh báo cho mọi file obsolete, sửa 3 test cũ, thư mục xoá khi mọi file khớp (D-09).
