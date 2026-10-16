@@ -2380,7 +2380,7 @@ test('Codex installed Specs and spec-maker reject adaptive coverage mutations', 
     const questionSkill = path.join(root, '.agents', 'skills', 'ask', 'SKILL.md');
     fs.appendFileSync(questionSkill, '\nUSER-CODEX-SENTINEL\n');
     // Fresh installs are exact. Refresh/upgrade intentionally documents the
-    // A skill file the manifest lists as obsolete is removed on refresh; edited skills stay.
+    // Untracked obsolete files and edited current skills both stay on refresh.
     const obsoleteSpecsRule = path.join(
       root, '.agents', 'skills', 'specs', 'rules', 'design-principles.md'
     );
@@ -2393,8 +2393,8 @@ test('Codex installed Specs and spec-maker reject adaptive coverage mutations', 
     assert.match(fs.readFileSync(questionSkill, 'utf8'), /USER-CODEX-SENTINEL/);
     assert.equal(
       fs.existsSync(obsoleteSpecsRule),
-      false,
-      'Codex refresh removes obsolete skill files'
+      true,
+      'Codex refresh preserves untracked obsolete skill files'
     );
 
     const metadataPath = path.join(root, '.codex', 'cafekit.json');
@@ -2409,9 +2409,11 @@ test('Codex installed Specs and spec-maker reject adaptive coverage mutations', 
     assert.match(fs.readFileSync(questionSkill, 'utf8'), /USER-CODEX-SENTINEL/);
     assert.equal(
       fs.existsSync(obsoleteSpecsRule),
-      false,
-      'Codex upgrade removes obsolete skill files'
+      true,
+      'Codex upgrade preserves untracked obsolete skill files'
     );
+    assert.match(sameVersion.stdout + sameVersion.stderr, /Preserved 1 obsolete runtime/);
+    assert.match(upgrade.stdout + upgrade.stderr, /Preserved 1 obsolete runtime/);
     assert.ok(fs.readFileSync(path.join(root, 'AGENTS.md'), 'utf8').startsWith(userInstructions));
 
     const forced = install(root, ['--force-overwrite']);
@@ -3211,28 +3213,28 @@ test('Codex installed code_auditor carries no Strict attestation marker', () => 
   });
 });
 
-test('reinstall removes obsolete scripts and skill files from Codex and omp installs', () => {
-  inTempProject((root) => {
+test('reinstall preserves untracked Codex runtime files while omp keeps its cleanup policy', () => {
+  for (const platform of ['codex', 'omp']) inTempProject(root => {
     const first = installPlatforms(root, ['codex', 'omp']);
     assert.equal(first.status, 0, `${first.stdout}\n${first.stderr}`);
+    const runtime = `.${platform}`;
     const retired = ['change-firewall.cjs', 'spec-final-state.cjs'];
-    for (const runtime of ['.codex', '.omp']) {
-      for (const name of retired) fs.writeFileSync(path.join(root, runtime, 'scripts', name), 'legacy\n');
-    }
-    const retiredSkillFiles = ['code-review/references/verification-gate.md', 'specs/references/archive-workflow.md'];
-    for (const rel of retiredSkillFiles) fs.writeFileSync(path.join(root, '.agents', 'skills', rel), 'legacy\n');
-    const again = installPlatforms(root, ['codex', 'omp'], ['--force-overwrite']);
-    assert.equal(again.status, 0, `${again.stdout}\n${again.stderr}`);
+    for (const name of retired) fs.writeFileSync(path.join(root, runtime, 'scripts', name), 'legacy\n');
+    const retiredSkillFiles = platform === 'codex'
+      ? ['code-review/references/verification-gate.md', 'specs/references/archive-workflow.md'] : [];
     for (const rel of retiredSkillFiles) {
-      assert.equal(fs.existsSync(path.join(root, '.agents', 'skills', rel)), false, `.agents/skills/${rel} must be removed`);
+      const target = path.join(root, '.agents/skills', rel);
+      fs.mkdirSync(path.dirname(target), { recursive: true });
+      fs.writeFileSync(target, 'legacy\n');
     }
-    assert.equal(fs.existsSync(path.join(root, '.agents', 'skills', 'code-review', 'SKILL.md')), true, 'the code-review skill stays');
-    for (const runtime of ['.codex', '.omp']) {
-      for (const name of retired) {
-        assert.equal(fs.existsSync(path.join(root, runtime, 'scripts', name)), false, `${runtime}/scripts/${name} must be removed`);
-      }
-      assert.equal(fs.existsSync(path.join(root, runtime, 'scripts', 'spec-resolver.cjs')), true, `${runtime} keeps the resolver`);
-    }
+    const again = installPlatforms(root, [platform], ['--force-overwrite']);
+    assert.equal(again.status, 0, `${again.stdout}\n${again.stderr}`);
+    const preserved = platform === 'codex';
+    for (const rel of retiredSkillFiles) assert.equal(fs.existsSync(path.join(root, '.agents/skills', rel)), preserved, rel);
+    for (const name of retired) assert.equal(fs.existsSync(path.join(root, runtime, 'scripts', name)), preserved, name);
+    if (preserved) assert.match(again.stdout + again.stderr, /Preserved 4 obsolete runtime/);
+    assert.equal(fs.existsSync(path.join(root, '.agents/skills/code-review/SKILL.md')), true);
+    assert.equal(fs.existsSync(path.join(root, runtime, 'scripts/spec-resolver.cjs')), true);
   });
 });
 

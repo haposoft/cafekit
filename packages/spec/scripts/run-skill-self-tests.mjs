@@ -5206,8 +5206,9 @@ async function runStaticSemanticTests() {
         content.includes("function removeObsoleteClaudeRuntimeFiles") &&
         content.includes("function pruneObsoleteSettingsHooks") &&
         content.includes("settingsHookCommandSubstrings") &&
-        content.includes("fs.rmSync(targetPath, { force: true, recursive: isDir })") &&
-        content.includes("prunePrefix") &&
+        content.includes("assertNoSymlinkPath") &&
+        content.includes("ownership.files") &&
+        content.includes("tracker.prune") &&
         content.includes("removeObsoleteClaudeRuntimeFiles(ctx, platformKey)"),
     },
     {
@@ -5808,11 +5809,16 @@ async function runInstallerMigrationFixtureTests() {
     const serializedHooks = JSON.stringify(settings.hooks || {});
     const failures = [];
 
-    if (await fileExists(join(root, ".claude", "hooks", "skill-router.cjs"))) {
-      failures.push("obsolete skill-router hook file still exists");
+    if (!(await fileExists(join(root, ".claude", "hooks", "skill-router.cjs")))
+      || await readFile(join(root, ".claude", "hooks", "skill-router.cjs"), "utf8") !== "old router") {
+      failures.push("untracked obsolete skill-router hook file was not preserved");
     }
-    if (await fileExists(join(root, ".claude", "hooks", "lib", "skill-router-routes.cjs"))) {
-      failures.push("obsolete skill-router route file still exists");
+    if (!(await fileExists(join(root, ".claude", "hooks", "lib", "skill-router-routes.cjs")))
+      || await readFile(join(root, ".claude", "hooks", "lib", "skill-router-routes.cjs"), "utf8") !== "old routes") {
+      failures.push("untracked obsolete skill-router route file was not preserved");
+    }
+    if (!/Preserved 2 obsolete runtime/.test(`${result.stdout}\n${result.stderr}`)) {
+      failures.push("preserved obsolete files did not produce an aggregate warning");
     }
     if (serializedHooks.includes("hooks/skill-router.cjs")) {
       failures.push("obsolete skill-router settings hook still exists");

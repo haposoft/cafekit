@@ -48,6 +48,7 @@ function install(root, platforms) {
   const result = spawnSync(process.execPath, [INSTALLER, '--platform', platforms.join(','), '--yes'],
     { cwd: root, encoding: 'utf8', env: { ...process.env, PATH: '/usr/bin:/bin' } });
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+  return result;
 }
 
 function commands(settings) {
@@ -74,7 +75,7 @@ test('fresh installs ship and register none of the five legacy hooks', () => {
   });
 });
 
-test('claude upgrade removes the legacy hooks and their CafeKit entries but keeps foreign ones', () => {
+test('claude upgrade preserves edited legacy hooks while removing their CafeKit entries', () => {
   inTempProject((root) => {
     install(root, ['claude']);
     const settingsPath = path.join(root, '.claude', 'settings.json');
@@ -99,10 +100,11 @@ test('claude upgrade removes the legacy hooks and their CafeKit entries but keep
     settings.hooks.SubagentStop[0].hooks.push({ type: 'command', command: cmd('semantic-review-authority.cjs') });
     fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
 
-    install(root, ['claude']);
-    for (const name of NAMES) assert.equal(fs.existsSync(path.join(root, '.claude', 'hooks', name)), false, name);
+    const upgrade = install(root, ['claude']);
+    assert.match(upgrade.stdout + upgrade.stderr, /Preserved 5 obsolete runtime/);
+    for (const name of NAMES) assert.equal(fs.readFileSync(path.join(root, '.claude', 'hooks', name), 'utf8'), '// user edit\n', name);
     const after = readJson(manifestPath);
-    for (const name of NAMES) assert.equal(Object.prototype.hasOwnProperty.call(after.files, `hooks/${name}`), false, `record ${name}`);
+    for (const name of NAMES) assert.equal(after.files[`hooks/${name}`].sha256, '0'.repeat(64), `record ${name}`);
     const afterCommands = commands(readJson(settingsPath));
     for (const name of REGISTERED) {
       assert.equal(afterCommands.some((command) => command.includes(`.claude/hooks/${name}`)), false, name);
@@ -112,7 +114,7 @@ test('claude upgrade removes the legacy hooks and their CafeKit entries but keep
   });
 });
 
-test('codex upgrade removes the legacy hooks, their records and their CafeKit entries but keeps foreign ones', () => {
+test('codex upgrade preserves edited legacy hooks and prunes only absent records', () => {
   inTempProject((root) => {
     install(root, ['codex']);
     const hooksPath = path.join(root, '.codex', 'hooks.json');
@@ -137,10 +139,18 @@ test('codex upgrade removes the legacy hooks, their records and their CafeKit en
     add('UserPromptSubmit', FOREIGN[0]);
     fs.writeFileSync(hooksPath, JSON.stringify(config, null, 2));
 
-    install(root, ['codex']);
-    for (const name of NAMES) assert.equal(fs.existsSync(path.join(root, '.codex', 'hooks', name)), false, name);
+    const upgrade = install(root, ['codex']);
+    assert.match(upgrade.stdout + upgrade.stderr, /Preserved 4 obsolete runtime/);
+    for (const name of NAMES) {
+      const file = path.join(root, '.codex', 'hooks', name);
+      if (name === 'completion-authority-state.cjs') assert.equal(fs.existsSync(file), false, name);
+      else assert.equal(fs.readFileSync(file, 'utf8'), '// user edit\n', name);
+    }
     const after = readJson(manifestPath);
-    for (const name of NAMES) assert.equal(Object.prototype.hasOwnProperty.call(after.files, `.codex/hooks/${name}`), false, `record ${name}`);
+    for (const name of NAMES) {
+      if (name === 'completion-authority-state.cjs') assert.equal(after.files[`.codex/hooks/${name}`], undefined, `record ${name}`);
+      else assert.equal(after.files[`.codex/hooks/${name}`].sha256, '0'.repeat(64), `record ${name}`);
+    }
     const afterCommands = commands(readJson(hooksPath));
     for (const name of REGISTERED) {
       assert.equal(afterCommands.some((command) => command.includes(`.codex/hooks/${name}`) || command.includes(`.codex\\hooks\\${name}`)), false, name);

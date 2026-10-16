@@ -103,6 +103,123 @@ function runCodexInstaller(root) {
   });
 }
 
+for (const host of ['claude', 'codex']) {
+  for (const state of ['pristine file', 'modified file', 'untracked file', 'external symlink', 'dangling symlink', 'pristine directory', 'directory with an extra file', 'directory with a modified file', 'directory with a symlink']) {
+    test(`${host} obsolete cleanup safely handles a ${state}`, () => {
+      const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'cafekit-obsolete-outside-'));
+      try {
+        inTempProject(root => {
+          const run = () => spawnSync(process.execPath, [INSTALLER, '--platform', host, '--yes', '--force-overwrite'], {
+            cwd: root, encoding: 'utf8', env: { ...process.env, PATH: '/usr/bin:/bin' }
+          });
+          const first = run();
+          assert.equal(first.status, 0, first.stderr);
+          const folder = `.${host}`;
+          const manifestPath = path.join(root, folder, 'cafekit-manifest.json');
+          const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+          const directory = state.includes('directory');
+          const relative = directory
+            ? (host === 'codex' ? '.agents/skills/generate-graph' : '.claude/skills/generate-graph')
+            : `${folder}/hooks/usage.cjs`;
+          const target = path.join(root, relative);
+          const keyFor = relative => host === 'codex' ? relative : relative.slice('.claude/'.length);
+          const records = {};
+          const record = (relative, bytes) => {
+            const key = keyFor(relative);
+            records[key] = { sha256: sha256(bytes) };
+            manifest.files[key] = records[key];
+          };
+          const external = path.join(outside, 'target.txt');
+          if (state !== 'dangling symlink') fs.writeFileSync(external, 'outside bytes\n');
+          fs.mkdirSync(path.dirname(target), { recursive: true });
+          if (directory) {
+            fs.mkdirSync(path.join(target, 'nested'), { recursive: true });
+            fs.writeFileSync(path.join(target, 'tracked.txt'), state.includes('modified') ? 'changed\n' : 'installed\n');
+            fs.writeFileSync(path.join(target, 'nested/second.txt'), 'second\n');
+            record(`${relative}/tracked.txt`, 'installed\n');
+            record(`${relative}/nested/second.txt`, 'second\n');
+            if (state.includes('extra')) fs.writeFileSync(path.join(target, 'foreign.txt'), 'user bytes\n');
+            if (state.includes('symlink')) {
+              fs.symlinkSync(external, path.join(target, 'linked.txt'));
+              record(`${relative}/linked.txt`, 'outside bytes\n');
+            }
+          } else if (state.includes('symlink')) {
+            fs.symlinkSync(external, target);
+            record(relative, 'outside bytes\n');
+          } else {
+            fs.writeFileSync(target, state === 'modified file' ? 'changed\n' : 'installed\n');
+            if (state !== 'untracked file') record(relative, 'installed\n');
+          }
+          fs.writeFileSync(manifestPath, JSON.stringify(manifest));
+          const again = run();
+          assert.equal(again.status, 0, `${again.stdout}\n${again.stderr}`);
+          const preserved = !state.startsWith('pristine');
+          assert.equal(fs.existsSync(target) || state === 'dangling symlink' && fs.lstatSync(target).isSymbolicLink(), preserved);
+          const after = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+          for (const [key, value] of Object.entries(records)) {
+            if (preserved) assert.deepEqual(after.files[key], value, key);
+            else assert.equal(after.files[key], undefined, key);
+          }
+          if (state.includes('symlink')) {
+            const link = directory ? path.join(target, 'linked.txt') : target;
+            assert.ok(fs.lstatSync(link).isSymbolicLink());
+            assert.equal(fs.readlinkSync(link), external);
+          }
+          if (state !== 'dangling symlink') assert.equal(fs.readFileSync(external, 'utf8'), 'outside bytes\n');
+          else assert.equal(fs.existsSync(external), false);
+          const warnings = `${again.stdout}\n${again.stderr}`.split('\n').filter(line => /Preserved \d+ obsolete runtime/.test(line));
+          assert.equal(warnings.length, preserved ? 1 : 0);
+          if (preserved) {
+            assert.match(warnings[0], /Preserved 1 obsolete runtime/);
+            assert.match(warnings[0], /manually/i);
+          }
+        });
+      } finally {
+        fs.rmSync(outside, { recursive: true, force: true });
+      }
+    });
+  }
+}
+
+test('combined install emits one aggregate warning for preserved obsolete runtime items', () => {
+  inTempProject(root => {
+    assert.equal(runCombinedInstaller(root).status, 0);
+    for (const host of ['claude', 'codex']) {
+      fs.writeFileSync(path.join(root, `.${host}/hooks/usage.cjs`), 'user bytes\n');
+    }
+    const again = runCombinedInstaller(root);
+    assert.equal(again.status, 0, again.stderr);
+    const warnings = `${again.stdout}\n${again.stderr}`.split('\n').filter(line => /Preserved \d+ obsolete runtime/.test(line));
+    assert.equal(warnings.length, 1);
+    assert.match(warnings[0], /Preserved 2 obsolete runtime/);
+    assert.match(warnings[0], /manually/i);
+    for (const host of ['claude', 'codex']) assert.equal(fs.readFileSync(path.join(root, `.${host}/hooks/usage.cjs`), 'utf8'), 'user bytes\n');
+  });
+});
+
+test('combined install removes pristine obsolete files after each host tracker is available', () => {
+  inTempProject(root => {
+    assert.equal(runCombinedInstaller(root).status, 0);
+    for (const host of ['claude', 'codex']) {
+      const target = path.join(root, `.${host}/hooks/usage.cjs`);
+      fs.writeFileSync(target, 'installed bytes\n');
+      const manifestPath = path.join(root, `.${host}/cafekit-manifest.json`);
+      const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+      const key = host === 'codex' ? '.codex/hooks/usage.cjs' : 'hooks/usage.cjs';
+      manifest.files[key] = { sha256: sha256('installed bytes\n') };
+      fs.writeFileSync(manifestPath, JSON.stringify(manifest));
+    }
+    const again = runCombinedInstaller(root);
+    assert.equal(again.status, 0, again.stderr);
+    for (const host of ['claude', 'codex']) {
+      assert.equal(fs.existsSync(path.join(root, `.${host}/hooks/usage.cjs`)), false, host);
+      const manifest = JSON.parse(fs.readFileSync(path.join(root, `.${host}/cafekit-manifest.json`), 'utf8'));
+      assert.equal(manifest.files[host === 'codex' ? '.codex/hooks/usage.cjs' : 'hooks/usage.cjs'], undefined, host);
+    }
+    assert.doesNotMatch(again.stdout + again.stderr, /Preserved \d+ obsolete runtime/);
+  });
+});
+
 test('identical Codex reinstall does not report hook helpers or rules updated', () => {
   inTempProject(root => {
     const first = runCodexInstaller(root);

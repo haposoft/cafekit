@@ -4,6 +4,7 @@ All notable changes to CafeKit are documented here, following
 [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
+- Claude and Codex preserve obsolete runtime files without matching ownership hashes, symlinks, and directories with changed or foreign contents; installation reports one aggregate warning with manual cleanup guidance.
 - Codex installation writes shared hook libraries and overridden rules once; retired usage configuration and missing multimodal resolver references are removed while local resolution and the fixture script list remain available.
 - Codex text projections preserve both host names in shared lists, omit Team-only agent instructions, and place user questions in the turn's final answer; worktree and catalog wording is runtime-neutral.
 - Codex instructions reference all runtime rules and describe session-model strategist counsel; hook failure guidance and Claude ignore rules are aligned, and obsolete package instruction files are removed.

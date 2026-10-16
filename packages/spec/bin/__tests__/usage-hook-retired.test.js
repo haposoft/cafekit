@@ -38,6 +38,7 @@ function install(root, platforms) {
   const result = spawnSync(process.execPath, [INSTALLER, '--platform', platforms.join(','), '--yes'],
     { cwd: root, encoding: 'utf8', env: { ...process.env, PATH: '/usr/bin:/bin' } });
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+  return result;
 }
 
 function commands(settings) {
@@ -55,7 +56,7 @@ test('fresh claude install ships no usage hook', () => {
   });
 });
 
-test('upgrade removes an installed usage hook and its CafeKit entries but keeps a foreign one', () => {
+test('upgrade preserves an edited usage hook while removing its CafeKit entries', () => {
   inTempProject((root) => {
     install(root, ['claude']);
     const settingsPath = path.join(root, '.claude', 'settings.json');
@@ -74,8 +75,9 @@ test('upgrade removes an installed usage hook and its CafeKit entries but keeps 
     });
     fs.writeFileSync(settingsPath, JSON.stringify(before, null, 2));
 
-    install(root, ['claude']);
-    assert.equal(fs.existsSync(path.join(root, '.claude', 'hooks', 'usage.cjs')), false, 'an edited copy is removed too');
+    const upgrade = install(root, ['claude']);
+    assert.equal(fs.readFileSync(path.join(root, '.claude', 'hooks', 'usage.cjs'), 'utf8'), '// user edit\n');
+    assert.match(upgrade.stdout + upgrade.stderr, /Preserved 1 obsolete runtime/);
     const after = commands(JSON.parse(fs.readFileSync(settingsPath, 'utf8')));
     assert.equal(after.includes(CAFEKIT_USAGE_COMMAND), false, 'both CafeKit entries are pruned');
     assert.equal(after.includes(FOREIGN_USAGE_COMMAND), true, 'a hook outside .claude/hooks/ survives');

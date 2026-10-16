@@ -16,6 +16,7 @@ const {
   getCopyOptions
 } = require('../lib/context');
 const { sha256 } = require('../lib/manifest');
+const { assertNoSymlinkPath } = require('../lib/path-safety');
 const { writeManagedFile, copyManagedTree } = require('../lib/managed-writer');
 const { report, treeAction } = require('./report');
 const {
@@ -164,30 +165,84 @@ function copyClaudeRuntimeFiles(ctx, platformKey) {
   });
 }
 
-/** Delete runtime files marked obsolete by the manifest. Claude only. */
-function removeObsoleteClaudeRuntimeFiles(ctx, platformKey) {
-  if (platformKey !== 'claude') return;
-
-  const obsoleteFiles = ctx.manifest?.obsolete?.runtimeFiles || [];
-  const targetBase = PLATFORMS.claude.folder;
-
-  obsoleteFiles.forEach((relPath) => {
-    const targetPath = path.join(targetBase, relPath);
-    if (!fs.existsSync(targetPath)) return;
-
-    const isDir = fs.statSync(targetPath).isDirectory();
-    if (!ctx.dryRun) {
-      fs.rmSync(targetPath, { force: true, recursive: isDir });
-      // Remove the entry from the manifest so it doesn't linger as a zombie.
-      if (ctx.trackers && ctx.trackers.claude) {
-        ctx.trackers.claude.prune(relPath);
-        // Directories: prune every tracked file underneath as well.
-        if (isDir) ctx.trackers.claude.prunePrefix(`${relPath}/`);
+/** Remove only obsolete runtime bytes proven unchanged by the ownership manifest. */
+function removeObsoleteRuntimeFiles(ctx, platformKey) {
+  const completed = (ctx.obsoleteRuntimeCleanedPlatforms ||= new Set());
+  if (completed.has(platformKey)) return;
+  completed.add(platformKey);
+  const preserved = new Set();
+  for (const key of [platformKey]) {
+    const platform = PLATFORMS[key];
+    const tracker = ctx.trackers?.[key];
+    const ownership = ctx.ownership?.[platform.folder] || { files: {} };
+    const obsoleteFiles = (ctx.manifest?.obsolete?.runtimeFiles || [])
+      .filter(relative => key === 'claude' || /^(?:hooks|scripts|skills)\//.test(relative));
+    for (const relative of obsoleteFiles) {
+      const targetPath = key === 'codex' && relative.startsWith('skills/')
+        ? path.join(platform.skillsDir, relative.slice('skills/'.length))
+        : path.join(platform.folder, relative);
+      let stat;
+      try {
+        assertNoSymlinkPath(targetPath);
+        stat = fs.statSync(targetPath);
+      } catch (error) {
+        if (error.code === 'ENOENT') {
+          if (key === 'codex' && tracker && !ctx.dryRun) tracker.prune(tracker.keyFor(targetPath));
+          continue;
+        }
+        preserved.add(targetPath);
+        continue;
+      }
+      try {
+        if (!tracker) throw new Error('Missing ownership tracker');
+        const trackedKeys = [];
+        const inspect = file => {
+          assertNoSymlinkPath(file);
+          const current = fs.statSync(file);
+          if (current.isDirectory()) {
+            for (const name of fs.readdirSync(file)) inspect(path.join(file, name));
+            return;
+          }
+          if (!current.isFile()) throw new Error('Unsupported obsolete file type');
+          const trackedKey = tracker.keyFor(file);
+          const recordedHash = ownership.files?.[trackedKey]?.sha256;
+          if (!recordedHash || recordedHash !== sha256(fs.readFileSync(file))) {
+            throw new Error('Obsolete file is not proven unchanged');
+          }
+          trackedKeys.push(trackedKey);
+        };
+        inspect(targetPath);
+        assertNoSymlinkPath(targetPath);
+        const targetKey = tracker.keyFor(targetPath);
+        if (!ctx.dryRun) {
+          fs.rmSync(targetPath, { force: true, recursive: stat.isDirectory() });
+          for (const trackedKey of trackedKeys) tracker.prune(trackedKey);
+          if (stat.isDirectory()) {
+            tracker.prune(targetKey);
+            tracker.prunePrefix(`${targetKey}/`);
+          }
+        }
+        ctx.ui.detail(`  ↻ ${ctx.dryRun ? '[dry-run] ' : ''}Removed obsolete ${key} runtime: ${relative}`);
+        ctx.results.updated++;
+      } catch {
+        preserved.add(targetPath);
       }
     }
-    ctx.ui.detail(`  ↻ ${ctx.dryRun ? '[dry-run] ' : ''}Removed obsolete runtime: ${relPath}`);
-    ctx.results.updated++;
-  });
+  }
+  if (preserved.size) {
+    ctx.results.preserved = (ctx.results.preserved || 0) + preserved.size;
+    (ctx.results.preservedFiles ||= []).push(...preserved);
+  }
+  const allPreserved = (ctx.obsoleteRuntimePreserved ||= new Set());
+  for (const target of preserved) allPreserved.add(target);
+  const selected = (ctx.platforms || [platformKey]).filter(key => key === 'claude' || key === 'codex');
+  if (selected.every(key => completed.has(key)) && allPreserved.size) {
+    ctx.ui.warn(`Preserved ${allPreserved.size} obsolete runtime item(s); review and remove manually if no longer needed: ${[...allPreserved].join(', ')}`);
+  }
+}
+
+function removeObsoleteClaudeRuntimeFiles(ctx, platformKey) {
+  if (platformKey === 'claude') removeObsoleteRuntimeFiles(ctx, platformKey);
 }
 
 /** Remove renamed agents only when ownership manifest proves pristine bytes. */
@@ -313,6 +368,7 @@ module.exports = {
   copyOutputStylesDirectory,
   copyClaudeRuntimeFiles,
   removeObsoleteClaudeRuntimeFiles,
+  removeObsoleteRuntimeFiles,
   copyClaudeMdFile,
   copyClaudeAgentsMdFile,
   ensureSharedAgentsMdCore,
