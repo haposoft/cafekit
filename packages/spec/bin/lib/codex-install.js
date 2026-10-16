@@ -321,6 +321,14 @@ function normalizeCodexBody(content, sourcePath = '') {
 
   if (!isInstructionAsset(sourcePath)) return next;
 
+  if (/(?:^|\/)rules\/orchestrator\.md$/.test(String(sourcePath).replace(/\\/g, '/'))) {
+    next = next
+      .replace('When the current session or a subagent runs on a model below `fable` (e.g. `opus`, `sonnet`, `haiku`) and hits a hard problem',
+        'When the current session or a subagent hits a hard problem')
+      .replace('It runs autonomously on the strongest available model',
+        'It runs autonomously with high reasoning effort on the session model unless configuration selects another');
+  }
+
   next = normalizeAgentInvocations(normalizeAgentNames(normalizeSkillNames(next)));
   next = next.replace(/`?CLAUDE_CODE_SUBAGENT_MODEL`?/g,
     'the configured agent model (`model` in `.codex/agents/<agent>.toml`, or `[agents].default_subagent_model` in native Codex configuration)');

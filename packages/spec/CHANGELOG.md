@@ -6,6 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+- Codex instructions reference all runtime rules and describe session-model strategist counsel; hook failure guidance and Claude ignore rules are aligned, and obsolete package instruction files are removed.
 - Codex skill descriptions include routing guidance when it fits 1024 characters, serialize it as a JSON string, and avoid repeating that guidance in the catalog.
 - Codex agent projections retain sandbox_mode and append read-only instructions for brainstormer, code_auditor, inspector, and researcher; Codex 0.162.1 does not enforce agent sandbox_mode. Other agent defaults are preserved.
 - Claude and Codex now align invalid-spec completion messages, detailed tollgate counts, receipt authority reminders, and subagent rule wording.

@@ -7,6 +7,10 @@
   - Windows: `.agents\\skills\\.venv\\Scripts\\python.exe scripts\\<script>.py`
 - CafeKit agents live in `.codex/agents/*.toml` and are auto-discovered after the repository is trusted.
 - Runtime support lives in `.codex/rules/`, `.codex/scripts/`, `.codex/references/`, and `.codex/runtime.json`.
+- Read `.codex/rules/workflow.md` before planning or implementing changes.
+- Follow `.codex/rules/ai-dev-rules.md` while writing or reviewing code.
+- Consult `.codex/rules/orchestrator.md` when delegating work or seeking specialist counsel.
+- Read `.codex/rules/manage-docs.md` when updating project documentation.
 - For skill selection, read `.codex/rules/skill-workflow-routing.md` and
   `.codex/rules/skill-domain-routing.md`. When capability presence is uncertain,
   run `node .codex/scripts/generate-skill-catalog.cjs --skills`; its Codex-bound

@@ -6,6 +6,8 @@
 .env
 .env.*
 !.env.example
+!.env.sample
+!.env.template
 
 # Skill dependency installs (Python venv + npm)
 skills/.venv/
@@ -25,3 +27,4 @@ agent-memory/
 settings.bak.json
 .mcp.json
 .cafekit-update-cache.json
+*.tmp

@@ -260,6 +260,54 @@ function parseGeneratedTomlString(content, key) {
   return JSON.parse(match[1]);
 }
 
+test('installed Codex instructions reference all ten runtime rules', () => {
+  inTempProject(root => {
+    const result = install(root);
+    assert.equal(result.status, 0, result.stderr);
+    const instructions = fs.readFileSync(path.join(root, 'AGENTS.md'), 'utf8');
+    const rules = ['workflow', 'ai-dev-rules', 'orchestrator', 'manage-docs', 'skill-workflow-routing', 'skill-domain-routing', 'review-audit-self-decision', 'process-management', 'state-sync', 'hook-protocols'];
+    for (const rule of rules) {
+      assert.ok(instructions.includes(`.codex/rules/${rule}.md`), rule);
+      assert.ok(fs.existsSync(path.join(root, '.codex/rules', `${rule}.md`)), rule);
+    }
+  });
+});
+
+test('installed Codex orchestrator describes high reasoning on the session model', () => {
+  inTempProject(root => {
+    const source = fs.readFileSync(path.join(PACKAGE_ROOT, 'src/claude/rules/orchestrator.md'));
+    const result = install(root);
+    assert.equal(result.status, 0, result.stderr);
+    const content = fs.readFileSync(path.join(root, '.codex/rules/orchestrator.md'), 'utf8');
+    assert.doesNotMatch(content, /strongest|below[^\n]*fable/);
+    assert.match(content, /high reasoning effort/);
+    assert.match(content, /session model unless[^.]*configur/i);
+    assert.deepEqual(fs.readFileSync(path.join(PACKAGE_ROOT, 'src/claude/rules/orchestrator.md')), source);
+  });
+});
+
+test('installed hook protocols share malformed-output handling and Codex receipt guidance', () => {
+  inTempProject(root => {
+    const result = installPlatforms(root, ['claude', 'codex']);
+    assert.equal(result.status, 0, result.stderr);
+    const sentence = 'If hook output is malformed, stop and report the exact failure instead of guessing.';
+    for (const runtime of ['.claude', '.codex']) {
+      const content = fs.readFileSync(path.join(root, runtime, 'rules/hook-protocols.md'), 'utf8');
+      assert.ok(content.includes(sentence), runtime);
+    }
+    assert.match(fs.readFileSync(path.join(root, '.codex/rules/hook-protocols.md'), 'utf8'), /state-sync\.md/);
+  });
+});
+
+test('installed Claude ignore rules preserve env samples and ignore temporary files', () => {
+  inTempProject(root => {
+    const result = installPlatforms(root, ['claude']);
+    assert.equal(result.status, 0, result.stderr);
+    const lines = fs.readFileSync(path.join(root, '.claude/.gitignore'), 'utf8').split(/\r?\n/);
+    for (const line of ['!.env.sample', '!.env.template', '*.tmp']) assert.ok(lines.includes(line), line);
+  });
+});
+
 const READ_ONLY_ROLE_SUFFIX = '\n\n## Read-only role\n\nRead-only role: never create, never edit, and never delete files, and never run commands that write to disk; return findings in your reply.';
 
 function assertInstalledAgentFields(content, name) {

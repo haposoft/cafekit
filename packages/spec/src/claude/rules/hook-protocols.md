@@ -24,5 +24,5 @@ Never use another command, path, encoding, or side channel to access a privacy-b
 
 - Treat hook errors as blockers when they affect safety, privacy, or task state.
 - Record the blocker in the task/spec state when relevant.
-- If the hook output is malformed, stop and ask for clarification instead of guessing.
+- If hook output is malformed, stop and report the exact failure instead of guessing.
 

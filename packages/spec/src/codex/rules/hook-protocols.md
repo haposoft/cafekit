@@ -24,6 +24,7 @@ privacy-blocked file without that explicit approval.
 - If a hook reports state drift, run the appropriate sync or audit flow before continuing.
 - If a hook rejects task completion, keep the task `in_progress` or `blocked` until proof exists.
 - Do not mark a task `done` unless the matching task file contains a valid verification receipt.
+- Read `state-sync.md` for the receipt contract.
 
 ## Hook Failure Handling
 
