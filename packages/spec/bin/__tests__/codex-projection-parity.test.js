@@ -12,6 +12,74 @@ const { sha256 } = require('../lib/manifest');
 
 const ROOT = path.resolve(__dirname, '../..');
 const STRATEGIST = fs.readFileSync(path.join(ROOT, 'src/claude/agents/strategist.md'), 'utf8');
+const { splitFrontmatter } = require('../lib/codex-frontmatter');
+
+function withInstalledSkills(check) {
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'cafekit-routing-description-'));
+  try {
+    const result = spawnSync(process.execPath, [path.join(ROOT, 'bin/install.js'), '--platform', 'codex', '--with-document-skills', '-y'], { cwd: temp, encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr);
+    check(temp);
+  } finally {
+    fs.rmSync(temp, { recursive: true, force: true });
+  }
+}
+
+test('installed skill descriptions carry Use when within the routing length limit', () => {
+  withInstalledSkills(temp => {
+    let checked = 0;
+    for (const name of fs.readdirSync(path.join(temp, '.agents/skills'))) {
+      const installed = path.join(temp, '.agents/skills', name, 'SKILL.md');
+      const source = path.join(ROOT, 'src/claude/skills', name, 'SKILL.md');
+      if (!fs.existsSync(installed) || !fs.existsSync(source)) continue;
+      const { frontmatter } = splitFrontmatter(fs.readFileSync(source, 'utf8'));
+      if (!frontmatter.when_to_use) continue;
+      const expected = `${normalizeCodexBody(frontmatter.description)} Use when: ${normalizeCodexBody(frontmatter.when_to_use)}`;
+      if (expected.length > 1024) continue;
+      const actual = JSON.parse(fs.readFileSync(installed, 'utf8').match(/^description: (.+)$/m)[1]);
+      const boundary = name === 'ask' ? ' A request to fix or change something is still answered without editing any file; point the user to $cf-fix.' : '';
+      assert.equal(actual, expected + boundary, name);
+      assert.ok(actual.length <= 1024, name);
+      checked++;
+    }
+    assert.ok(checked >= 18);
+  });
+});
+
+test('brainstorm description stays unchanged when Use when exceeds the routing length limit', () => {
+  withInstalledSkills(temp => {
+    const source = splitFrontmatter(fs.readFileSync(path.join(ROOT, 'src/claude/skills/brainstorm/SKILL.md'), 'utf8')).frontmatter;
+    assert.ok(`${source.description} Use when: ${source.when_to_use}`.length > 1024);
+    const installed = splitFrontmatter(fs.readFileSync(path.join(temp, '.agents/skills/brainstorm/SKILL.md'), 'utf8')).frontmatter;
+    assert.equal(installed.description, source.description);
+  });
+});
+
+for (const name of ['agent-browser', 'chrome-devtools', 'web-testing']) {
+  test(`installed ${name} description serializes Use when as a JSON string`, () => {
+    withInstalledSkills(temp => {
+      const content = fs.readFileSync(path.join(temp, '.agents/skills', name, 'SKILL.md'), 'utf8');
+      const description = JSON.parse(content.match(/^description: (.+)$/m)[1]);
+      const source = splitFrontmatter(fs.readFileSync(path.join(ROOT, 'src/claude/skills', name, 'SKILL.md'), 'utf8')).frontmatter;
+      assert.ok(description.endsWith(`Use when: ${normalizeCodexBody(source.when_to_use)}`));
+    });
+  });
+}
+
+test('Codex catalog emits the fix Use when text only once', () => {
+  withInstalledSkills(temp => {
+    const result = spawnSync(process.execPath, ['.codex/scripts/generate-skill-catalog.cjs', '--skills'], { cwd: temp, encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr);
+    const when = normalizeCodexBody(splitFrontmatter(fs.readFileSync(path.join(ROOT, 'src/claude/skills/fix/SKILL.md'), 'utf8')).frontmatter.when_to_use);
+    assert.equal(result.stdout.split(when).length - 1, 1);
+  });
+});
+
+test('Use when projection applies without a source path and preserves quoted metadata', () => {
+  const source = '---\nname: cf:example\ndescription: Choose "one" option.\nwhen_to_use: When evidence is available.\n---\nBody\n';
+  const projected = normalizeCodexBody(source);
+  assert.equal(JSON.parse(projected.match(/^description: (.+)$/m)[1]), 'Choose "one" option. Use when: When evidence is available.');
+});
 
 test('strategist inherits native model, configures high reasoning and keeps advisory boundaries', () => {
   const projected = convertCodexAgentContent(STRATEGIST, 'strategist.md');

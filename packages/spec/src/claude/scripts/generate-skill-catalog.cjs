@@ -192,7 +192,7 @@ function renderMarkdown(catalog) {
   const lines = ['# CafeKit Skills Catalog', '', `Skills root: \`${catalog.root}\``,
     `Routable skills: ${catalog.skills.length}`, ''];
   for (const skill of catalog.skills) {
-    const intent = skill.when_to_use ? ` Use: ${skill.when_to_use}` : '';
+    const intent = skill.when_to_use && !skill.description.includes(skill.when_to_use) ? ` Use: ${skill.when_to_use}` : '';
     lines.push(`- \`${skill.name}\` (${skill.directory}, ${skill.category}): ${skill.description}${intent}`);
   }
   if (catalog.diagnostics.length > 0) {

@@ -325,6 +325,16 @@ function normalizeCodexBody(content, sourcePath = '') {
   next = next.replace(/`?CLAUDE_CODE_SUBAGENT_MODEL`?/g,
     'the configured agent model (`model` in `.codex/agents/<agent>.toml`, or `[agents].default_subagent_model` in native Codex configuration)');
   next = applyReplacements(normalizeAskUserQuestion(next), INSTRUCTION_REPLACEMENTS);
+  const { frontmatter, body } = splitFrontmatter(next);
+  if (frontmatter.when_to_use && frontmatter.description) {
+    const description = `${frontmatter.description} Use when: ${frontmatter.when_to_use}`;
+    if (description.length <= 1024) {
+      const header = next.slice(0, next.length - body.length)
+        .replace(/^description:[^\r\n]*(?:\r?\n[ \t]+[^\r\n]*)*/m,
+          () => `description: ${JSON.stringify(description)}`);
+      next = header + body;
+    }
+  }
   // Only the installed ask skill receives this Codex-specific boundary, never eval prompts.
   if (/(?:^|\/)skills\/ask\/SKILL\.md$/.test(String(sourcePath).replace(/\\/g, '/'))) {
     const { frontmatter, body } = splitFrontmatter(next);
