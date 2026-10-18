@@ -54,7 +54,7 @@ Always respond in **Tiếng Việt**. Technical terms, code identifiers, and fil
 - Node tests: `node --test packages/spec/bin/__tests__/*.test.js packages/spec/src/claude/hooks/__tests__/*.test.js`
 
 ### Do not touch
-- `.claude/` is install output of `packages/spec/src/claude/`; edit the source.
+- `.claude/`, `.codex/`, `.agents/` are git-ignored install output of `packages/spec/src/`, replaced on every reinstall. Change skills, rules, agents, hooks, and output styles in `packages/spec/src/`, then reinstall; an edit made only in the installed copy is lost.
 - `evals/results/` holds paid run artifacts (git-ignored); do not delete them.
 
 ### Slow or expensive
