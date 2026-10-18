@@ -78,14 +78,81 @@ function readJson(dir, file) {
   }
 }
 
+function validPending(record, sessionId, requestId, now = Date.now()) {
+  return record?.requestId === requestId && record.sessionId === sessionId
+    && Number.isFinite(record.expiresAt) && record.expiresAt > now
+    && typeof record.displayName === 'string' && record.displayName.length > 0
+    && Array.isArray(record.pathKeys) && record.pathKeys.length > 0
+    && record.pathKeys.every(key => typeof key === 'string' && /^[a-f0-9]{64}$/.test(key));
+}
+
+function writeShortMarker(dir, record) {
+  const { requestId, sessionId, expiresAt } = record;
+  fs.writeFileSync(path.join(dir, `short-${hash(sessionId)}-${requestId}.json`),
+    `${JSON.stringify({ requestId, sessionId, expiresAt })}\n`,
+    { encoding: 'utf8', mode: 0o600, flag: 'wx' });
+}
+
+/** Each prompt owns only markers it successfully renamed, never a shared mutable flag. */
+function claimShortMarkers(projectRoot, sessionId) {
+  const requestIds = [];
+  if (typeof sessionId !== 'string' || !sessionId.trim()) return { ok: true, requestIds };
+  const dir = secureStateDir(projectRoot);
+  if (!dir) return { ok: true, requestIds };
+  const prefix = `short-${hash(sessionId)}-`;
+  let ok = true;
+  for (const name of fs.readdirSync(dir)) {
+    if (!name.startsWith(prefix) || !name.endsWith('.json')) continue;
+    const file = path.join(dir, name);
+    const claimed = path.join(dir, `claim-${crypto.randomBytes(12).toString('hex')}.tmp`);
+    const requestId = name.slice(prefix.length, -'.json'.length);
+    let moved = false;
+    try {
+      PATH_SAFETY.assertComponentPath(dir, file);
+      fs.renameSync(file, claimed);
+      moved = true;
+      requestIds.push(requestId);
+      PATH_SAFETY.assertComponentPath(dir, claimed);
+      const marker = JSON.parse(fs.readFileSync(claimed, 'utf8'));
+      if (!/^[a-f0-9]{24}$/.test(requestId) || marker.requestId !== requestId
+        || marker.sessionId !== sessionId || !Number.isFinite(marker.expiresAt)
+        || marker.expiresAt <= Date.now()) throw new Error('Invalid short approval marker');
+    } catch {
+      ok = false;
+      if (!moved) {
+        // A failed claim cancels the shortcut; deletion never counts as ownership.
+        try { fs.unlinkSync(file); }
+        catch {
+          let descriptor;
+          try {
+            PATH_SAFETY.canonicalRegularFile(dir, file, 'short approval marker');
+            descriptor = fs.openSync(file, fs.constants.O_WRONLY | fs.constants.O_NOFOLLOW);
+            fs.ftruncateSync(descriptor, 0);
+          } catch { /* no permission follows a failed invalidation */ }
+          finally {
+            if (descriptor !== undefined) {
+              try { fs.closeSync(descriptor); } catch { /* already rejected */ }
+            }
+          }
+        }
+      }
+    } finally {
+      if (moved) {
+        try { fs.unlinkSync(claimed); } catch { ok = false; }
+      }
+    }
+  }
+  return { ok, requestIds };
+}
+
 function cleanup(projectRoot, now = Date.now()) {
   const dir = secureStateDir(projectRoot);
   if (!dir) return;
   for (const name of fs.readdirSync(dir)) {
-    if (!/^(pending|token)-[a-f0-9]+\.json$/.test(name)) continue;
+    if (!/^(?:(?:pending|token)-[a-f0-9]+|short-[a-f0-9]{64}-[a-f0-9]{24})\.json$/.test(name)) continue;
     const file = path.join(dir, name);
     const record = readJson(dir, file);
-    if (!record || Number(record.expiresAt) <= now) {
+    if (!record || !Number.isFinite(record.expiresAt) || record.expiresAt <= now) {
       try {
         fs.unlinkSync(file);
       } catch {
@@ -101,6 +168,10 @@ function clearState(projectRoot, sessionId) {
     const dir = secureStateDir(projectRoot);
     if (!dir) return;
     for (const name of fs.readdirSync(dir)) {
+      if (name.startsWith(`short-${hash(sessionId)}-`) && name.endsWith('.json')) {
+        try { fs.unlinkSync(path.join(dir, name)); } catch { /* concurrently claimed */ }
+        continue;
+      }
       if (/^(pending|token)-[a-f0-9]+\.json$/.test(name)) {
         const file = path.join(dir, name);
         if (readJson(dir, file)?.sessionId !== sessionId) continue;
@@ -120,26 +191,38 @@ function createPending({
   filePath
 }) {
   cleanup(projectRoot);
-  if (!sessionId) throw new Error('A Codex session ID is required');
+  if (typeof sessionId !== 'string' || !sessionId.trim()) throw new Error('A Codex session ID is required');
   const paths = requestPaths(filePaths, filePath);
   if (paths.length === 0) throw new Error('At least one sensitive path is required');
+  const pathKeys = requestPathKeys(paths, sessionCwd);
+  const dir = secureStateDir(projectRoot, true);
+  for (const name of fs.readdirSync(dir)) {
+    const match = name.match(/^pending-([a-f0-9]{24})\.json$/);
+    if (!match) continue;
+    const pending = readJson(dir, path.join(dir, name));
+    if (validPending(pending, sessionId, match[1]) && samePathKeys(pending.pathKeys, pathKeys)) {
+      try { writeShortMarker(dir, pending); }
+      catch (error) { if (error.code !== 'EEXIST') throw error; }
+      return pending;
+    }
+  }
   const requestId = crypto.randomBytes(12).toString('hex');
   const record = {
     version: 2,
     requestId,
     sessionId: String(sessionId || ''),
-    pathKeys: requestPathKeys(paths, sessionCwd),
+    pathKeys,
     displayName: displayNames(paths),
     expiresAt: Date.now() + TTL_MS
   };
-  const dir = secureStateDir(projectRoot, true);
   atomicWrite(dir, path.join(dir, `pending-${requestId}.json`), record);
+  writeShortMarker(dir, record);
   return record;
 }
 
 function approvePending({ projectRoot, sessionId, requestId }) {
   cleanup(projectRoot);
-  if (!sessionId) return { ok: false, reason: 'session' };
+  if (typeof sessionId !== 'string' || !sessionId.trim()) return { ok: false, reason: 'session' };
   if (!/^[a-f0-9]{24}$/.test(requestId)) return { ok: false, reason: 'invalid' };
 
   const dir = secureStateDir(projectRoot);
@@ -149,6 +232,7 @@ function approvePending({ projectRoot, sessionId, requestId }) {
   if (!record) return { ok: false, reason: 'missing' };
   if (record.sessionId !== String(sessionId || '')) return { ok: false, reason: 'session' };
   if (Number(record.expiresAt) <= Date.now()) return { ok: false, reason: 'expired' };
+  if (!validPending(record, sessionId, requestId)) return { ok: false, reason: 'invalid' };
 
   try {
     fs.unlinkSync(pendingFile);
@@ -215,5 +299,6 @@ module.exports = {
   approvePending,
   hasGrant,
   cleanup,
-  clearState
+  clearState,
+  claimShortMarkers
 };

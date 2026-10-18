@@ -72,7 +72,10 @@ for (const host of ['claude', 'codex']) {
       const output = invoke(f, tool, typeof input === 'function' ? input(f.root) : input);
       if (!sensitive) return assert.equal(output, null);
       assert.equal(output?.permissionDecision, host === 'claude' ? 'ask' : 'deny');
-      if (host === 'codex') assert.match(output.permissionDecisionReason, /APPROVE CAFEKIT PRIVACY /);
+      if (host === 'codex') {
+        assert.match(output.permissionDecisionReason, /APPROVE CAFEKIT PRIVACY /);
+        assert.match(output.permissionDecisionReason, /y \(or yes \/ có\)/);
+      }
     });
   }
 }
@@ -179,7 +182,10 @@ for (const host of ['claude', 'codex']) {
       const output = invoke(f, tool, input);
       assert.equal(output?.permissionDecision, host === 'claude' ? 'ask' : 'deny');
       assert.doesNotMatch(output.permissionDecisionReason, /could not be evaluated safely/);
-      if (host === 'codex') assert.match(output.permissionDecisionReason, /APPROVE CAFEKIT PRIVACY /);
+      if (host === 'codex') {
+        assert.match(output.permissionDecisionReason, /APPROVE CAFEKIT PRIVACY /);
+        assert.match(output.permissionDecisionReason, /y \(or yes \/ có\)/);
+      }
     });
   }
   for (const [name, tool, input] of runtimeAllowed) {
@@ -249,7 +255,10 @@ for (const host of ['claude', 'codex']) {
       ? { timeout: options.timeout - 1000, killSignal: 'SIGKILL' } : {});
     if (!sensitive) return assert.equal(output, null);
     assert.equal(output?.permissionDecision, host === 'claude' ? 'ask' : 'deny');
-    if (host === 'codex') assert.match(output.permissionDecisionReason, /APPROVE CAFEKIT PRIVACY /);
+    if (host === 'codex') {
+      assert.match(output.permissionDecisionReason, /APPROVE CAFEKIT PRIVACY /);
+      assert.match(output.permissionDecisionReason, /y \(or yes \/ có\)/);
+    }
   });
   for (const command of recursiveSensitive) probe(command, 'Bash', { command }, true);
   for (const input of recursiveGrep) probe(`Grep ${JSON.stringify(input)}`, 'Grep', input, true);
@@ -293,7 +302,10 @@ for (const host of ['claude', 'codex']) {
       const output = invoke(f, 'Grep', input);
       assert.equal(output?.permissionDecision, host === 'claude' ? 'ask' : 'deny');
       assert.doesNotMatch(output.permissionDecisionReason, /could not be evaluated safely/);
-      if (host === 'codex') assert.match(output.permissionDecisionReason, /APPROVE CAFEKIT PRIVACY /);
+      if (host === 'codex') {
+        assert.match(output.permissionDecisionReason, /APPROVE CAFEKIT PRIVACY /);
+        assert.match(output.permissionDecisionReason, /y \(or yes \/ có\)/);
+      }
     });
   }
   for (const command of recursiveAllowed) probe(command, 'Bash', { command }, false);

@@ -5,16 +5,22 @@ Hooks are instruction boundaries. Do not bypass or work around them.
 ## Privacy Block Hook
 
 Codex cannot pause a blocked tool call for an interactive permission question.
-CafeKit therefore denies the sensitive access and emits one exact approval
-phrase tied to the current session, requested path, tool, and expiry.
+CafeKit denies sensitive access and offers a short reply and an exact fallback
+phrase. A grant is reusable for one hour in the same session for exactly the
+approved paths; it is not tied to a tool.
 
 Required flow:
 
 1. Stop the blocked access and show the user the hook's reason.
-2. Ask the user to send the exact approval phrase if they want one retry.
-3. Do not write, repeat as a user message, or otherwise simulate that phrase.
-4. Retry only after a later real user prompt exactly matches it.
-5. Use the resulting token once, only for the originally blocked operation.
+2. Ask one privacy question as the only question at the end of the turn, naming
+   exactly the files shown in the denial. Do not add any other yes/no question.
+3. Explain that the user's very next message may be `y`, `yes`, or `có` only
+   while exactly one request is pending; any other reply cancels the shortcut.
+   The exact `APPROVE CAFEKIT PRIVACY <id>` prompt remains the fallback.
+4. Never send, repeat as a user message, or simulate either a short approval or
+   the exact fallback phrase. Wait for a real user prompt and the approval hook.
+5. After approval, tell the user which paths were just granted before reading
+   them. Access only those exact paths during the one-hour session grant.
 
 Never use another command, path, encoding, subprocess, or side channel to read a
 privacy-blocked file without that explicit approval.

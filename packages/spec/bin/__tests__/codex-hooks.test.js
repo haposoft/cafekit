@@ -5,7 +5,7 @@ const crypto = require('node:crypto');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { spawnSync } = require('node:child_process');
+const { spawnSync, spawn } = require('node:child_process');
 const { test } = require('node:test');
 
 const OLD_INSPECTION_MATCHER = 'Bash|exec_command|apply_patch|Edit|Write|Read|Glob|Grep|mcp__.*|shell';
@@ -143,6 +143,7 @@ function writeProcessTask(featureDir, status, receiptLines = null, command = 'pn
 function inHookFixture(run, options = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cafekit-codex-hooks-'));
   const hooks = path.join(root, '.codex', 'hooks');
+  let deferred = false;
   try {
     fs.cpSync(CODEX_HOOKS, hooks, { recursive: true });
     fs.copyFileSync(path.join(PACKAGE_ROOT, 'src/claude/hooks/lib/spec-touch.cjs'), path.join(hooks, 'lib/spec-touch.cjs'));
@@ -192,9 +193,14 @@ function inHookFixture(run, options = {}) {
       const result = spawnSync('git', ['-C', root, ...args], { encoding: 'utf8' });
       assert.equal(result.status, 0, result.stderr);
     }
-    return run(root, hooks);
+    const result = run(root, hooks);
+    if (result && typeof result.then === 'function') {
+      deferred = true;
+      return result.finally(() => fs.rmSync(root, { recursive: true, force: true }));
+    }
+    return result;
   } finally {
-    fs.rmSync(root, { recursive: true, force: true });
+    if (!deferred) fs.rmSync(root, { recursive: true, force: true });
   }
 }
 
@@ -928,6 +934,277 @@ test('Codex spec-state shows detailed task status counts on its Phase line', () 
     assert.match(result.stdout, /^- Phase: .* \| Tasks: 0 done \/ 4 total \(1 in_progress, 2 pending, 1 blocked\)$/m);
   });
 });
+
+function shortPrivacyFixture(check) {
+  return inHookFixture((root, hooks) => {
+    fs.writeFileSync(path.join(root, '.env'), 'fixture\n');
+    fs.writeFileSync(path.join(root, 'credentials.json'), '{}\n');
+    const dir = path.join(hooks, '.privacy');
+    const session = 'short-approval-session';
+    const payload = (file = '.env', session_id = session) => ({ cwd: root, session_id,
+      hook_event_name: 'PreToolUse', tool_name: 'Bash', tool_input: { command: `cat ${file}` } });
+    const block = (file, id) => runHook(path.join(hooks, 'privacy-block.cjs'), root, payload(file, id));
+    const submit = (prompt, session_id = session, env = process.env) => spawnSync(process.execPath,
+      [path.join(hooks, 'privacy-approval.cjs')], { cwd: root, encoding: 'utf8', env,
+        input: JSON.stringify({ cwd: root, session_id, hook_event_name: 'UserPromptSubmit', prompt }) });
+    const files = prefix => fs.existsSync(dir) ? fs.readdirSync(dir).filter(name => name.startsWith(prefix)) : [];
+    const id = result => {
+      assert.equal(result.status, 0, result.stderr);
+      const reason = JSON.parse(result.stdout).hookSpecificOutput.permissionDecisionReason;
+      const match = reason.match(/APPROVE CAFEKIT PRIVACY ([a-f0-9]{24})/);
+      assert.ok(match, reason);
+      return match[1];
+    };
+    return check({ root, hooks, dir, session, payload, block, submit, files, id });
+  });
+}
+
+function asyncPrivacyBlock(fixture, file) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, [path.join(fixture.hooks, 'privacy-block.cjs')], { cwd: fixture.root });
+    let stdout = '', stderr = '';
+    child.stdout.on('data', chunk => { stdout += chunk; });
+    child.stderr.on('data', chunk => { stderr += chunk; });
+    child.on('error', reject);
+    child.on('close', status => resolve({ status, stdout, stderr }));
+    child.stdin.end(JSON.stringify(fixture.payload(file)));
+  });
+}
+
+for (const [label, prompt] of [['y', 'y'], ['yes', 'yes'], ['title-case Vietnamese', 'Có'],
+  ['padded y', ' y '], ['decomposed Vietnamese', 'co\u0301'], ['uppercase Vietnamese', 'CÓ'], ['terminal newline', 'Y\r\n']]) {
+  test(`Codex short privacy approval accepts ${label} and reports granted paths`, () => shortPrivacyFixture(f => {
+    const denied = f.block();
+    const requestId = f.id(denied);
+    const sessionHash = crypto.createHash('sha256').update(f.session).digest('hex');
+    assert.deepEqual(f.files('short-'), [`short-${sessionHash}-${requestId}.json`]);
+    assert.match(denied.stdout, /y \(or yes \/ có\)/);
+    const result = f.submit(prompt);
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /User approved/);
+    assert.match(JSON.parse(result.stdout).hookSpecificOutput.additionalContext, /Tell the user.*\.env.*before reading/i);
+    assert.equal(f.files('token-').length, 1);
+    assert.equal(f.files('short-').length, 0);
+    assert.equal(f.block().stdout, '');
+    assert.equal(f.block().stdout, '', 'the one-hour grant remains reusable');
+  }));
+}
+
+test('Codex short privacy approval is cancelled by an intervening prompt', () => shortPrivacyFixture(f => {
+  f.id(f.block());
+  assert.equal(f.submit('ok làm đi').status, 0);
+  const result = f.submit('y');
+  assert.equal(result.status, 0, result.stderr);
+  assert.doesNotMatch(result.stdout, /User approved/);
+  assert.equal(f.files('token-').length, 0);
+  assert.equal(f.files('short-').length, 0);
+  assert.match(f.block().stdout, /"permissionDecision":"deny"/);
+}));
+
+test('Codex short privacy approval stays in its session and requires pending state', () => shortPrivacyFixture(f => {
+  assert.equal(f.submit('y').status, 0);
+  assert.equal(f.files('token-').length, 0);
+  f.id(f.block());
+  assert.doesNotMatch(f.submit('y', 'another-session').stdout, /User approved/);
+  assert.equal(f.files('token-').length, 0);
+  assert.match(f.submit('y').stdout, /User approved/);
+}));
+
+for (const [label, prompt] of [['extra Vietnamese text', 'y nhé'], ['extra English text', 'yes please'],
+  ['repeated letter', 'yy'], ['fullwidth letter', 'ｙ'], ['zero-width suffix', 'y\u200b']]) {
+  test(`Codex short privacy approval rejects ${label}`, () => shortPrivacyFixture(f => {
+    f.id(f.block());
+    const result = f.submit(prompt);
+    assert.equal(result.status, 0, result.stderr);
+    assert.doesNotMatch(result.stdout, /User approved/);
+    assert.equal(f.files('token-').length, 0);
+    assert.equal(f.files('short-').length, 0);
+    assert.doesNotMatch(f.submit('y').stdout, /User approved/);
+  }));
+}
+
+test('Codex short privacy approval refuses two requests while the long phrase selects one', () => shortPrivacyFixture(f => {
+  const first = f.id(f.block());
+  f.id(f.block('credentials.json'));
+  const result = f.submit('y');
+  assert.equal(result.status, 0, result.stderr);
+  assert.doesNotMatch(result.stdout, /User approved/);
+  assert.equal(f.files('token-').length, 0);
+  assert.equal(f.files('short-').length, 0);
+  const exact = f.submit(`APPROVE CAFEKIT PRIVACY ${first}`);
+  assert.match(exact.stdout, /User approved/);
+  assert.match(JSON.parse(exact.stdout).hookSpecificOutput.additionalContext, /Tell the user.*\.env.*before reading/i);
+  assert.equal(f.block().stdout, '');
+  assert.match(f.block('credentials.json').stdout, /"permissionDecision":"deny"/);
+}));
+
+test('parallel Codex privacy blocks preserve both markers and cannot be approved by y', () => shortPrivacyFixture(async f => {
+  const results = await Promise.all([asyncPrivacyBlock(f, '.env'), asyncPrivacyBlock(f, 'credentials.json')]);
+  assert.notEqual(f.id(results[0]), f.id(results[1]));
+  assert.equal(f.files('short-').length, 2);
+  assert.equal(f.submit('y').status, 0);
+  assert.equal(f.files('token-').length, 0);
+  assert.equal(f.files('short-').length, 0);
+  assert.match(f.block().stdout, /"permissionDecision":"deny"/);
+  assert.match(f.block('credentials.json').stdout, /"permissionDecision":"deny"/);
+}));
+
+test('repeated Codex blocks for the same path set reuse the request and short marker', () => shortPrivacyFixture(f => {
+  const first = f.id(f.block('.env credentials.json'));
+  assert.equal(f.id(f.block('credentials.json .env')), first);
+  assert.equal(f.files('pending-').length, 1);
+  assert.equal(f.files('short-').length, 1);
+  assert.match(f.submit('y').stdout, /User approved/);
+  assert.equal(f.block('.env credentials.json').stdout, '');
+  assert.match(f.block().stdout, /"permissionDecision":"deny"/);
+}));
+
+test('a later Codex block restores the short marker for the same pending request', () => shortPrivacyFixture(f => {
+  const requestId = f.id(f.block());
+  assert.equal(f.submit('ok làm đi').status, 0);
+  assert.equal(f.files('short-').length, 0);
+  assert.equal(f.id(f.block()), requestId);
+  assert.equal(f.files('pending-').length, 1);
+  assert.equal(f.files('short-').length, 1);
+  assert.match(f.submit('y').stdout, /User approved/);
+  assert.equal(f.block().stdout, '');
+  assert.match(f.block('credentials.json').stdout, /"permissionDecision":"deny"/);
+}));
+
+test('an immediate repeated Codex block keeps one short marker without an exclusive-write error', () => shortPrivacyFixture(f => {
+  const requestId = f.id(f.block());
+  assert.equal(f.id(f.block()), requestId);
+  assert.equal(f.files('pending-').length, 1);
+  assert.equal(f.files('short-').length, 1);
+  assert.match(f.submit('y').stdout, /User approved/);
+  assert.equal(f.block().stdout, '');
+}));
+
+test('a Codex prompt error after claiming markers cancels the short approval', () => shortPrivacyFixture(f => {
+  f.id(f.block());
+  const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'cafekit-privacy-fault-'));
+  try {
+    const preload = path.join(outside, 'fault.cjs');
+    fs.writeFileSync(preload, `const fs = require('fs'); const original = fs.readdirSync; let calls = 0;\nfs.readdirSync = function(dir, ...args) { if (String(dir) === ${JSON.stringify(fs.realpathSync(f.dir))} && ++calls === 2) throw new Error('injected state read error'); return original.call(this, dir, ...args); };\n`);
+    const failed = f.submit('ok làm đi', f.session, { ...process.env, NODE_OPTIONS: `--require=${preload}` });
+    assert.equal(failed.status, 0, failed.stderr);
+    assert.match(failed.stdout, /failed safely/);
+    assert.equal(f.files('short-').length, 0);
+    assert.equal(f.files('token-').length, 0);
+    assert.doesNotMatch(f.submit('y').stdout, /User approved/);
+  } finally { fs.rmSync(outside, { recursive: true, force: true }); }
+}));
+
+test('a Codex post-claim error cancels a marker created during prompt processing', () => shortPrivacyFixture(f => {
+  f.id(f.block());
+  const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'cafekit-privacy-post-claim-fault-'));
+  try {
+    const preload = path.join(outside, 'fault.cjs');
+    fs.writeFileSync(preload, `const assert = require('node:assert/strict');
+const state = require(${JSON.stringify(path.join(f.hooks, 'lib/privacy-state.cjs'))});
+const claim = state.claimShortMarkers;
+let claimed = false;
+state.claimShortMarkers = (...args) => {
+  const result = claim(...args);
+  if (!claimed) { assert.equal(result.ok, true); assert.equal(result.requestIds.length, 1); claimed = true; }
+  return result;
+};
+state.cleanup = () => {
+  assert.equal(claimed, true);
+  state.createPending(${JSON.stringify({ projectRoot: f.root, sessionCwd: f.root, sessionId: f.session, filePath: 'credentials.json' })});
+  throw new Error('injected processing error after marker claim');
+};\n`);
+    const failed = f.submit('ok làm đi', f.session, { ...process.env, NODE_OPTIONS: `--require=${preload}` });
+    assert.equal(failed.status, 0, failed.stderr);
+    assert.match(failed.stdout, /failed safely/);
+    assert.equal(f.files('pending-').length, 2);
+    assert.equal(f.files('short-').length, 0);
+    assert.doesNotMatch(f.submit('y').stdout, /User approved/);
+    assert.equal(f.files('token-').length, 0);
+  } finally { fs.rmSync(outside, { recursive: true, force: true }); }
+}));
+
+test('a corrupt Codex short marker cannot grant permission even with valid pending state', () => shortPrivacyFixture(f => {
+  f.id(f.block());
+  const markers = f.files('short-');
+  assert.equal(markers.length, 1);
+  fs.writeFileSync(path.join(f.dir, markers[0]), '{');
+  const result = f.submit('y');
+  assert.equal(result.status, 0, result.stderr);
+  assert.doesNotMatch(result.stdout, /User approved/);
+  assert.equal(f.files('token-').length, 0);
+  assert.equal(f.files('short-').length, 0);
+  assert.doesNotMatch(f.submit('y').stdout, /User approved/);
+}));
+
+for (const unlinkFailure of [false, true]) {
+test(`an unclaimable Codex short marker is cancelled after ${unlinkFailure ? 'rename and unlink errors' : 'a rename error'}`, () => shortPrivacyFixture(f => {
+  f.id(f.block());
+  assert.equal(f.files('short-').length, 1);
+  const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'cafekit-privacy-rename-fault-'));
+  try {
+    const preload = path.join(outside, 'fault.cjs');
+    const prefix = JSON.stringify(path.join(fs.realpathSync(f.dir), 'short-'));
+    fs.writeFileSync(preload, `const fs = require('fs'); const original = fs.renameSync;\nfs.renameSync = function(from, to) { if (String(from).startsWith(${prefix})) throw new Error('injected rename failure'); return original.call(this, from, to); };\n`
+      + (unlinkFailure ? `const unlink = fs.unlinkSync; fs.unlinkSync = function(file) { if (String(file).startsWith(${prefix})) throw new Error('injected unlink failure'); return unlink.call(this, file); };\n` : ''));
+    const result = f.submit('ok làm đi', f.session, { ...process.env, NODE_OPTIONS: `--require=${preload}` });
+    assert.equal(result.status, 0, result.stderr);
+    assert.doesNotMatch(result.stdout, /User approved/);
+    assert.equal(f.files('token-').length, 0);
+  } finally { fs.rmSync(outside, { recursive: true, force: true }); }
+  assert.doesNotMatch(f.submit('y').stdout, /User approved/);
+  assert.equal(f.files('token-').length, 0);
+  assert.equal(f.files('short-').length, 0);
+}));
+}
+
+test('Codex compact clears pending requests and short markers only for its session', () => shortPrivacyFixture(f => {
+  f.id(f.block());
+  f.id(f.block('credentials.json', 'other-session'));
+  const result = runHook(path.join(f.hooks, 'session.cjs'), f.root,
+    { source: 'compact', session_id: f.session, cwd: f.root, hook_event_name: 'SessionStart' });
+  assert.equal(result.status, 0, result.stderr);
+  const prefix = `short-${crypto.createHash('sha256').update(f.session).digest('hex')}-`;
+  assert.equal(f.files(prefix).length, 0);
+  assert.equal(f.files('short-').length, 1);
+  assert.doesNotMatch(f.submit('y').stdout, /User approved/);
+  assert.equal(f.files('token-').length, 0);
+  assert.match(f.submit('y', 'other-session').stdout, /User approved/);
+}));
+
+test('Codex short approval cannot grant an expired pending request', () => shortPrivacyFixture(f => {
+  const id = f.id(f.block());
+  const file = path.join(f.dir, `pending-${id}.json`);
+  const pending = JSON.parse(fs.readFileSync(file, 'utf8'));
+  pending.expiresAt = Date.now() - 1;
+  fs.writeFileSync(file, JSON.stringify(pending));
+  assert.equal(f.submit('y').status, 0);
+  assert.equal(f.files('token-').length, 0);
+  assert.equal(f.files('short-').length, 0);
+}));
+
+test('Codex cleanup removes expired short markers', () => shortPrivacyFixture(f => {
+  f.id(f.block());
+  const markers = f.files('short-');
+  assert.equal(markers.length, 1);
+  const file = path.join(f.dir, markers[0]);
+  const marker = JSON.parse(fs.readFileSync(file, 'utf8'));
+  marker.expiresAt = Date.now() - 1;
+  fs.writeFileSync(file, JSON.stringify(marker));
+  require(path.join(f.hooks, 'lib/privacy-state.cjs')).cleanup(f.root);
+  assert.equal(f.files('short-').length, 0);
+}));
+
+test('Codex long privacy approval still works after an intervening prompt and reports paths', () => shortPrivacyFixture(f => {
+  const id = f.id(f.block());
+  assert.equal(f.submit('ok làm đi').status, 0);
+  assert.equal(f.files('short-').length, 0);
+  const result = f.submit(`APPROVE CAFEKIT PRIVACY ${id}`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /User approved/);
+  assert.match(JSON.parse(result.stdout).hookSpecificOutput.additionalContext, /Tell the user.*\.env.*before reading/i);
+  assert.equal(f.block().stdout, '');
+}));
 
 test('Codex privacy approval is exact, session-bound, and reusable within its window', () => {
   inHookFixture((root, hooks) => {

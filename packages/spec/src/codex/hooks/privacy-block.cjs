@@ -43,8 +43,9 @@ try {
   const pending = createPending(grantInput);
   deny(
     `Sensitive file access denied: ${pending.displayName}. ` +
-    `To approve access to exactly these paths for the next hour of this Codex ` +
-    `session, send this exact user prompt: ` +
+    `To allow exactly these paths for one hour of this Codex session, the user replies ` +
+    `y (or yes / có) as their very next message; any other reply cancels that shortcut, ` +
+    `and it only works while this is the only pending request. Fallback exact prompt: ` +
     `${APPROVAL_PREFIX}${pending.requestId}`
   );
   process.exit(0);

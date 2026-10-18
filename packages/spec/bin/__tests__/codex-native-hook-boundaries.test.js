@@ -37,6 +37,7 @@ test('privacy walks nested operation arrays but ignores prose', () => fixture(({
   for (const tool_input of [{ operations: [{ path: 'credentials.json' }] }, { operations: [[{ file_path: 'credentials.json' }]] }, { paths: ['credentials.json'] }]) {
     const result = hook('privacy-block', { tool_name: 'mcp__files__read', tool_input });
     assert.match(result.stdout, /APPROVE CAFEKIT PRIVACY/);
+    assert.match(JSON.parse(result.stdout).hookSpecificOutput.permissionDecisionReason, /y \(or yes \/ có\)/);
   }
   assert.equal(hook('privacy-block', { tool_name: 'mcp__files__read', tool_input: { messages: ['credentials.json', { text: 'credentials.json' }] } }).stdout, '');
 }));
@@ -56,6 +57,7 @@ test('privacy-block issues approval for a sensitive read when configured specs e
   const output = JSON.parse(result.stdout).hookSpecificOutput;
   assert.equal(output.permissionDecision, 'deny');
   assert.match(output.permissionDecisionReason, /APPROVE CAFEKIT PRIVACY [a-f0-9]{24}/);
+  assert.match(output.permissionDecisionReason, /y \(or yes \/ có\)/);
 }));
 
 test('privacy-approval grants a pending read when configured specs escapes the project', () => fixture(({ root, hook }) => {

@@ -333,8 +333,8 @@ to a hook.
   `.claude` or `.codex` leaks a `packages/spec/src/` source path,
   covering standalone and combined installs; direct text plugin files are also
   byte-normalized.
-- **Codex privacy/state** — sensitive approval is one-use and bound to the exact
-  session/tool/canonical path set. State, locks, resume context, and archives are
+- **Codex privacy/state** — sensitive approval is reusable for one hour and bound
+  to the exact session/canonical path set, independently of the tool. State, locks, resume context, and archives are
   isolated by hashed session ID. Hooks remain guardrails: hosted or specialized
   tools may not enter the local hook path.
 
