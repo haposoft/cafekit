@@ -233,6 +233,37 @@ test('an existing tracked root file retains notes after its managed marker', () 
   });
 });
 
+const NOTES_HOME = 'Project notes (commands, files to leave unchanged, slow or expensive operations) belong in the root AGENTS.md after the CAFEKIT CORE END marker';
+const normalizeWhitespace = text => text.replace(/\s+/g, ' ').trim();
+
+test('the installed Claude block points project notes to the shared root with a quoted import', () => {
+  inTempProject(root => {
+    const result = runRootFileInstaller(root, 'claude');
+    assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+    const body = normalizeWhitespace(managedBody(fs.readFileSync(path.join(root, 'CLAUDE.md'), 'utf8'), START, END));
+    assert.ok(body.includes(`${NOTES_HOME}; Claude Code reads them through \`@AGENTS.md\`.`), body);
+    assert.doesNotMatch(body, /@AGENTS\.md\./);
+    assert.doesNotMatch(body, /Codex|\.codex|\$cf-/i);
+  });
+});
+
+test('the installed Codex block points project notes to the shared root directly', () => {
+  inTempProject(root => {
+    const result = runRootFileInstaller(root, 'codex');
+    assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+    const body = normalizeWhitespace(managedBody(fs.readFileSync(path.join(root, 'AGENTS.md'), 'utf8'), CODEX_START, CODEX_END));
+    assert.ok(body.includes(`${NOTES_HOME}; Codex reads AGENTS.md directly.`), body);
+  });
+});
+
+test('the package README preserves root ownership and names one project-notes home for both hosts', () => {
+  const readme = normalizeWhitespace(fs.readFileSync(path.join(__dirname, '../../README.md'), 'utf8'));
+  const note = `${NOTES_HOME}; Claude Code reads them through \`@AGENTS.md\` and Codex reads AGENTS.md directly.`;
+  const ownership = 'CafeKit owns only its marked block inside the project-root `CLAUDE.md`; project instructions outside that block are preserved across installs and upgrades.';
+  assert.ok(readme.includes(`${ownership} ${note}`));
+  assert.ok(readme.includes(`Claude statusline. ${note}`));
+});
+
 for (const host of ['claude', 'codex']) {
   for (const state of ['pristine file', 'modified file', 'untracked file', 'external symlink', 'dangling symlink', 'pristine directory', 'directory with an extra file', 'directory with a modified file', 'directory with a symlink']) {
     test(`${host} obsolete cleanup safely handles a ${state}`, () => {

@@ -7,6 +7,10 @@
 
 ## Claude Code runtime
 
+Project notes (commands, files to leave unchanged, slow or expensive operations)
+belong in the root AGENTS.md after the CAFEKIT CORE END marker; Claude Code reads
+them through `@AGENTS.md`.
+
 - Edit project skills under `.claude/skills/`, not `~/.claude/skills`.
 - Run Python skill scripts with the skill venv:
   - macOS/Linux: `.claude/skills/.venv/bin/python3 scripts/<script>.py`

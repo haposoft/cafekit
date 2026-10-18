@@ -6,6 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+- Claude and Codex instructions and the package README direct project notes to root AGENTS.md after the shared CORE marker, while preserving each host's instruction boundary.
 - Installation stops before taking a snapshot when a root instruction file is missing but still tracked by git; it reports restore/removal commands and warns when git state cannot be confirmed.
 - Codex privacy supports a next-prompt y/yes/có approval for one unambiguous request, atomically consumes session markers on every prompt, and reports the granted paths; exact approval phrases remain available.
 - omp gives every hook omp's own session id, runs spec-state after edits, scopes its tollgate to the packets a session touched, keeps session state per session like Claude, and no longer runs docs-sync at session start.

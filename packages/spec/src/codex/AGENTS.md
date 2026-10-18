@@ -1,5 +1,9 @@
 ## Codex runtime
 
+Project notes (commands, files to leave unchanged, slow or expensive operations)
+belong in the root AGENTS.md after the CAFEKIT CORE END marker; Codex reads
+AGENTS.md directly.
+
 - Repository instructions live in `AGENTS.md`.
 - CafeKit skills live in `.agents/skills/`; invoke them as `$cf-<name>` or browse with `/skills`. Edit skills in the project, not in a global skills directory.
 - Run Python skill scripts with the project venv:

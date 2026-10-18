@@ -102,6 +102,10 @@ CLAUDE.md
 CafeKit owns only its marked block inside the project-root `CLAUDE.md`; project
 instructions outside that block are preserved across installs and upgrades.
 
+Project notes (commands, files to leave unchanged, slow or expensive operations)
+belong in the root AGENTS.md after the CAFEKIT CORE END marker; Claude Code reads
+them through `@AGENTS.md` and Codex reads AGENTS.md directly.
+
 Codex CLI targets:
 
 ```text
@@ -137,6 +141,10 @@ custom hooks. Docs sync runs on demand; startup omits empty prior context, and
 Specs reminders follow the packets selected or successfully edited by that session.
 CafeKit uses Codex's native status and usage UI instead of installing the
 Claude statusline.
+
+Project notes (commands, files to leave unchanged, slow or expensive operations)
+belong in the root AGENTS.md after the CAFEKIT CORE END marker; Claude Code reads
+them through `@AGENTS.md` and Codex reads AGENTS.md directly.
 
 To check the installed CafeKit package version:
 
