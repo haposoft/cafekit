@@ -43,7 +43,10 @@ try {
   }
 
   const stdin = fs.readFileSync(0, 'utf8').trim();
-  if (!stdin) process.exit(0);
+  if (!stdin) {
+    askForPermission(EVALUATION_FAILURE);
+    process.exit(0);
+  }
 
   const { normalizeHookPayload } = require('./lib/hook-payload.cjs');
   const data = normalizeHookPayload(JSON.parse(stdin));

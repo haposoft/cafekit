@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Codex skill descriptions include routing guidance when it fits 1024 characters, serialize it as a JSON string, and avoid repeating that guidance in the catalog.
 - Codex agent projections retain sandbox_mode and append read-only instructions for brainstormer, code_auditor, inspector, and researcher; Codex 0.162.1 does not enforce agent sandbox_mode. Other agent defaults are preserved.
 - Claude and Codex now align invalid-spec completion messages, detailed tollgate counts, receipt authority reminders, and subagent rule wording.
-- Privacy prompts now share sorted, deduplicated basename lists; Claude uses one native ask emitter and asks on empty input, while omp retains its deny and empty-input contracts.
+- Privacy prompts now share sorted, deduplicated basename lists; Claude uses one native ask emitter and asks on empty input, and omp denies where Claude asks, including on empty input.
 - Claude and Codex now share the CafeKit update notice, using a twelve-hour version-only cache and rejecting legacy notice text, invalid versions, and future timestamps.
 - Codex compact restarts invalidate pending approvals despite invalid specs configuration, release their own rules reservation, and restore session-matched PreCompact anchors.
 - Codex inspect and rules stay active with invalid specs paths; rules reserve only after runtime exists, and a missing secret guardrail library fails open with a crash log.

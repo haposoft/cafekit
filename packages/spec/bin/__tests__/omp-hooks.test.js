@@ -136,8 +136,6 @@ function expectedOverlay(name) {
     edit("      permissionDecision: 'ask',\n",
       "      // omp has no ask state on tool_call, so an ask under Claude becomes a denial here.\n"
       + "      permissionDecision: 'deny',\n");
-    edit("  if (!stdin) {\n    askForPermission(EVALUATION_FAILURE);\n    process.exit(0);\n  }",
-      "  if (!stdin) process.exit(0);");
   }
   return source;
 }
@@ -156,4 +154,12 @@ test('the fork differs from Claude only by its overlay', () => {
   const phase = fs.readFileSync(path.join(PACKAGE_ROOT, 'bin/phases/omp-runtime.js'), 'utf8');
   assert.match(phase, /claudeHookFiles/, 'the phase must install the Claude set first');
   assert.match(phase, /overlayFiles/, 'the phase must write the overlay over it');
+});
+
+test('an empty stdin is denied under omp, where Claude asks', () => {
+  const result = spawnSync(process.execPath, [path.join(INSTALLED, 'privacy-block.cjs')], { input: '', encoding: 'utf8' });
+  assert.equal(result.status, 0, result.stderr);
+  const output = JSON.parse(result.stdout).hookSpecificOutput;
+  assert.equal(output.permissionDecision, 'deny');
+  assert.match(output.permissionDecisionReason, /Sensitive access could not be evaluated safely\./);
 });
