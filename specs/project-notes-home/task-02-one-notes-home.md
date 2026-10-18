@@ -17,7 +17,7 @@ Template `CLAUDE.md`, khối Codex `AGENTS.md` và README cùng chứa câu D-02
 - Probe tĩnh: `scripts/run-skill-self-tests.mjs:2882-2883,4815-4851` và `bin/__tests__/skill-routing-source.test.js:85` nếu ghim chữ bị đổi; chỉ theo câu mới.
 
 ## Steps
-1. Thêm test vào `installer-safety.test.js` (so chữ sau khi chuẩn hoá khoảng trắng): cài `claude` và `codex` vào thư mục tạm; khối CafeKit trong `CLAUDE.md` chứa biến thể Claude và vẫn không có `Codex`; khối Codex trong `AGENTS.md` chứa biến thể Codex; `README.md` chứa câu đầy đủ và vẫn chứa câu cam kết "CafeKit owns only its marked block inside the project-root `CLAUDE.md`". Chạy Command trước khi sửa; ghi số ca đỏ.
+1. Thêm test vào `installer-safety.test.js` (so chữ sau khi chuẩn hoá khoảng trắng): cài `claude` và `codex` vào thư mục tạm; khối CafeKit trong `CLAUDE.md` chứa biến thể Claude (có `` `@AGENTS.md` `` trong backtick, không có `@AGENTS.md.` trần) và vẫn không có `Codex`; khối Codex trong `AGENTS.md` chứa biến thể Codex; `README.md` chứa câu đầy đủ và vẫn chứa câu cam kết "CafeKit owns only its marked block inside the project-root `CLAUDE.md`". Chạy Command trước khi sửa; ghi số ca đỏ.
 2. Sửa; changelog.
 3. Chạy Command.
 4. Không commit.

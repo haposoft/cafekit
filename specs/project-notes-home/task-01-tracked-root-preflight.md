@@ -22,8 +22,9 @@ Cài vào repo mà `AGENTS.md`/`CLAUDE.md` đang được git theo dõi nhưng v
    - commit (identity riêng, `--no-gpg-sign`) `AGENTS.md` có ghi chú sau marker, xoá file trên đĩa, cài `claude` → exit khác 0, output có `git checkout -- AGENTS.md` và `git rm AGENTS.md`, không có `AGENTS.md`, `CLAUDE.md`, `.claude/`, `.cafekit-backup/` mới (bỏ qua `.cafekit.lock`).
    - như trên với `CLAUDE.md` khi cài `claude`; `AGENTS.md` khi cài `codex`; `AGENTS.md` khi cài `omp`.
    - `AGENTS.md` đánh dấu `git update-index --skip-worktree` rồi xoá → cài bình thường.
-   - `CLAUDE.md` là symlink treo đã commit → không bị coi là vắng.
-   - git trả lỗi khác (giả lập `GIT_TEST_ASSUME_DIFFERENT_OWNER=1`) → cài bình thường, output có `Could not confirm git state for AGENTS.md`.
+   - `CLAUDE.md` là symlink treo đã commit, trỏ tới đường dẫn bên trong repo tạm → exit 0, không có lỗi preflight, không ghi gì ra ngoài repo tạm.
+   - `AGENTS.md` vừa skip-worktree vừa assume-unchanged (cờ `s`) rồi xoá → cài bình thường.
+   - git trả lỗi khác (giả lập `GIT_TEST_ASSUME_DIFFERENT_OWNER=1`, chạy installer với `GIT_CONFIG_GLOBAL=/dev/null` và `GIT_CONFIG_NOSYSTEM=1` để không phụ thuộc gitconfig của máy) → cài bình thường, output có `Could not confirm git state for AGENTS.md`.
    - `CLAUDE.md` vắng nhưng đã commit, cài `codex` → cài bình thường (codex không ghi `CLAUDE.md`).
    - `--dry-run` cùng tình huống → báo cùng lỗi, exit khác 0.
    - file đã `git rm` (khỏi index) → cài bình thường, tạo file.
