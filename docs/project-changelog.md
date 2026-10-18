@@ -4,6 +4,7 @@ All notable changes to CafeKit are documented here, following
 [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
+- omp gives every hook omp's own session id, runs spec-state after edits, scopes its tollgate to the packets a session touched like Claude, and no longer runs docs-sync at session start.
 - Claude compact recovery anchors use full session-ID hashes so sessions retain separate captures; compact restarts read only their own anchor, and captures without a session identity are skipped.
 - Claude and Codex preserve obsolete runtime files without matching ownership hashes, symlinks, and directories with changed or foreign contents; installation reports one aggregate warning with manual cleanup guidance.
 - Codex installation writes shared hook libraries and overridden rules once; retired usage configuration and missing multimodal resolver references are removed while local resolution and the fixture script list remain available.

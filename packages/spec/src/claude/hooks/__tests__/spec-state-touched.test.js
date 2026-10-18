@@ -2,8 +2,8 @@
 
 // spec-state injects the active packet's tollgate on every prompt. With several sessions in
 // one checkout, a Claude session kept seeing a packet another session was working on. On
-// Claude the hook now speaks only about packets this session touched; omp, grok and
-// payloads without a Claude session id keep the old behaviour. Each case names the failure
+// Claude and omp the hook now speaks only about packets this session touched; grok and
+// payloads without a session id keep the old behaviour. Each case names the failure
 // it prevents.
 
 const { test } = require('node:test');
@@ -66,7 +66,7 @@ function fixture(packets, runtimeDir = '.claude') {
   return {
     root, hooks, run, prompt,
     get cacheFile() {
-      const name = runtimeDir === '.claude' && typeof lastSession === 'string' && lastSession
+      const name = ['.claude', '.omp'].includes(runtimeDir) && typeof lastSession === 'string' && lastSession
         ? `tollgate-last-${crypto.createHash('sha256').update(lastSession).digest('hex').slice(0, 16)}.txt`
         : 'tollgate-last.txt';
       return path.join(hooks, '.logs', name);
@@ -204,10 +204,15 @@ test("another session's touch does not leak", () => {
   });
 });
 
-test('omp, grok and session-less payloads keep the old behaviour', () => {
+test('omp filters by touch like Claude', () => {
   within(fixture(['auth-flow'], '.omp'), (fx) => {
-    assert.match(fx.prompt('s5', 'Continue'), /Spec state changed/, 'omp is unchanged');
+    assert.strictEqual(fx.prompt('s5', 'Continue'), '', 'an untouched packet is silent under omp');
+    assert.match(fx.prompt('s5', 'specs/auth-flow'), /Spec state changed/);
+    assert.strictEqual(fx.prompt('s5b', 'Continue'), '', "another omp session's touch does not leak");
   });
+});
+
+test('grok and session-less payloads keep the old behaviour', () => {
   within(fixture(['auth-flow']), (fx) => {
     assert.match(fx.run({ hook_event_name: 'UserPromptSubmit', sessionId: 's6', prompt: 'Continue' }), /Spec/, 'grok sends sessionId');
   });

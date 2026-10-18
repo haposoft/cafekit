@@ -38,21 +38,28 @@ export const BRIDGE_TIMEOUT_MS = 8000;
  * Mirrors src/claude/settings/settings.json; `omp-bridge.test.js` fails if the two drift.
  */
 export const DISPATCH = {
-  session_start:          { event: 'SessionStart',     hooks: ['session.cjs', 'docs-sync.cjs', 'state.cjs'] },
+  session_start:          { event: 'SessionStart',     hooks: ['session.cjs', 'state.cjs'] },
   session_compact:        { event: 'SessionStart',     hooks: ['session.cjs'], source: 'compact' },
   session_before_compact: { event: 'PreCompact',       hooks: ['precompact.cjs'] },
   input:                  { event: 'UserPromptSubmit', hooks: ['secret-output-guardrail.cjs', 'rules.cjs', 'spec-state.cjs'] },
   tool_call:              { event: 'PreToolUse',       hooks: ['privacy-block.cjs', 'inspect-block.cjs'] },
-  tool_result:            { event: 'PostToolUse',      hooks: ['state.cjs'] },
+  tool_result:            { event: 'PostToolUse',      hooks: ['state.cjs', 'spec-state.cjs'] },
   session_stop:           { event: 'Stop',             hooks: ['spec-gate.cjs', 'state.cjs'] },
 };
 
-/** One id per extension load. omp loads an extension once per session, so this is per-session. */
+/** Fallback id per extension load, for an omp whose context has no session manager. */
 const SESSION_ID = `omp-${randomUUID()}`;
 
 export function hooksDir() {
   if (process.env.CAFEKIT_OMP_HOOKS_DIR) return process.env.CAFEKIT_OMP_HOOKS_DIR;
   return path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'hooks');
+}
+
+function sessionIdFrom(ctx) {
+  try {
+    const id = ctx?.sessionManager?.getSessionId?.();
+    return typeof id === 'string' && id ? id : null;
+  } catch { return null; }
 }
 
 /** Build the Claude-shaped payload a CafeKit hook reads on stdin. */
@@ -61,7 +68,8 @@ export function shapePayload(kind, event, ctx) {
   const cwd = ctx?.cwd || process.cwd();
   const payload = {
     hook_event_name: entry.event,
-    session_id: event?.session_id || SESSION_ID,
+    // omp's own id first: session_stop carries it, and touch and state must stay in one place.
+    session_id: event?.session_id || sessionIdFrom(ctx) || SESSION_ID,
     cwd,
   };
   switch (kind) {

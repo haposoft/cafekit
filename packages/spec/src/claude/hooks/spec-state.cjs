@@ -84,14 +84,14 @@ try {
   const explicitFeature = payload.featureName || payload.feature || payload.explicitFeature || null;
   const explicitPath = payload.explicitPath || payload.specPath || payload.spec_path || payload.featurePath || null;
 
-  // ── Per-session touch set (Claude only) ───────────────────────────────────
-  // Several sessions can share one checkout. On Claude the tollgate speaks only about a
-  // packet this session touched. omp and Codex run their own copies, and grok sends
-  // `sessionId` before normalization, so all three keep the old behaviour.
+  // ── Per-session touch set (Claude and omp) ────────────────────────────────
+  // Several sessions can share one checkout. On Claude and omp the tollgate speaks only
+  // about a packet this session touched. Codex runs its own copy, and grok sends
+  // `sessionId` before normalization, so both keep the old behaviour.
   const claudeSession = rawPayload && typeof rawPayload.session_id === 'string' && rawPayload.session_id
     ? rawPayload.session_id
     : null;
-  const touchFilter = runtimeDirName() === '.claude' && claudeSession !== null;
+  const touchFilter = ['.claude', '.omp'].includes(runtimeDirName()) && claudeSession !== null;
   const touchFile = touchFilter
     ? path.join(
       require('./lib/hook-state-dir.cjs').hookStateDir(),

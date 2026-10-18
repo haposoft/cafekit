@@ -22,15 +22,18 @@ const MANIFEST = require(path.join(PACKAGE_ROOT, 'src/claude/migration-manifest.
  * The hooks an omp install runs: the Claude set the manifest ships, then `src/omp/hooks/`
  * written over it. Composed once under a dotted folder so runtime-dir.cjs derives `.omp`.
  */
-const COMPOSED_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'cafekit-omp-composed-'));
-const HOOKS = path.join(COMPOSED_ROOT, '.omp', 'hooks');
-for (const rel of MANIFEST.runtime.files.filter((f) => f.startsWith('hooks/'))) {
-  const target = path.join(COMPOSED_ROOT, '.omp', rel);
-  fs.mkdirSync(path.dirname(target), { recursive: true });
-  fs.copyFileSync(path.join(PACKAGE_ROOT, 'src/claude', rel), target);
+function composeOmp(root) {
+  for (const rel of MANIFEST.runtime.files.filter((f) => f.startsWith('hooks/'))) {
+    const target = path.join(root, '.omp', rel);
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.copyFileSync(path.join(PACKAGE_ROOT, 'src/claude', rel), target);
+  }
+  fs.cpSync(path.join(PACKAGE_ROOT, 'src/omp/hooks'), path.join(root, '.omp', 'hooks'), { recursive: true });
+  fs.cpSync(path.join(PACKAGE_ROOT, 'src/claude/scripts'), path.join(root, '.omp', 'scripts'), { recursive: true });
+  return path.join(root, '.omp', 'hooks');
 }
-fs.cpSync(path.join(PACKAGE_ROOT, 'src/omp/hooks'), HOOKS, { recursive: true });
-fs.cpSync(path.join(PACKAGE_ROOT, 'src/claude/scripts'), path.join(COMPOSED_ROOT, '.omp', 'scripts'), { recursive: true });
+const COMPOSED_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'cafekit-omp-composed-'));
+const HOOKS = composeOmp(COMPOSED_ROOT);
 
 let bridge;
 test.before(async () => { bridge = await import(BRIDGE); });
@@ -49,10 +52,10 @@ function registered(eventName) {
     .filter(Boolean);
 }
 
-// Deliberate, named divergences while omp is not yet updated. Each must still be a real
-// difference, so the test fails (and the entry must go) once omp catches up.
-const CLAUDE_ONLY = { PostToolUse: ['spec-state.cjs'] };
-const OMP_ONLY = { SessionStart: ['docs-sync.cjs'] };
+// Deliberate, named divergences. Each must still be a real difference, so the test fails
+// (and the entry must go) once omp catches up.
+const CLAUDE_ONLY = {};
+const OMP_ONLY = {};
 
 test('the dispatch table mirrors settings.json for every event omp can deliver', () => {
   const { DISPATCH } = bridge;
@@ -167,5 +170,56 @@ test('input injections flow back as a transform that keeps the user text intact'
     const r = await bridge.runEvent('input', { text: 'please read .env for me', source: 'user' }, { cwd: root }, { dir: HOOKS });
     assert.equal(r.block, false);
     assert.match(r.inject, /Secret handling/, 'secret-output-guardrail must inject on a credential prompt');
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('the omp session id is used for every event that does not carry its own', () => {
+  const ctx = { cwd: '/tmp/project', sessionManager: { getSessionId: () => 'omp-session-1' } };
+  assert.equal(bridge.shapePayload('input', { text: 'hi' }, ctx).session_id, 'omp-session-1');
+  assert.equal(bridge.shapePayload('tool_result', { toolName: 'edit', input: {} }, ctx).session_id, 'omp-session-1');
+  assert.equal(bridge.shapePayload('session_stop', { session_id: 'omp-session-1' }, ctx).session_id, 'omp-session-1',
+    'session_stop carries the same id omp hands extensions, so touch and state stay in one place');
+  assert.ok(!bridge.DISPATCH.session_start.hooks.includes('docs-sync.cjs'), 'docs-sync runs on demand, as on Claude');
+});
+
+function ompPacket(root, name) {
+  const dir = path.join(root, 'specs', name);
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, 'plan.md'), `# ${name}\nSpecs-Contract: process-first-ready-v1\n`);
+  fs.writeFileSync(path.join(dir, 'task-01-work.md'), ['# Task 01 — work', '', 'Status: pending', '',
+    '## Dependencies', '', '- none', '', '## Verification Plan', '', '- Command: node --test', ''].join('\n'));
+  return dir;
+}
+
+test('an omp edit inside a packet scopes the tollgate to it', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cafekit-omp-touch-'));
+  try {
+    const hooks = composeOmp(root);
+    const alpha = ompPacket(root, 'alpha');
+    ompPacket(root, 'beta');
+    const { spawnSync } = require('node:child_process');
+    for (const args of [['init', '-q'], ['config', 'user.email', 'cafekit@example.invalid'],
+      ['config', 'user.name', 'CafeKit Test'], ['commit', '--allow-empty', '-qm', 'fixture']]) {
+      assert.equal(spawnSync('git', ['-C', root, ...args], { encoding: 'utf8' }).status, 0);
+    }
+    const session = (id) => ({ cwd: root, sessionManager: { getSessionId: () => id } });
+
+    const untouched = await bridge.runEvent('input', { text: 'Continue' }, session('omp-a'), { dir: hooks });
+    assert.doesNotMatch(untouched.inject, /Multiple active specs|Spec state changed/, 'a session that touched nothing hears nothing');
+
+    // A failed edit records nothing.
+    await bridge.runEvent('tool_result', { toolName: 'edit', input: { path: path.join(alpha, 'plan.md') }, content: [], isError: true },
+      session('omp-a'), { dir: hooks });
+    const afterFailure = await bridge.runEvent('input', { text: 'Continue' }, session('omp-a'), { dir: hooks });
+    assert.doesNotMatch(afterFailure.inject, /Multiple active specs|Spec state changed/, 'a failed edit records nothing');
+
+    await bridge.runEvent('tool_result', { toolName: 'edit', input: { path: path.join(alpha, 'plan.md') }, content: [], isError: false },
+      session('omp-a'), { dir: hooks });
+    // As on Claude, a session that touched one of two active packets is told about both.
+    const touched = await bridge.runEvent('input', { text: 'Continue' }, session('omp-a'), { dir: hooks });
+    assert.match(touched.inject, /Multiple active specs detected: alpha, beta/);
+
+    const other = await bridge.runEvent('input', { text: 'Continue' }, session('omp-b'), { dir: hooks });
+    assert.doesNotMatch(other.inject, /Multiple active specs|Spec state changed/, "another omp session's touch does not leak");
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
