@@ -1,6 +1,6 @@
 # Task 02 — Một câu chỉ nơi ghi chú project
 
-Status: pending
+Status: done
 
 ## Outcome
 Template `CLAUDE.md`, khối Codex `AGENTS.md` và README cùng chứa câu D-02.
@@ -40,4 +40,25 @@ Template `CLAUDE.md`, khối Codex `AGENTS.md` và README cùng chứa câu D-02
 On a failed Step or Verification Plan run: stop; do not widen scope, change the Command, or weaken a test; record observed versus expected; repair only the cited cause; after three failed rounds, stop and ask the user.
 
 ## Receipt
-<!-- Fill only after execution. -->
+
+Verification: PASS
+Command: `node --test packages/spec/bin/__tests__/installer-safety.test.js packages/spec/bin/__tests__/skill-routing-source.test.js packages/spec/bin/__tests__/package-inventory.test.js && node packages/spec/scripts/run-skill-self-tests.mjs`
+Exit: 0
+Base: f0202c63f73ee46e7f6acb527d0e09565fd9efaf
+Head: 907d4127efae0fabbb6361502eb1ad5e4d5fe477605ad2cd968b746b4f871e10
+
+```text
+ok 16 - the installed Claude block points project notes to the shared root with a quoted import
+ok 17 - the installed Codex block points project notes to the shared root directly
+ok 18 - the package README preserves root ownership and names one project-notes home for both hosts
+# tests 84
+# pass 84
+# fail 0
+# skipped 0
+# todo 0
+[skill-test] PASS: 2233 tests executed
+```
+
+- Đỏ trước sửa: Codex báo 3 ca mới đỏ trước khi sửa template/README.
+- Counterexample (Codex báo): bỏ câu khỏi khối Codex → ca Codex đỏ; khôi phục khớp byte.
+- Review controller: khối Claude dùng `` `@AGENTS.md` `` trong backtick và không có chữ Codex (bất biến cách ly giữ); khối Codex dùng biến thể Codex; README giữ câu cam kết `:102-103`, thêm câu đầy đủ sau nó và sau đoạn Codex. Commit f0202c63.

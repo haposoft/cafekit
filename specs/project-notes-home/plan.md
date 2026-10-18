@@ -48,7 +48,7 @@ Specs-Contract: process-first-ready-v1
 | # | Task | Priority | Criteria | Primary ownership | Dependencies | Status |
 |---|---|---|---|---|---|---|
 | 01 | Preflight file gốc vắng mà git theo dõi | P1 | AC-01 | `bin/install.js`, `installer-safety.test.js` | - | done |
-| 02 | Một câu chỉ nơi ghi chú | P2 | AC-02 | `src/claude/CLAUDE.md`, `src/codex/AGENTS.md`, `README.md` | task-01-tracked-root-preflight.md | pending |
+| 02 | Một câu chỉ nơi ghi chú | P2 | AC-02 | `src/claude/CLAUDE.md`, `src/codex/AGENTS.md`, `README.md` | task-01-tracked-root-preflight.md | done |
 
 Command chạy từ gốc repo. Oracle chung: mọi lệnh exit 0; `node --test` có `# fail 0`, `# skipped 0`, `# todo 0`, tên từng test mới hiện thành dòng `ok`; self-test in `PASS:`. Hai task cùng sửa hai changelog (`CHANGELOG.md`, `../../docs/project-changelog.md`, Unreleased) nên chạy tuần tự. Probe tĩnh trong `scripts/run-skill-self-tests.mjs` ghim chữ template chỉ được cập nhật đúng theo thay đổi, nêu trong Receipt. Không đưa mã task/quyết định vào tên test, comment hay commit.
 
