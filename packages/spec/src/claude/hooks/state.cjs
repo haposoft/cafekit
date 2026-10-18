@@ -301,13 +301,13 @@ try {
     const data = normalizeHookPayload(rawPayload);
     const event = data.hook_event_name || '';
     const cwd = projectRoot(data);
-    const claudeSession = runtimeDirName() === '.claude'
+    const claudeSession = ['.claude', '.omp'].includes(runtimeDirName())
       && typeof rawPayload.session_id === 'string' && rawPayload.session_id.length > 0;
     const dir = stateDir(cwd, claudeSession ? rawPayload.session_id : null, event !== 'SessionStart');
 
     if (event === 'SessionStart') {
       const previous = loadLatest(dir);
-      // Claude only: grok (camelCase sessionId), omp and Codex keep printing the block.
+      // Claude and omp: grok (camelCase sessionId) and Codex keep printing the block.
       if (previous && (!claudeSession || hasPriorContent(previous))) {
         console.log('\n=== Prior Execution Context ===');
         console.log(previous.trim());

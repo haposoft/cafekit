@@ -353,7 +353,7 @@ const PLACEHOLDER_STATE = [
   '',
 ].join('\n');
 
-function sessionStartWith(content, runtimeFolder = '.claude') {
+function sessionStartWith(content, runtimeFolder = '.claude', readingSession = 'start-1') {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ck-state-start-'));
   try {
     let hook = STATE_HOOK;
@@ -367,13 +367,13 @@ function sessionStartWith(content, runtimeFolder = '.claude') {
       hook = path.join(hooks, 'state.cjs');
     }
     const stateFolder = path.join(dir, runtimeFolder, 'session-state',
-      ...(runtimeFolder === '.claude' ? [crypto.createHash('sha256').update('start-1').digest('hex').slice(0, 16)] : []));
+      ...(['.claude', '.omp'].includes(runtimeFolder) ? [crypto.createHash('sha256').update('start-1').digest('hex').slice(0, 16)] : []));
     fs.mkdirSync(stateFolder, { recursive: true });
     fs.writeFileSync(path.join(stateFolder, 'latest.md'), content.replace('GENERATED', new Date().toISOString()));
     const result = spawnSync(process.execPath, [hook], {
       cwd: dir,
       env: HOOK_ENV,
-      input: JSON.stringify({ hook_event_name: 'SessionStart', session_id: 'start-1', cwd: dir }),
+      input: JSON.stringify({ hook_event_name: 'SessionStart', session_id: readingSession, cwd: dir }),
       encoding: 'utf8',
     });
     assert.strictEqual(result.status, 0, result.stderr);
@@ -392,8 +392,14 @@ test('SessionStart prints prior context that has a completed todo', () => {
   assert.match(sessionStartWith(withTodo), /Prior Execution Context[\s\S]*Ship the statusline/);
 });
 
-test('SessionStart under .omp keeps printing placeholder-only context', () => {
-  assert.match(sessionStartWith(PLACEHOLDER_STATE, '.omp'), /Prior Execution Context/);
+test('SessionStart under .omp drops placeholder-only context like Claude', () => {
+  assert.strictEqual(sessionStartWith(PLACEHOLDER_STATE, '.omp'), '');
+});
+
+test('two omp sessions keep separate state', () => {
+  const withTodo = PLACEHOLDER_STATE.replace('- (No completed tasks recorded)', '- Ship the statusline');
+  assert.match(sessionStartWith(withTodo, '.omp'), /Ship the statusline/, 'the same session reads its own state');
+  assert.strictEqual(sessionStartWith(withTodo, '.omp', 'start-2'), '', 'another omp session does not');
 });
 
 function inSessionStateFixture(run) {
