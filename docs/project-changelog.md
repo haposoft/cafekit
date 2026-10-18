@@ -4,6 +4,7 @@ All notable changes to CafeKit are documented here, following
 [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
+- Installation stops before taking a snapshot when a root instruction file is missing but still tracked by git; it reports restore/removal commands and warns when git state cannot be confirmed.
 - Codex privacy supports a next-prompt y/yes/có approval for one unambiguous request, atomically consumes session markers on every prompt, and reports the granted paths; exact approval phrases remain available.
 - omp gives every hook omp's own session id, runs spec-state after edits, scopes its tollgate to the packets a session touched, keeps session state per session like Claude, and no longer runs docs-sync at session start.
 - Claude compact recovery anchors use full session-ID hashes so sessions retain separate captures; compact restarts read only their own anchor, and captures without a session identity are skipped.

@@ -103,6 +103,136 @@ function runCodexInstaller(root) {
   });
 }
 
+function rootFileGit(root, args) {
+  const result = spawnSync('git', args, { cwd: root, encoding: 'utf8' });
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+  return result.stdout;
+}
+
+function commitRootFile(root, file) {
+  rootFileGit(root, ['init', '-q']);
+  const content = file === 'AGENTS.md' ? upsertManagedCoreBlock('', SHARED_TEMPLATE) : TEMPLATE;
+  fs.writeFileSync(path.join(root, file), `${content}\n## Project notes\nKeep these project notes.\n`);
+  rootFileGit(root, ['add', '--', file]);
+  rootFileGit(root, ['-c', 'user.name=CafeKit Fixture', '-c', 'user.email=cafekit-fixture@example.invalid',
+    'commit', '--no-gpg-sign', '-qm', 'root file fixture']);
+}
+
+function runRootFileInstaller(root, platform, args = [], env = {}) {
+  return spawnSync(process.execPath,
+    [INSTALLER, '--platform', platform, '--yes', '--without-document-skills', ...args],
+    { cwd: root, encoding: 'utf8', env: { ...process.env, PATH: '/usr/bin:/bin', ...env } });
+}
+
+for (const [file, platform, args] of [
+  ['AGENTS.md', 'claude', []], ['CLAUDE.md', 'claude', []],
+  ['AGENTS.md', 'codex', []], ['AGENTS.md', 'omp', []],
+  ['AGENTS.md', 'claude', ['--dry-run']],
+]) {
+  test(`missing tracked ${file} stops ${platform} installation${args.length ? ' in dry-run' : ''} before writes`, () => {
+    inTempProject(root => {
+      commitRootFile(root, file);
+      fs.unlinkSync(path.join(root, file));
+      const before = fs.readdirSync(root).filter(name => name !== '.cafekit.lock');
+      const result = runRootFileInstaller(root, platform, args);
+      const output = `${result.stdout}\n${result.stderr}`;
+      assert.notEqual(result.status, 0, output);
+      assert.ok(output.includes(`git checkout -- ${file}`), output);
+      assert.ok(output.includes(`git rm ${file}`), output);
+      assert.deepEqual(fs.readdirSync(root).filter(name => name !== '.cafekit.lock'), before);
+      for (const name of ['AGENTS.md', 'CLAUDE.md', '.claude', '.codex', '.agents', '.omp', '.cafekit-backup']) {
+        assert.equal(fs.existsSync(path.join(root, name)), false, name);
+      }
+    });
+  });
+}
+
+for (const assumeUnchanged of [false, true]) {
+  test(`missing skip-worktree AGENTS.md permits installation${assumeUnchanged ? ' with assume-unchanged' : ''}`, () => {
+    inTempProject(root => {
+      commitRootFile(root, 'AGENTS.md');
+      rootFileGit(root, ['update-index', '--skip-worktree', '--', 'AGENTS.md']);
+      if (assumeUnchanged) rootFileGit(root, ['update-index', '--assume-unchanged', '--', 'AGENTS.md']);
+      assert.match(rootFileGit(root, ['ls-files', '-v', '--', 'AGENTS.md']), assumeUnchanged ? /^s / : /^S /);
+      fs.unlinkSync(path.join(root, 'AGENTS.md'));
+      const result = runRootFileInstaller(root, 'claude');
+      assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+      assert.ok(fs.existsSync(path.join(root, 'AGENTS.md')));
+    });
+  });
+}
+
+test('a tracked dangling CLAUDE.md symlink is present for the root preflight', () => {
+  inTempProject(root => {
+    rootFileGit(root, ['init', '-q']);
+    fs.mkdirSync(path.join(root, 'notes'));
+    fs.symlinkSync('notes/claude.md', path.join(root, 'CLAUDE.md'));
+    rootFileGit(root, ['add', '--', 'CLAUDE.md']);
+    rootFileGit(root, ['-c', 'user.name=CafeKit Fixture', '-c', 'user.email=cafekit-fixture@example.invalid',
+      'commit', '--no-gpg-sign', '-qm', 'root symlink fixture']);
+    const result = runRootFileInstaller(root, 'claude');
+    const output = `${result.stdout}\n${result.stderr}`;
+    assert.notEqual(result.status, 0, output);
+    assert.doesNotMatch(output, /tracked by git but missing/);
+    assert.match(output, /Refusing to follow symlinked managed path/);
+    assert.equal(fs.readlinkSync(path.join(root, 'CLAUDE.md')), 'notes/claude.md');
+    assert.equal(fs.existsSync(path.join(root, 'notes/claude.md')), false);
+    assert.deepEqual(fs.readdirSync(path.join(root, 'notes')), []);
+  });
+});
+
+test('uncertain git ownership warns and permits a fresh root file', () => {
+  inTempProject(root => {
+    commitRootFile(root, 'AGENTS.md');
+    fs.unlinkSync(path.join(root, 'AGENTS.md'));
+    const result = runRootFileInstaller(root, 'claude', [], {
+      GIT_TEST_ASSUME_DIFFERENT_OWNER: '1', GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1',
+    });
+    assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+    assert.match(`${result.stdout}\n${result.stderr}`, /Could not confirm git state for AGENTS\.md; installing a fresh copy\./);
+    assert.ok(fs.existsSync(path.join(root, 'AGENTS.md')));
+  });
+});
+
+test('Codex installation leaves a missing tracked CLAUDE.md alone', () => {
+  inTempProject(root => {
+    commitRootFile(root, 'CLAUDE.md');
+    fs.unlinkSync(path.join(root, 'CLAUDE.md'));
+    const result = runRootFileInstaller(root, 'codex');
+    assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+    assert.equal(fs.existsSync(path.join(root, 'CLAUDE.md')), false);
+  });
+});
+
+test('a root file removed from the git index can be freshly installed', () => {
+  inTempProject(root => {
+    commitRootFile(root, 'AGENTS.md');
+    rootFileGit(root, ['rm', '--', 'AGENTS.md']);
+    const result = runRootFileInstaller(root, 'claude');
+    assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+    assert.ok(fs.existsSync(path.join(root, 'AGENTS.md')));
+    assert.doesNotMatch(`${result.stdout}\n${result.stderr}`, /Could not confirm git state/);
+  });
+});
+
+test('a project outside git installs root files without a git-state warning', () => {
+  inTempProject(root => {
+    const result = runRootFileInstaller(root, 'claude');
+    assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+    assert.ok(fs.existsSync(path.join(root, 'AGENTS.md')));
+    assert.doesNotMatch(`${result.stdout}\n${result.stderr}`, /Could not confirm git state/);
+  });
+});
+
+test('an existing tracked root file retains notes after its managed marker', () => {
+  inTempProject(root => {
+    commitRootFile(root, 'AGENTS.md');
+    const result = runRootFileInstaller(root, 'claude');
+    assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+    assert.match(fs.readFileSync(path.join(root, 'AGENTS.md'), 'utf8'), /CAFEKIT CORE END -->[\s\S]*Keep these project notes\./);
+  });
+});
+
 for (const host of ['claude', 'codex']) {
   for (const state of ['pristine file', 'modified file', 'untracked file', 'external symlink', 'dangling symlink', 'pristine directory', 'directory with an extra file', 'directory with a modified file', 'directory with a symlink']) {
     test(`${host} obsolete cleanup safely handles a ${state}`, () => {

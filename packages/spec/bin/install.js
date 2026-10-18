@@ -16,6 +16,7 @@
  */
 
 const { spawnSync } = require('child_process');
+const fs = require('fs');
 const { buildContext, PLATFORMS, packageJson } = require('./lib/context');
 const lock = require('./lib/lock');
 const backup = require('./lib/backup');
@@ -44,6 +45,28 @@ const { ensureGitignore } = require('./phases/root-config');
 const { runPostInstall } = require('./phases/post-install');
 const { setupSkillDeps } = require('./phases/skills-setup');
 const { printSummary } = require('./phases/summary');
+
+function preflightTrackedRootFiles(ctx) {
+  const files = ['AGENTS.md'];
+  if (ctx.platforms.includes('claude')) files.push('CLAUDE.md');
+  for (const file of files) {
+    try {
+      fs.lstatSync(file);
+      continue;
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error;
+    }
+    const result = spawnSync('git', ['ls-files', '-v', '--error-unmatch', '--', file], {
+      cwd: process.cwd(), encoding: 'utf8', timeout: 3000, shell: false,
+    });
+    if (!result.error && result.status === 0) {
+      if (result.stdout[0]?.toUpperCase() === 'S') continue;
+      throw new Error(`${file} is tracked by git but missing from the working tree; restore it with \`git checkout -- ${file}\`, or \`git rm ${file}\` if the deletion is intended, then rerun the installer.`);
+    }
+    if (!result.error && (result.status === 1 || /not a git repository/i.test(result.stderr || ''))) continue;
+    ctx.ui.warn(`Could not confirm git state for ${file}; installing a fresh copy.`);
+  }
+}
 
 /** Install a single platform: payload + runtime + metadata, under one spinner. */
 function installPlatform(ctx, platformKey) {
@@ -174,6 +197,8 @@ async function main() {
 
     await selectDocumentSkills(ctx);
     if (ctx.cancelled) { lock.release(); process.exit(0); }
+
+    preflightTrackedRootFiles(ctx);
 
     // ── Pre-run snapshot for rollback ─────────────────────
     // Capture platform folders AND the root files the pipeline mutates
