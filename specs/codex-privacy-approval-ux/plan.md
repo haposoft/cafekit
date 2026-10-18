@@ -36,7 +36,7 @@ Specs-Contract: process-first-ready-v1
 - Agent tự chạy `codex exec resume … "y"` qua shell có thể bắn `UserPromptSubmit` thật [UNVERIFIED]; lỗ này có từ trước với câu mã dài; chặn lệnh `codex` lồng nhau để gói sau.
 - Tin nhắn steer giữa lượt có bắn `UserPromptSubmit` không: [UNVERIFIED].
 - SessionStart (mọi source: `startup`, `resume`, `clear`, `compact`) gọi `clearState` (`src/codex/hooks/session.cjs:103`): mất pending và marker, phải chặn lại.
-- Hook của prompt chen giữa không chạy được tới bước giành marker (Codex không gọi hook, payload rỗng) thì chữ ngắn còn sống tới prompt sau.
+- Hook của prompt chen giữa không giành được marker (Codex không gọi hook, payload rỗng, hoặc thư mục `.privacy` tạm thời không liệt kê được) thì chữ ngắn còn sống tới prompt sau; vẫn chỉ duyệt đúng một yêu cầu và người dùng phải tự gõ chữ duyệt (develop 18/10: Codex tái hiện bằng `readdirSync` lỗi rồi hồi phục).
 - Catalog/ngữ cảnh: tên hiển thị chỉ là basename (`displayNames`), không có thư mục.
 - Yêu cầu tạo trước khi cài bản mới (không có marker) chỉ duyệt được bằng câu mã.
 - Hướng A có thể làm được nếu bản Codex sau gỡ câu cấm trong system prompt.
@@ -54,7 +54,7 @@ Specs-Contract: process-first-ready-v1
 ## Tasks
 | # | Task | Priority | Criteria | Primary ownership | Dependencies | Status |
 |---|---|---|---|---|---|---|
-| 01 | Duyệt privacy Codex bằng một chữ | P1 | AC-01 | `src/codex/hooks/lib/privacy-state.cjs`, `privacy-approval.cjs`, `privacy-block.cjs`, `src/codex/rules/hook-protocols.md` | - | pending |
+| 01 | Duyệt privacy Codex bằng một chữ | P1 | AC-01 | `src/codex/hooks/lib/privacy-state.cjs`, `privacy-approval.cjs`, `privacy-block.cjs`, `src/codex/rules/hook-protocols.md` | - | done |
 
 Command chạy từ gốc repo. Oracle chung: mọi lệnh exit 0; `node --test` có `# fail 0`, `# skipped 0`, `# todo 0`, tên từng test mới hiện thành dòng `ok`; self-test in `PASS:`. Không đưa mã task/quyết định vào tên test, comment hay commit.
 
