@@ -3,7 +3,13 @@
 All notable changes to CafeKit are documented here, following
 [Keep a Changelog](https://keepachangelog.com/).
 
-## [Unreleased]
+## [0.18.2] - 2026-10-20
+### Added
+- Codex `ask-guard`: khi prompt bắt đầu bằng `$cf-ask` hoặc `/cf:ask`, hook từ chối `apply_patch` trong phiên đó cho tới prompt kế tiếp không gọi ask, và chỉ người dùng sang `$cf-fix`. Đo trên `gpt-6.1-sol`: `ask/cam-sua` không sửa file 10/10 (trước 2/10), 4 ca ask khác không hồi quy. Hook chỉ chạy khi người dùng đã tin cậy hook qua `/hooks`; không chặn lệnh shell ghi file.
+- Codex `cf-research`: bản cài cho Codex thêm ghi chú chọn độ sâu — quyết định repo đã chốt và còn hiệu lực là *known option* nên dùng Quick; lý do phụ lỗi thời không nâng độ sâu trừ khi làm đổi khuyến nghị. Đo trên `gpt-6.1-sol`: `research/da-co-quyet-dinh` chọn Quick 10/10 (trước 0/10), 4 ca không agent không hồi quy. Skill gốc và Claude không đổi.
+- Codex `cf-specs`: bản cài cho Codex thêm ghi chú cổng phạm vi — câu hỏi GATE-SCOPE nằm trong final answer, không tóm tắt sau nó, mỗi mục cần quyết là `[NEEDS CLARIFICATION: …]` có câu hỏi thật, giữ nguyên EXPAND/KEEP/CUT. Đo trên `gpt-6.1-sol`: `specs/mo-ho-c1` marker và bộ ba ở tin cuối 10/10 (mốc 0/10; đối chứng không ghi chú trên runner mới 3/5 và 4/5, marker thật 1/5), 3 ca khác không hồi quy. Skill gốc và Claude không đổi.
+
+### Changed
 - Claude and Codex instructions and the package README direct project notes to root AGENTS.md after the shared CORE marker, while preserving each host's instruction boundary.
 - Installation stops before taking a snapshot when a root instruction file is missing but still tracked by git; it reports restore/removal commands and warns when git state cannot be confirmed.
 - Codex privacy supports a next-prompt y/yes/có approval for one unambiguous request, atomically consumes session markers on every prompt, and reports the granted paths; exact approval phrases remain available.
@@ -23,17 +29,8 @@ All notable changes to CafeKit are documented here, following
 - Claude compact restarts release their own rules reservation; session hooks share project-root resolution, log asynchronous failures, and bound precompact git calls.
 - State hooks now track Claude Agent events, lock Claude snapshot writes, log asynchronous failures, and omit secret-related assistant summaries on both hosts.
 - Claude spec-state now reads project-root configuration, shares packet touch helpers with Codex, and keeps tollgate caches separate per session.
-
-### Changed
-
 - Matcher privacy/inspect Claude phủ NotebookEdit và MCP; installer cập nhật matcher cũ của nhóm chỉ có lệnh template, giữ nguyên nhóm người dùng.
 - Matcher hook Codex theo tên tool đo trên CLI; installer cập nhật matcher template cũ của nhóm CafeKit, giữ nguyên nhóm tùy chỉnh hoặc trộn hook người dùng và cảnh báo.
-
-### Added
-
-- Codex `ask-guard`: khi prompt bắt đầu bằng `$cf-ask` hoặc `/cf:ask`, hook từ chối `apply_patch` trong phiên đó cho tới prompt kế tiếp không gọi ask, và chỉ người dùng sang `$cf-fix`. Đo trên `gpt-6.1-sol`: `ask/cam-sua` không sửa file 10/10 (trước 2/10), 4 ca ask khác không hồi quy. Hook chỉ chạy khi người dùng đã tin cậy hook qua `/hooks`; không chặn lệnh shell ghi file.
-- Codex `cf-research`: bản cài cho Codex thêm ghi chú chọn độ sâu — quyết định repo đã chốt và còn hiệu lực là *known option* nên dùng Quick; lý do phụ lỗi thời không nâng độ sâu trừ khi làm đổi khuyến nghị. Đo trên `gpt-6.1-sol`: `research/da-co-quyet-dinh` chọn Quick 10/10 (trước 0/10), 4 ca không agent không hồi quy. Skill gốc và Claude không đổi.
-- Codex `cf-specs`: bản cài cho Codex thêm ghi chú cổng phạm vi — câu hỏi GATE-SCOPE nằm trong final answer, không tóm tắt sau nó, mỗi mục cần quyết là `[NEEDS CLARIFICATION: …]` có câu hỏi thật, giữ nguyên EXPAND/KEEP/CUT. Đo trên `gpt-6.1-sol`: `specs/mo-ho-c1` marker và bộ ba ở tin cuối 10/10 (mốc 0/10; đối chứng không ghi chú trên runner mới 3/5 và 4/5, marker thật 1/5), 3 ca khác không hồi quy. Skill gốc và Claude không đổi.
 
 ### Fixed
 - Hooks Claude dùng root đã cài để đọc runtime và dựng context; rules chỉ giữ chỗ tiêm khi runtime đã có, kể cả khi phiên đứng ở thư mục con.
@@ -50,12 +47,10 @@ All notable changes to CafeKit are documented here, following
 - Privacy yêu cầu duyệt tìm đệ quy khi thư mục gốc có file mật trực tiếp, xét cờ ẩn, glob include và symlink trên mọi host.
 - Privacy dùng chung luật đường dẫn cho Claude, Codex, omp và grok, kiểm glob, notebook, MCP, argv và patch; Codex từ chối khi thiếu lib.
 - Inspect dùng chung bộ phân tích đường dẫn cho Claude, Codex, omp và grok; chỉ kiểm thao tác đọc, không chặn nhầm venv, build, patch hay Grep regex, vẫn chặn reader qua lớp bọc và substitution.
-
 - Codex privacy duyệt đường dẫn trong mảng input MCP; reset grant chỉ cho phiên hiện tại, giữ grant của phiên khác.
 - Stop coi cache IO là best-effort, dùng snapshot memo trong một invocation và giữ nội dung Receipt cho hướng dẫn sửa; vẫn revalidate mọi done Receipt. Provenance giữ exclusions runtime-neutral và bỏ generated session/privacy state khỏi source evidence.
 - Inspect cho phép build output đã xác định, vẫn kiểm tra các lệnh đọc/chained readers; Codex retirement gỡ legacy `init.json` giống Claude.
 - Projection chuyển shorthand Explore/model guidance sang native Codex; strategist dùng high reasoning effort, mô tả đúng model kế thừa. Script multimodal tùy chọn tìm `.codex/.env` đúng split-root layout.
-
 - Codex reinstall cập nhật launcher CafeKit về root hiện tại sau khi di chuyển project, giữ hook tùy chỉnh và metadata; không nhận nhầm hook bên ngoài chỉ vì trùng basename.
 - Codex startup bỏ docs-sync tự động và prior context rỗng. Specs context chỉ nhắc packet session đã chọn hoặc sửa; native PostToolUse ghi touch âm thầm, Stop vẫn kiểm tra Receipt. Upgrade gỡ riêng docs-sync SessionStart do CafeKit quản lý; Docs vẫn gọi hook theo nhu cầu.
 
