@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - omp loads the bridge again: it ships as `cafekit-bridge.js` because omp discovers only `.ts`/`.js` extensions, runs hooks with an absolute `node` from PATH outside the project instead of the omp binary, and blocks gating events when node is missing or a gate exits without a verdict; upgrades remove the old `.mjs` bridge only when it is unchanged.
 - Codex privacy no longer denies with "could not be evaluated safely" when two privacy checks run at once in a project without `.codex/hooks/.privacy`: the second one now accepts the directory the first one created, and a `.privacy` that is not a real directory is still refused.
 - omp upgrades now remove obsolete hooks and scripts only when their bytes match the ownership record, like Claude and Codex: an edited, untracked or symlinked file is kept and reported, a record whose file is already gone is dropped, and omp no longer deletes anything under `.agents/skills`.
+- The read-only `researcher`, `inspector` and `debugger` agents no longer declare `memory:`, which made Claude Code grant them Write and Edit whatever their `tools:` line said; `inspector` now refuses to read env, key and credential files, and the `deployer` reverts without pushing until the user approves. `packages/spec/scripts/agent-privacy-live-check.sh` checks the first point against a live `claude -p`.
 
 ## [0.18.2] - 2026-10-20
 
