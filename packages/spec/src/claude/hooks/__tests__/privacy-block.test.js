@@ -398,3 +398,15 @@ test('fails closed on malformed/looping symlink (hop limit)', () => {
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('a Claude Read of an ordinary path is not affected by omp selector handling', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ck-privacy-selector-'));
+  try {
+    fs.writeFileSync(path.join(root, 'notes.md'), 'hi\n');
+    const result = spawnSync(process.execPath, [HOOK], {
+      input: JSON.stringify({ tool_name: 'Read', tool_input: { file_path: path.join(root, 'notes.md') }, cwd: root }),
+      encoding: 'utf8', env: HOOK_ENV,
+    });
+    assert.equal(result.stdout.trim(), '');
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});

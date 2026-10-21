@@ -137,12 +137,43 @@ function extractCommandPaths(command) {
   return [...paths];
 }
 
+// omp's edit modes name files in their own grammars: hashline headers `[path#TAG]` (tag
+// optional, path may be quoted) and `¶path`, a hashline `MV <dest>` move, and the sloppy
+// `*** Edit File:` header. The move destination is a write like any other.
+const PATCH_FILE_LINES = [
+  /^\*\*\* (?:(?:Add|Update|Delete) File:|Move to:)\s+(.+)$/gm,
+  /^[ \t]*\*{3}[ \t]+Edit[ \t]+File:[ \t]*(.+)$/gim,
+  /^\[(.+?)(?:#[0-9A-Fa-f]{4})?\]$/gm,
+  /^\u00b6(.+)$/gm,
+  /^[ \t]*MV[ \t]+(.+)$/gm,
+];
+
 function extractPatchPaths(patch) {
-  return [...String(patch).matchAll(
-    /^\*\*\* (?:(?:Add|Update|Delete) File:|Move to:)\s+(.+)$/gm
-  )]
-    .map((match) => match[1].trim())
+  const text = String(patch).replace(/^\uFEFF/, '').replace(/\r\n/g, '\n');
+  return PATCH_FILE_LINES.flatMap((pattern) => [...text.matchAll(pattern)])
+    .map((match) => match[1].trim().replace(/^(["'])(.*)\1$/, '$2').replace(/#[0-9A-Fa-f]{4}$/, ''))
     .filter(Boolean);
+}
+
+// omp's read takes `path:<selector>` (`raw`, `conflicts`, `img`, a line or range list);
+// the file is the part before it, so `.env:raw` is `.env`.
+const READ_SELECTOR = /:((?:raw|conflicts|img|-?\d+(?:[-+,.]\d+)*))$/i;
+
+function withoutSelectors(filePath) {
+  const variants = [];
+  let current = filePath;
+  for (let count = 0; count < 2 && READ_SELECTOR.test(current); count += 1) {
+    current = current.replace(READ_SELECTOR, '');
+    if (current) variants.push(current);
+  }
+  return variants;
+}
+
+// omp's eval runs code with no path argument; a quoted literal naming a secret file is the
+// only file reference the gate can see.
+function evalLiterals(input) {
+  const code = typeof input?.code === 'string' ? input.code : '';
+  return [...code.matchAll(/(["'`])((?:(?!\1)[^\\\n]|\\.)*)\1/g)].map((match) => match[2].trim()).filter(Boolean);
 }
 
 
@@ -163,7 +194,7 @@ function patchInput(input) {
 }
 
 function isPathKey(key, mcp) {
-  return /^(?:file_?paths?|paths?|search_?paths?|director(?:y|ies)|cwd|root|locations?|notebook_path|globs?)$/i.test(key)
+  return /^(?:file_?paths?|paths?|search_?paths?|director(?:y|ies)|cwd|root|locations?|notebook_path|globs?|rename)$/i.test(key)
     || (mcp && /path|file|dir|uri|source|dest|target/i.test(key));
 }
 
@@ -187,9 +218,14 @@ function extractPaths(toolName, input) {
   if (['bash', 'exec_command', 'shell'].includes(tool)) {
     paths.push(...extractCommandPaths(shellInput(input)));
   } else if (['apply_patch', 'edit', 'write'].includes(tool)) {
-    paths.push(...extractPatchPaths(patchInput(input)));
+    const patch = patchInput(input);
+    paths.push(...extractPatchPaths(patch));
+    // An edit whose text names no file cannot be judged, so it is not allowed through.
+    if (tool === 'edit' && patch.trim() && !paths.length) throw new Error('edit input names no file');
+  } else if (tool === 'eval') {
+    paths.push(...evalLiterals(input));
   }
-  return [...new Set(paths)];
+  return [...new Set(paths.flatMap((filePath) => [filePath, ...withoutSelectors(filePath)]))];
 }
 
 function sensitiveRequest(filePath, cwd) {

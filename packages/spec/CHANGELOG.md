@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- omp privacy now covers edit moves and renames, the sloppy edit header, `read` selectors such as `.env:raw`, and file names quoted in `eval` code, and denies an edit whose text names no file.
 - omp records spec touches for multi-file edits and `ast_edit` from omp's `paths` and the changed files a result reports, and the bridge no longer pipes edited file contents to hooks.
 - omp loads the bridge again: it ships as `cafekit-bridge.js` because omp discovers only `.ts`/`.js` extensions, runs hooks with an absolute `node` from PATH outside the project instead of the omp binary, and blocks gating events when node is missing or a gate exits without a verdict; upgrades remove the old `.mjs` bridge only when it is unchanged.
 

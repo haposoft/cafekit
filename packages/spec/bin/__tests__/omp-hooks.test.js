@@ -163,3 +163,27 @@ test('an empty stdin is denied under omp, where Claude asks', () => {
   assert.equal(output.permissionDecision, 'deny');
   assert.match(output.permissionDecisionReason, /Sensitive access could not be evaluated safely\./);
 });
+
+test('omp edits that move, rename or hide their target cannot reach a protected file', () => {
+  withSecretProject((root) => {
+    const run = (tool, input) => verdict(path.join(INSTALLED, 'privacy-block.cjs'), { tool_name: tool, tool_input: input, cwd: root });
+    // Envelopes as omp delivers them to extensions: it adds `path`/`paths` from file headers.
+    assert.equal(run('edit', { input: '[notes.md#ABCD]\nMV .env', path: 'notes.md', paths: ['notes.md'] }).decision, 'deny', 'hashline MV');
+    assert.equal(run('edit', { path: 'notes.md', edits: [{ op: 'update', rename: '.omp/runtime.json', diff: '' }] }).decision, 'deny', 'patch rename');
+    assert.equal(run('edit', { input: '*** Edit File: .env\n@@\n+X=1' }).decision, 'deny', 'sloppy header');
+    assert.equal(run('edit', { input: 'no file header at all' }).decision, 'deny', 'an edit that names no file is not evaluated');
+    assert.equal(run('edit', { input: '[notes.md#ABCD]\nPUT >2:\n+x', path: 'notes.md', paths: ['notes.md'] }).decision, null, 'an ordinary edit passes');
+  });
+});
+
+test('omp read selectors and eval code cannot reach a secret file', () => {
+  withSecretProject((root) => {
+    fs.writeFileSync(path.join(root, 'README.md'), 'hi\n');
+    const run = (tool, input) => verdict(path.join(INSTALLED, 'privacy-block.cjs'), { tool_name: tool, tool_input: input, cwd: root });
+    assert.equal(run('read', { path: '.env:raw' }).decision, 'deny', 'raw selector');
+    assert.equal(run('read', { path: '.env:1-50' }).decision, 'deny', 'line range selector');
+    assert.equal(run('read', { path: 'README.md:1-5' }).decision, null, 'a selector on an ordinary file passes');
+    assert.equal(run('eval', { language: 'python', code: "print(open('.env').read())" }).decision, 'deny', 'eval naming a secret');
+    assert.equal(run('eval', { language: 'python', code: 'credentials = 1\nprint(credentials)' }).decision, null, 'an identifier is not a file');
+  });
+});
