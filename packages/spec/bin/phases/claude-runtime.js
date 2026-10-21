@@ -176,9 +176,8 @@ function removeObsoleteRuntimeFiles(ctx, platformKey) {
     const tracker = ctx.trackers?.[key];
     const ownership = ctx.ownership?.[platform.folder] || { files: {} };
     const obsoleteFiles = (ctx.manifest?.obsolete?.runtimeFiles || [])
-      // omp removes its hooks, scripts and skills in removeObsoleteOmpHooks; only its
-      // extensions take this ownership-checked path.
-      .filter(relative => key === 'omp' ? relative.startsWith('extensions/')
+      // omp installs no skills: the shared .agents/skills directory belongs to the Codex install.
+      .filter(relative => key === 'omp' ? /^(?:hooks|scripts|extensions)\//.test(relative)
         : key === 'claude' || /^(?:hooks|scripts|skills)\//.test(relative));
     for (const relative of obsoleteFiles) {
       const targetPath = key === 'codex' && relative.startsWith('skills/')
@@ -190,7 +189,7 @@ function removeObsoleteRuntimeFiles(ctx, platformKey) {
         stat = fs.statSync(targetPath);
       } catch (error) {
         if (error.code === 'ENOENT') {
-          if (key === 'codex' && tracker && !ctx.dryRun) tracker.prune(tracker.keyFor(targetPath));
+          if ((key === 'codex' || key === 'omp') && tracker && !ctx.dryRun) tracker.prune(tracker.keyFor(targetPath));
           continue;
         }
         preserved.add(targetPath);

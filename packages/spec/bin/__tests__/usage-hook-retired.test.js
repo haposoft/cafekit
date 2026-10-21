@@ -3,11 +3,12 @@
 // usage.cjs read the Claude Code OAuth token from the macOS Keychain to call an undocumented
 // quota endpoint; the statusline now reads Claude Code's own rate_limits instead. Each case
 // pins one way the hook could survive the removal: a fresh install, an upgrade on Claude
-// (removeObsoleteClaudeRuntimeFiles deletes unconditionally; the settings prune matches by
-// substring, so it must not take a user's own hook), an upgrade on omp (whose tracker keys
-// are `.omp/…`), and the source lists themselves.
+// (the file goes only when its bytes match the ownership record; the settings prune matches
+// by substring, so it must not take a user's own hook), an upgrade on omp (same hash check,
+// tracker keys `.omp/…`), and the source lists themselves.
 
 const assert = require('node:assert/strict');
+const crypto = require('node:crypto');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
@@ -90,16 +91,33 @@ test('omp upgrade removes an installed usage hook and its manifest record', () =
     install(root, ['omp']);
     const hookPath = path.join(root, '.omp', 'hooks', 'usage.cjs');
     const manifestPath = path.join(root, '.omp', 'cafekit-manifest.json');
-    fs.writeFileSync(hookPath, '// shipped by an older CafeKit\n');
+    const shipped = '// shipped by an older CafeKit\n';
+    fs.writeFileSync(hookPath, shipped);
     const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
     // omp records keys relative to the project root (recordRoot '.').
-    manifest.files['.omp/hooks/usage.cjs'] = { sha256: '0'.repeat(64) };
+    manifest.files['.omp/hooks/usage.cjs'] = { sha256: crypto.createHash('sha256').update(shipped).digest('hex') };
     fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
 
     install(root, ['omp']);
     assert.equal(fs.existsSync(hookPath), false);
     const afterManifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
     assert.equal(Object.prototype.hasOwnProperty.call(afterManifest.files, '.omp/hooks/usage.cjs'), false);
+  });
+});
+
+test('omp upgrade keeps an edited usage hook and says so', () => {
+  inTempProject((root) => {
+    install(root, ['omp']);
+    const hookPath = path.join(root, '.omp', 'hooks', 'usage.cjs');
+    const manifestPath = path.join(root, '.omp', 'cafekit-manifest.json');
+    fs.writeFileSync(hookPath, '// user edit\n');
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+    manifest.files['.omp/hooks/usage.cjs'] = { sha256: '0'.repeat(64) };
+    fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+
+    const upgrade = install(root, ['omp']);
+    assert.equal(fs.readFileSync(hookPath, 'utf8'), '// user edit\n');
+    assert.match(upgrade.stdout + upgrade.stderr, /Preserved 1 obsolete runtime/);
   });
 });
 

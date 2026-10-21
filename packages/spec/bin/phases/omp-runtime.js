@@ -128,36 +128,11 @@ function installBridge(ctx, platformKey) {
   }
 }
 
-/**
- * Delete hooks, scripts and skill files the manifest marks obsolete. Mirrors removeObsoleteClaudeRuntimeFiles, but the
- * omp tracker records keys relative to the project root (`.omp/hooks/…`), so the record is
- * pruned through keyFor rather than by the bare `hooks/…` path.
- */
-function removeObsoleteOmpHooks(ctx, platformKey) {
-  const platform = PLATFORMS[platformKey];
-  const tracker = ctx.trackers && ctx.trackers[platformKey];
-  const obsoleteHooks = (ctx.manifest?.obsolete?.runtimeFiles || []).filter((rel) => rel.startsWith('hooks/') || rel.startsWith('scripts/') || rel.startsWith('skills/'));
-  for (const rel of obsoleteHooks) {
-    // Skill files live in the shared skills directory, not under the runtime folder.
-    const target = rel.startsWith('skills/')
-      ? path.join(platform.skillsDir, rel.slice('skills/'.length))
-      : path.join(platform.folder, rel);
-    if (!fs.existsSync(target)) continue;
-    if (!ctx.dryRun) {
-      fs.rmSync(target, { force: true, recursive: fs.statSync(target).isDirectory() });
-      if (tracker) tracker.prune(tracker.keyFor(target));
-    }
-    ctx.ui.detail(`  ↻ ${ctx.dryRun ? '[dry-run] ' : ''}Removed obsolete omp runtime: ${rel}`);
-    ctx.results.updated++;
-  }
-}
-
 function installOmpRuntime(ctx, platformKey) {
   if (platformKey !== 'omp') return;
   installHooks(ctx, platformKey);
-  removeObsoleteOmpHooks(ctx, platformKey);
-  // The old `.mjs` bridge goes only when its bytes still match the ownership record; an
-  // edited, untracked or symlinked copy is kept and reported.
+  // Obsolete hooks, scripts and the old `.mjs` bridge go only when their bytes still match the
+  // ownership record; an edited, untracked or symlinked copy is kept and reported.
   removeObsoleteRuntimeFiles(ctx, platformKey);
   installRuntimeFiles(ctx, platformKey);
   installBridge(ctx, platformKey);

@@ -3213,15 +3213,15 @@ test('Codex installed code_auditor carries no Strict attestation marker', () => 
   });
 });
 
-test('reinstall preserves untracked Codex runtime files while omp keeps its cleanup policy', () => {
+test('reinstall preserves untracked Codex and omp runtime files', () => {
   for (const platform of ['codex', 'omp']) inTempProject(root => {
     const first = installPlatforms(root, ['codex', 'omp']);
     assert.equal(first.status, 0, `${first.stdout}\n${first.stderr}`);
     const runtime = `.${platform}`;
     const retired = ['change-firewall.cjs', 'spec-final-state.cjs'];
     for (const name of retired) fs.writeFileSync(path.join(root, runtime, 'scripts', name), 'legacy\n');
-    const retiredSkillFiles = platform === 'codex'
-      ? ['code-review/references/verification-gate.md', 'specs/references/archive-workflow.md'] : [];
+    // omp installs no skills, so a reinstall of omp alone must leave .agents/skills to Codex.
+    const retiredSkillFiles = ['code-review/references/verification-gate.md', 'specs/references/archive-workflow.md'];
     for (const rel of retiredSkillFiles) {
       const target = path.join(root, '.agents/skills', rel);
       fs.mkdirSync(path.dirname(target), { recursive: true });
@@ -3229,10 +3229,14 @@ test('reinstall preserves untracked Codex runtime files while omp keeps its clea
     }
     const again = installPlatforms(root, [platform], ['--force-overwrite']);
     assert.equal(again.status, 0, `${again.stdout}\n${again.stderr}`);
-    const preserved = platform === 'codex';
-    for (const rel of retiredSkillFiles) assert.equal(fs.existsSync(path.join(root, '.agents/skills', rel)), preserved, rel);
-    for (const name of retired) assert.equal(fs.existsSync(path.join(root, runtime, 'scripts', name)), preserved, name);
-    if (preserved) assert.match(again.stdout + again.stderr, /Preserved 4 obsolete runtime/);
+    const output = again.stdout + again.stderr;
+    for (const rel of retiredSkillFiles) assert.equal(fs.existsSync(path.join(root, '.agents/skills', rel)), true, rel);
+    for (const name of retired) assert.equal(fs.existsSync(path.join(root, runtime, 'scripts', name)), true, name);
+    if (platform === 'codex') assert.match(output, /Preserved 4 obsolete runtime/);
+    else {
+      assert.match(output, /Preserved 2 obsolete runtime/);
+      assert.doesNotMatch(output, /\.agents\/skills/);
+    }
     assert.equal(fs.existsSync(path.join(root, '.agents/skills/code-review/SKILL.md')), true);
     assert.equal(fs.existsSync(path.join(root, runtime, 'scripts/spec-resolver.cjs')), true);
   });

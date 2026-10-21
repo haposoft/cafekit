@@ -4,7 +4,7 @@
 // review authority and the scaffold guard) are gone from every runtime. Each case pins one way
 // they could survive: a fresh install, an upgrade on Claude (settings prune matches by substring,
 // so a user's own hook with the same file name must stay), an upgrade on Codex (whose tracker
-// keys are `.codex/…` and whose handlers come in three shapes), an upgrade on omp, an omp bridge
+// keys are `.codex/…` and whose handlers come in three shapes), an upgrade on omp (hash-checked like Codex), an omp bridge
 // that still lists the removed gates, and the source lists themselves.
 
 const assert = require('node:assert/strict');
@@ -166,9 +166,10 @@ test('omp upgrade removes the legacy hooks and their records', () => {
     const manifestPath = path.join(root, '.omp', 'cafekit-manifest.json');
     const manifest = readJson(manifestPath);
     // omp records keys relative to the project root (recordRoot '.').
+    const shipped = '// shipped by an older CafeKit\n';
     for (const name of NAMES) {
-      fs.writeFileSync(path.join(root, '.omp', 'hooks', name), '// shipped by an older CafeKit\n');
-      manifest.files[`.omp/hooks/${name}`] = { sha256: '0'.repeat(64) };
+      fs.writeFileSync(path.join(root, '.omp', 'hooks', name), shipped);
+      manifest.files[`.omp/hooks/${name}`] = { sha256: crypto.createHash('sha256').update(shipped).digest('hex') };
     }
     fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
 
@@ -177,6 +178,32 @@ test('omp upgrade removes the legacy hooks and their records', () => {
     for (const name of NAMES) {
       assert.equal(fs.existsSync(path.join(root, '.omp', 'hooks', name)), false, name);
       assert.equal(Object.prototype.hasOwnProperty.call(after.files, `.omp/hooks/${name}`), false, `record ${name}`);
+    }
+  });
+});
+
+test('omp upgrade preserves edited legacy hooks and prunes only absent records', () => {
+  inTempProject((root) => {
+    install(root, ['omp']);
+    const manifestPath = path.join(root, '.omp', 'cafekit-manifest.json');
+    const manifest = readJson(manifestPath);
+    // A record whose file is already gone must leave the manifest too.
+    for (const name of NAMES) {
+      if (name !== 'completion-authority-state.cjs') fs.writeFileSync(path.join(root, '.omp', 'hooks', name), '// user edit\n');
+      manifest.files[`.omp/hooks/${name}`] = { sha256: '0'.repeat(64) };
+    }
+    fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+
+    const upgrade = install(root, ['omp']);
+    assert.match(`${upgrade.stdout}\n${upgrade.stderr}`, new RegExp(`Preserved ${NAMES.length - 1} obsolete runtime item`));
+    const after = readJson(manifestPath);
+    for (const name of NAMES) {
+      if (name === 'completion-authority-state.cjs') {
+        assert.equal(after.files[`.omp/hooks/${name}`], undefined, `record ${name}`);
+        continue;
+      }
+      assert.equal(fs.readFileSync(path.join(root, '.omp', 'hooks', name), 'utf8'), '// user edit\n', name);
+      assert.equal(after.files[`.omp/hooks/${name}`].sha256, '0'.repeat(64), `record ${name}`);
     }
   });
 });
