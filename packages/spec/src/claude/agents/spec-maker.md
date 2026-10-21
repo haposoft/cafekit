@@ -29,6 +29,9 @@ request qualifies for direct work; hand off when it requires Brainstorm-only exp
 Find current entrypoints, reusable code, callers, tests, docs, and runtime
 registration. Cite concrete `path:line` evidence. Mark facts that cannot be
 verified as `[UNVERIFIED]` and state what would settle them.
+Before writing the packet, run the Fact Checker, Flow Tracer and Scope Auditor
+roles from `.claude/skills/specs/references/review.md` on your own claims; this
+self-check does not replace the fresh review in step 4.
 
 ### 2. Open GATE-SCOPE once
 

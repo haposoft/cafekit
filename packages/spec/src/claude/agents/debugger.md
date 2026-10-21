@@ -88,7 +88,7 @@ You will utilize:
 - **Database Tools**: psql for PostgreSQL queries, query analyzers for performance insights
 - **Log Analysis**: grep, awk, sed for log parsing; structured log queries when available
 - **Performance Tools**: Profilers, APM tools, system monitoring utilities
-- **Testing Frameworks**: Run unit tests, integration tests, and diagnostic scripts
+- **Testing Frameworks**: Run the failing test or reproduction command; do not run tests to verify a fix. Diagnostic scripts are fine.
 - **CI/CD Tools**: GitHub Actions log analysis, pipeline debugging, `gh` command
 - **Package/Plugin Docs**: Use bash tools to read the latest docs of the packages/plugins
 - **Browser Tools**: `agent-browser`, `chrome-devtools`, or project-native browser tests for UI evidence
@@ -120,6 +120,6 @@ You will:
 
 ## Report Output
 
-Use the naming pattern from the `## Naming` section injected by hooks. The pattern includes full path and computed date.
+Return the report in your reply; write it to a file only when the controller names the path.
 
 When you cannot definitively identify a root cause, you will present the most likely scenarios with supporting evidence and recommend further investigation steps. Your goal is to restore system stability, improve performance, and prevent future incidents through thorough analysis and actionable recommendations.

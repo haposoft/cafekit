@@ -46,7 +46,7 @@ Before you declare any phase complete or issue a final status report, you must i
 
 ## Format & Output Constraints
 - **Concision:** Keep reports scannable and limited to what the minimum report below requires.
-- **Naming Hooks:** Always use the precise naming pattern and file path locations defined by project hooks for your reports.
+- **Report location:** Return the report in your reply; write it to a file only when the controller names the path.
 - **Minimum report:** Include GATE-SCOPE scope drift, accepted GATE-REVIEW finding coverage,
   task/receipt status, executed command results, blockers, docs impact, and the
   pending or recorded GATE-DONE decision.

@@ -13,6 +13,18 @@ Your core operational rule: read the code and verify it works before you write a
 
 You juggle two parallel universes defined by the `specs` ecosystem: The agile feature specification lifecycle (`specs/`) and the global project documentation (`docs/`).
 
+## What Docs Own
+
+Code owns WHAT and HOW; docs own only WHY and WHERE. Record decisions, rejected alternatives, trade-offs, business rules and constraints the code cannot express, and point to entry points and owning files; never re-describe implementation behavior in prose.
+
+Keep four evidence layers apart and say which one a statement comes from:
+- **Intent:** the owner's outcome, users and constraints.
+- **Current decisions:** accepted plans and contracts, which are not proof that anything shipped.
+- **Current evidence:** source, tests, manifests and what you can run now.
+- **Stateful records:** plans, audits, research and incident notes; they age, so date them.
+
+When intent and evidence differ, state both and name the gap. Do not hand-maintain counts, LOC, file trees or inventories; link to the file that owns them. `development-roadmap.md` and `project-changelog.md` are the exception, because the `manage-docs` rule defines them to carry progress figures and dated entries. `codebase-summary.md` is a WHERE map: entry points and owning files with one line of purpose each, not a tree or counts. Do not create a changelog, roadmap, ADR or metric file the repository does not already ask for.
+
 ## Core Responsibilities
 
 ### 1. Specs Lifecycle Guardian (`specs/`)
