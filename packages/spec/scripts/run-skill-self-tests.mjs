@@ -2422,9 +2422,16 @@ function developPlanNativeContractIssues(input) {
   ] });
 
   requireClauses("verify-first-and-round", { skill: [
-    "Unless under `--flash` or the command costs money or writes artifacts, run the task's exact Verification Plan command once before changing anything and expect it to fail;",
+    "Unless under `--flash` or the command costs money or writes artifacts, run the task's exact Verification Plan command once before changing anything and expect it to fail, except in the refactor path below;",
     "this pre-change run is not a repair round.",
-    "Passing before any change, outside a resumed task, means the plan cannot judge the work and is a blocker;",
+    "Passing before any change, outside a resumed task, means the plan cannot judge the work and is a blocker, except in the refactor path below;",
+    "Refactor path: it applies only when the task references at least one CP row in its `## Coverage` and every row it references,",
+    "read in `plan.md` `## Coverage profile`, lists only `refactor` under Change kinds.",
+    "There the pre-change run must pass, and a pre-change failure is a blocker.",
+    "Before closing, run the Verification Plan's Counterexample on a disposable copy below a temporary root and record in the Receipt that it failed there;",
+    "if it does not fail there, the task does not close on the refactor path and is treated as a regular task.",
+    "The owned diff must not edit a test or assertion file;",
+    "a characterization test belongs to an earlier task.",
     "which is a blocker to raise, not a defect to work around while implementing.",
     "One repair round is one",
     "observed failure plus its repair and rerun, from proof or from review alike.",
@@ -2604,8 +2611,8 @@ async function runDevelopPlanNativeContractTests() {
       "when no file the proof reads changed between its recorded Head and the current one and",
       "even when the files the proof reads changed and"),
     mutateClause("expects the pre-change run to pass", "skill", "verify-first-and-round",
-      "before changing anything and expect it to fail;",
-      "before changing anything and expect it to pass;"),
+      "before changing anything and expect it to fail, except in the refactor path below;",
+      "before changing anything and expect it to pass, except in the refactor path below;"),
     mutateClause("drops the costly-command exception", "skill", "verify-first-and-round",
       "Unless under `--flash` or the command costs money or writes artifacts, run",
       "Always run"),
@@ -2613,11 +2620,35 @@ async function runDevelopPlanNativeContractTests() {
       "this pre-change run is not a repair round.",
       "this pre-change run counts as the first repair round."),
     mutateClause("accepts a plan that passes before any change", "skill", "verify-first-and-round",
-      "means the plan cannot judge the work and is a blocker;",
+      "means the plan cannot judge the work and is a blocker, except in the refactor path below;",
       "means the work is already done;"),
     mutateClause("lets an unrelated failure be worked around", "skill", "verify-first-and-round",
       "which is a blocker to raise, not a defect to work around while implementing.",
       "which can be worked around while implementing."),
+    mutateClause("lets a task without a CP row enter the refactor path", "skill", "verify-first-and-round",
+      "the task references at least one CP row in its", "the task references CP rows in its"),
+    mutateClause("applies the refactor path to every task", "skill", "verify-first-and-round",
+      "it applies only when the task references at least one CP row in its `## Coverage` and every row it references, read in `plan.md` `## Coverage profile`, lists only `refactor` under Change kinds.",
+      "it applies to every task."),
+    mutateClause("lets either half of the refactor condition suffice", "skill", "verify-first-and-round",
+      "`## Coverage` and every row it references", "`## Coverage` or every row it references"),
+    mutateClause("drops the failure branch of the refactor Counterexample", "skill", "verify-first-and-round",
+      "; if it does not fail there, the task does not close on the refactor path and is treated as a regular task.", "."),
+    mutateClause("drops the before-closing timing of the refactor Counterexample", "skill", "verify-first-and-round",
+      "Before closing, run the Verification Plan's Counterexample", "Run the Verification Plan's Counterexample"),
+    mutateClause("lets a refactor proceed after a pre-change failure", "skill", "verify-first-and-round",
+      "and a pre-change failure is a blocker.", "and a pre-change failure is repaired before moving on."),
+    mutateClause("drops the scoping phrase from the pre-change run sentence", "skill", "verify-first-and-round",
+      "expect it to fail, except in the refactor path below;", "expect it to fail;"),
+    mutateClause("drops the scoping phrase from the passing-before sentence", "skill", "verify-first-and-round",
+      "is a blocker, except in the refactor path below;", "is a blocker;"),
+    mutateClause("drops the refactor Counterexample run", "skill", "verify-first-and-round",
+      "Before closing, run the Verification Plan's Counterexample on a disposable copy below a temporary root and record in the Receipt that it failed there; if it does not fail there, the task does not close on the refactor path and is treated as a regular task.",
+      "Skip the Counterexample."),
+    mutateClause("lets the refactor path edit test files", "skill", "verify-first-and-round",
+      "The owned diff must not edit a test or assertion file;", "The owned diff may edit a test or assertion file;"),
+    mutateClause("drops the characterization-test ownership", "skill", "verify-first-and-round",
+      "a characterization test belongs to an earlier task.", "write a characterization test in this task."),
     mutateClause("drops the round definition", "skill", "verify-first-and-round",
       "One repair round is one", "Repair rounds are counted loosely as one"),
     mutateClause("drops receipt-last", "skill", "verify-first-and-round",
@@ -5261,6 +5292,7 @@ async function runStaticSemanticTests() {
         const repairLines = [
           ["Unless under `--flash` or the command costs money or writes artifacts, run the task's exact Verification Plan command once", "this pre-change run is not a repair round."],
           ["Passing before any change, outside a resumed task,", "but never run it as proof."],
+          ["Refactor path: it applies only when the task references at least one CP row", "a characterization test belongs to an earlier task."],
         ];
         const valid = (text) => {
           const lines = text.split("\n");
@@ -5440,6 +5472,28 @@ async function runStaticSemanticTests() {
           norm.includes("do not create a plan merely because documentation mentions this skill") &&
           norm.includes("placeholder or remembered output is not evidence") &&
           norm.includes("two pre-code rounds; later claims need runtime evidence");
+      },
+    },
+    {
+      label: "Specs body treats a request to add, build or change a capability as a request and leaves Step 0 to decide",
+      file: "src/claude/skills/specs/SKILL.md",
+      assert: (content) => {
+        const norm = content.replace(/\s+/g, " ");
+        return !norm.includes("the user must invoke Specs or ask for durable planning") &&
+          norm.includes("a request to add, build or change a capability is one, and Step 0 still decides whether it needs a packet.");
+      },
+    },
+    {
+      label: "Fix body applies the diagnosis protocol inline, makes cf:debug optional, and never calls it by default",
+      file: "src/claude/skills/fix/SKILL.md",
+      assert: (content) => {
+        const norm = content.replace(/\s+/g, " ");
+        const body = norm.replace(/^---.*?--- /, "");
+        return !norm.includes("neither is a required call") &&
+          norm.includes("Fix applies the `cf:debug`-style evidence-first diagnosis inline via `references/diagnosis-protocol.md`") &&
+          norm.includes("calling `cf:debug` is optional") &&
+          norm.includes("`--from-debug` still validates a supplied report") &&
+          !/cf:debug\b[^.]*\bby default\b/i.test(body);
       },
     },
     {

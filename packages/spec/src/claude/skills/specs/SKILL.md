@@ -26,7 +26,7 @@ observable choices to GATE-SCOPE/GATE-REVIEW first; after they settle, route mat
 technical designs through Brainstorm. Split three or more independent
 subsystems; otherwise use one Specs packet for any material work that does not qualify for direct work or Brainstorm-only exploration. A subsystem is independent only when its outcome, boundary, and verification/deployment path can move through the lifecycle separately.
 
-Do not create a plan merely because documentation mentions this skill; the user must invoke Specs or ask for durable planning.
+Do not create a plan merely because documentation mentions this skill; a request to add, build or change a capability is one, and Step 0 still decides whether it needs a packet.
 
 ## The three human gates
 
