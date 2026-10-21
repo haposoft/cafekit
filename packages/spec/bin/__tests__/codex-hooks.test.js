@@ -804,6 +804,37 @@ test('Codex compact clears its pending privacy request even with an invalid spec
   });
 });
 
+// Two privacy blocks racing on a fresh project both see no `.privacy` directory;
+// the second mkdir then meets the directory the first one made.
+test('Codex privacy records a request when another hook creates its state directory first', () => {
+  inHookFixture((root, hooks) => {
+    const privacy = require(path.join(hooks, 'lib/privacy-state.cjs'));
+    fs.mkdirSync(path.join(hooks, '.privacy'), { mode: 0o700 });
+    const existsSync = fs.existsSync;
+    fs.existsSync = target => (path.basename(String(target)) === '.privacy' ? false : existsSync(target));
+    let request;
+    try {
+      request = privacy.createPending({ projectRoot: root, sessionCwd: root, sessionId: 'race-session', filePaths: ['.env'] });
+    } finally {
+      fs.existsSync = existsSync;
+    }
+    assert.match(request.requestId, /^[a-f0-9]{24}$/);
+  });
+});
+
+test('Codex privacy denies when its state path is a regular file', () => {
+  inHookFixture((root, hooks) => {
+    fs.writeFileSync(path.join(hooks, '.privacy'), '');
+    const result = runHook(path.join(hooks, 'privacy-block.cjs'), root, {
+      cwd: root, session_id: 'file-state', hook_event_name: 'PreToolUse', tool_name: 'Bash', tool_input: { command: 'cat .env' },
+    });
+    assert.equal(result.status, 0);
+    const output = JSON.parse(result.stdout).hookSpecificOutput;
+    assert.equal(output.permissionDecision, 'deny');
+    assert.match(output.permissionDecisionReason, /could not be evaluated safely/);
+  });
+});
+
 test('Codex compact releases only its own rules reservation', () => {
   inHookFixture((root, hooks) => {
     fs.writeFileSync(path.join(root, '.codex/runtime.json'), '{}');

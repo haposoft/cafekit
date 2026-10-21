@@ -25,7 +25,12 @@ function secureStateDir(projectRoot, create = false) {
     throw error;
   }
   const dir = path.join(hooks, '.privacy');
-  if (create && !fs.existsSync(dir)) fs.mkdirSync(dir, { mode: 0o700 });
+  if (create && !fs.existsSync(dir)) {
+    // A parallel hook can create the directory between the check and the mkdir;
+    // the component and directory checks below still reject anything but a real directory.
+    try { fs.mkdirSync(dir, { mode: 0o700 }); }
+    catch (error) { if (error.code !== 'EEXIST') throw error; }
+  }
   try { PATH_SAFETY.assertComponentPath(root, dir); }
   catch (error) {
     if (!create && error.code === 'ENOENT') return null;
