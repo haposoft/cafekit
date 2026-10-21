@@ -46,19 +46,19 @@ On a failed Step or Verification Plan run: stop; do not widen scope, change the 
 Verification: PASS
 Command: cd packages/spec && node --test bin/__tests__/agent-authority.test.js bin/__tests__/codex-native.test.js
 Exit: 0
-Base: 1cc7ace2233856eef284eccf0e582d5d6a136d86
-Head: b5b647123a2024a9b5321be7901749929a3adda750ada1a524cc127d664ad3f9
+Base: 5031ff3197ecd69bf2c05abb1d086579b1c7b932
+Head: 5f262b7b928883a8d126879dad29b1a1ab09627ee3eba9c030be94d1585e0553
 ```text
 $ cd packages/spec && node --test bin/__tests__/agent-authority.test.js bin/__tests__/codex-native.test.js
-✔ read-only agents declare no memory or write tools (2.623375ms)
-✔ inspector forbids reading secrets (0.345417ms)
-ℹ tests 47
-ℹ suites 0
-ℹ pass 47
+✔ read-only agents declare no memory or write tools (1.116542ms)
+✔ deployer asks before pushing a rollback (0.203083ms)
+✔ inspector forbids reading secrets (0.10125ms)
+ℹ tests 48
+ℹ pass 48
 ℹ fail 0
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 26065.624125
+ℹ duration_ms 25655.147792
 ```
-Pre-change run: the same command failed with `researcher declares memory:` and the missing inspector secrets line. Review: code-auditor PASS (0 Critical/High/Medium; Low: stale `plugins/cf/agents/*` copies belong to `specs/claude-plugin`).
+Rerun at the final Head of the feature. Pre-change run: the same command failed with `researcher declares memory:` and the missing inspector secrets line. Review: code-auditor PASS (Low: stale `plugins/cf/agents/*` copies belong to `specs/claude-plugin`).

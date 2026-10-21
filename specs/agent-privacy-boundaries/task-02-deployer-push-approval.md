@@ -42,13 +42,13 @@ On a failed Step or Verification Plan run: stop; do not widen scope, change the 
 Verification: PASS
 Command: cd packages/spec && node --test bin/__tests__/agent-authority.test.js
 Exit: 0
-Base: 1cc7ace2233856eef284eccf0e582d5d6a136d86
-Head: 1e1cb5c8a1cf5ed650a7b275cddef2ea28c005b185fd31f02010a25a5e7f664d
+Base: 5031ff3197ecd69bf2c05abb1d086579b1c7b932
+Head: 5f262b7b928883a8d126879dad29b1a1ab09627ee3eba9c030be94d1585e0553
 ```text
 $ cd packages/spec && node --test bin/__tests__/agent-authority.test.js
-✔ read-only agents declare no memory or write tools (1.682208ms)
-✔ deployer asks before pushing a rollback (0.304708ms)
-✔ inspector forbids reading secrets (0.100167ms)
+✔ read-only agents declare no memory or write tools (0.847333ms)
+✔ deployer asks before pushing a rollback (0.185125ms)
+✔ inspector forbids reading secrets (0.095625ms)
 ℹ tests 3
 ℹ suites 0
 ℹ pass 3
@@ -56,6 +56,6 @@ $ cd packages/spec && node --test bin/__tests__/agent-authority.test.js
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 118.667708
+ℹ duration_ms 117.895459
 ```
-Pre-change run: the same command failed `deployer asks before pushing a rollback`. Regression: `node --test bin/__tests__/develop-contract.test.js` 42/42 pass. Review: code-auditor PASS (Low: a standalone `git push` line elsewhere would slip the test; Option B/C rollback commands lack an approval line — out of scope).
+Rerun at the final Head of the feature. Pre-change run: the same command failed `deployer asks before pushing a rollback`. Regression: `node --test bin/__tests__/develop-contract.test.js` 42/42 pass. Review: code-auditor PASS (Low: a standalone `git push` line elsewhere would slip the test; Option B/C rollback commands lack an approval line — out of scope).
