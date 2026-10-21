@@ -4,7 +4,7 @@
 // a real subprocess: a Stop payload is piped to stdin; we assert exit code and
 // whether stdout carries {"decision":"block",...}. The hook resolves its own
 // state directory; running from source that is a temp directory rather than the
-// source tree, and it is shared, so each test seeds/clears it deliberately.
+// source tree, so each test seeds/clears it deliberately.
 
 const { test, beforeEach, after } = require('node:test');
 const assert = require('node:assert');
@@ -13,6 +13,11 @@ const crypto = require('node:crypto');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+
+// Hooks run from source keep state under os.tmpdir(); a private one per test process
+// keeps a parallel run of this file from reading or clearing this run's state.
+const PRIVATE_TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'ck-spec-gate-tmp-'));
+for (const key of ['TMPDIR', 'TMP', 'TEMP']) process.env[key] = PRIVATE_TMP;
 
 const HOOK = path.join(__dirname, '..', 'spec-gate.cjs');
 const { hookStateDir } = require(path.join(__dirname, '..', 'lib', 'hook-state-dir.cjs'));
@@ -291,6 +296,7 @@ beforeEach(() => {
 
 after(() => {
   clearCache();
+  fs.rmSync(PRIVATE_TMP, { recursive: true, force: true });
 });
 
 test('1. newly-done task WITHOUT receipt → block, reason names task path', () => {

@@ -5,13 +5,19 @@
 // fixture; the capture is asserted from the file it writes and from what the
 // next session actually prints.
 
-const { test } = require('node:test');
+const { test, after } = require('node:test');
 const assert = require('node:assert');
 const { spawnSync } = require('node:child_process');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const crypto = require('node:crypto');
+
+// Hooks run from source keep state under os.tmpdir(); a private one per test process
+// keeps a parallel run of this file from reading or clearing this run's state.
+const PRIVATE_TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'ck-precompact-tmp-'));
+for (const key of ['TMPDIR', 'TMP', 'TEMP']) process.env[key] = PRIVATE_TMP;
+after(() => { fs.rmSync(PRIVATE_TMP, { recursive: true, force: true }); });
 
 const PRECOMPACT = path.join(__dirname, '..', 'precompact.cjs');
 const SESSION = path.join(__dirname, '..', 'session.cjs');
