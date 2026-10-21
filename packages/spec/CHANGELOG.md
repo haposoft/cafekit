@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `cf:git merge-pr <PR>` merges a GitHub pull request only when the request names it: it checks draft, state, mergeability, review decision and required checks first, merges the head it checked with `--match-head-commit` (adding `--auto` while checks are pending and disabling it when it stops), waits for the merge, then watches the target-branch runs for the merge commit and never reports green when no run is seen; red CI is reported and handed to `cf:fix`. Two `evals/git` cases with a fake `gh` measure the order of these steps and the stop at a red gate.
+
 ### Fixed
 
 - omp privacy now covers edit moves and renames, the sloppy edit header, `read` selectors such as `.env:raw`, and file names quoted in `eval` code, and denies an edit whose text names no file.

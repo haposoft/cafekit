@@ -4,6 +4,8 @@ All notable changes to CafeKit are documented here, following
 [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
+### Added
+- `cf:git merge-pr <PR>` merges a GitHub pull request only when the request names it: it checks draft, state, mergeability, review decision and required checks first, merges the head it checked with `--match-head-commit` (adding `--auto` while checks are pending and disabling it when it stops), waits for the merge, then watches the target-branch runs for the merge commit and never reports green when no run is seen; red CI is reported and handed to `cf:fix`. Two `evals/git` cases with a fake `gh` measure the order of these steps and the stop at a red gate.
 ### Fixed
 - omp privacy now covers edit moves and renames, the sloppy edit header, `read` selectors such as `.env:raw`, and file names quoted in `eval` code, and denies an edit whose text names no file.
 - omp records spec touches for multi-file edits and `ast_edit` from omp's `paths` and the changed files a result reports, and the bridge no longer pipes edited file contents to hooks.
