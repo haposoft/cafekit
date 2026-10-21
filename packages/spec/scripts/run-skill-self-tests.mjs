@@ -4019,6 +4019,133 @@ const GIT_SKILL_PINS = [
     ]
   },
   {
+    "label": "cf:git merge-pr runs only when named and passes the readiness gate before merging",
+    "file": "src/claude/skills/git/SKILL.md",
+    "includes": [
+      "- `merge-pr <PR>`: run only when the request names `merge-pr` (never a step of `pr`, `finish` or the default menu; ask when the PR is unclear)",
+      "readiness gate first: not draft, `OPEN`, `MERGEABLE` (re-read once on `UNKNOWN`), `reviewDecision` `APPROVED` or empty, required checks from `gh pr checks --required` green or pending, otherwise stop and report",
+      "print PR, base, head SHA and merge method before merging"
+    ],
+    "excludes": [
+      "worktree / merge-pr",
+      "finish / merge-pr"
+    ]
+  },
+  {
+    "label": "cf:git merge-pr merges the checked head, handles auto-merge, and never bypasses protection",
+    "file": "src/claude/skills/git/SKILL.md",
+    "includes": [
+      "never `--admin` or `--force`",
+      "merge with `--match-head-commit <headRefOid>` and add `--auto` when checks are pending",
+      "when stopping after enabling auto, run `gh pr merge --disable-auto` or report that auto-merge is still on",
+      "wait for `MERGED`"
+    ],
+    "forbid": [
+      {
+        "re": "gh pr merge[^\\n]*--admin",
+        "plant": "gh pr merge 1 --admin"
+      },
+      {
+        "re": "gh pr merge[^\\n]*--force",
+        "plant": "gh pr merge 1 --force"
+      }
+    ]
+  },
+  {
+    "label": "cf:git merge-pr watches target-branch CI, never reports green without a run, and leaves a red run to cf:fix",
+    "file": "src/claude/skills/git/SKILL.md",
+    "includes": [
+      "watch the target-branch runs for the merge commit and never report green when no run is observed",
+      "red CI → report `gh run view --log-failed` output and point to `cf:fix`, do not fix it here",
+      "details in `references/merge-pr.md`"
+    ]
+  },
+  {
+    "label": "cf:git merge-pr is in the argument hint and the references, not the default menu",
+    "file": "src/claude/skills/git/SKILL.md",
+    "includes": [
+      "argument-hint: \"commit | push | pr | finish | merge-pr <PR> | worktree <feature-desc>\"",
+      "header \"Git Operation\": commit / push / pr / finish / worktree.",
+      "`references/merge-pr.md`"
+    ]
+  },
+  {
+    "label": "cf:git merge-pr reference gates readiness and merges only the checked head",
+    "file": "src/claude/skills/git/references/merge-pr.md",
+    "includes": [
+      "Run only when the request names `merge-pr`",
+      "re-read once",
+      "`gh pr checks --required`",
+      "`reviewDecision`",
+      "gh pr merge \"$PR\" \"$METHOD\" --match-head-commit \"$HEAD_SHA\"          # method per Step 2",
+      "--auto   # required checks still pending",
+      "gh pr merge \"$PR\" --disable-auto",
+      "mergeCommitAllowed,squashMergeAllowed,rebaseMergeAllowed",
+      "never retry another method"
+    ],
+    "forbid": [
+      {
+        "re": "gh pr merge[^\\n]*--admin",
+        "plant": "gh pr merge 1 --admin"
+      },
+      {
+        "re": "gh pr merge[^\\n]*--force",
+        "plant": "gh pr merge 1 --force"
+      }
+    ]
+  },
+  {
+    "label": "cf:git merge-pr reference watches CI with bounded polling and reports honestly",
+    "file": "src/claude/skills/git/references/merge-pr.md",
+    "includes": [
+      "Run watch (new `T0`, limit 1800 seconds)",
+      "every wait is a short poll, one Bash command each, at most 480 seconds",
+      "Never put a whole wait in one command.",
+      "Shell variables do not survive between Bash calls",
+      "Each separate wait (the `MERGED` wait, the run-appearance wait, the run watch) takes its own `T0`",
+      "PR=123; T0=${T0:-$(date +%s)}",
+      "[ -n \"$MERGE_SHA\" ] || { echo \"no merge commit SHA\"; exit 1; }\nRUNS=\"$(gh run list",
+      "RESULT=\"not polled\"",
+      "(including `not polled`) is checked again on the next repeat",
+      "\"no required checks\" or a transient error is not red",
+      "--required --json bucket --jq '.[].bucket' 2>&1)\"\n  if printf '%s\\n' \"$OUT\" | grep -qxE 'fail|cancel'",
+      "--branch \"$BASE\" --commit \"$MERGE_SHA\" --json databaseId --jq '.[].databaseId')\"\n  [ -n \"$RUNS\" ] && break",
+      "List the runs again after every run finishes",
+      "Do not rerun anything.",
+      "An empty list is polled for up to 5 minutes, repeating the command with the printed `T0`",
+      "for RUN_ID in $RUNS; do",
+      "0 green, 8 pending",
+      "`cancelled` counts as red",
+      "no CI run observed",
+      "never report green",
+      "gh run view \"$RUN_ID\" --json status,conclusion",
+      "gh run view \"$RUN_ID\" --log-failed",
+      "`cf:fix`",
+      "Auto merge is not allowed",
+      "gh auth login",
+      "branch protection"
+    ]
+  },
+  {
+    "label": "cf:git references/merge-pr.md holds no dollar-digit or $ARGUMENTS (Claude Code substitutes them with the invocation arguments)",
+    "file": "src/claude/skills/git/references/merge-pr.md",
+    "includes": [],
+    "forbid": [
+      {
+        "re": "\\$[0-9]",
+        "plant": "$1"
+      },
+      {
+        "re": "\\$\\{[0-9]",
+        "plant": "${2}"
+      },
+      {
+        "re": "\\$ARGUMENTS",
+        "plant": "$ARGUMENTS"
+      }
+    ]
+  },
+  {
     "label": "cf:git SKILL.md holds no dollar-digit or $ARGUMENTS (Claude Code substitutes them with the invocation arguments)",
     "file": "src/claude/skills/git/SKILL.md",
     "includes": [],

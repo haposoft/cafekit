@@ -5,7 +5,7 @@ user-invocable: true
 when_to_use: "Invoke for commits, PRs, branch hygiene, or worktree management."
 category: dev-tools
 keywords: [git, commits, pr, worktree]
-argument-hint: "commit | push | pr | finish | worktree <feature-desc>"
+argument-hint: "commit | push | pr | finish | merge-pr <PR> | worktree <feature-desc>"
 metadata:
   author: haposoft
   version: "1.1.0"
@@ -24,6 +24,7 @@ Present options via AskUserQuestion — header "Git Operation": commit / push / 
   `gh repo view --json defaultBranchRef` or `origin/HEAD`; never assume `main`/`develop`.
 - `finish`: fresh `git status` + verification, then present exactly 4 options:
   merge locally / push + PR / keep branch-worktree / discard (typed confirmation, as in the worktree lifecycle: `remove <dir-name>` / `delete <branch>`).
+- `merge-pr <PR>`: run only when the request names `merge-pr` (never a step of `pr`, `finish` or the default menu; ask when the PR is unclear); never `--admin` or `--force`; readiness gate first: not draft, `OPEN`, `MERGEABLE` (re-read once on `UNKNOWN`), `reviewDecision` `APPROVED` or empty, required checks from `gh pr checks --required` green or pending, otherwise stop and report; print PR, base, head SHA and merge method before merging; merge with `--match-head-commit <headRefOid>` and add `--auto` when checks are pending; when stopping after enabling auto, run `gh pr merge --disable-auto` or report that auto-merge is still on; wait for `MERGED`, then watch the target-branch runs for the merge commit and never report green when no run is observed; red CI → report `gh run view --log-failed` output and point to `cf:fix`, do not fix it here; details in `references/merge-pr.md`.
 - `worktree <desc>`: sibling dir `../<project>-<branch>` for isolated setup, branched from the current branch unless the user names a base, hydrating the installer-ignored `.claude/`, `.codex/`, `.agents/` it lacks. Git alone is enough (plus `rsync`); Orca, Herdr and the host's own worktree are optional shortcuts, never required.
 - `worktree list | remove <dir> | prune`: lifecycle in `references/worktree-blueprint.md` — never lose uncommitted, ignored or unmerged work: before `git worktree remove`, check `git -C <dir> status --porcelain --ignored` and `git -C <dir> log --oneline <base>..HEAD`, never `--force`, and anything they show needs the typed `remove <dir-name>`; use `git worktree prune` for a missing directory, never `rm -rf`.
 
@@ -96,4 +97,4 @@ Single commit when: same type+scope, ≤3 files, ≤50 lines.
 Never force-push or delete a worktree without explicit confirmation.
 
 ## References
-- `references/commit-protocols.md` · `references/finish-branch.md` · `references/worktree-blueprint.md`
+- `references/commit-protocols.md` · `references/finish-branch.md` · `references/merge-pr.md` · `references/worktree-blueprint.md`
