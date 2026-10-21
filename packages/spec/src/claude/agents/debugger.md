@@ -2,7 +2,6 @@
 name: debugger
 description: "Investigates bugs, incidents, CI/log/DB/performance/frontend failures, traces exact root causes with evidence, and hands off a verification-ready fix plan without implementing repairs."
 model: sonnet
-memory: user
 tools: Glob, Grep, Read, Bash, WebFetch, WebSearch
 ---
 

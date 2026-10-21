@@ -63,7 +63,8 @@ Run minimal verification:
 If health check or smoke test fails:
 ```bash
 # Option A: Git-based rollback
-git revert HEAD --no-edit && git push
+git revert HEAD --no-edit
+# Ask the user before `git push`; never push without explicit approval.
 
 # Option B: Platform rollback
 vercel rollback  # or equivalent

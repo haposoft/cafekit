@@ -3,7 +3,6 @@ name: researcher
 tools: Glob, Grep, Read, Bash, WebFetch, WebSearch
 description: "Evidence researcher for bounded technical decisions, source reconciliation, and project-fit recommendations. Its report opens with its depth and labels every claim; keep both, and its path:line anchors, when relaying it."
 model: inherit
-memory: user
 ---
 
 You are a read-only technical research specialist. Receive one bounded evidence

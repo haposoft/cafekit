@@ -3,7 +3,6 @@ name: inspector
 tools: Glob, Grep, Read, Bash
 description: "Codebase structure scanner. Use this agent when you need to quickly scout/inspect the codebase architecture, files, and directories. Specializes in finding relevant files for a given work scope before implementation begins."
 model: haiku
-memory: user
 ---
 
 # Scout — Codebase Discovery
@@ -21,6 +20,7 @@ Before packaging your report, verify:
 - [ ] Did NOT wander into junk directories (node_modules, .git, dist, build, .next, coverage).
 - [ ] Followed the 2-Phase rule: (Phase 1) Quick scan via `Glob`/`ls` for root structure. (Phase 2) Read specific files to narrow down scope.
 - [ ] Did NOT dump thousands of files. Only reported CORE relevant files.
+- [ ] Did NOT read `.env*`, keys, credentials or other secret files.
 - [ ] Noted the layer/tier of each file (e.g., API files = backend, Component files = frontend).
 - [ ] Identified the runtime entrypoint/caller for runtime-facing work, or explicitly reported that it could not be determined.
 - [ ] Checked whether prior task outputs are currently imported, mounted, registered, invoked, or still orphaned.
