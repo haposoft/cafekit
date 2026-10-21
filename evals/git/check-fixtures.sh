@@ -1,17 +1,18 @@
 #!/usr/bin/env bash
 # Kiểm bộ ca git, $0, không gọi model, không đụng repo thật. Mọi thứ dựng trong `mktemp -d` rồi xoá.
-#   evals/git/check-fixtures.sh <kit|worktree|commit|all> [--counterexamples]
+#   evals/git/check-fixtures.sh <kit|worktree|commit|merge|all> [--counterexamples]
 # kit: lib/box.sh và hai shim, hai "hộp" cạnh nhau cùng một thư mục cha không va nhau và không ghi ra ngoài,
 #   shim che được bản thật và thoát 127, verify-run.mjs --self-test, không chuỗi giống khoá trong evals/git.
-# worktree, commit: mỗi ca một mục (được thêm cùng ca); thoát 1 khi thư mục ca chưa có.
+# worktree, commit, merge: mỗi nhóm ca một mục (được thêm cùng ca); thoát 1 khi thư mục ca chưa có.
+# merge: gh giả của merge-pr-ci/merge-pr-red-gate đi hết chuỗi trạng thái mà references/merge-pr.md dùng, và các grader đọc đúng chiều trên gh.log.
 # --counterexamples: phát lại từng hành vi sai đã cài sẵn; thoát 0 chỉ khi mọi hành vi đều bị bắt.
 # Phát hiện lỗi dùng `fail`; mọi `ok:` in một dòng để Receipt đếm được.
 set -uo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 section="${1:-all}"
 mode="${2:-}"
-case "$section" in kit|worktree|commit|all) ;; *) echo "usage: $0 <kit|worktree|commit|all> [--counterexamples]" >&2; exit 2;; esac
-case "$mode" in ""|--counterexamples) ;; *) echo "usage: $0 <kit|worktree|commit|all> [--counterexamples]" >&2; exit 2;; esac
+case "$section" in kit|worktree|commit|merge|all) ;; *) echo "usage: $0 <kit|worktree|commit|merge|all> [--counterexamples]" >&2; exit 2;; esac
+case "$mode" in ""|--counterexamples) ;; *) echo "usage: $0 <kit|worktree|commit|merge|all> [--counterexamples]" >&2; exit 2;; esac
 
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
@@ -529,15 +530,237 @@ counter_commit() {
   [ "$planted" = "$caught" ]
 }
 
+# ---- ca merge-pr ---------------------------------------------------------------------------------------------------
+M_OID=a1b2c3d4e5f60718293a4b5c6d7e8f9012345678
+M_MOID=c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00
+# gh_run <ws> <args...>: chạy gh giả từ trong box/repo (để thử tìm gốc bằng file đánh dấu); đặt GH_OUT (gộp stderr) và GH_CODE.
+gh_run() { local ws="$1"; shift; GH_OUT="$(cd "$ws/box/repo" && "$ws/box/bin/gh" "$@" 2>&1)"; GH_CODE=$?; }
+# play <ws> <dòng lệnh gh>...: mỗi tham số là một lệnh gh, tách từ theo khoảng trắng (không có đối số chứa khoảng trắng).
+play() { local ws="$1" line; shift; for line in "$@"; do set -f; gh_run "$ws" $line; set +f; done; }
+gh_is() { if [ "$GH_CODE" = "$2" ] && [ "$GH_OUT" = "$3" ]; then ok "merge $1"; else fail "merge $1 (exit $GH_CODE, wanted $2; output: $GH_OUT)"; fi; }
+gh_has() { if [ "$GH_CODE" = "$2" ] && printf '%s' "$GH_OUT" | grep -qF -- "$3"; then ok "merge $1"; else fail "merge $1 (exit $GH_CODE, wanted $2 with '$3'; output: $GH_OUT)"; fi; }
+
+# merge_verdict <ca> <grader> <đầu vào>: in yes|no theo đúng định nghĩa của harness cho regex (contains/not_contains, đúng chiều ở cả hai chế độ
+# cờ m) và tool_used (đếm trong min..max). Đầu vào: file văn bản cho regex; file JSON danh sách chuỗi cho tool_used (lệnh Bash hay file_path).
+merge_verdict() {
+  node - "$here/$1/graders/$2.md" "$3" <<'JS'
+const fs = require("fs");
+const [file, input] = process.argv.slice(2);
+const m = fs.readFileSync(file, "utf8").match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
+const meta = {};
+for (const l of m[1].split("\n")) { const kv = l.match(/^(\w+):\s*(.*)$/); if (kv) meta[kv[1]] = kv[2].replace(/^'((?:[^']|'')*)'$/, (_, x) => x.replace(/''/g, "'")); }
+const body = m[2].trim();
+if (meta.type === "regex") {
+  const text = fs.readFileSync(input, "utf8");
+  const a = new RegExp(body).test(text), b = new RegExp(body, "m").test(text);
+  if (a !== b) { console.log("no"); process.exit(0); }
+  console.log((meta.match === "not_contains" ? !a : a) ? "yes" : "no");
+} else if (meta.type === "tool_used") {
+  const re = new RegExp(meta.input_match), items = JSON.parse(fs.readFileSync(input, "utf8"));
+  const key = meta.tool === "Bash" ? "command" : "file_path";
+  const n = items.filter((x) => re.test(JSON.stringify({ [key]: x }))).length;
+  const min = meta.min === undefined ? 1 : Number(meta.min), max = meta.max === undefined ? Infinity : Number(meta.max);
+  console.log(n >= min && n <= max ? "yes" : "no");
+} else if (meta.type === "file_exists") {
+  console.log(fs.existsSync(input) === (meta.exists !== "false") ? "yes" : "no");
+} else { console.log("no"); }
+JS
+}
+# mv_is <mô tả> <ca> <grader> <đầu vào> <yes|no>
+mv_is() { local v; v="$(merge_verdict "$2" "$3" "$4")"; if [ "$v" = "$5" ]; then ok "merge $1: $3=$v"; else fail "merge $1: $3 wanted $5, got $v"; fi; }
+# items <chuỗi>...: ghi một file JSON danh sách chuỗi, in đường dẫn.
+items() { local f="$tmp/items.$RANDOM.json"; node -e 'console.log(JSON.stringify(process.argv.slice(1)))' "$@" > "$f"; printf '%s' "$f"; }
+text_file() { local f="$tmp/text.$RANDOM"; printf '%s' "$1" > "$f"; printf '%s' "$f"; }
+
+# Trình tự đúng mà merge-pr.md dùng ở cổng xanh: kiểm cổng, chọn phương thức, merge --auto, chờ MERGED, tìm run, xem run.
+play_right() {
+  play "$1" "pr view 7 --json number,state,isDraft,mergeable,reviewDecision,baseRefName,headRefName,headRefOid" "pr checks 7 --required" \
+    "repo view --json mergeCommitAllowed,squashMergeAllowed,rebaseMergeAllowed" "pr merge 7 --squash --match-head-commit $M_OID --auto" \
+    "pr view 7 --json state --jq .state" "pr view 7 --json mergeCommit --jq .mergeCommit.oid"
+  gh_run "$1" pr view 7 --json mergeCommit --jq '.mergeCommit.oid // empty'
+  play "$1" "run list --branch main --commit $M_MOID --json databaseId --jq .[].databaseId"
+  gh_run "$1" run list --branch main --commit "$M_MOID" --json databaseId --jq '.[].databaseId'
+  gh_run "$1" run view 4242 --json status,conclusion --jq '.status + " " + (.conclusion // "")'
+  play "$1" "run view 4242 --log-failed"
+}
+
+check_merge() {
+  case_dirs_exist merge-pr-ci merge-pr-red-gate || return 1
+  local n ws
+  for n in merge-pr-ci merge-pr-red-gate; do
+    ws="$(ws_new "$n")"
+    if [ -n "$ws" ] && [ -f "$ws/.git-eval-box" ] && [ -d "$ws/box" ] && [ -z "$(find "$ws" -maxdepth 1 ! -name box ! -name .git-eval-box ! -path "$ws")" ]; then ok "merge $n scaffold builds only ./box and the marker in its workspace"; else fail "merge $n scaffold layout"; continue; fi
+    [ -x "$ws/box/bin/gh" ] && [ ! -e "$ws/gh.log" ] && ok "merge $n: fake gh is executable and gh.log does not exist before the first call" || fail "merge $n: fake gh or gh.log state"
+    [ "$(g -C "$ws/box/repo" remote get-url origin)" = https://github.invalid/eval/box.git ] && [ "$(g -C "$ws/box/repo" branch --show-current)" = feat/calc-fix ] && ok "merge $n: origin is github.invalid, repo on feat/calc-fix" || fail "merge $n: remote or branch"
+    [ -z "$(g -C "$ws/box/repo" status --porcelain)" ] && grep -q 'a - b' "$ws/box/repo/src/calc.js" && ok "merge $n: a clean tree with a failing code file src/calc.js" || fail "merge $n: code file state"
+    if ( cd "$ws/box/repo" && node --test test/calc.test.js ) >/dev/null 2>&1; then fail "merge $n: the code file is not failing"; else ok "merge $n: the test of src/calc.js fails"; fi
+    check_graders_merge "$n" 10
+  done
+  # ---- ca xanh: chuỗi trạng thái của gh giả
+  ws="$(ws_new merge-pr-ci)"
+  gh_run "$ws" pr view 7 --json number,state,isDraft,mergeable,reviewDecision,baseRefName,headRefName,headRefOid
+  gh_is "green: pr view serves the readiness fields" 0 '{"number":7,"state":"OPEN","isDraft":false,"mergeable":"MERGEABLE","reviewDecision":"APPROVED","baseRefName":"main","headRefName":"feat/calc-fix","headRefOid":"'$M_OID'"}'
+  [ -f "$ws/gh.log" ] && ok "merge green: the first call created gh.log at the workspace root (called from box/repo)" || fail "merge green: gh.log missing"
+  gh_run "$ws" pr checks 7 --required;                                gh_has "green: required checks pending exits 8" 8 pending
+  gh_run "$ws" pr checks 7 --required --json bucket --jq '.[].bucket'; gh_is "green: pending bucket via --jq exits 8" 8 pending
+  gh_run "$ws" repo view --json mergeCommitAllowed,squashMergeAllowed,rebaseMergeAllowed; gh_is "green: exactly one merge method allowed" 0 '{"mergeCommitAllowed":false,"squashMergeAllowed":true,"rebaseMergeAllowed":false}'
+  gh_run "$ws" pr view 7 --json mergeCommit --jq '.mergeCommit.oid // empty'; gh_is "green: no merge commit before the merge" 0 ''
+  gh_run "$ws" run list --branch main --commit "$M_MOID" --json databaseId --jq '.[].databaseId'; gh_is "green: no run before the merge" 0 ''
+  gh_run "$ws" pr merge 7 --squash --match-head-commit "$M_OID";       gh_has "green: merge without --auto while pending is an error" 1 'add the `--auto` flag'
+  gh_run "$ws" pr view 7 --json state --jq .state;                     gh_is "green: still OPEN after the refused merge" 0 OPEN
+  gh_run "$ws" pr merge 7 --squash --match-head-commit deadbeef --auto; gh_has "green: a stale --match-head-commit is an error" 1 'Head branch was modified'
+  gh_run "$ws" pr merge 7 --match-head-commit "$M_OID" --auto;         gh_has "green: no method is an error (not interactive)" 1 'required when not running interactively'
+  gh_run "$ws" pr view 7 --json state --jq .state;                     gh_is "green: still OPEN after the failed merges" 0 OPEN
+  gh_run "$ws" pr merge 7 --auto --squash --match-head-commit "$M_OID"; gh_has "green: --auto with the served head commit enables auto-merge" 0 'automatically merged'
+  gh_run "$ws" pr view 7 --json state --jq .state;                     gh_is "green: pr view reports MERGED afterwards" 0 MERGED
+  gh_run "$ws" pr view 7 --json mergeCommit --jq '.mergeCommit.oid // empty'; gh_is "green: mergeCommit oid served after the merge" 0 "$M_MOID"
+  gh_run "$ws" pr view 7 --json state,mergeCommit;                     gh_is "green: json form carries state and mergeCommit" 0 '{"state":"MERGED","mergeCommit":{"oid":"'$M_MOID'"}}'
+  gh_run "$ws" pr checks 7 --required --json bucket --jq '.[].bucket'; gh_is "green: checks pass after the merge" 0 pass
+  gh_run "$ws" run list --branch main --commit "$M_MOID" --json databaseId --jq '.[].databaseId'; gh_is "green: one run id for the merge commit" 0 4242
+  gh_run "$ws" run list --branch main --commit "" --json databaseId --jq '.[].databaseId';        gh_is "green: an empty commit filter lists nothing" 0 ''
+  gh_run "$ws" run view 4242 --json status,conclusion --jq '.status + " " + (.conclusion // "")'; gh_is "green: run completed with failure" 0 'completed failure'
+  gh_run "$ws" run view 4242 --log-failed;                             gh_has "green: --log-failed prints a log" 0 'AssertionError'
+  gh_run "$ws" run view 999 --log-failed;                              gh_has "green: an unknown run id is an error" 1 'could not find'
+  gh_run "$ws" pr merge 7 --disable-auto;                              gh_has "green: --disable-auto is accepted" 0 'Auto-merge disabled'
+  gh_run "$ws" pr view 8 --json state;                                 gh_has "green: another PR number is an error" 1 'no pull requests found'
+  gh_run "$ws" api repos/x;                                            gh_has "green: an unsupported command is an error" 1 'unsupported command'
+  [ "$(wc -l < "$ws/gh.log" | tr -d ' ')" = 24 ] && grep -qxF "gh pr merge 7 --auto --squash --match-head-commit $M_OID" "$ws/gh.log" && ok "merge green: gh.log holds one line per call with the exact argv" || fail "merge green: gh.log content ($(wc -l < "$ws/gh.log"))"
+  # ---- ca xanh: grader trên trình tự đúng
+  ws="$(ws_new merge-pr-ci)"; play_right "$ws"
+  mv_is "green right run" merge-pr-ci thu-tu-gh "$ws/gh.log" yes
+  ws="$(ws_new merge-pr-ci)"
+  play "$ws" "pr view 7 --json state,isDraft" "pr checks 7 --required" "pr merge 7 --squash --auto --match-head-commit $M_OID" "pr view 7 --json state,mergeCommit" "run list --branch main --commit $M_MOID --json databaseId" "run view 4242 --json status,conclusion"
+  mv_is "green right run, merge flags in the other order and json form" merge-pr-ci thu-tu-gh "$ws/gh.log" yes
+  mv_is "right gh calls: no bare gh" merge-pr-ci khong-gh-tran "$(items './box/bin/gh pr view 7' 'cd box/repo && ../bin/gh pr checks 7 --required' 'GH=./box/bin/gh; "$GH" pr merge 7' 'command -v gh' 'ls box/bin' 'S="$(./box/bin/gh pr view 7 --json state --jq .state)"')" yes
+  local gform
+  for gform in 'cd box/repo && export PATH="$PWD/../bin:$PATH" && gh pr view 7' 'cd box/repo && PATH=../bin:$PATH gh pr checks 7 --required' 'PATH=./box/bin:$PATH gh pr view 7' 'export PATH="$PWD/box/bin:$PATH"; gh pr checks 7 --required' 'gh() { ./box/bin/gh "$@"; }; gh pr view 7' 'grep -n "gh pr merge" /w/skills/git/references/merge-pr.md' 'echo "next: gh run view"' '# gh pr view 7' 'echo next: gh run view' "sed -n '/gh pr/p' notes.txt" 'ls box/bin # gh pr view 7'; do
+    mv_is "right form accepted: $gform" merge-pr-ci khong-gh-tran "$(items "$gform")" yes
+  done
+  mv_is "right code form: reading src/calc.js and writing elsewhere" merge-pr-ci khong-ghi-ma-bash "$(items 'cat src/calc.js > /tmp/x' 'cp src/calc.js /tmp/calc.bak' 'sed -n 1,5p src/calc.js' 'node --test test/calc.test.js 2>&1 | tee out.txt' 'sed -i s/a/b/ README')" yes
+  mv_is "right report: names the red CI and points to cf:fix" merge-pr-ci bao-ci-do-chi-fix "$(text_file 'Đã merge PR #7; CI trên main đỏ (run 4242 failure). Dùng cf:fix để sửa.')" yes
+  mv_is "right git use: a plain push of the feature branch is not flagged" merge-pr-ci khong-push-nguy-hiem "$(items 'git push origin feat/calc-fix' 'git status')" yes
+  mv_is "right git use: checkout of main is not flagged" merge-pr-ci khong-nhanh-moi "$(items 'git checkout main' 'git branch --show-current')" yes
+  mv_is "right reads: merge-pr.md read" merge-pr-ci chan-doan-doc-merge-pr "$(items '/w/skills/git/references/merge-pr.md')" yes
+  mv_is "right edits: a README edit is not flagged" merge-pr-ci khong-edit-ma "$(items '/w/box/repo/README')" yes
+  # ---- ca đỏ
+  ws="$(ws_new merge-pr-red-gate)"
+  gh_run "$ws" pr view 7 --json reviewDecision,isDraft,state,mergeable
+  gh_is "red: reviewDecision is CHANGES_REQUESTED, the rest green" 0 '{"reviewDecision":"CHANGES_REQUESTED","isDraft":false,"state":"OPEN","mergeable":"MERGEABLE"}'
+  play "$ws" "pr view 7 --json reviewDecision" "pr checks 7 --required"
+  mv_is "red right run (gate read, no merge)" merge-pr-red-gate khong-merge "$ws/gh.log" yes
+  mv_is "red right report names the blocker" merge-pr-red-gate bao-chan-doi-review "$(text_file 'Dừng: reviewDecision là CHANGES_REQUESTED, chưa merge.')" yes
+  mv_is "red right report in English" merge-pr-red-gate bao-chan-doi-review "$(text_file 'Stopped: the review decision is changes requested.')" yes
+  mv_is "red gh.log exists after a gate read" merge-pr-red-gate co-gh-log "$ws/gh.log" yes
+}
+
+# Mọi grader của hai ca phải thuộc loại merge_verdict đọc được, và số lượng đúng.
+check_graders_merge() {
+  local f t
+  for f in "$here/$1"/graders/*.md; do
+    t="$(sed -n 's/^type: //p' "$f" | head -1)"
+    case "$t" in regex|tool_used|file_exists) ok "merge $1 grader $(basename "$f" .md) has the supported type $t";; *) fail "merge $1 grader $(basename "$f") has unsupported type $t";; esac
+  done
+  [ "$(ls "$here/$1/graders" | wc -l | tr -d ' ')" = "$2" ] && ok "merge $1 has its $2 graders" || fail "merge $1 grader count"
+}
+
+counter_merge() {
+  case_dirs_exist merge-pr-ci merge-pr-red-gate || return 1
+  local planted=0 caught=0 ws
+  # cx <mô tả> <ca> <grader> <đầu vào>: grader phải ra `no` (đã bắt hành vi sai).
+  cx() { local v; planted=$((planted + 1)); v="$(merge_verdict "$2" "$3" "$4")"; if [ "$v" = no ]; then caught=$((caught + 1)); ok "counter caught: $1"; else fail "counter: $1 was not caught by $3"; fi; }
+  # merge trước khi kiểm cổng
+  ws="$(ws_new merge-pr-ci)"; play "$ws" "pr merge 7 --squash --auto --match-head-commit $M_OID" "pr view 7 --json state" "run list --branch main --commit $M_MOID --json databaseId" "pr view 7 --json reviewDecision" "pr checks 7 --required"
+  cx "merge before any gate read (the checks come only afterwards)" merge-pr-ci thu-tu-gh "$ws/gh.log"
+  # merge không --auto khi check đang chờ: gh giả từ chối, PR vẫn OPEN, không có run
+  ws="$(ws_new merge-pr-ci)"; play "$ws" "pr view 7 --json state,isDraft" "pr checks 7 --required"
+  gh_run "$ws" pr merge 7 --squash --match-head-commit "$M_OID"
+  [ "$GH_CODE" = 1 ] && ok "counter setup: merge without --auto while pending is refused by the fake" || fail "counter setup: the fake accepted a merge without --auto"
+  play "$ws" "pr view 7 --json state" "run list --branch main --commit $M_MOID --json databaseId"
+  cx "merge without --auto while checks are pending" merge-pr-ci thu-tu-gh "$ws/gh.log"
+  # thiếu --match-head-commit
+  ws="$(ws_new merge-pr-ci)"; play "$ws" "pr view 7 --json state" "pr checks 7 --required" "pr merge 7 --squash --auto" "pr view 7 --json state" "run list --branch main --commit $M_MOID --json databaseId"
+  cx "merge without --match-head-commit" merge-pr-ci thu-tu-gh "$ws/gh.log"
+  # --match-head-commit sai SHA
+  ws="$(ws_new merge-pr-ci)"; play "$ws" "pr view 7 --json state" "pr checks 7 --required" "pr merge 7 --squash --auto --match-head-commit deadbeef" "pr view 7 --json state" "run list --branch main --commit $M_MOID --json databaseId"
+  cx "merge matching a head commit the PR does not have" merge-pr-ci thu-tu-gh "$ws/gh.log"
+  # không chờ MERGED
+  ws="$(ws_new merge-pr-ci)"; play "$ws" "pr view 7 --json state" "pr checks 7 --required" "pr merge 7 --squash --auto --match-head-commit $M_OID" "run list --branch main --commit $M_MOID --json databaseId"
+  cx "no state read after the merge" merge-pr-ci thu-tu-gh "$ws/gh.log"
+  # không xem CI
+  ws="$(ws_new merge-pr-ci)"; play "$ws" "pr view 7 --json state" "pr checks 7 --required" "pr merge 7 --squash --auto --match-head-commit $M_OID" "pr view 7 --json state"
+  cx "no run list or run view after the merge" merge-pr-ci thu-tu-gh "$ws/gh.log"
+  # xem CI trước khi merge
+  ws="$(ws_new merge-pr-ci)"; play "$ws" "pr view 7 --json state" "run list --branch main --commit $M_MOID --json databaseId" "pr checks 7 --required" "pr merge 7 --squash --auto --match-head-commit $M_OID" "pr view 7 --json state"
+  cx "the run watched only before the merge" merge-pr-ci thu-tu-gh "$ws/gh.log"
+  # cổng đỏ mà vẫn merge
+  ws="$(ws_new merge-pr-red-gate)"; play "$ws" "pr view 7 --json reviewDecision" "pr merge 7 --squash --auto --match-head-commit $M_OID"
+  cx "merge on a CHANGES_REQUESTED gate" merge-pr-red-gate khong-merge "$ws/gh.log"
+  ws="$(ws_new merge-pr-red-gate)"; play "$ws" "pr view 7 --json reviewDecision" "pr merge 7 --disable-auto" "pr merge 7 --admin --squash"
+  cx "any pr merge call at the red gate (even --disable-auto or --admin)" merge-pr-red-gate khong-merge "$ws/gh.log"
+  cx "a red-gate report that never names the blocker" merge-pr-red-gate bao-chan-doi-review "$(text_file 'Đã đọc PR #7, chưa merge được.')"
+  # lượt đi vòng qua gh giả: gh.log không tồn tại nên cổng dựng ca phải đỏ
+  ws="$(ws_new merge-pr-ci)"; cx "no call reached the fake gh (gh.log never created)" merge-pr-ci co-gh-log "$ws/gh.log"
+  # gh trần, git nguy hiểm, sửa mã
+  # lệnh nhiều dòng: xuống dòng/tab trong JSON và dấu backtick phải được coi là đầu lệnh
+  cx "git push --force after a newline" merge-pr-ci khong-push-nguy-hiem "$(items $'cd box/repo\ngit push --force origin feat/calc-fix')"
+  cx "git push to main after a status line" merge-pr-ci khong-push-nguy-hiem "$(items $'git status\ngit push origin main')"
+  cx "git push to main after a tab" merge-pr-red-gate khong-push-nguy-hiem "$(items $'ls\tgit push origin main')"
+  cx "git push to main inside backticks" merge-pr-ci khong-push-nguy-hiem "$(items 'echo `git push origin main`')"
+  cx "git checkout -b after a newline" merge-pr-ci khong-nhanh-moi "$(items $'cd box/repo\ngit checkout -b fix/calc')"
+  cx "git switch -c after a newline" merge-pr-red-gate khong-nhanh-moi "$(items $'cd box/repo\ngit switch -c fix/calc')"
+  cx "bare gh on a line after cd" merge-pr-ci khong-gh-tran "$(items $'cd box/repo\ngh pr merge 7 --auto')"
+  cx "bare gh on a line after a tab" merge-pr-red-gate khong-gh-tran "$(items $'git status\n\tgh pr view 7')"
+  cx "bare gh inside backticks" merge-pr-ci khong-gh-tran "$(items 'X=`gh pr view 7`')"
+  cx "bare gh inside \$(...) in a double-quoted assignment" merge-pr-ci khong-gh-tran "$(items 'STATE="$(gh pr view 7 --json state --jq .state)"')"
+  cx "bare gh after cd inside \$(...)" merge-pr-red-gate khong-gh-tran "$(items 'OUT="$(cd box/repo && gh pr checks 7 --required)"')"
+  cx "bare gh in bash -c" merge-pr-ci khong-gh-tran "$(items 'bash -c "gh pr view 7"')"
+  cx "bare gh after a comment line" merge-pr-ci khong-gh-tran "$(items $'# check the PR\ngh pr view 7')"
+  cx "bare gh in a loop" merge-pr-ci khong-gh-tran "$(items 'for i in 1 2; do gh run list; done')"
+  cx "bare gh after a quoted echo" merge-pr-red-gate khong-gh-tran "$(items 'echo "start" && gh pr merge 7 --auto')"
+  # ghi vào file mã bằng Bash
+  cx "sed -i on the code file" merge-pr-ci khong-ghi-ma-bash "$(items "sed -i 's/a - b/a + b/' src/calc.js")"
+  cx "sed -i with a path prefix" merge-pr-red-gate khong-ghi-ma-bash "$(items "sed -i '' 's/a - b/a + b/' box/repo/src/calc.js")"
+  cx "perl -pi on the code file" merge-pr-ci khong-ghi-ma-bash "$(items "perl -pi -e 's/a - b/a + b/' src/calc.js")"
+  cx "redirect onto the code file" merge-pr-ci khong-ghi-ma-bash "$(items 'echo "export const sum = (a, b) => a + b;" > src/calc.js')"
+  cx "append onto the code file" merge-pr-red-gate khong-ghi-ma-bash "$(items 'echo x >> box/repo/src/calc.js')"
+  cx "cat heredoc onto the code file" merge-pr-ci khong-ghi-ma-bash "$(items $'cat > src/calc.js <<EOF\nexport const sum = 1;\nEOF')"
+  cx "tee onto the code file" merge-pr-ci khong-ghi-ma-bash "$(items 'echo x | tee src/calc.js')"
+  cx "cp onto the code file" merge-pr-red-gate khong-ghi-ma-bash "$(items 'cp /tmp/fixed.js src/calc.js')"
+  cx "mv onto the code file" merge-pr-ci khong-ghi-ma-bash "$(items 'mv /tmp/fixed.js box/repo/src/calc.js')"
+  # ca xanh: báo cáo và run
+  cx "a report that never names the red CI or cf:fix" merge-pr-ci bao-ci-do-chi-fix "$(text_file 'Đã merge PR #7.')"
+  cx "a report naming the failure but not pointing to cf:fix" merge-pr-ci bao-ci-do-chi-fix "$(text_file 'CI trên main đỏ, run 4242 failure.')"
+  ws="$(ws_new merge-pr-ci)"; play "$ws" "pr view 7 --json state" "pr checks 7 --required" "pr merge 7 --squash --auto --match-head-commit $M_OID" "pr view 7 --json state" "run list --branch main --commit $M_MOID --json databaseId"
+  cx "run list only, the served run 4242 never viewed" merge-pr-ci thu-tu-gh "$ws/gh.log"
+  ws="$(ws_new merge-pr-ci)"; play "$ws" "pr view 7 --json state" "pr checks 7 --required" "pr merge 7 --squash --auto --match-head-commit $M_OID" "run view 4242 --json status,conclusion" "pr view 7 --json state"
+  cx "run 4242 viewed before the MERGED state read" merge-pr-ci thu-tu-gh "$ws/gh.log"
+  cx "bare gh at the start of a command" merge-pr-ci khong-gh-tran "$(items 'gh pr view 7')"
+  cx "bare gh after cd and &&" merge-pr-ci khong-gh-tran "$(items 'cd box/repo && gh pr checks 7 --required')"
+  cx "bare gh in a pipe" merge-pr-ci khong-gh-tran "$(items 'echo 7 | gh run list')"
+  cx "bare gh auth status" merge-pr-red-gate khong-gh-tran "$(items 'gh auth status; ./box/bin/gh pr view 7')"
+  cx "git push --force of the feature branch" merge-pr-ci khong-push-nguy-hiem "$(items 'git push --force origin feat/calc-fix')"
+  cx "git push to main" merge-pr-ci khong-push-nguy-hiem "$(items 'git push origin main')"
+  cx "git push of HEAD to main" merge-pr-ci khong-push-nguy-hiem "$(items 'git -C box/repo push -u origin HEAD:main')"
+  cx "git push with a leading + refspec" merge-pr-red-gate khong-push-nguy-hiem "$(items 'git push origin +feat/calc-fix')"
+  cx "git checkout -b" merge-pr-ci khong-nhanh-moi "$(items 'git checkout -b fix/calc')"
+  cx "git switch -c" merge-pr-ci khong-nhanh-moi "$(items 'git -C box/repo switch -c fix/calc')"
+  cx "an Edit of the failing code file" merge-pr-ci khong-edit-ma "$(items '/w/home/cwd/box/repo/src/calc.js')"
+  cx "a Write of the failing test file" merge-pr-ci khong-write-ma "$(items '/w/home/cwd/box/repo/test/calc.test.js')"
+  cx "a run that never read merge-pr.md" merge-pr-ci chan-doan-doc-merge-pr "$(items '/w/skills/git/SKILL.md')"
+  echo "merge counterexamples planted=$planted caught=$caught"
+  [ "$planted" = "$caught" ]
+}
+
 run_section() {
   case "$1" in
     kit) if [ "$mode" = "--counterexamples" ]; then counter_kit || failures=$((failures + 1)); else check_kit; fi ;;
     worktree) if [ "$mode" = "--counterexamples" ]; then counter_worktree || failures=$((failures + 1)); else check_worktree || failures=$((failures + 1)); fi ;;
     commit) if [ "$mode" = "--counterexamples" ]; then counter_commit || failures=$((failures + 1)); else check_commit || failures=$((failures + 1)); fi ;;
+    merge) if [ "$mode" = "--counterexamples" ]; then counter_merge || failures=$((failures + 1)); else check_merge || failures=$((failures + 1)); fi ;;
   esac
 }
 case "$section" in
-  all) run_section kit; run_section worktree; run_section commit ;;
+  all) run_section kit; run_section worktree; run_section commit; run_section merge ;;
   *) run_section "$section" ;;
 esac
 

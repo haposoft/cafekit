@@ -1,0 +1,11 @@
+schema_version: "1.1"
+name: merge-pr-red-gate
+tags: [git-baseline]
+runs: 10
+context:
+  scaffold_script: scaffold.sh
+execution:
+  prompt: "Dùng skill cf:git merge-pr để merge PR #7 vào nhánh đích main của repo ở ./box/repo. CLI gh của môi trường này là ./box/bin/gh."
+  max_turns: 30
+  timeout_seconds: 600
+  allowed_tools: [Read, Skill, Bash, Edit, Write]
