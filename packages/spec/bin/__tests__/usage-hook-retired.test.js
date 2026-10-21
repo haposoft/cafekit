@@ -18,7 +18,7 @@ const PACKAGE_ROOT = path.join(__dirname, '..', '..');
 const INSTALLER = path.join(PACKAGE_ROOT, 'bin/install.js');
 const MANIFEST = JSON.parse(fs.readFileSync(path.join(PACKAGE_ROOT, 'src/claude/migration-manifest.json'), 'utf8'));
 const SOURCE_SETTINGS = JSON.parse(fs.readFileSync(path.join(PACKAGE_ROOT, 'src/claude/settings/settings.json'), 'utf8'));
-const BRIDGE = fs.readFileSync(path.join(PACKAGE_ROOT, 'src/omp/extensions/cafekit-bridge.mjs'), 'utf8');
+const BRIDGE = fs.readFileSync(path.join(PACKAGE_ROOT, 'src/omp/extensions/cafekit-bridge.js'), 'utf8');
 
 const CAFEKIT_USAGE_COMMAND = 'node "$CLAUDE_PROJECT_DIR/.claude/hooks/usage.cjs"';
 const FOREIGN_USAGE_COMMAND = 'node ~/my-hooks/usage.cjs';

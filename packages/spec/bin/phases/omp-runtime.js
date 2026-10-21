@@ -23,7 +23,7 @@ const path = require('path');
 const { PLATFORMS } = require('../lib/context');
 const { writeManagedFile, copyManagedTree } = require('../lib/managed-writer');
 const { report, treeAction } = require('./report');
-const { copyRulesDirectory } = require('./claude-runtime');
+const { copyRulesDirectory, removeObsoleteRuntimeFiles } = require('./claude-runtime');
 
 const SRC = path.join(__dirname, '../../src');
 const CLAUDE_SRC = path.join(SRC, 'claude');
@@ -156,6 +156,9 @@ function installOmpRuntime(ctx, platformKey) {
   if (platformKey !== 'omp') return;
   installHooks(ctx, platformKey);
   removeObsoleteOmpHooks(ctx, platformKey);
+  // The old `.mjs` bridge goes only when its bytes still match the ownership record; an
+  // edited, untracked or symlinked copy is kept and reported.
+  removeObsoleteRuntimeFiles(ctx, platformKey);
   installRuntimeFiles(ctx, platformKey);
   installBridge(ctx, platformKey);
   copyRulesDirectory(ctx, platformKey);

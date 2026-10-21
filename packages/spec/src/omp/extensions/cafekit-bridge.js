@@ -9,7 +9,11 @@
  * payload the scripts read, runs the scripts as child processes, and translates their
  * verdicts back into omp's contract.
  *
- * Three facts read from the installed omp binary drive the design:
+ * Facts read from the installed omp binary drive the design:
+ *  - omp auto-loads only `<name>.{ts,js}` and `<dir>/index.{ts,js}` from `.omp/extensions/`, so this
+ *    file is `.js`; an `.mjs` bridge is never loaded and every gate is silently off.
+ *  - omp is a Bun binary: `process.execPath` is omp itself, not node, so the hooks are run
+ *    with a `node` found on PATH (see hookRunner).
  *  - omp fails CLOSED at `tool_call`: a handler that throws or exceeds
  *    `extensionHandlers.toolCallTimeoutMs` (default 30000) is replaced by omp's own
  *    `{ block: true, reason: "Extension … timed out" }`. The bridge therefore keeps a
@@ -26,7 +30,7 @@
 
 import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { existsSync } from 'node:fs';
+import { accessSync, constants, existsSync, realpathSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -62,6 +66,22 @@ function sessionIdFrom(ctx) {
   } catch { return null; }
 }
 
+/**
+ * Only the file paths of a tool result's details. An edit's details also carry the old and
+ * new text of every file it changed, which no hook needs on stdin.
+ */
+function resultPaths(details) {
+  if (!details || typeof details !== 'object') return {};
+  const paths = (list) => (Array.isArray(list) ? list.filter((entry) => typeof entry?.path === 'string').map((entry) => ({ path: entry.path })) : undefined);
+  const out = {};
+  if (typeof details.path === 'string') out.path = details.path;
+  const perFile = paths(details.perFileResults);
+  if (perFile) out.perFileResults = perFile;
+  const changes = paths(details.fileChanges);
+  if (changes) out.fileChanges = changes;
+  return out;
+}
+
 /** Build the Claude-shaped payload a CafeKit hook reads on stdin. */
 export function shapePayload(kind, event, ctx) {
   const entry = DISPATCH[kind];
@@ -93,7 +113,7 @@ export function shapePayload(kind, event, ctx) {
     case 'tool_result':
       payload.tool_name = event?.toolName ?? event?.tool_name ?? '';
       payload.tool_input = event?.input ?? {};
-      payload.tool_response = { content: event?.content ?? [], isError: event?.isError === true };
+      payload.tool_response = { content: event?.content ?? [], isError: event?.isError === true, details: resultPaths(event?.details) };
       payload.tool_use_id = event?.toolCallId ?? null;
       break;
     case 'session_stop':
@@ -143,12 +163,54 @@ export function interpretVerdict({ code, stdout = '', stderr = '' }, hookName) {
   return { block: Boolean(block), reason: block?.reason, inject: inject.join('\n').trim() };
 }
 
+function isInside(root, target) {
+  const rel = path.relative(root, target);
+  return rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel));
+}
+
+function realOrSelf(target) {
+  try { return realpathSync(target); } catch { return path.resolve(target); }
+}
+
+/**
+ * The executable that runs a hook. Under node that is `process.execPath`. Under Bun (omp)
+ * it is the first `node` on PATH that sits in an absolute PATH entry outside the project,
+ * so a repository cannot plant its own `node` (`.`, `node_modules/.bin`) in front of the
+ * gates. Returns `{ command }` or `{ error }`; never throws.
+ */
+export function hookRunner({ cwd = process.cwd(), env = process.env, bun = process.versions?.bun, platform = process.platform } = {}) {
+  if (!bun) return { command: process.execPath };
+  const project = realOrSelf(cwd);
+  const names = platform === 'win32'
+    ? String(env.PATHEXT || '.EXE;.CMD;.BAT;.COM').split(';').filter(Boolean).map((ext) => `node${ext.toLowerCase()}`)
+    : ['node'];
+  const delimiter = platform === 'win32' ? ';' : ':';
+  for (const dir of String(env.PATH || env.Path || '').split(delimiter)) {
+    if (!dir || !path.isAbsolute(dir)) continue;
+    for (const name of names) {
+      const candidate = path.join(dir, name);
+      try {
+        if (!statSync(candidate).isFile()) continue;
+        if (platform !== 'win32') accessSync(candidate, constants.X_OK);
+      } catch { continue; }
+      if (isInside(project, realOrSelf(candidate))) continue;
+      return { command: candidate };
+    }
+  }
+  return { error: 'node was not found on PATH outside the project' };
+}
+
 /** Run one hook as a child process with a hard budget. Never throws. */
 export function dispatchHook(hookPath, payload, { cwd, timeoutMs = BRIDGE_TIMEOUT_MS } = {}) {
   return new Promise((resolve) => {
+    const runner = hookRunner({ cwd });
+    if (runner.error) {
+      resolve({ code: null, signal: null, stdout: '', stderr: runner.error, timedOut: false, failed: true });
+      return;
+    }
     let child;
     try {
-      child = spawn(process.execPath, [hookPath], {
+      child = spawn(runner.command, [hookPath], {
         cwd,
         env: { ...process.env, PROJECT_ROOT: cwd },
         stdio: ['pipe', 'pipe', 'pipe'],
@@ -167,7 +229,7 @@ export function dispatchHook(hookPath, payload, { cwd, timeoutMs = BRIDGE_TIMEOU
     child.stdout.on('data', (c) => out.push(c));
     child.stderr.on('data', (c) => err.push(c));
     child.on('error', (error) => { clearTimeout(timer); finish({ code: null, stdout: '', stderr: String(error?.message || error), timedOut: false, failed: true }); });
-    child.on('close', (code) => { clearTimeout(timer); finish({ code, stdout: Buffer.concat(out).toString('utf8'), stderr: Buffer.concat(err).toString('utf8'), timedOut: false, failed: false }); });
+    child.on('close', (code, signal) => { clearTimeout(timer); finish({ code, signal, stdout: Buffer.concat(out).toString('utf8'), stderr: Buffer.concat(err).toString('utf8'), timedOut: false, failed: false }); });
     try { child.stdin.write(JSON.stringify(payload)); child.stdin.end(); } catch { /* close handler still runs */ }
   });
 }
@@ -206,6 +268,12 @@ export async function runEvent(kind, event, ctx, { timeoutMs = BRIDGE_TIMEOUT_MS
     }
     const verdict = interpretVerdict(result, hookName);
     if (verdict.block) return { block: true, reason: verdict.reason, hook: hookName };
+    // A gate that dies without a verdict (a broken node shim, a crash, a kill) must not
+    // read as an allow: only 0 and 2 are answers a gate gives on purpose.
+    if (gating && result.code !== 0 && result.code !== 2) {
+      const how = result.signal ? `was killed by ${result.signal}` : `exited with code ${result.code}`;
+      return { block: true, reason: `CafeKit gate ${hookName} ${how}`, hook: hookName };
+    }
     if (verdict.inject) injections.push(verdict.inject);
   }
   return { block: false, inject: injections.join('\n\n') };

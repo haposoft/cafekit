@@ -176,7 +176,10 @@ function removeObsoleteRuntimeFiles(ctx, platformKey) {
     const tracker = ctx.trackers?.[key];
     const ownership = ctx.ownership?.[platform.folder] || { files: {} };
     const obsoleteFiles = (ctx.manifest?.obsolete?.runtimeFiles || [])
-      .filter(relative => key === 'claude' || /^(?:hooks|scripts|skills)\//.test(relative));
+      // omp removes its hooks, scripts and skills in removeObsoleteOmpHooks; only its
+      // extensions take this ownership-checked path.
+      .filter(relative => key === 'omp' ? relative.startsWith('extensions/')
+        : key === 'claude' || /^(?:hooks|scripts|skills)\//.test(relative));
     for (const relative of obsoleteFiles) {
       const targetPath = key === 'codex' && relative.startsWith('skills/')
         ? path.join(platform.skillsDir, relative.slice('skills/'.length))
@@ -235,7 +238,7 @@ function removeObsoleteRuntimeFiles(ctx, platformKey) {
   }
   const allPreserved = (ctx.obsoleteRuntimePreserved ||= new Set());
   for (const target of preserved) allPreserved.add(target);
-  const selected = (ctx.platforms || [platformKey]).filter(key => key === 'claude' || key === 'codex');
+  const selected = (ctx.platforms || [platformKey]).filter(key => ['claude', 'codex', 'omp'].includes(key));
   if (selected.every(key => completed.has(key)) && allPreserved.size) {
     ctx.ui.warn(`Preserved ${allPreserved.size} obsolete runtime item(s); review and remove manually if no longer needed: ${[...allPreserved].join(', ')}`);
   }

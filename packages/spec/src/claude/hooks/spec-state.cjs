@@ -14,7 +14,7 @@
 const fs = require('fs');
 const path = require('path');
 const { projectRoot } = require('./lib/project-root.cjs');
-const { packetAt, namedPackets, explicitFailure } = require('./lib/spec-touch.cjs');
+const { packetAt, namedPackets, explicitFailure, touchedPaths } = require('./lib/spec-touch.cjs');
 const { runtimeDirName, runtimeDir, runtimePath } = require('./lib/runtime-dir.cjs');
 
 function logCrash(error) {
@@ -119,9 +119,10 @@ try {
 
   if (payload.hook_event_name === 'PostToolUse') {
     // Record only; no resolve, no git, no tollgate cache.
-    if (touchFilter && specsRoot && !explicitFailure(payload) && /^(Edit|Write|MultiEdit)$/.test(payload.tool_name || '')) {
-      const name = packetAt(payload.tool_input && payload.tool_input.file_path, specsRoot, cwd);
-      if (name) addTouched([name]);
+    // omp's ast_edit keeps its own name: aliasing it to Edit would lift the inspect scope check.
+    if (touchFilter && specsRoot && !explicitFailure(payload) && /^(Edit|Write|MultiEdit|ast_edit)$/.test(payload.tool_name || '')) {
+      const names = touchedPaths(payload).map((value) => packetAt(value, specsRoot, cwd)).filter(Boolean);
+      if (names.length) addTouched(names);
     }
     process.exit(0);
   }

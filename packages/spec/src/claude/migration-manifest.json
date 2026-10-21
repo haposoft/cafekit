@@ -92,6 +92,7 @@
       "codex": ["agents/god_developer.toml"]
     },
     "runtimeFiles": [
+      "extensions/cafekit-bridge.mjs",
       "scripts/validate-spec-output.cjs",
       "scripts/spec-ground.cjs",
       "scripts/spec-authoring-digest.cjs",

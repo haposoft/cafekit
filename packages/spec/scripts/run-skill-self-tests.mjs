@@ -5111,7 +5111,7 @@ async function runStaticSemanticTests() {
       file: "../../docs/installer-architecture.md",
       assert: (content) =>
         content.includes("## Oh My Pi (omp)") &&
-        content.includes(".omp/extensions/cafekit-bridge.mjs") &&
+        content.includes(".omp/extensions/cafekit-bridge.js") &&
         content.includes("omp discovers `.claude/skills` and `.agents/skills` on its own") &&
         content.includes("Not carried: `agent.cjs` (SubagentStart) and `state.cjs` (SubagentStop)") &&
         !content.includes("semantic-review-authority") &&

@@ -3,6 +3,11 @@
 All notable changes to CafeKit are documented here, following
 [Keep a Changelog](https://keepachangelog.com/).
 
+## [Unreleased]
+### Fixed
+- omp records spec touches for multi-file edits and `ast_edit` from omp's `paths` and the changed files a result reports, and the bridge no longer pipes edited file contents to hooks.
+- omp loads the bridge again: it ships as `cafekit-bridge.js` because omp discovers only `.ts`/`.js` extensions, runs hooks with an absolute `node` from PATH outside the project instead of the omp binary, and blocks gating events when node is missing or a gate exits without a verdict; upgrades remove the old `.mjs` bridge only when it is unchanged.
+
 ## [0.18.2] - 2026-10-20
 ### Added
 - Codex `ask-guard`: khi prompt bắt đầu bằng `$cf-ask` hoặc `/cf:ask`, hook từ chối `apply_patch` trong phiên đó cho tới prompt kế tiếp không gọi ask, và chỉ người dùng sang `$cf-fix`. Đo trên `gpt-6.1-sol`: `ask/cam-sua` không sửa file 10/10 (trước 2/10), 4 ca ask khác không hồi quy. Hook chỉ chạy khi người dùng đã tin cậy hook qua `/hooks`; không chặn lệnh shell ghi file.

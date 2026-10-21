@@ -21,7 +21,7 @@ const SRC = path.join(PACKAGE_ROOT, 'src');
 const readJson = (file) => JSON.parse(fs.readFileSync(file, 'utf8'));
 const MANIFEST = readJson(path.join(SRC, 'claude/migration-manifest.json'));
 const SOURCE_SETTINGS = readJson(path.join(SRC, 'claude/settings/settings.json'));
-const SOURCE_BRIDGE_PATH = path.join(SRC, 'omp/extensions/cafekit-bridge.mjs');
+const SOURCE_BRIDGE_PATH = path.join(SRC, 'omp/extensions/cafekit-bridge.js');
 
 const NAMES = [
   'completion-authority.cjs',
@@ -70,7 +70,7 @@ test('fresh installs ship and register none of the five legacy hooks', () => {
     const claude = commands(readJson(path.join(root, '.claude', 'settings.json')));
     const codex = commands(readJson(path.join(root, '.codex', 'hooks.json')));
     for (const command of [...claude, ...codex]) assert.deepEqual(mentionsName(command), [], command);
-    const bridge = fs.readFileSync(path.join(root, '.omp', 'extensions', 'cafekit-bridge.mjs'), 'utf8');
+    const bridge = fs.readFileSync(path.join(root, '.omp', 'extensions', 'cafekit-bridge.js'), 'utf8');
     assert.deepEqual(mentionsName(bridge), []);
   });
 });
@@ -181,26 +181,49 @@ test('omp upgrade removes the legacy hooks and their records', () => {
   });
 });
 
-test('omp upgrade replaces a pristine old bridge that still lists the removed gates', () => {
+test('omp upgrade removes a pristine old .mjs bridge, which omp never loads', () => {
   inTempProject((root) => {
     install(root, ['omp']);
-    const bridgePath = path.join(root, '.omp', 'extensions', 'cafekit-bridge.mjs');
+    const oldPath = path.join(root, '.omp', 'extensions', 'cafekit-bridge.mjs');
     const manifestPath = path.join(root, '.omp', 'cafekit-manifest.json');
     const old = fs.readFileSync(SOURCE_BRIDGE_PATH, 'utf8')
-      .replace("'inspect-block.cjs']", "'inspect-block.cjs', 'task-scaffold-guard.cjs']")
-      .replace("'rules.cjs', 'spec-state.cjs'", "'rules.cjs', 'completion-authority.cjs', 'spec-state.cjs'")
-      .replace("'spec-gate.cjs', 'state.cjs'", "'spec-gate.cjs', 'completion-authority.cjs', 'state.cjs'");
-    assert.deepEqual(mentionsName(old).sort(), ['completion-authority.cjs', 'task-scaffold-guard.cjs'], 'the fixture lists the removed gates');
-    fs.writeFileSync(bridgePath, old);
+      .replace("'inspect-block.cjs']", "'inspect-block.cjs', 'task-scaffold-guard.cjs']");
+    fs.writeFileSync(oldPath, old);
     const manifest = readJson(manifestPath);
     manifest.files['.omp/extensions/cafekit-bridge.mjs'] = { sha256: crypto.createHash('sha256').update(old).digest('hex') };
     fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
 
     install(root, ['omp']);
-    const installed = fs.readFileSync(bridgePath, 'utf8');
+    assert.equal(fs.existsSync(oldPath), false, 'the pristine .mjs bridge is removed');
+    assert.equal(readJson(manifestPath).files['.omp/extensions/cafekit-bridge.mjs'], undefined, 'and its record');
+    const installed = fs.readFileSync(path.join(root, '.omp', 'extensions', 'cafekit-bridge.js'), 'utf8');
     assert.deepEqual(mentionsName(installed), []);
     assert.equal(installed, fs.readFileSync(SOURCE_BRIDGE_PATH, 'utf8'));
   });
+});
+
+test('omp upgrade keeps an edited, untracked or symlinked old .mjs bridge and says so', () => {
+  for (const shape of ['edited', 'untracked', 'symlink']) {
+    inTempProject((root) => {
+      install(root, ['omp']);
+      const oldPath = path.join(root, '.omp', 'extensions', 'cafekit-bridge.mjs');
+      const manifestPath = path.join(root, '.omp', 'cafekit-manifest.json');
+      const manifest = readJson(manifestPath);
+      if (shape === 'symlink') {
+        const target = path.join(root, 'my-bridge.mjs');
+        fs.writeFileSync(target, '// mine\n');
+        fs.symlinkSync(target, oldPath);
+      } else {
+        fs.writeFileSync(oldPath, '// edited by the user\n');
+        if (shape === 'edited') manifest.files['.omp/extensions/cafekit-bridge.mjs'] = { sha256: '0'.repeat(64) };
+      }
+      fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+
+      const result = install(root, ['omp']);
+      assert.equal(fs.lstatSync(oldPath).isFile() || fs.lstatSync(oldPath).isSymbolicLink(), true, `${shape} .mjs is kept`);
+      assert.match(`${result.stdout}\n${result.stderr}`, /Preserved \d+ obsolete runtime item/, `${shape} is reported`);
+    });
+  }
 });
 
 test('no source ships, registers or bridges the five legacy hooks', () => {

@@ -64,4 +64,17 @@ function explicitFailure(payload) {
   return payload.success === false || failed(payload.tool_response);
 }
 
-module.exports = { canonicalTarget, packetAt, namedPackets, explicitFailure };
+/**
+ * Every file a write tool reports touching: the Claude `file_path`, omp's `path`/`paths`
+ * (omp derives them from an edit's file headers), and the files an omp result says it
+ * changed. A glob names no file, so it is skipped.
+ */
+function touchedPaths(payload) {
+  const input = payload.tool_input || {};
+  const details = (payload.tool_response && payload.tool_response.details) || {};
+  const values = [input.file_path, input.path, ...(Array.isArray(input.paths) ? input.paths : []), details.path,
+    ...[details.perFileResults, details.fileChanges].flatMap((list) => (Array.isArray(list) ? list.map((entry) => entry && entry.path) : []))];
+  return [...new Set(values.filter((value) => typeof value === 'string' && value.trim() && !/[*?[\]{}]/.test(value)))];
+}
+
+module.exports = { canonicalTarget, packetAt, namedPackets, explicitFailure, touchedPaths };

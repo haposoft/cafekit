@@ -14,7 +14,7 @@ const path = require('node:path');
 const { test } = require('node:test');
 
 const PACKAGE_ROOT = path.join(__dirname, '../..');
-const BRIDGE = path.join(PACKAGE_ROOT, 'src/omp/extensions/cafekit-bridge.mjs');
+const BRIDGE = path.join(PACKAGE_ROOT, 'src/omp/extensions/cafekit-bridge.js');
 const SETTINGS = require(path.join(PACKAGE_ROOT, 'src/claude/settings/settings.json'));
 const MANIFEST = require(path.join(PACKAGE_ROOT, 'src/claude/migration-manifest.json'));
 
@@ -149,10 +149,14 @@ test('a crashing or missing gate blocks on gating events instead of silently all
     fs.writeFileSync(path.join(dir, 'privacy-block.cjs'), 'throw new Error("boom");');
     fs.writeFileSync(path.join(dir, 'inspect-block.cjs'), 'process.exit(0);');
     const crash = await bridge.runEvent('tool_call', { toolName: 'bash', input: { command: 'ls' } }, { cwd: dir }, { dir });
-    // A bare exit 1 with no verdict is an allow under the hooks' own contract. Real gates
-    // never surface a crash this way: the fork's privacy-block catch-all converts its own
-    // errors into a deny, which the fork tests pin separately.
-    assert.equal(crash.block, false, 'exit 1 with no verdict is an allow per the hooks\' own contract');
+    // A gate that dies without a verdict (a broken node shim exits 1 the same way) must not
+    // read as an allow on a gating event.
+    assert.equal(crash.block, true, 'exit 1 with no verdict blocks a gating event');
+    assert.match(crash.reason, /privacy-block\.cjs exited with code 1/);
+    fs.writeFileSync(path.join(dir, 'state.cjs'), 'process.exit(1);');
+    fs.writeFileSync(path.join(dir, 'spec-state.cjs'), 'process.exit(1);');
+    const passive = await bridge.runEvent('tool_result', { toolName: 'bash', input: {} }, { cwd: dir }, { dir });
+    assert.equal(passive.block, false, 'a non-gating event still skips a failing hook');
     const missing = await bridge.runEvent('tool_call', { toolName: 'bash', input: { command: 'ls' } }, { cwd: dir }, { dir: path.join(dir, 'nowhere') });
     assert.equal(missing.block, true, 'a gate that is not installed must be loud, not a silent allow');
     assert.match(missing.reason, /not installed/);
@@ -222,4 +226,76 @@ test('an omp edit inside a packet scopes the tollgate to it', async () => {
     const other = await bridge.runEvent('input', { text: 'Continue' }, session('omp-b'), { dir: hooks });
     assert.doesNotMatch(other.inject, /Multiple active specs|Spec state changed/, "another omp session's touch does not leak");
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('under Bun the hooks run with an absolute node outside the project', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cafekit-omp-node-'));
+  try {
+    const outside = path.join(root, 'outside');
+    const inside = path.join(root, 'project', 'node_modules', '.bin');
+    for (const dir of [outside, inside]) {
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(path.join(dir, 'node'), '#!/bin/sh\n');
+      fs.chmodSync(path.join(dir, 'node'), 0o755);
+    }
+    const cwd = path.join(root, 'project');
+    const pick = (PATH) => bridge.hookRunner({ cwd, env: { PATH }, bun: '1.4.3', platform: 'darwin' });
+    assert.deepEqual(pick(`${inside}:${outside}`), { command: path.join(outside, 'node') }, 'a node inside the project is skipped');
+    assert.match(pick('.:node_modules/.bin').error, /node was not found/, 'relative PATH entries are skipped');
+    assert.deepEqual(bridge.hookRunner({ cwd, env: { PATH: '' }, bun: undefined }), { command: process.execPath }, 'under node the running node is used');
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('without a usable node under Bun a gating event blocks and names node', async () => {
+  const saved = { bun: process.versions.bun, PATH: process.env.PATH };
+  try {
+    Object.defineProperty(process.versions, 'bun', { value: '1.4.3', configurable: true, writable: true });
+    process.env.PATH = '';
+    const r = await bridge.runEvent('tool_call', { toolName: 'bash', input: { command: 'ls' } }, { cwd: os.tmpdir() }, { dir: HOOKS });
+    assert.equal(r.block, true);
+    assert.match(r.reason, /node was not found on PATH/);
+  } finally {
+    if (saved.bun === undefined) delete process.versions.bun;
+    else process.versions.bun = saved.bun;
+    process.env.PATH = saved.PATH;
+  }
+});
+
+function touchedIn(hooks, session) {
+  const crypto = require('node:crypto');
+  const file = path.join(hooks, '.logs', `spec-touched-${crypto.createHash('sha256').update(session).digest('hex')}.json`);
+  try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return []; }
+}
+
+test('multi-file edits and ast_edit record every packet they changed', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cafekit-omp-paths-'));
+  try {
+    const hooks = composeOmp(root);
+    for (const name of ['alpha', 'beta', 'gamma']) ompPacket(root, name);
+    const ctx = (id) => ({ cwd: root, sessionManager: { getSessionId: () => id } });
+
+    // omp adds `paths` for a hashline edit with several file headers and no single `path`.
+    await bridge.runEvent('tool_result', {
+      toolName: 'edit', isError: false, content: [],
+      input: { input: '[specs/alpha/plan.md#AAAA]\nPUT >2:\n+x\n[specs/beta/plan.md#BBBB]\nPUT >2:\n+y', paths: ['specs/alpha/plan.md', 'specs/beta/plan.md'] },
+    }, ctx('omp-multi'), { dir: hooks });
+    assert.deepEqual(touchedIn(hooks, 'omp-multi'), ['alpha', 'beta']);
+
+    // ast_edit names globs; only the files it reports changing count, and a glob never does.
+    await bridge.runEvent('tool_result', {
+      toolName: 'ast_edit', isError: false, content: [],
+      input: { ops: [{ pat: 'a', out: 'b' }], paths: ['specs/**'] },
+      details: { fileChanges: [{ path: path.join(root, 'specs', 'gamma', 'plan.md'), count: 1 }] },
+    }, ctx('omp-ast'), { dir: hooks });
+    assert.deepEqual(touchedIn(hooks, 'omp-ast'), ['gamma']);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('the bridge passes edit result paths but not the file contents', () => {
+  const payload = bridge.shapePayload('tool_result', {
+    toolName: 'edit', input: { path: 'a.md' }, content: [], isError: false,
+    details: { path: '/abs/a.md', oldText: 'old body', newText: 'new body', perFileResults: [{ path: '/abs/b.md', oldText: 'x' }], fileChanges: [{ path: '/abs/c.md', count: 2 }] },
+  }, { cwd: '/tmp/project' });
+  assert.deepEqual(payload.tool_response.details, { path: '/abs/a.md', perFileResults: [{ path: '/abs/b.md' }], fileChanges: [{ path: '/abs/c.md' }] });
+  assert.doesNotMatch(JSON.stringify(payload), /old body|new body/);
 });
