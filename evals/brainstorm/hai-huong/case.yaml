@@ -1,0 +1,11 @@
+schema_version: "1.1"
+name: hai-huong
+tags: [brainstorm-baseline]
+runs: 10
+context:
+  scaffold_script: scaffold.sh
+execution:
+  prompt: "/cf:brainstorm Theo ràng buộc trong plans/queue-design.md, nên làm hàng đợi job bằng Postgres LISTEN/NOTIFY + bảng job hay Redis Streams? Không cần hỏi lại, hãy đưa khuyến nghị."
+  max_turns: 30
+  timeout_seconds: 900
+  allowed_tools: [Read, Glob, Grep, Skill, Bash, AskUserQuestion]
