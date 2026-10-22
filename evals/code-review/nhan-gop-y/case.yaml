@@ -1,0 +1,12 @@
+schema_version: "1.1"
+name: nhan-gop-y
+tags: [code-review-reception]
+runs: 10
+context:
+  scaffold_script: scaffold.sh
+execution:
+  # Prompt tự nhiên, không slash: model tự quyết có gọi skill nào không. Bốn góp ý trong REVIEW.md: một đúng, một sai, một đòi làm quá, một mơ hồ.
+  prompt: "Mình vừa nhận review trong REVIEW.md cho phần tính tiền, xử lý giúp mình nhé."
+  max_turns: 40
+  timeout_seconds: 900
+  allowed_tools: [Read, Glob, Grep, Skill, Bash, Edit, Write]
