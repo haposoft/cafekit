@@ -115,7 +115,10 @@ try {
   const runtime = readRuntime(cwd);
 
   // Check CafeKit update in parallel with project detection (async, fail-open).
-  const updateCheckPromise = checkCafeKitUpdate(runtimeDir(cwd)).catch(() => '');
+  // The plugin is updated by its marketplace, so an npx notice would be wrong there.
+  const updateCheckPromise = process.env.CLAUDE_PLUGIN_ROOT
+    ? Promise.resolve('')
+    : checkCafeKitUpdate(runtimeDir(cwd)).catch(() => '');
 
   // Project detection
   const projectType = runtime.project?.type !== 'auto'

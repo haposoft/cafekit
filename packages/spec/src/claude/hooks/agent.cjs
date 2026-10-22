@@ -45,12 +45,15 @@ try {
   const { normalizeHookPayload } = require('./lib/hook-payload.cjs');
   const payload    = normalizeHookPayload(JSON.parse(stdin));
   const root = projectRoot(payload);
-  const runtime = readRuntime(root);
+  // An npx install always has runtime.json; under the plugin it is optional.
+  // Loaded only under the plugin, so npx installs need no extra hook file.
+  const plugin = process.env.CLAUDE_PLUGIN_ROOT ? require('./lib/plugin-options.cjs') : null;
+  const runtime = readRuntime(root) || (plugin ? {} : null);
   if (runtime === null) process.exit(0);
 
   // Language config from runtime.json
   const thinkLang    = runtime.locale?.thinkingLanguage || '';
-  const respondLang  = runtime.locale?.responseLanguage || '';
+  const respondLang  = runtime.locale?.responseLanguage || (plugin ? plugin.pluginOption('response_language') : '');
   // Default thinking to 'en' when only response language is set
   const effectThink  = thinkLang || (respondLang ? 'en' : '');
 

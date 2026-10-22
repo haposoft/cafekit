@@ -86,7 +86,11 @@ try {
   function stateDir(cwd, sessionId, create = true) {
     try {
       let dir;
-      if (fs.existsSync(runtimeDir(cwd))) {
+      const pluginRoot = require('./lib/hook-state-dir.cjs').pluginStateRoot();
+      if (pluginRoot) {
+        const hash = crypto.createHash('md5').update(cwd).digest('hex').slice(0, 12);
+        dir = path.join(pluginRoot, 'session-states', hash);
+      } else if (fs.existsSync(runtimeDir(cwd))) {
         dir = runtimePath(cwd, 'session-state');
       } else {
         const hash = crypto.createHash('md5').update(cwd).digest('hex').slice(0, 12);

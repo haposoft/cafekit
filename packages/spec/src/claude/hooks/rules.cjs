@@ -33,7 +33,10 @@ try {
   const payload   = normalizeHookPayload(JSON.parse(stdin));
   const sessionId = payload.session_id || null;
   const root = projectRoot(payload);
-  const runtime = readRuntime(root);
+  // An npx install always has runtime.json; under the plugin it is optional.
+  // Loaded only under the plugin, so npx installs need no extra hook file.
+  const plugin = process.env.CLAUDE_PLUGIN_ROOT ? require('./lib/plugin-options.cjs') : null;
+  const runtime = readRuntime(root) || (plugin ? {} : null);
   if (runtime === null) process.exit(0);
 
   // No session identity or reservation means no injection. Fail open.
@@ -41,7 +44,7 @@ try {
 
   // Language
   const thinkLang   = runtime.locale?.thinkingLanguage || '';
-  const respondLang = runtime.locale?.responseLanguage || '';
+  const respondLang = runtime.locale?.responseLanguage || (plugin ? plugin.pluginOption('response_language') : '');
   const effectThink = thinkLang || (respondLang ? 'en' : '');
 
   // Paths
