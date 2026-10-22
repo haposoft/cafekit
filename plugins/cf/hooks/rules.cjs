@@ -1,0 +1,86 @@
+#!/usr/bin/env node
+/**
+ * Copyright (c) 2026 Haposoft. MIT License.
+ *
+ * UserPromptSubmit Hook — rules.cjs
+ * Implements: https://docs.anthropic.com/en/docs/claude-code/hooks
+ *
+ * Injects project-specific rules once per session.
+ *
+ * Exit: 0 always (fail-open)
+ */
+
+try {
+  const fs   = require('fs');
+  const path = require('path');
+
+  const { runtimeDirName, runtimeDir, runtimePath } = require('./lib/runtime-dir.cjs');
+  const { projectRoot } = require('./lib/project-root.cjs');
+  const { reserveSession } = require('./lib/rules-reservation.cjs');
+  function readRuntime(cwd) {
+    try {
+      const p = runtimePath(cwd, 'runtime.json');
+      return fs.existsSync(p) ? JSON.parse(fs.readFileSync(p, 'utf8')) : null;
+    } catch { return null; }
+  }
+
+  // ── Main ──────────────────────────────────────────────────────────────────
+
+  const stdin = fs.readFileSync(0, 'utf8').trim();
+  if (!stdin) process.exit(0);
+
+  const { normalizeHookPayload } = require('./lib/hook-payload.cjs');
+  const payload   = normalizeHookPayload(JSON.parse(stdin));
+  const sessionId = payload.session_id || null;
+  const root = projectRoot(payload);
+  // An npx install always has runtime.json; under the plugin it is optional.
+  // Loaded only under the plugin, so npx installs need no extra hook file.
+  const plugin = process.env.CLAUDE_PLUGIN_ROOT ? require('./lib/plugin-options.cjs') : null;
+  const runtime = readRuntime(root) || (plugin ? {} : null);
+  if (runtime === null) process.exit(0);
+
+  // No session identity or reservation means no injection. Fail open.
+  if (reserveSession(sessionId) !== true) process.exit(0);
+
+  // Language
+  const thinkLang   = runtime.locale?.thinkingLanguage || '';
+  const respondLang = runtime.locale?.responseLanguage || (plugin ? plugin.pluginOption('response_language') : '');
+  const effectThink = thinkLang || (respondLang ? 'en' : '');
+
+  // Paths
+  const baseDir   = root;
+  const plansPath = path.join(baseDir, runtime.paths?.plans || 'plans');
+  const docsPath  = path.join(baseDir, runtime.paths?.docs  || 'docs');
+  const specsPath = path.join(baseDir, runtime.paths?.specs || 'specs');
+  const maxLoc    = runtime.docs?.maxLoc || 800;
+
+  const lines = [];
+
+  const hasThink = effectThink && effectThink !== respondLang;
+  if (hasThink || respondLang) {
+    lines.push('## Language');
+    if (hasThink)    lines.push(`- Thinking: Use ${effectThink} for reasoning.`);
+    if (respondLang) lines.push(`- Response: Respond in ${respondLang}.`);
+    lines.push('');
+  }
+
+  lines.push(
+    '## Rules',
+    `- Markdown files: Specs → "${specsPath}/" | Plans → "${plansPath}/" | Docs → "${docsPath}/"`,
+    '- **DO NOT** create markdown files outside of those directories unless explicitly asked.',
+    `- docs.maxLoc: ${maxLoc} lines max per doc file`
+  );
+
+  console.log(lines.join('\n'));
+  process.exit(0);
+
+} catch (e) {
+  try {
+    const fs = require('fs'), p = require('path');
+    const d = require('./lib/hook-state-dir.cjs').hookStateDir();
+    if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
+    fs.appendFileSync(p.join(d, 'hook-log.jsonl'),
+      JSON.stringify({ ts: new Date().toISOString(), hook: 'rules', status: 'crash', error: e.message }) + '\n');
+  } catch (_) {}
+  process.exit(0);
+}

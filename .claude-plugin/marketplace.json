@@ -1,0 +1,15 @@
+{
+  "name": "cafekit",
+  "owner": {
+    "name": "Haposoft",
+    "email": "nghialt@haposoft.com"
+  },
+  "description": "CafeKit workflows for Claude Code: specs, develop, test, review and their runtime gates.",
+  "plugins": [
+    {
+      "name": "cf",
+      "source": "./plugins/cf",
+      "description": "Native spec-driven workflows for Claude Code and Codex CLI. Bundles CafeKit skills, runtime hooks, agents, and installer scaffolding."
+    }
+  ]
+}

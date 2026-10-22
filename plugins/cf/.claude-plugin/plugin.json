@@ -1,0 +1,25 @@
+{
+  "name": "cf",
+  "displayName": "CafeKit",
+  "version": "0.18.2",
+  "description": "Native spec-driven workflows for Claude Code and Codex CLI. Bundles CafeKit skills, runtime hooks, agents, and installer scaffolding.",
+  "author": {
+    "name": "Haposoft",
+    "email": "nghialt@haposoft.com"
+  },
+  "homepage": "https://github.com/haposoft/cafekit#readme",
+  "repository": "https://github.com/haposoft/cafekit",
+  "license": "MIT",
+  "userConfig": {
+    "response_language": {
+      "type": "string",
+      "title": "Response language",
+      "description": "Language CafeKit asks Claude to answer in, such as English or Tiếng Việt. Empty follows the user."
+    },
+    "address": {
+      "type": "string",
+      "title": "How Claude addresses you",
+      "description": "A short name Claude uses for you; when Claude stops using it, the context was compacted. Empty disables it."
+    }
+  }
+}
