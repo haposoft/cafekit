@@ -1270,6 +1270,8 @@ const BRAINSTORM_CONTRACT_CLAUSES = {
   materialChoice: "A material design choice exists only when at least two viable paths would satisfy the contract with meaningfully different consequences.",
   optionCount: "For a material choice, compare 2–3 mechanically distinct viable approaches",
   singlePath: "With one viable path, present it and explain briefly why alternatives would be artificial or fail the contract. Never create strawman options.",
+  optionStress: "For every compared approach, including each one you reject, name the assumption it depends on most, a concrete condition (a threshold, event, or failure) under which it fails first, and what happens to it if that assumption proves wrong;",
+  optionAbandon: "compare what it would cost to abandon each approach, and when evidence leaves a load-bearing assumption open, prefer the one cheapest to abandon.",
   reviewBeforePresent: "Run the internal 4-point review before presentation",
   presentReviewed: "Present the reviewed candidate.",
   criticalDecision: "Before final approval, require a separate explicit section decision when the design changes auth/secrets/privacy, destructive or irreversible behavior or data-loss risk, money/privilege/safety, or production-state mutation.",
@@ -1694,6 +1696,10 @@ function brainstormContractIssues(input) {
     || !normalizedOptions.includes(normalizeMarkdownWhitespace(BRAINSTORM_CONTRACT_CLAUSES.singlePath))) {
     issues.add("option-cardinality");
   }
+  if (!normalizedOptions.includes(normalizeMarkdownWhitespace(BRAINSTORM_CONTRACT_CLAUSES.optionStress))
+    || !normalizedOptions.includes(normalizeMarkdownWhitespace(BRAINSTORM_CONTRACT_CLAUSES.optionAbandon))) {
+    issues.add("option-stress");
+  }
   const reviewIndex = normalizedDelivery.indexOf(normalizeMarkdownWhitespace(BRAINSTORM_CONTRACT_CLAUSES.reviewBeforePresent));
   const presentIndex = normalizedDelivery.indexOf(normalizeMarkdownWhitespace(BRAINSTORM_CONTRACT_CLAUSES.presentReviewed));
   const criticalIndex = normalizedDelivery.indexOf(normalizeMarkdownWhitespace(BRAINSTORM_CONTRACT_CLAUSES.criticalDecision));
@@ -1952,6 +1958,8 @@ async function runBrainstormContractTests() {
       expected: ["handoff-boundary"],
     },
     { name: "one-option-material-choice", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.optionCount, to: "For a material choice, compare at most three approaches", expected: ["option-cardinality"] },
+    { name: "option-stress-removed", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.optionStress, to: "Compare the approaches;", expected: ["option-stress"] },
+    { name: "option-abandon-removed", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.optionAbandon, to: "then recommend one.", expected: ["option-stress"] },
     { name: "single-path-strawman", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.singlePath, to: "With one viable path, invent alternatives for comparison.", expected: ["option-cardinality"] },
     {
       name: "review-moved-outside-delivery",

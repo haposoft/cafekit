@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `cf:git merge-pr <PR>` merges a GitHub pull request only when the request names it: it checks draft, state, mergeability, review decision and required checks first, merges the head it checked with `--match-head-commit` (adding `--auto` while checks are pending and disabling it when it stops), waits for the merge, then watches the target-branch runs for the merge commit and never reports green when no run is seen; red CI is reported and handed to `cf:fix`. Two `evals/git` cases with a fake `gh` measure the order of these steps and the stop at a red gate.
 
+### Changed
+
+- `cf:brainstorm` now asks, for every compared approach including the rejected ones, for the assumption it depends on most, the concrete condition under which it fails first and what happens if that assumption proves wrong, and compares the cost of abandoning each approach, preferring the cheapest to abandon while a load-bearing assumption is open. On a sonnet baseline the three graders for these (`gia-dinh-diem-gay`, `truong-hop-xau`, `re-nhat-de-bo` in `evals/brainstorm/hai-huong`) failed in 10/10, 10/10 and 9/10 answers.
+
 ### Fixed
 
 - omp privacy now covers edit moves and renames, the sloppy edit header, `read` selectors such as `.env:raw`, and file names quoted in `eval` code, and denies an edit whose text names no file.

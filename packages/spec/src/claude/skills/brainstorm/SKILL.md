@@ -82,7 +82,7 @@ When the user delegates a choice ("pick whichever is fastest"), choose from the 
 
 A material design choice exists only when at least two viable paths would satisfy the contract with meaningfully different consequences.
 
-- For a material choice, compare 2–3 mechanically distinct viable approaches by setup cost, runtime complexity, maintenance, UX/DX, compatibility/migration, risk, and time-to-value.
+- For a material choice, compare 2–3 mechanically distinct viable approaches by setup cost, runtime complexity, maintenance, UX/DX, compatibility/migration, risk, and time-to-value. For every compared approach, including each one you reject, name the assumption it depends on most, a concrete condition (a threshold, event, or failure) under which it fails first, and what happens to it if that assumption proves wrong; compare what it would cost to abandon each approach, and when evidence leaves a load-bearing assumption open, prefer the one cheapest to abandon.
 - With one viable path, present it and explain briefly why alternatives would be artificial or fail the contract. Never create strawman options.
 - Recommend the smallest path that satisfies the contract.
 
