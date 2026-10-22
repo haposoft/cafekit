@@ -1,0 +1,12 @@
+schema_version: "1.1"
+name: kiem-suite
+tags: [test-audit]
+runs: 10
+context:
+  scaffold_script: scaffold.sh
+execution:
+  # Dự án thường: bộ test xanh nhưng cấy sẵn năm test không đáng tin và một workflow CI che lỗi. Prompt trung tính, không kể loại lỗi.
+  prompt: "/cf:test Bộ test của dự án này có đáng tin không? Chỉ báo cáo, đừng sửa gì."
+  max_turns: 30
+  timeout_seconds: 900
+  allowed_tools: [Read, Glob, Grep, Skill, Bash, Write, Edit]
