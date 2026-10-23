@@ -1,0 +1,21 @@
+schema_version: "1.1"
+name: smoke
+tags: [adv-smoke]
+runs: 1
+execution:
+  # Một lượt /cf:adv với brief đã đủ và reframing đã được xác nhận ngay trong prompt, nên không cần hỏi lại; chỉ kiểm skill gọi được và lời khuyên ra đủ cấu trúc.
+  prompt: |
+    /cf:adv Mình cần lời khuyên, không cần hỏi thêm vì mọi câu trả lời đã có dưới đây.
+    Bài toán: một CLI nội bộ viết bằng Node cần lưu cấu hình người dùng (thư mục mặc định, mức log, danh sách project gần đây). Đang cân nhắc file JSON trong ~/.config/<tool>/config.json, SQLite, hay biến môi trường.
+    Trả lời phỏng vấn: (1) vì sao làm: hiện mỗi lần chạy phải gõ lại cờ, người dùng than phiền; (2) kết quả mong đợi: chạy `tool config set log-level debug` một lần, các lần sau tự nhớ; (3) ràng buộc: không thêm dependency native, chạy được trên macOS và Linux, đội 2 người bảo trì; (4) không cần đồng bộ giữa máy.
+    Reframing đã được mình xác nhận, không cần hỏi lại:
+    - Problem: CLI không nhớ cấu hình giữa các lần chạy.
+    - Requirements: 1) lưu và đọc 3 khoá trên; 2) `tool config set/get`; 3) không dependency native.
+    - Goals: người dùng không phải gõ lại cờ.
+    - Done means: `tool config set log-level debug` rồi `tool config get log-level` in `debug` ở phiên mới; chạy được trên macOS và Linux; test hiện có vẫn xanh.
+    - Non-goals: đồng bộ giữa máy, giao diện đồ hoạ.
+    - Constraints: Node, không dependency native, 2 người bảo trì.
+    Preview: bỏ qua, mình đã hình dung đủ.
+  max_turns: 20
+  timeout_seconds: 600
+  allowed_tools: [Read, Glob, Grep, Skill, Bash, Write]
