@@ -132,7 +132,7 @@ Verification and review report `PASS | PASS_WITH_WARNINGS | FAIL | BLOCKED`. The
 
 If verification fails: under 3 attempts, return to diagnosis with the new evidence; at 3+ attempts, stop and discuss with the user. Never weaken, delete, or mock a failing assertion to obtain green.
 
-**Finalize.** If API or behavior changed, update only the affected existing docs through the docs flow. Ask the user before committing; use conventional commits.
+**Finalize.** If API or behavior changed, update only the affected existing docs through the docs flow. Ask the user before committing; use conventional commits. Inside a vibe run, the vibe-run exception in the state-sync rule applies.
 
 ## Output Format
 

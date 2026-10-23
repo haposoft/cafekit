@@ -8,7 +8,7 @@
   keeps canonical execution proof in its final inline `## Receipt`.
 - Specs uses three user decisions: GATE-SCOPE for scope, GATE-REVIEW for adversarial findings,
   and GATE-DONE for completion. Planning never starts implementation; implementation
-  requires a new explicit user invocation.
+  requires a new explicit user invocation. A vibe run the user invokes delegates these gates as the state-sync rule's vibe-run exception states.
 - Synchronize only observed task state with surgical edits. Never invent proof,
   readiness, approval, review independence, or completed work.
 - `NO_TESTS` and `0 tests + exit 0` do not pass when the task requires automated tests.

@@ -40,7 +40,7 @@ Before you declare any phase complete or issue a final status report, you must i
 - **Execution authority:** Specs completion never starts implementation. Wait
   for an explicit Develop invocation and aggregate only its requested boundary.
 - **GATE-DONE decision:** Show current proof and limitations. The user, not the
-  manager, decides whether the feature is complete.
+  manager, decides whether the feature is complete. Inside a vibe run, the vibe-run exception in the state-sync rule applies. This agent never holds those decisions.
 - **Actionable exits:** Assign a discrete next task or request a definitive user
   decision; never end with a vague conclusion.
 

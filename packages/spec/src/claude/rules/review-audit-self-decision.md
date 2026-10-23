@@ -16,7 +16,7 @@ Do not silently undo an explicit user decision. This covers the GATE-SCOPE scope
 GATE-REVIEW finding dispositions, and GATE-DONE completion judgement, along with thresholds,
 selected libraries, feature scope, schema shape, pricing, timelines, compliance
 choices, and UX trade-offs. Those gates are defined in `state-sync.md`; this rule
-governs only how a later review may treat them.
+governs only how a later review may treat them. Inside a vibe run, the vibe-run exception in the state-sync rule applies.
 
 If an audit suggests reversing a user decision, present:
 

@@ -18,7 +18,7 @@ Use the CafeKit loop: **Understand -> Plan -> Execute -> Verify -> Sync**.
 - After adversarial review, open GATE-REVIEW and apply only the findings the user accepts
   or revises. Specs never starts implementation.
 - Start implementation only after a new explicit `/cf:develop` invocation,
-  then select one unblocked task at a time.
+  then select one unblocked task at a time. Inside a vibe run, the vibe-run exception in the state-sync rule applies.
 - Extract from the active task:
   - `Status`
   - `Outcome`

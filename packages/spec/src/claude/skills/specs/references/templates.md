@@ -163,6 +163,8 @@ Classify ambiguity in every affected CP row:
 | `decision-needed` | ask the user at GATE-SCOPE/GATE-REVIEW and keep affected tasks blocked |
 | `design-needed` | after user-owned decisions settle, route material competing technical designs through Brainstorm |
 
+Inside a vibe run, the vibe-run exception in the state-sync rule applies.
+
 Do not let examples choose a product outcome: retention of 30 versus 90 days is
 `decision-needed`. Keep examples only until they clarify the decided rule.
 

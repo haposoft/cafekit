@@ -79,7 +79,7 @@ dependencies, acceptance, and a runnable Verification Plan.
 - GATE-SCOPE: the user chooses EXPAND, KEEP, or CUT before the plan is written.
 - GATE-REVIEW: the user accepts, rejects, or revises deduplicated adversarial findings.
 - Specs stops after planning; implementation begins only through a new explicit
-  Develop invocation.
+  Develop invocation. Inside a vibe run, the vibe-run exception in the state-sync rule applies.
 - GATE-DONE: after execution, current receipts and limitations are shown and the user
   decides whether the feature is complete.
 

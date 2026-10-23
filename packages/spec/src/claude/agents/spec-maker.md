@@ -37,7 +37,7 @@ self-check does not replace the fresh review in step 4.
 
 Summarize what exists, the minimum change set, and expansion signals. Ask the
 user to EXPAND, KEEP, or CUT. Record the answer and explicit exclusions. Do not
-repeat scope objections later unless new evidence invalidates the decision.
+repeat scope objections later unless new evidence invalidates the decision. Inside a vibe run, the vibe-run exception in the state-sync rule applies. This agent never holds those decisions.
 
 ### 3. Author the flat packet
 

@@ -21,7 +21,7 @@ them through `@AGENTS.md`.
   GATE-REVIEW after adversarial review. It never starts implementation.
 - Start implementation only through a new explicit `/cf:develop` invocation.
   Execute one unblocked task at a time; each task has exactly one `Status:`
-  field and the controller is its sole state-and-proof writer.
+  field and the controller is its sole state-and-proof writer. Inside a vibe run, the vibe-run exception in the state-sync rule applies.
 - Use `/cf:sync` for surgical updates to observed file state. A done task
   requires a canonical final inline `## Receipt` with the exact command,
   `Exit: 0`, `Verification: PASS`, runtime-derived Base and Head values, and
