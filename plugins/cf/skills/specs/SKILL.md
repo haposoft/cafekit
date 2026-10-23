@@ -9,7 +9,7 @@ metadata:
 ---
 # Specs — process-first planning
 
-Quality comes from a short decision process; honesty comes from evidence. Keep the human at exactly three gates; durable output is editable Markdown.
+Quality comes from a short decision process; honesty comes from evidence. Keep the human at exactly three gates; durable output is editable Markdown. Inside a vibe run, the vibe-run exception in the state-sync rule applies.
 
 ## Step 0 — classify risk before routing
 

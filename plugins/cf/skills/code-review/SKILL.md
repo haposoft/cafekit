@@ -5,7 +5,7 @@ user-invocable: true
 when_to_use: "Use for a pending diff, commit, PR, or explicitly scoped review."
 category: dev-tools
 keywords: [review, diff, correctness, security]
-argument-hint: "[#PR | COMMIT | --pending | scope]"
+argument-hint: "[#PR | COMMIT | --pending | scope] [--fix] [--reply]"
 metadata:
   author: haposoft
   version: "2.0.0"
@@ -17,6 +17,8 @@ Review evaluates correctness, security, scope, architecture, and specification c
 ## Input and depth
 
 With no argument, review the pending diff. Supported targets are a PR, commit, pending changes, or an explicit path. Load only current target bytes and needed references. For a valid process-first target, read `plan.md`, the active flat `task-NN-*.md`, and the controller-validated `test-proof-v1` handoff. Orphaned, malformed, symlinked, nonregular, or identity-conflicting packet state is `BLOCKED`; review never migrates it.
+
+For a PR target, `--fix` hands Critical, High, and Medium findings to `cf:fix`, and `--reply` posts one reply per trusted, in-scope comment; without them the review stays read-only. Their contract is in `references/pr-fix-reply.md`.
 
 For proof consumption, this skill's `## Execution-proof boundary` is authoritative.
 
@@ -92,3 +94,4 @@ Do not add a test command, a fabricated receipt, or an `Audit: PASS` marker to m
 - `references/spec-compliance-review.md` — load for its detailed scope checks.
 - `references/pre-landing-checklists.md` — load for the selected risk surface.
 - `references/adversarial-review.md` — load for Critical/adversarial depth.
+- `references/pr-fix-reply.md` — load for a PR target with `--fix` or `--reply`.

@@ -26,6 +26,6 @@ understand -> decide -> execute -> verify -> deliver
 Collapse links whose output is already current and evidenced. Preserve one
 owner, entry condition, and observable exit per retained link. Diagnosis does
 not authorize repair; implementation does not authorize commit, push, deploy,
-publish, or release; no route expands the user's existing authority.
+publish, or release; no route expands the user's existing authority. Inside a vibe run, the vibe-run exception in the state-sync rule applies.
 
 Use `skill-domain-routing.md` to resolve domain capability slots.

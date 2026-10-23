@@ -12,7 +12,7 @@ metadata:
 ---
 # Develop — implement, prove, synchronize
 
-Implement only the explicitly requested scope. For a process-first feature, `plan.md` and flat tasks are the durable packet; one closeout owner coordinates verification, review, sync, and docs impact without borrowing evidence. Develop never starts merely because Specs finished. The user invokes it.
+Implement only the explicitly requested scope. For a process-first feature, `plan.md` and flat tasks are the durable packet; one closeout owner coordinates verification, review, sync, and docs impact without borrowing evidence. Develop never starts merely because Specs finished. The user invokes it. Inside a vibe run, the vibe-run exception in the state-sync rule applies.
 
 ## Usage and pre-state guard
 

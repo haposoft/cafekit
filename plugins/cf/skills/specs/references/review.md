@@ -86,7 +86,7 @@ Present GATE-REVIEW as a table:
 |---|---|---|---|---|---|---|
 
 The user chooses accept, reject, or revise. Do not apply findings before that
-decision. Record the result in the plan review log.
+decision. Inside a vibe run, the vibe-run exception in the state-sync rule applies. Record the result in the plan review log.
 
 ## Accepted-repair closure
 

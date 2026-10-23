@@ -120,4 +120,4 @@ and the owned diff, and run fresh proof under the same sync-finalize contract.
 After proof and review, classify docs impact as `none`, `minor`, or `major`.
 Update only affected existing docs when impact is not none. Show the user the
 current command evidence and limitations at GATE-DONE; do not infer approval from a
-receipt.
+receipt. Inside a vibe run, the vibe-run exception in the state-sync rule applies.
