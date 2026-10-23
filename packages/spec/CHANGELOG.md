@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `cf:adv` asks one question at a time until you and the agent picture the same outcome, shows the reframed problem with an inline Mermaid preview for you to confirm, then gives honest advice: verdict, what to do and avoid, cheaper paths, trade-offs, unverified claims, a work checklist, success metrics and a handoff brief for `cf:specs`/`cf:develop`. It is invoked only by name, writes only its report under `plans/reports/`, and takes `--html`, `--md`, `--github` (asks before posting), `--yagni`, `--ultra` (five read-only candidates and one verifier) and `--agent` (the interview runs in the new `advisor` agent and is relayed back). The plugin build now ships both.
+
 - `cf:git merge-pr <PR>` merges a GitHub pull request only when the request names it: it checks draft, state, mergeability, review decision and required checks first, merges the head it checked with `--match-head-commit` (adding `--auto` while checks are pending and disabling it when it stops), waits for the merge, then watches the target-branch runs for the merge commit and never reports green when no run is seen; red CI is reported and handed to `cf:fix`. Two `evals/git` cases with a fake `gh` measure the order of these steps and the stop at a red gate.
 
 ### Changed

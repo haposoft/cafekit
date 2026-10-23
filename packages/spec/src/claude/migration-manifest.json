@@ -6,6 +6,7 @@
   },
   "skills": {
     "required": [
+      "adv",
       "agent-browser",
       "ask",
       "brainstorm",
@@ -51,7 +52,8 @@
       "spec-maker.md",
       "ui-ux-designer.md",
       "deployer.md",
-      "strategist.md"
+      "strategist.md",
+      "advisor.md"
     ]
   },
   "scripts": {
