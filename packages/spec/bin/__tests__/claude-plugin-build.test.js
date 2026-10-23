@@ -29,10 +29,10 @@ before(async () => {
 
 after(() => fs.rmSync(work, { recursive: true, force: true }));
 
-test('inventory: 16 in-scope skills, 14 agents, no excluded component', () => {
+test('inventory: 17 in-scope skills, 14 agents, no excluded component', () => {
   const skills = fs.readdirSync(path.join(tree, 'skills')).sort();
   const agents = fs.readdirSync(path.join(tree, 'agents')).map((f) => f.replace(/\.md$/, '')).sort();
-  assert.equal(skills.length, 16);
+  assert.equal(skills.length, 17);
   assert.equal(agents.length, 14);
   for (const name of lib.EXCLUDED_SKILLS) assert.ok(!skills.includes(name), `excluded skill shipped: ${name}`);
   for (const name of lib.EXCLUDED_AGENTS) assert.ok(!agents.includes(name), `excluded agent shipped: ${name}`);
