@@ -2003,3 +2003,82 @@ test('a packet holding both plan.md and spec.json is read as process-first and i
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
+
+// Head is sha256 over one JSON line per path with the file bytes as base64. It is now streamed instead of built, and
+// must stay byte-identical: every receipt already written carries a Head computed the old way.
+function referenceHead(dir) {
+  const git = (...args) => spawnSync('git', ['-C', dir, ...args], { encoding: 'buffer' }).stdout;
+  const split = (buffer) => buffer.toString('utf8').split('\0').filter(Boolean);
+  const raw = split(git('status', '--porcelain=v1', '-z', '--untracked-files=all'));
+  const statuses = new Map();
+  for (let index = 0; index < raw.length; index += 1) {
+    const xy = raw[index].slice(0, 2);
+    const first = raw[index].slice(3);
+    if (xy.includes('R') || xy.includes('C')) {
+      const next = raw[++index];
+      statuses.set(first, { xy, role: 'rename-source', counterpart: next });
+      statuses.set(next, { xy, role: 'rename-target', counterpart: first });
+    } else statuses.set(first, { xy, role: xy === '??' || xy === '!!' ? 'untracked' : 'tracked' });
+  }
+  const paths = [...new Set([...split(git('ls-files', '-z', '--cached')), ...split(git('ls-tree', '-r', '-z', '--name-only', 'HEAD')), ...statuses.keys()])]
+    .filter((relative) => !relative.startsWith('specs/') && !PROVENANCE.RUNTIME_STATE_ROOTS.some((root) => relative === root || relative.startsWith(`${root}/`)))
+    .sort((left, right) => left < right ? -1 : left > right ? 1 : 0);
+  const hash = crypto.createHash('sha256').update('cafekit-provenance\0');
+  for (const relative of paths) {
+    const absolute = path.join(dir, relative);
+    const status = statuses.get(relative) || null;
+    let stat;
+    try { stat = fs.lstatSync(absolute); } catch {
+      hash.update(`${JSON.stringify({ path: relative, type: 'deleted', mode: '0000', status, content: null })}\n`);
+      continue;
+    }
+    const type = stat.isSymbolicLink() ? 'symlink' : stat.isFile() ? 'file' : 'directory';
+    const content = type === 'symlink' ? Buffer.from(fs.readlinkSync(absolute), 'utf8') : type === 'file' ? fs.readFileSync(absolute) : Buffer.alloc(0);
+    const mode = (stat.mode & 0o7777).toString(8).padStart(4, '0');
+    hash.update(`${JSON.stringify({ path: relative, type, mode, status, content: content.toString('base64') })}\n`);
+  }
+  return hash.digest('hex');
+}
+
+function provenanceFixture() {
+  const dir = fs.realpathSync(tmpDir());
+  fs.mkdirSync(path.join(dir, 'specs', FEATURE), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'specs', FEATURE, 'plan.md'), '# Demo plan\n');
+  return dir;
+}
+
+test('Head is unchanged by streaming: files around the 3 MB chunk edge, symlink, rename, deletion, quoted names', () => {
+  const dir = provenanceFixture();
+  try {
+    const chunk = 3 * 1024 * 1024;
+    for (const size of [0, 1, 2, 4, chunk - 1, chunk, chunk + 1, 2 * chunk + 2]) {
+      fs.writeFileSync(path.join(dir, `bin-${size}.dat`), crypto.randomBytes(size));
+    }
+    fs.writeFileSync(path.join(dir, 'tiếng "việt" \\ name.txt'), 'x');
+    fs.writeFileSync(path.join(dir, 'run.sh'), '#!/bin/sh\n');
+    fs.chmodSync(path.join(dir, 'run.sh'), 0o755);
+    fs.writeFileSync(path.join(dir, 'gone.txt'), 'g');
+    fs.writeFileSync(path.join(dir, 'old-name.txt'), 'r');
+    for (const args of [['add', '-A'], ['commit', '-qm', 'files']]) assert.strictEqual(spawnSync('git', ['-C', dir, ...args]).status, 0);
+    fs.unlinkSync(path.join(dir, 'gone.txt'));
+    assert.strictEqual(spawnSync('git', ['-C', dir, 'mv', 'old-name.txt', 'new-name.txt']).status, 0);
+    fs.symlinkSync('run.sh', path.join(dir, 'link'));
+    fs.writeFileSync(path.join(dir, 'untracked.bin'), crypto.randomBytes(1000));
+    assert.strictEqual(workflowRuntimeContext(dir).head, referenceHead(dir));
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('a checkout whose files exceed the longest string V8 can hold still yields a Head', () => {
+  const dir = provenanceFixture();
+  try {
+    // Sparse: 600 MB of zeros on disk costs nothing, but its base64 alone (800M characters) is past V8's string limit.
+    const descriptor = fs.openSync(path.join(dir, 'large-asset.bin'), 'w');
+    fs.ftruncateSync(descriptor, 600 * 1024 * 1024);
+    fs.closeSync(descriptor);
+    assert.match(workflowRuntimeContext(dir).head, /^[0-9a-f]{64}$/);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
