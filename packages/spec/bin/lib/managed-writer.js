@@ -39,23 +39,29 @@ function readPayload(src, transform) {
 /**
  * Plan and (unless dry-run) perform the write for a single managed file.
  *
+ * `content` (a string) replaces `src` for a file the installer generates rather than copies; it is
+ * written as UTF-8 without an executable bit and goes through the same ownership decision.
+ *
  * @returns {{action: string, state: string}}
  *   action: 'created' | 'updated' | 'unchanged' | 'preserved' | 'missing'
  */
 function writeManagedFile(opts) {
-  const { src, dest, platformFolder, ctx, tracker, transform, sourceRoot } = opts;
+  const { src, dest, platformFolder, ctx, tracker, transform, sourceRoot, content } = opts;
+  const generated = typeof content === 'string';
 
-  if (!fs.existsSync(src)) {
-    return { action: 'missing', state: 'absent' };
+  if (!generated) {
+    if (!fs.existsSync(src)) {
+      return { action: 'missing', state: 'absent' };
+    }
+    const sourceStat = fs.lstatSync(src);
+    if (sourceStat.isSymbolicLink() || !sourceStat.isFile()) {
+      throw new Error(`Managed source must be a non-symlink regular file: ${src}`);
+    }
+    if (sourceRoot) assertNoSymlinkPath(src, sourceRoot);
   }
-  const sourceStat = fs.lstatSync(src);
-  if (sourceStat.isSymbolicLink() || !sourceStat.isFile()) {
-    throw new Error(`Managed source must be a non-symlink regular file: ${src}`);
-  }
-  if (sourceRoot) assertNoSymlinkPath(src, sourceRoot);
   assertNoSymlinkPath(dest);
 
-  const { data, utf8 } = readPayload(src, transform);
+  const { data, utf8 } = generated ? { data: content, utf8: true } : readPayload(src, transform);
   const payloadHash = manifest.sha256(data);
   // Ownership manifest for this platform (read at run start), NOT the migration manifest.
   const ownership = (ctx.ownership && ctx.ownership[platformFolder]) || { files: {} };
@@ -116,7 +122,7 @@ function writeManagedFile(opts) {
     } else {
       fs.writeFileSync(dest, data);
     }
-    if (process.platform !== 'win32') {
+    if (process.platform !== 'win32' && !generated) {
       const sourceMode = fs.statSync(src).mode;
       const destinationMode = fs.statSync(dest).mode;
       fs.chmodSync(dest, (destinationMode & ~0o111) | (sourceMode & 0o111));

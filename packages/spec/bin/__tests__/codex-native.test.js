@@ -2326,7 +2326,10 @@ test('Codex installed Specs and spec-maker reject adaptive coverage mutations', 
     );
     assert.equal(catalog.status, 0, catalog.stderr);
     const catalogData = JSON.parse(catalog.stdout);
-    assert.equal(catalogData.total, skillNames.length);
+    // Explicit-only skills run only when named, so the catalog leaves them out of automatic routing.
+    const explicitOnly = skillFiles.filter((file) => /^disable-model-invocation:\s*true\s*$/m.test(fs.readFileSync(file, 'utf8')));
+    assert.ok(explicitOnly.length >= 1);
+    assert.equal(catalogData.total, skillNames.length - explicitOnly.length);
     assert.equal(
       catalogData.root,
       fs.realpathSync(path.join(root, '.agents', 'skills'))

@@ -16,6 +16,7 @@ const {
   getCopyOptions
 } = require('../lib/context');
 const { writeManagedFile, copyManagedTree } = require('../lib/managed-writer');
+const { hashFile } = require('../lib/manifest');
 const { report, treeAction } = require('./report');
 const {
   codexAgentName,
@@ -23,6 +24,43 @@ const {
 } = require('../lib/codex-install');
 
 const SRC = path.join(__dirname, '../../src');
+
+// Codex ignores `disable-model-invocation`; its explicit-only switch is this file beside SKILL.md.
+const CODEX_POLICY_FILE = path.join('agents', 'openai.yaml');
+const CODEX_EXPLICIT_ONLY_POLICY = 'policy:\n  allow_implicit_invocation: false\n';
+
+function isExplicitOnlySkill(skillSource) {
+  const skillFile = path.join(skillSource, 'SKILL.md');
+  if (!fs.existsSync(skillFile)) return false;
+  const frontmatter = fs.readFileSync(skillFile, 'utf8').match(/^---\r?\n([\s\S]*?)\r?\n---/);
+  // Quoted or bare, as the catalog parser reads it: a skill the catalog hides must also get the policy.
+  return Boolean(frontmatter) && /^disable-model-invocation:\s*(["']?)true\1\s*$/m.test(frontmatter[1]);
+}
+
+/**
+ * Keep a Codex skill's policy file in step with its source: write it (owned) for an explicit-only
+ * skill, and remove an owned, unmodified copy once the skill is no longer explicit-only. A copy the
+ * user wrote or edited is left alone.
+ */
+function syncCodexInvocationPolicy({ skillSource, skillDest, platformFolder, ctx, tracker }) {
+  const dest = path.join(skillDest, CODEX_POLICY_FILE);
+  if (isExplicitOnlySkill(skillSource)) {
+    const { action } = writeManagedFile({ dest, platformFolder, ctx, tracker, content: CODEX_EXPLICIT_ONLY_POLICY });
+    report(ctx, action, `skill policy: ${path.basename(skillDest)}`);
+    return;
+  }
+  if (!fs.existsSync(dest) || !fs.lstatSync(dest).isFile()) return;
+  const key = tracker.keyFor(dest);
+  const owned = ctx.ownership?.[platformFolder]?.files?.[key]?.sha256;
+  if (!owned || owned !== hashFile(dest)) return;
+  if (!ctx.dryRun) {
+    fs.rmSync(dest, { force: true });
+    tracker.prune(key);
+    const agentsDir = path.dirname(dest);
+    if (fs.readdirSync(agentsDir).length === 0) fs.rmdirSync(agentsDir);
+  }
+  ctx.ui.detail(`  ↻ ${ctx.dryRun ? '[dry-run] ' : ''}Removed skill policy: ${dest}`);
+}
 
 /**
  * Spec command files installed for a platform. Claude ships spec-* commands.
@@ -132,6 +170,9 @@ function copyPlatformFiles(ctx, platformKey) {
           });
           ctx.results.installedSkills++;
           report(ctx, treeAction(agg), `Skill: ${skillName}`);
+          if (platformKey === 'codex') {
+            syncCodexInvocationPolicy({ skillSource, skillDest, platformFolder, ctx, tracker });
+          }
         } else {
           report(ctx, 'missing', `skill: ${skillName}`);
         }
