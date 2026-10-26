@@ -118,7 +118,7 @@ function buildHooks() {
 
 // The build wipes its output first, so refuse any directory that is neither
 // empty nor a previous cf build: a mistyped --out must not delete a project.
-function clearOutput(outDir) {
+export function clearOutput(outDir, pluginName = PLUGIN_NAME, manifestDir = ".claude-plugin") {
   let entries;
   try {
     entries = readdirSync(outDir);
@@ -128,11 +128,11 @@ function clearOutput(outDir) {
   if (entries.length === 0) return;
   let previous = null;
   try {
-    previous = readJson(join(outDir, ".claude-plugin/plugin.json"));
+    previous = readJson(join(outDir, manifestDir, "plugin.json"));
   } catch {
     // not a plugin tree
   }
-  if (previous?.name !== PLUGIN_NAME) throw new Error(`Refusing to replace ${outDir}: it is not empty and not a ${PLUGIN_NAME} plugin build`);
+  if (previous?.name !== pluginName) throw new Error(`Refusing to replace ${outDir}: it is not empty and not a ${pluginName} plugin build`);
   rmSync(outDir, { recursive: true, force: true });
 }
 

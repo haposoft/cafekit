@@ -113,7 +113,8 @@ plans/*
 .cafekit-backup/
 .cafekit.lock
 .claude
-.agents
+.agents/*
+!.agents/plugins/
 .codex
 .opencode/
 .omp/

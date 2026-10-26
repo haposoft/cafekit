@@ -4,7 +4,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
-const { atomicWrite } = require('./hook-context.cjs');
+const { atomicWrite, pluginRoot, pluginProjectDir } = require('./hook-context.cjs');
 
 const MAX_ARCHIVES = 5;
 const MAX_AGENTS = 3;
@@ -18,9 +18,10 @@ function sessionKey(sessionId) {
 
 function stateDir(projectRoot, sessionId) {
   const key = sessionKey(sessionId);
-  return key
-    ? path.join(projectRoot, '.codex', 'session-state', key)
-    : null;
+  if (!key) return null;
+  return pluginRoot()
+    ? path.join(pluginProjectDir(projectRoot, 'session-state'), key)
+    : path.join(projectRoot, '.codex', 'session-state', key);
 }
 
 function acquireLock(dir) {

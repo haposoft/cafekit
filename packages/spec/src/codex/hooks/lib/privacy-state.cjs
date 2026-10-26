@@ -5,6 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const PATH_SAFETY = require('./runtime-path-safety.cjs');
 const { displayNames } = require('./privacy-paths.cjs');
+const { pluginRoot, pluginProjectDir } = require('./hook-context.cjs');
 
 // Codex cannot raise an interactive prompt from a hook -- PreToolUse honours no
 // "ask" decision -- so approval costs a full round trip: the agent has to relay
@@ -16,7 +17,18 @@ const APPROVAL_PREFIX = 'APPROVE CAFEKIT PRIVACY ';
 function stateDir(projectRoot) {
   return path.join(projectRoot, '.codex', 'hooks', '.privacy');
 }
+// Under the plugin, approvals live in the plugin state root, one directory per
+// repository; pluginProjectDir throws for an unsafe root so callers fail closed.
+function pluginStateDir(projectRoot, create) {
+  const dir = pluginProjectDir(PATH_SAFETY.canonicalDirectory(projectRoot, 'privacy project root'), 'privacy');
+  if (create) fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
+  else if (!fs.existsSync(dir)) return null;
+  const stat = fs.lstatSync(dir);
+  if (!stat.isDirectory() || stat.isSymbolicLink()) throw new Error('privacy state must be a regular directory');
+  return dir;
+}
 function secureStateDir(projectRoot, create = false) {
+  if (pluginRoot()) return pluginStateDir(projectRoot, create);
   const root = PATH_SAFETY.canonicalDirectory(projectRoot, 'privacy project root');
   const hooks = path.join(root, '.codex', 'hooks');
   try { PATH_SAFETY.assertComponentPath(root, hooks); }

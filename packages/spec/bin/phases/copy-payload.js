@@ -262,4 +262,11 @@ function copyPlatformFiles(ctx, platformKey) {
   return ctx;
 }
 
-module.exports = { copyPlatformFiles, getPlatformSpecFiles };
+module.exports = {
+  copyPlatformFiles,
+  getPlatformSpecFiles,
+  // Shared with the Codex plugin build so plugin and npx skills carry the same policy.
+  isExplicitOnlySkill,
+  CODEX_POLICY_FILE,
+  CODEX_EXPLICIT_ONLY_POLICY
+};

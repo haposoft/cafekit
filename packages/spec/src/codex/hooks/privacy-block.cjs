@@ -13,14 +13,15 @@ function deny(reason) {
 
 try {
   const { APPROVAL_PREFIX, createPending, hasGrant } = require('./lib/privacy-state.cjs');
-  const { PROJECT_ROOT, readRuntime, resolveSessionCwd, readPayload } = require('./lib/hook-context.cjs');
+  const { pluginRoot, resolveProjectRoot, readRuntime, resolveSessionCwd, readPayload } = require('./lib/hook-context.cjs');
   const { sensitivePaths } = require('./lib/privacy-paths.cjs');
   const data = readPayload();
   if (!data) process.exit(0);
-  const projectRoot = PROJECT_ROOT;
-  const runtime = readRuntime(PROJECT_ROOT);
+  const projectRoot = resolveProjectRoot(data);
+  const runtime = readRuntime(projectRoot);
   const sessionCwd = resolveSessionCwd(data);
-  if (runtime.privacyBlock === false) process.exit(0);
+  // A plugin is trusted once for every repository, so a repository cannot switch it off.
+  if (runtime.privacyBlock === false && !pluginRoot()) process.exit(0);
 
   const filePaths = sensitivePaths(data.tool_name || '', data.tool_input || {}, sessionCwd);
   const effectivePaths = filePaths;

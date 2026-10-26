@@ -12,10 +12,10 @@ function context(message) {
 
 let projectRoot, sessionId, state;
 try {
-  const { PROJECT_ROOT, readPayload } = require('./lib/hook-context.cjs');
+  const { resolveProjectRoot, readPayload } = require('./lib/hook-context.cjs');
   const data = readPayload();
   if (!data) process.exit(0);
-  projectRoot = PROJECT_ROOT;
+  projectRoot = resolveProjectRoot(data);
   sessionId = data.session_id;
   let claimed = { ok: false, requestIds: [] };
   try {

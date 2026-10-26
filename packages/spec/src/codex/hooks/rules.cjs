@@ -3,7 +3,8 @@
 const fs = require('fs');
 const path = require('path');
 const {
-  PROJECT_ROOT,
+  pluginRoot,
+  resolveProjectRoot,
   logCrash,
   readPayload,
   resolveProjectPath
@@ -20,7 +21,8 @@ const { reserveSession } = require('./lib/rules-reservation.cjs');
 function readCodingStyle(projectRoot, level) {
   if (!Number.isInteger(level) || level < 0 || level > 5) return null;
   try {
-    const dir = path.join(projectRoot, '.codex', 'output-styles');
+    // The plugin ships the styles in its own tree; an npx install copies them into .codex.
+    const dir = pluginRoot() ? path.join(pluginRoot(), 'output-styles') : path.join(projectRoot, '.codex', 'output-styles');
     const match = fs.readdirSync(dir).find((name) => name.startsWith(`coding-level-${level}-`));
     if (!match) return null;
     const raw = fs.readFileSync(path.join(dir, match), 'utf8');
@@ -44,13 +46,17 @@ function readRuntime(projectRoot) {
 try {
   const payload = readPayload();
   if (!payload) process.exit(0);
-  const projectRoot = PROJECT_ROOT;
-  const runtime = readRuntime(projectRoot);
+  const projectRoot = resolveProjectRoot(payload);
+  // An npx install always writes runtime.json; under the plugin it is optional.
+  const runtime = readRuntime(projectRoot) || (pluginRoot() ? {} : null);
   if (runtime === null) process.exit(0);
   if (reserveSession(projectRoot, payload.session_id) !== true) process.exit(0);
 
-  const respondLang = runtime.locale?.responseLanguage || '';
-  const thinkLang = runtime.locale?.thinkingLanguage || (respondLang ? 'en' : '');
+  // Under the plugin a cloned repository's runtime.json reaches model context, so its
+  // locale strings are reduced to one short plain line; npx keeps them as written.
+  const clean = pluginRoot() ? require('./lib/plugin-options.cjs').sanitizeLine : (value) => value;
+  const respondLang = clean(runtime.locale?.responseLanguage || '');
+  const thinkLang = clean(runtime.locale?.thinkingLanguage || '') || (respondLang ? 'en' : '');
   const plansPath = resolveProjectPath(projectRoot, runtime.paths?.plans, 'plans');
   const docsPath = resolveProjectPath(projectRoot, runtime.paths?.docs, 'docs');
   const specsPath = resolveProjectPath(projectRoot, runtime.paths?.specs, 'specs');

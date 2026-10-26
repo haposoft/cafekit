@@ -2,7 +2,8 @@
 'use strict';
 
 const {
-  PROJECT_ROOT,
+  pluginRoot,
+  resolveProjectRoot,
   logCrash,
   readPayload,
   readRuntime,
@@ -22,10 +23,12 @@ try {
   const { BLOCKED_DIRS, inspectInput } = require('./lib/inspect-paths.cjs');
   const payload = readPayload();
   if (!payload) process.exit(0);
-  const projectRoot = PROJECT_ROOT;
-  const runtime = readRuntime(PROJECT_ROOT);
+  const projectRoot = resolveProjectRoot(payload);
+  const runtime = readRuntime(projectRoot);
   const sessionCwd = resolveSessionCwd(payload);
-  if (runtime.scout?.enabled === false || runtime.inspect?.enabled === false) process.exit(0);
+  // A plugin is trusted once for every repository, so a repository cannot switch it off.
+  const disabled = runtime.scout?.enabled === false || runtime.inspect?.enabled === false;
+  if (disabled && !pluginRoot()) process.exit(0);
 
   const result = inspectInput(payload.tool_name || '', payload.tool_input || {}, { cwd: sessionCwd, projectRoot });
   if (result.broadGlob) {

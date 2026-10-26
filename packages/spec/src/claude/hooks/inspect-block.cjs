@@ -60,7 +60,9 @@ function denyWithReason(reason) {
   const root      = projectRoot(data);
   const runtime   = readRuntime(root);
 
-  if (runtime.scout?.enabled === false || runtime.inspect?.enabled === false) process.exit(0);
+  // A plugin is trusted once for every repository, so a repository cannot switch it off.
+  const disabled = runtime.scout?.enabled === false || runtime.inspect?.enabled === false;
+  if (disabled && !require('./lib/plugin-options.cjs').isPlugin()) process.exit(0);
 
   const result = inspectInput(toolName, toolInput, {
     cwd, projectRoot: root

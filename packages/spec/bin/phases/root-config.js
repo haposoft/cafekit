@@ -17,11 +17,14 @@
 const fs = require('fs');
 const path = require('path');
 
-/** True if `lines` already carries `pattern` with or without a trailing slash. */
+/**
+ * True if `lines` already carries `pattern` with or without a trailing slash, or as
+ * `dir/*`, which ignores the same files while letting a later `!dir/sub/` re-include one.
+ */
 function hasPattern(lines, pattern) {
   const bare = pattern.replace(/\/$/, '');
   const withSlash = bare + '/';
-  return lines.includes(pattern) || lines.includes(bare) || lines.includes(withSlash);
+  return lines.includes(pattern) || lines.includes(bare) || lines.includes(withSlash) || lines.includes(bare + '/*');
 }
 
 const PLAN_PATTERNS = new Set([

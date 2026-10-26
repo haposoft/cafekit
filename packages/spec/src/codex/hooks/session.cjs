@@ -6,7 +6,8 @@ const path = require('path');
 const crypto = require('crypto');
 const { execFileSync } = require('child_process');
 const {
-  PROJECT_ROOT,
+  pluginRoot,
+  resolveProjectRoot,
   hookStateDir,
   readRuntime,
   resolveSessionCwd,
@@ -100,21 +101,31 @@ try {
   // Invalidate this session before runtime configuration can interrupt startup.
   const sessionId = [payload.session_id, payload.sessionId, payload.sessionID, payload.session?.id]
     .find((value) => typeof value === 'string' && value.trim());
-  clearState(PROJECT_ROOT, sessionId);
+  const projectRoot = resolveProjectRoot(payload, {
+    onStandDown: () => process.stdout.write(
+      'CafeKit plugin is idle in this repository: its npx install (.codex/hooks.json) runs the CafeKit hooks here, ' +
+      'and the CafeKit skills appear twice ($cf-* from .agents/skills and from the plugin). ' +
+      'The privacy, inspect and completion gates run only if those npx hooks are trusted in /hooks; ' +
+      'trust them there, or remove the npx install from this repository to use the plugin.\n'
+    )
+  });
+  clearState(projectRoot, sessionId);
   let updateNotice = '';
-  try {
-    const { checkCafeKitUpdate } = require('./lib/update-check.cjs');
-    updateNotice = await checkCafeKitUpdate(path.join(PROJECT_ROOT, '.codex'));
-  } catch { /* an update failure must not interrupt session startup */ }
+  // The plugin is updated through its marketplace, so an npx update notice would be wrong there.
+  if (!pluginRoot()) {
+    try {
+      const { checkCafeKitUpdate } = require('./lib/update-check.cjs');
+      updateNotice = await checkCafeKitUpdate(path.join(projectRoot, '.codex'));
+    } catch { /* an update failure must not interrupt session startup */ }
+  }
   if (payload.source === 'compact') {
-    clearSessionReservation(PROJECT_ROOT, sessionId);
+    clearSessionReservation(projectRoot, sessionId);
     process.stdout.write(
       'Session compacted. Pending confirmations may have been lost. Pending CafeKit privacy approvals were invalidated; request fresh user approval before continuing.\n'
     );
-    printCompactAnchors(PROJECT_ROOT, sessionId);
+    printCompactAnchors(projectRoot, sessionId);
   }
-  const projectRoot = PROJECT_ROOT;
-  const runtime = readRuntime(PROJECT_ROOT);
+  const runtime = readRuntime(projectRoot);
   const sessionCwd = resolveSessionCwd(payload);
   const pkg = readPackage(projectRoot);
   const configured = runtime.project || {};

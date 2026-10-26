@@ -18,6 +18,88 @@ const PROJECT_ROOT = (() => {
   }
 })();
 
+/**
+ * Plugin root when this hook runs from the Codex plugin tree, else null.
+ *
+ * Codex exports PLUGIN_ROOT (and CLAUDE_PLUGIN_ROOT) to plugin hooks. An npx-installed
+ * hook can inherit those variables from a parent process, so the plugin is recognized
+ * only when this file really lives under that root.
+ */
+function pluginRoot() {
+  const declared = process.env.PLUGIN_ROOT || process.env.CLAUDE_PLUGIN_ROOT;
+  if (!declared) return null;
+  try {
+    const root = fs.realpathSync(declared);
+    const self = fs.realpathSync(path.resolve(__dirname, '..', '..'));
+    return self === root ? root : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Where the plugin keeps state for every repository: PLUGIN_DATA, or a per-user temp
+ * directory. The temp directory must be a real 0700 directory this user owns; anything
+ * else throws, so privacy decisions fail closed instead of trusting a planted path.
+ */
+function pluginStateRoot() {
+  const data = process.env.PLUGIN_DATA || process.env.CLAUDE_PLUGIN_DATA;
+  if (data && path.isAbsolute(data)) {
+    fs.mkdirSync(data, { recursive: true, mode: 0o700 });
+    return fs.realpathSync(data);
+  }
+  const uid = typeof process.getuid === 'function' ? process.getuid() : 'user';
+  const dir = path.join(require('os').tmpdir(), `cafekit-codex-plugin-${uid}`);
+  try { fs.mkdirSync(dir, { mode: 0o700 }); } catch (error) { if (error.code !== 'EEXIST') throw error; }
+  const stat = fs.lstatSync(dir);
+  const owned = typeof process.getuid !== 'function' || stat.uid === process.getuid();
+  if (!stat.isDirectory() || stat.isSymbolicLink() || !owned || (stat.mode & 0o077) !== 0) {
+    throw new Error(`unsafe CafeKit plugin state directory: ${dir}`);
+  }
+  return dir;
+}
+
+/** Per-repository state directory under the plugin state root. */
+function pluginProjectDir(projectRoot, name) {
+  const key = crypto.createHash('sha256').update(String(projectRoot)).digest('hex').slice(0, 16);
+  return path.join(pluginStateRoot(), 'projects', key, name);
+}
+
+/**
+ * True when the repository runs CafeKit's own npx-installed Codex hooks: its
+ * .codex/hooks.json parses, and every CafeKit launcher in it names a hook script that
+ * exists inside this repository. A committed hooks.json from another machine, or a
+ * planted file with no real hooks behind it, must not switch the plugin's gates off.
+ */
+function hasProjectCafekitHooks(projectRoot) {
+  try {
+    const config = JSON.parse(fs.readFileSync(path.join(projectRoot, '.codex', 'hooks.json'), 'utf8'));
+    const hooksDir = fs.realpathSync(path.join(projectRoot, '.codex', 'hooks'));
+    const commands = Object.values(config?.hooks || {}).flat()
+      .flatMap((group) => (Array.isArray(group?.hooks) ? group.hooks : []))
+      .map((handler) => String(handler?.command || ''));
+    const scripts = commands
+      .map((command) => command.match(/'([^']*[/\\]\.codex[/\\]hooks[/\\][a-z0-9-]+\.cjs)'\s*$/)?.[1])
+      .filter(Boolean);
+    if (scripts.length === 0) return false;
+    // The npx launcher names its script by the exact path <realpath(root)>/.codex/hooks.
+    // Anything else (a relative path, `..`, a symlinked alias, /proc/self/cwd) can
+    // resolve against whatever cwd the hook runs in, so it never counts.
+    const expectedDir = path.join(fs.realpathSync(projectRoot), '.codex', 'hooks');
+    return scripts.every((script) => {
+      if (!path.isAbsolute(script) || path.dirname(script) !== expectedDir) return false;
+      try {
+        const real = fs.realpathSync(script);
+        return path.dirname(real) === hooksDir && fs.statSync(real).isFile();
+      } catch {
+        return false;
+      }
+    });
+  } catch {
+    return false;
+  }
+}
+
 function readPayload() {
   const raw = fs.readFileSync(0, 'utf8').trim();
   if (!raw) throw new Error('hook payload is empty');
@@ -38,6 +120,33 @@ function resolveSessionCwd(payload) {
   } catch {
     return resolved;
   }
+}
+
+function gitTopLevel(cwd) {
+  try {
+    const out = require('child_process').execFileSync('git', ['rev-parse', '--show-toplevel'], {
+      cwd, encoding: 'utf8', timeout: 3000, stdio: ['ignore', 'pipe', 'ignore']
+    }).trim();
+    return out ? fs.realpathSync(out) : cwd;
+  } catch {
+    return cwd;
+  }
+}
+
+/**
+ * The repository a hook acts on. An npx install sits inside it (PROJECT_ROOT); the plugin
+ * lives in a shared cache, so it takes the repository from the payload's cwd. Beside an
+ * active npx install the plugin stands down, so one set of gates and one privacy store
+ * decide; `onStandDown` lets SessionStart say so once.
+ */
+function resolveProjectRoot(payload, { onStandDown } = {}) {
+  if (!pluginRoot()) return PROJECT_ROOT;
+  const root = gitTopLevel(resolveSessionCwd(payload));
+  if (hasProjectCafekitHooks(root)) {
+    if (typeof onStandDown === 'function') onStandDown(root);
+    process.exit(0);
+  }
+  return root;
 }
 
 function readRuntime(projectRoot = PROJECT_ROOT) {
@@ -84,10 +193,11 @@ function assertConfiguredSpecsPath(projectRoot, runtime) {
 }
 
 function getHookContext(payload) {
-  const runtime = readRuntime(PROJECT_ROOT);
-  assertConfiguredSpecsPath(PROJECT_ROOT, runtime);
+  const projectRoot = resolveProjectRoot(payload);
+  const runtime = readRuntime(projectRoot);
+  assertConfiguredSpecsPath(projectRoot, runtime);
   return {
-    projectRoot: PROJECT_ROOT,
+    projectRoot,
     sessionCwd: resolveSessionCwd(payload),
     runtime
   };
@@ -123,6 +233,7 @@ function atomicWrite(file, content, mode = 0o600) {
  * `.codex` at any depth. Source-tree runs therefore write to a temp directory.
  */
 function hookStateDir(projectRoot) {
+  if (pluginRoot()) return projectRoot ? pluginProjectDir(projectRoot, 'logs') : path.join(pluginStateRoot(), 'logs');
   const root = projectRoot || PROJECT_ROOT;
   return String(root).includes(`${path.sep}packages${path.sep}spec${path.sep}src`)
     ? path.join(require('os').tmpdir(), 'cafekit-hook-logs', 'codex')
@@ -131,7 +242,7 @@ function hookStateDir(projectRoot) {
 
 function logCrash(hook, error) {
   try {
-    const dir = hookStateDir(PROJECT_ROOT);
+    const dir = pluginRoot() ? hookStateDir(null) : hookStateDir(PROJECT_ROOT);
     fs.mkdirSync(dir, { recursive: true });
     fs.appendFileSync(
       path.join(dir, 'hook-log.jsonl'),
@@ -149,6 +260,9 @@ function logCrash(hook, error) {
 
 module.exports = {
   PROJECT_ROOT,
+  pluginRoot,
+  pluginProjectDir,
+  resolveProjectRoot,
   atomicWrite,
   getHookContext,
   hookStateDir,

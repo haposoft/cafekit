@@ -151,6 +151,41 @@ function windowsHookCommand(script, projectRoot) {
   return WINDOWS_LAUNCHER + encoded;
 }
 
+// The Codex plugin cannot carry absolute paths: its root moves on every update and
+// differs per machine. Codex exports PLUGIN_ROOT to plugin hooks, so both launchers
+// resolve it at run time, and the PATH floor lists only machine-independent aliases.
+const PLUGIN_NODE_FALLBACKS = ['/usr/local/bin', '/opt/homebrew/bin'];
+
+/** Launchers for one hook script inside the Codex plugin tree. */
+function pluginHookCommands(script) {
+  if (!/^[a-z0-9-]+\.cjs$/.test(script)) throw new Error(`Unsupported Codex plugin hook script: ${script}`);
+  const fallbacks = PLUGIN_NODE_FALLBACKS.map((dir) => `:${shellQuote(dir)}`).join('');
+  return {
+    command: `PATH="$PATH"${fallbacks} node "\${PLUGIN_ROOT}/hooks/${script}"`,
+    commandWindows: `node -e "process.argv[1]=require('path').join(process.env.PLUGIN_ROOT,'hooks','${script}');require('module').runMain()"`,
+  };
+}
+
+/** The plugin's hooks.json: the managed template with every launcher rebound to PLUGIN_ROOT. */
+function pluginHooksConfig(template) {
+  const hooks = {};
+  for (const [eventName, groups] of Object.entries(template.hooks || {})) {
+    hooks[eventName] = groups.map((group) => ({
+      ...group,
+      hooks: group.hooks.map((handler) => {
+        const match = String(handler.command).match(HOOK_COMMAND_TEMPLATE);
+        if (!match) throw new Error(`Unsupported Codex hook command: ${handler.command}`);
+        return { ...handler, ...pluginHookCommands(match[1]) };
+      }),
+    }));
+  }
+  return {
+    ...template,
+    description: 'CafeKit lifecycle hooks for the Codex plugin. Review and trust them with /hooks before they run.',
+    hooks,
+  };
+}
+
 /** Rewrite a managed template handler into absolute launchers for both platforms. */
 function materializeHookCommands(handler, projectRoot) {
   const next = { ...handler };
@@ -321,4 +356,6 @@ module.exports = {
   pruneObsoleteCodexHooks,
   repairLegacyCodexLaunchers,
   hookScript,
+  pluginHookCommands,
+  pluginHooksConfig,
 };
