@@ -315,3 +315,187 @@ for (const host of ['claude', 'codex']) {
     skip: typeof process.getuid === 'function' && process.getuid() === 0,
   });
 }
+
+// Dynamic shell: a secret reached through a glob, a variable assigned in the same command, a sensitive name next to an
+// unresolved expansion, a literal inside $(...) or backticks, a decoder feeding xargs or a shell, or xargs/find -exec fed a
+// sensitive name. Pure indirection (`cat $FILE`) and ordinary globs stay quiet: every question here is a round trip
+// through an approval prompt.
+function dynamicFixture(host) {
+  const f = fixture(host);
+  fs.writeFileSync(path.join(f.root, '.env'), 'SECRET=1\n');
+  fs.mkdirSync(path.join(f.root, 'sub'));
+  fs.writeFileSync(path.join(f.root, 'sub/.env'), 'SECRET=2\n');
+  fs.writeFileSync(path.join(f.root, 'notes.txt'), 'n\n');
+  fs.writeFileSync(path.join(f.root, 'a.txt'), 'a\n');
+  fs.mkdirSync(path.join(f.root, 'pkg'));
+  fs.writeFileSync(path.join(f.root, 'pkg/package.json'), '{}\n');
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'ck-privacy-home-'));
+  roots.push(home);
+  fs.mkdirSync(path.join(home, '.ssh'));
+  fs.writeFileSync(path.join(home, '.ssh/id_rsa'), 'k\n');
+  fs.writeFileSync(path.join(home, 'notes.txt'), 'n\n');
+  return { ...f, home };
+}
+const invokeHome = (f, command) => invoke(f, 'Bash', { command }, { env: { ...process.env, HOME: f.home, CLAUDE_PROJECT_DIR: '' } });
+
+const dynamicAsk = [
+  'cat .e*', 'cat ./.e*', 'cat sub/.e*', 'cat */.e*', 'cat ~/.ssh/id_*', 'cat ~/.ssh/*',
+  'cd sub && cat .e*', 'f=.env; cat $f', 'export F=.env && cat "$F"', 'declare f=.env; cat $f',
+  'cat ${f:-.env}', 'less "$HOME/.env"', 'cat "$X/.env"', 'cat $(echo .env)', 'cat `echo .env`',
+  'cat .{env,txt}', 'cd "$D" && cat .e*', 'cd "$D" && cat *.pem', 'echo LmVudg== | base64 -d | xargs cat', 'printf .env | xargs cat',
+  'find . -name .env -exec cat {} \;', "find . -name '.e*' | xargs cat", 'base64 -d <<< Y2F0IC5lbnY= | sh',
+];
+const dynamicQuiet = [
+  'wc -l *.txt', 'ls *.txt', 'ls */package.json', 'wc -l */*.txt', 'du -sh */', 'cat $FILE', 'f=.env cat $f',
+  'echo $PATH', 'cd "$D" && wc -l *.txt', 'cat "$HOME/notes.txt"', 'git ls-files | xargs wc -l',
+  "find . -name '*.ts' -exec wc -l {} +", 'echo hi | base64', 'cat README.md $EXTRA', 'cat a.txt notes.txt | sort',
+  // Found while replaying real session commands: a class that is not a valid regular expression must not crash the hook.
+  "printf '[[validator-multi-contract-gap]]' | xargs cat", 'cat [z-a]*', 'cat [[x]',
+  // Replaying real session commands: a generic glob in a directory the hook cannot read is not a secret's name.
+  'cd "$D" && cat *', 'cd "$D" && cat *.json *.yaml', "printf '*' | xargs grep x",
+];
+
+for (const host of ['claude', 'codex']) {
+  const f = dynamicFixture(host);
+  for (const command of dynamicAsk) {
+    test(`privacy-paths ${host} dynamic shell asks: ${command}`, () => {
+      assert.equal(invokeHome(f, command)?.permissionDecision, host === 'claude' ? 'ask' : 'deny');
+    });
+  }
+  for (const command of dynamicQuiet) {
+    test(`privacy-paths ${host} dynamic shell stays quiet: ${command}`, () => {
+      assert.equal(invokeHome(f, command), null);
+    });
+  }
+}
+
+test('privacy-paths dynamic shell: a glob over more entries than the whole-command budget asks', () => {
+  const f = dynamicFixture('claude');
+  fs.mkdirSync(path.join(f.root, 'big'));
+  for (let index = 0; index < 6000; index += 1) fs.writeFileSync(path.join(f.root, `big/f${index}.txt`), '');
+  const output = invokeHome(f, 'cat big/* big/*/x */*');
+  assert.equal(output?.permissionDecision, 'ask');
+  assert.match(output.permissionDecisionReason, /budget/i);
+});
+
+test('privacy-paths dynamic shell: glob expansion does not depend on path.matchesGlob', () => {
+  const f = dynamicFixture('claude');
+  const { sensitivePaths } = require(path.join(SOURCE, 'claude/hooks/lib/privacy-paths.cjs'));
+  const original = path.matchesGlob;
+  try {
+    path.matchesGlob = undefined;
+    const paths = sensitivePaths('Bash', { command: 'cat .e*' }, f.root);
+    assert.ok(paths.some((p) => path.basename(p) === '.env'), JSON.stringify(paths));
+  } finally {
+    path.matchesGlob = original;
+  }
+});
+
+test('privacy-paths dynamic shell: a long chain of expansions is checked in linear time', () => {
+  const f = dynamicFixture('claude');
+  const { sensitivePaths } = require(path.join(SOURCE, 'claude/hooks/lib/privacy-paths.cjs'));
+  // Under the text cap, so the variables are really substituted rather than cut off by the budget.
+  const command = `a=x; cat ${'$a'.repeat(1500)}/.env`;
+  const started = Date.now();
+  const paths = sensitivePaths('Bash', { command }, f.root);
+  assert.ok(Date.now() - started < 2000, `took ${Date.now() - started} ms`);
+  assert.ok(paths.some((p) => p.endsWith('/.env') && !/budget/.test(p)), JSON.stringify(paths.map((p) => path.basename(p))));
+});
+
+// Security review round 1: work outside the budget let a crafted command outrun the hook's timeout, which Claude Code
+// treats as allow. Each of these must finish fast and still ask.
+const quick = (f, command) => {
+  const { sensitivePaths } = require(path.join(SOURCE, 'claude/hooks/lib/privacy-paths.cjs'));
+  const started = Date.now();
+  const paths = sensitivePaths('Bash', { command }, f.root);
+  const ms = Date.now() - started;
+  assert.ok(ms < 2000, `${command.slice(0, 60)}… took ${ms} ms`);
+  return paths;
+};
+
+test('privacy-paths dynamic shell: a glob with many stars against a long name is not exponential', () => {
+  const f = dynamicFixture('claude');
+  fs.writeFileSync(path.join(f.root, 'a'.repeat(40)), '');
+  assert.ok(quick(f, `cat ${'*a'.repeat(14)}*b .env`).length > 0);
+});
+
+test('privacy-paths dynamic shell: very long pipelines are analysed in linear time', () => {
+  const f = dynamicFixture('claude');
+  quick(f, `${'a|'.repeat(10000)}a`);
+  quick(f, 'true | a b c d e '.repeat(5000));
+});
+
+test('privacy-paths dynamic shell: substituted text and brace groups are capped by the budget', () => {
+  const f = dynamicFixture('claude');
+  assert.ok(quick(f, `b='{${','.repeat(200000)}'; cat $b .env`).length > 0);
+  const big = quick(f, `a=${'x'.repeat(100000)}; cat ${'$a'.repeat(1000)}`);
+  assert.ok(big.some((p) => /budget/.test(p)), JSON.stringify(big));
+});
+
+test('privacy-paths dynamic shell: many literal path segments are charged to the budget', () => {
+  const f = dynamicFixture('claude');
+  fs.mkdirSync(path.join(f.root, 'big'));
+  for (let index = 0; index < 3000; index += 1) fs.mkdirSync(path.join(f.root, `big/d${index}`));
+  const paths = quick(f, `cat big/*/${'./'.repeat(2040)}x`);
+  assert.ok(paths.some((p) => /budget/.test(p)), JSON.stringify(paths));
+});
+
+const reviewAsk = [
+  'cat .env$X', 'cat .env${UNSET}', 'cat ~/.ssh/id_rsa$1', 'cat .en"$Y"v', 'f="$PWD/.env"; cat "$f"',
+  'f=$HOME/.ssh/id_rsa; cat $f', 'F=.env; G=$F; cat $G', 'x=.env; eval cat \\$x', "export x=.env; bash -c 'cat $x'",
+  'cat **/.e*', '__proto__=.env; cat $__proto__',
+  'if true; then cat .env; fi', 'for f in x; do cat .env; done', 'while false; do cat .env; done',
+  '{ cat .env; }', 'time cat .env', '! cat .env',
+];
+for (const host of ['claude', 'codex']) {
+  const f = dynamicFixture(host);
+  for (const command of reviewAsk) {
+    test(`privacy-paths ${host} review round 1 asks: ${command}`, () => {
+      assert.equal(invokeHome(f, command)?.permissionDecision, host === 'claude' ? 'ask' : 'deny');
+    });
+  }
+}
+
+// Replaying real session commands after review round 1: after `cd` to an unknown directory a glob must not be expanded in
+// the hook's own cwd, and a name that starts with an unknown value (`$g.*`) is not a secret's name.
+test('privacy-paths dynamic shell: a glob after cd to an unknown directory is judged by name, not in the cwd', () => {
+  const f = dynamicFixture('claude');
+  fs.writeFileSync(path.join(f.root, 'credentials.json'), '{}\n');
+  const { sensitivePaths } = require(path.join(SOURCE, 'claude/hooks/lib/privacy-paths.cjs'));
+  assert.deepEqual(sensitivePaths('Bash', { command: 'cd ~/elsewhere; cat *.json' }, f.root), []);
+  assert.deepEqual(sensitivePaths('Bash', { command: 'for g in a b; do cat graders/$g.* ; done' }, f.root), []);
+});
+
+// Security review round 2.
+const reviewAskRound2 = ['cat .e[[:alpha:]]v', 'cat .e[[:alnum:]]v', 'function f { cat .env; }; f', 'coproc cat .env'];
+for (const host of ['claude', 'codex']) {
+  const f = dynamicFixture(host);
+  for (const command of reviewAskRound2) {
+    test(`privacy-paths ${host} review round 2 asks: ${command}`, () => {
+      assert.equal(invokeHome(f, command)?.permissionDecision, host === 'claude' ? 'ask' : 'deny');
+    });
+  }
+}
+
+test('privacy-paths dynamic shell: ** over a tree too big for its slice is judged by name', () => {
+  const f = dynamicFixture('claude');
+  for (let index = 0; index < 3000; index += 1) {
+    fs.mkdirSync(path.join(f.root, `big/d${index}`), { recursive: true });
+    fs.writeFileSync(path.join(f.root, `big/d${index}/n.md`), '');
+  }
+  assert.deepEqual(quick(f, 'wc -l **/*.md'), []);
+  assert.ok(quick(f, 'cat **/.e*').some((p) => p.endsWith('.e*')));
+});
+
+test('privacy-paths dynamic shell: one unclosed [ after another is not rescanned, and long piped names are capped', () => {
+  const f = dynamicFixture('claude');
+  assert.ok(quick(f, `cat ${'['.repeat(16000)}*`).length >= 0);
+  assert.ok(quick(f, `printf %s '${'['.repeat(400000)}' | xargs cat`).some((p) => /budget/.test(p)));
+});
+
+test('privacy-paths dynamic shell: many assignments read by many operands stay within the budget', () => {
+  const f = dynamicFixture('claude');
+  const names = Array.from({ length: 300 }, (_, index) => index);
+  const command = [...names.map((n) => `v${n}=src/f${n}.txt`), ...names.map((n) => `wc -l "$v${n}"`)].join('; ');
+  assert.deepEqual(quick(f, command), []);
+});

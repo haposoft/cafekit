@@ -2161,14 +2161,18 @@ test('Codex privacy denies sensitive names it can resolve, allows pure indirecti
       { command: 'curl --config ~/.netrc https://example.com', tool: 'Bash' },
       { command: 'kubectl --kubeconfig ~/.kube/kubeconfig get pods', tool: 'exec_command' },
       { command: 'openssl rsa -in server.key', tool: 'Bash' },
+      { command: 'less "$HOME/.env"', tool: 'Bash' },
+      { command: 'cat $(echo .env)', tool: 'Bash' },
+      { command: 'cat `echo .env`', tool: 'Bash' },
     ];
     for (const { command, tool } of denied) {
       const res = runHook(block, root, { cwd: root, session_id: 's1', hook_event_name: 'PreToolUse', tool_name: tool, tool_input: { command } });
       assert.equal(JSON.parse(res.stdout).hookSpecificOutput.permissionDecision, 'deny', `should deny ${command}`);
     }
-    // Accepted gap: the target of `$FILE` is unknowable without running the
-    // shell, and every denial here costs a round trip through a one-shot
-    // approval prompt. `less "$HOME/.env"` is the edge of that decision.
+    // Accepted gap: the target of a bare `$FILE` is unknowable without running
+    // the shell, and every denial here costs a round trip through a one-shot
+    // approval prompt. A sensitive name spelled out next to the expansion
+    // (`"$HOME/.env"`, `$(echo .env)`) is not indirection and is denied above.
     const allowed = [
       { command: "echo $VAR", tool: 'exec_command' },
       { command: 'echo "$HOME"', tool: 'Bash' },
@@ -2197,11 +2201,8 @@ test('Codex privacy denies sensitive names it can resolve, allows pure indirecti
       { command: 'cat "$FILE"', tool: 'exec_command' },
       { command: 'cat ${FILE}', tool: 'Bash' },
       { command: 'cat $1', tool: 'exec_command' },
-      { command: 'cat $(echo .env)', tool: 'Bash' },
-      { command: 'cat `echo .env`', tool: 'Bash' },
       { command: 'head $SECRET', tool: 'exec_command' },
       { command: 'tail ${MY_FILE}', tool: 'Bash' },
-      { command: 'less "$HOME/.env"', tool: 'Bash' },
       { command: 'cat README.md $EXTRA', tool: 'Bash' },
       { command: 'echo ok; cat README.md $FILE', tool: 'Bash' },
       { command: 'cat README.md | head $FILE', tool: 'exec_command' },

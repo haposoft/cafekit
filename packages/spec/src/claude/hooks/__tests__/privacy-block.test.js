@@ -210,20 +210,17 @@ for (const command of [
 }
 
 // --- Accepted gap: pure indirection ---
-// The target of `$FILE` is unknowable without running the shell. Treating every
+// The target of a bare `$FILE` is unknowable without running the shell. Treating every
 // unresolved expansion as sensitive asked on `cat ~/.zshrc`, `wc -l *.cjs` and
-// `du -sh */` too, so these are allowed by design. `less "$HOME/.env"` is the
-// edge of that decision: a literal secret joined to a variable goes through.
+// `du -sh */` too, so these are allowed by design. A secret's name spelled out next to
+// the expansion -- `"$HOME/.env"`, `$(echo .env)` -- is not indirection and asks below.
 for (const command of [
   'cat $FILE',
   'cat "$FILE"',
   'cat ${FILE}',
   'cat $1',
-  'cat $(echo .env)',
-  'cat `echo .env`',
   'head $SECRET',
   'tail ${MY_FILE}',
-  'less "$HOME/.env"',
   'cat README.md $EXTRA',
   'echo ok; cat README.md $FILE',
   'cat README.md | head $FILE',
@@ -315,14 +312,29 @@ for (const command of [
   });
 }
 
-test('an assignment naming a secret does not ask, with or without a later read', () => {
+for (const command of ['cat $(echo .env)', 'cat `echo .env`', 'less "$HOME/.env"']) {
+  test(`asks when a secret's name is spelled out next to an expansion: ${command}`, () => {
+    const dir = tmpDir();
+    try {
+      const result = runHook({ tool_name: 'Bash', tool_input: { command } }, dir);
+      assert.strictEqual(permissionDecision(result.stdout), 'ask');
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+}
+
+test('an assignment naming a secret asks only when the same command reads it through the variable', () => {
   const dir = tmpDir();
   try {
     const assigned = runHook({ tool_name: 'Bash', tool_input: { command: 'FILE=.env; cat README.md' } }, dir);
     assert.strictEqual(permissionDecision(assigned.stdout), null);
-    // Pure indirection: the hook cannot resolve $FILE without running the shell.
+    // A literal assigned earlier in the same command is resolved, so reading it through the variable asks.
     const read = runHook({ tool_name: 'Bash', tool_input: { command: 'FILE=.env; cat "$FILE"' } }, dir);
-    assert.strictEqual(permissionDecision(read.stdout), null);
+    assert.strictEqual(permissionDecision(read.stdout), 'ask');
+    // A prefix assignment does not reach the expansion: the shell expands $FILE first.
+    const prefix = runHook({ tool_name: 'Bash', tool_input: { command: 'FILE=.env cat "$FILE"' } }, dir);
+    assert.strictEqual(permissionDecision(prefix.stdout), null);
     // Spelling the target out again does ask.
     const literal = runHook({ tool_name: 'Bash', tool_input: { command: 'FILE=.env; cat .env' } }, dir);
     assert.strictEqual(permissionDecision(literal.stdout), 'ask');
