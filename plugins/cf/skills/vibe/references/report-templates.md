@@ -39,7 +39,8 @@ Redact secrets and customer data before posting.
 **Vibe Result**
 - Source: <issue or request>
 - Branch/worktree: <branch> | <path>
-- Plan: <relative path>
+- Plan: run (<relative path>) | skipped (<reason>)
+- Implement: run (cf:develop|cf:fix) | skipped (<reason>)
 - Issue: <url>
 - PR: <url> (the beta-stage PR with --both)
 - Promotion PR: <url | n/a>
