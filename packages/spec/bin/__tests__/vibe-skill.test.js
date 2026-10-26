@@ -434,6 +434,7 @@ test('vibe files keep out vocabulary that belongs to another toolkit or breaks p
     [/Claude Code/, 'Claude Code (becomes Codex CLI when projected)'],
     [/\blane\b/i, 'the word lane'],
     [/\.claude\/(skills|references|scripts|rules)\//, 'installed-tree path the plugin build rejects'],
+    [/\bSkill tool\b/, 'a host tool name (Codex has no Skill tool)'],
   ];
   for (const file of VIBE_FILES) {
     for (const [pattern, label] of forbidden) assert.doesNotMatch(vibe(file), pattern, `${file} contains ${label}`);
@@ -463,4 +464,86 @@ test('install for claude and codex places the vibe skill with resolving referenc
       assert.ok(assertLinksResolve(dir, 'SKILL.md') >= 4, `${base} lost its reference links`);
     }
   });
+});
+
+// The pipeline runs through the skills it names. A run once dropped every skill for a two-file change by applying the
+// Specs direct-work rule to the whole pipeline; only Plan and Implement may be skipped, and only on top of that rule.
+const PIPELINE_INTRO = () => vibe().split(/^## Pipeline$/m)[1].split(/^1\. \*\*/m)[0].replace(/\s+/g, ' ');
+const RUNS_ITS_SKILL = [
+  /Each step that runs invokes its named skill instead of doing the work inline, however small the change/,
+  /`cf:git worktree` in step 2 \(unless it reuses a worktree as that step allows\)/,
+  /`cf:code-review --pending` in step 7/,
+  /`cf:git pr` in step 10/,
+  /`cf:code-review #<PR>` in step 11/,
+  /`cf:git merge-pr` in step 13 \(only with `--ship` or `--both`\)/,
+  /`cf:git commit` for every commit/,
+  /conditional steps keep their predicates/,
+];
+const ONLY_PLAN_AND_IMPLEMENT = [
+  /Plan \(step 4\) and Implement \(step 6\) alone may be skipped, and only when the Specs direct-work rule allows it and the change touches at most two files and no public contract, security, or data/,
+  /report each as `Plan: skipped \(<reason>\)` or `Implement: skipped \(<reason>\)`/,
+  /without a plan packet steps 5, 6 and 11 use the change summary and its verification command in place of the plan link and receipts/,
+];
+
+test('every step that runs invokes its named skill, however small the change', () => {
+  const intro = PIPELINE_INTRO();
+  for (const piece of RUNS_ITS_SKILL) assert.match(intro, piece);
+});
+
+test('only Plan and Implement may be skipped, on top of the Specs direct-work rule, and each skip is reported', () => {
+  const intro = PIPELINE_INTRO();
+  for (const piece of ONLY_PLAN_AND_IMPLEMENT) assert.match(intro, piece);
+});
+
+test('the completion report and its template carry Plan and Implement dispositions', () => {
+  assert.match(vibeText(), /the disposition of Plan, Implement, and each conditional step \(Research, Debug, Test, Docs\): run or skipped with a reason/);
+  const template = vibe('references/report-templates.md');
+  assert.match(template, /^- Plan: run \(<relative path>\) \| skipped \(<reason>\)$/m);
+  assert.match(template, /^- Implement: run \(cf:develop\|cf:fix\) \| skipped \(<reason>\)$/m);
+  assert.doesNotMatch(template, /^- Plan: <relative path>$/m);
+});
+
+test('the installed Codex vibe skill carries the same rule with Codex skill names', () => {
+  inTempProject((root) => {
+    const result = install(root);
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+    const codex = fs.readFileSync(path.join(root, '.agents/skills/vibe/SKILL.md'), 'utf8').replace(/\s+/g, ' ');
+    assert.match(codex, /`cf-git commit` for every commit/);
+    assert.match(codex, /Plan \(step 4\) and Implement \(step 6\) alone may be skipped/);
+    assert.doesNotMatch(codex, /Skill tool/);
+  });
+});
+
+// Runs that read how cf:git commits and then ran `git commit` and `gh pr create` themselves skipped its secret scan
+// and no-attribution rule. The rule ties the commands to cf:git's own steps rather than forbidding them outright: on
+// Codex using a skill means reading its SKILL.md and running its steps, and the --both promotion PR needs `--head`.
+const NO_DIRECT_GIT = /Run `git commit` and `gh pr create` only as steps of `cf:git commit` and `cf:git pr` \(the `--both` promotion PR in step 13 is the one exception\), never on your own after a skim of how `cf:git` does it: their procedures carry the secret scan, the no-attribution rule for commits, and the commit-range check\./;
+const ENGLISH_LABELS = /Write the labels `Plan:`, `Implement:`, and `skipped` in English, whatever the report language\./;
+
+test('the pipeline forbids running git commit or gh pr create directly and says why', () => {
+  const intro = PIPELINE_INTRO();
+  assert.match(intro, NO_DIRECT_GIT);
+  assert.doesNotMatch(intro, /(?:do not|never) (?:read|open) /i);
+});
+
+test('the Plan and Implement report labels stay in English', () => {
+  assert.match(PIPELINE_INTRO(), ENGLISH_LABELS);
+});
+
+test('the installed Codex vibe skill names the Codex cf-git modes in the no-direct-git rule', () => {
+  inTempProject((root) => {
+    const result = install(root);
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+    const codex = fs.readFileSync(path.join(root, '.agents/skills/vibe/SKILL.md'), 'utf8').replace(/\s+/g, ' ');
+    assert.match(codex, /only as steps of `cf-git commit` and `cf-git pr`/);
+    assert.match(codex, ENGLISH_LABELS);
+  });
+});
+
+test('every direct gh pr create in the vibe skill is the --both promotion the rule exempts', () => {
+  const text = vibe().replace(/\s+/g, ' ');
+  const uses = [...text.matchAll(/`gh pr create[^`]*`/g)].map((m) => m[0]);
+  assert.ok(uses.length >= 1, 'the rule itself names gh pr create');
+  for (const use of uses) assert.ok(use === '`gh pr create`' || /--head <integration>/.test(use), `unexempted direct PR: ${use}`);
+  assert.match(steps()[13], /`gh pr create --base <release> --head <integration>`/);
 });
