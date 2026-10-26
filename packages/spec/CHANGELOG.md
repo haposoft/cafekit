@@ -19,7 +19,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `cf:brainstorm` now asks, for every compared approach including the rejected ones, for the assumption it depends on most, the concrete condition under which it fails first and what happens if that assumption proves wrong, and compares the cost of abandoning each approach, preferring the cheapest to abandon while a load-bearing assumption is open. On a sonnet baseline the three graders for these (`gia-dinh-diem-gay`, `truong-hop-xau`, `re-nhat-de-bo` in `evals/brainstorm/hai-huong`) failed in 10/10, 10/10 and 9/10 answers.
 
+- The vibe-run exception now names the vibe skill however you invoke it: `/cf:vibe` from the plugin, `/vibe` from a project install (Claude Code names a project skill after its folder), and `$cf-vibe` on Codex, whose installed copy names only `$cf-vibe`.
+
+- The skill catalog no longer offers skills marked `disable-model-invocation: true` (`cf:vibe`, `cf:adv`) as automatic routes; it lists them as `explicit_only` diagnostics instead.
+
 ### Fixed
+
+- Codex no longer starts `cf-vibe` or `cf-adv` on its own. Codex ignores `disable-model-invocation`, so the Codex install now writes `agents/openai.yaml` with `allow_implicit_invocation: false` beside each such skill, owned like every installed file so upgrades and removals stay clean. `packages/spec/scripts/codex-implicit-invocation-check.sh` checks it live with a control: three unnamed requests with the policy chose another skill every time, the same requests without it chose `cf-vibe` every time. Codex may still open the skill file to read it.
 
 - omp privacy now covers edit moves and renames, the sloppy edit header, `read` selectors such as `.env:raw`, and file names quoted in `eval` code, and denies an edit whose text names no file.
 - omp records spec touches for multi-file edits and `ast_edit` from omp's `paths` and the changed files a result reports, and the bridge no longer pipes edited file contents to hooks.
