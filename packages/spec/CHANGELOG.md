@@ -23,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - The skill catalog no longer offers skills marked `disable-model-invocation: true` (`cf:vibe`, `cf:adv`) as automatic routes; it lists them as `explicit_only` diagnostics instead.
 
+- `cf:vibe` now runs each pipeline step through its named skill however small the change: only Plan and Implement may be skipped, on top of the Specs direct-work rule for a change of at most two files that touches no public contract, security or data, and the report records each skip as `Plan: skipped (<reason>)` or `Implement: skipped (<reason>)`. `git commit` and `gh pr create` run only as steps of `cf:git commit` and `cf:git pr` (the `--both` promotion PR is the one exception). Over 10 sonnet runs of the vibe safety case: a local `cf:code-review` 1/10 → 10/10, a real secret scan before the first commit 2/10 → 9/10, commits without AI attribution 6/10 → 10/10; the six safety checks held.
+
 ### Fixed
 
 - Codex no longer starts `cf-vibe` or `cf-adv` on its own. Codex ignores `disable-model-invocation`, so the Codex install now writes `agents/openai.yaml` with `allow_implicit_invocation: false` beside each such skill, owned like every installed file so upgrades and removals stay clean. `packages/spec/scripts/codex-implicit-invocation-check.sh` checks it live with a control: three unnamed requests with the policy chose another skill every time, the same requests without it chose `cf-vibe` every time. Codex may still open the skill file to read it.
