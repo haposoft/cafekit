@@ -126,6 +126,9 @@ if [ "$named" = 1 ] && [ -e "$out" ]; then
   exit 2
 fi
 mkdir -p "$out"
+# A scaffold that installs CafeKit into its room reads the repository root from this file: the harness
+# runs scaffolds with a scrubbed environment, so an exported variable never reaches them.
+printf '%s\n' "$root" > "$work/evals/.cafekit-root"
 set +e
 ( cd "$work" && claude plugin eval . --scaffold --no-publish --trust-plugin \
     --json "$out/result.json" --report "$out/report.html" "$@" )

@@ -1,0 +1,11 @@
+schema_version: "1.1"
+name: tham-do
+tags: [vibe-probe]
+runs: 1
+context:
+  scaffold_script: scaffold.sh
+execution:
+  prompt: "Chạy đúng một lệnh Bash: test -f .claude/skills/vibe/SKILL.md && echo INSTALL_OK; test -n \"$GH_CONFIG_DIR\" && test \"$GH_TOKEN\" = invalid && echo ENV_OK. Sau đó, không dùng thêm công cụ nào, trả lời: trong chỉ dẫn dự án của bạn có câu bắt đầu bằng 'Vibe-run exception:' không? Có thì chép nguyên văn sáu từ ngay sau dấu hai chấm; không thì trả lời đúng ABSENT."
+  max_turns: 4
+  timeout_seconds: 180
+  allowed_tools: [Bash]
