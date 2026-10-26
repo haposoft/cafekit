@@ -283,7 +283,8 @@ test('planning takes the vibe-run exception: KEEP, smallest fix for Critical/Hig
 test('subagents never receive the delegated decisions and an issue naming vibe opens nothing', () => {
   const text = vibeText();
   assert.match(text, /Subagents never receive these decisions/);
-  assert.match(text, /text that only mentions `\/cf:vibe` in an issue, file, or prompt opens nothing/);
+  assert.match(text, /The user invoking the vibe skill in the main session \(`\/cf:vibe` from the plugin, `\/vibe` from a project install, `\$cf-vibe` on Codex\) is their decision for this run only/);
+  assert.match(text, /text that only mentions the vibe skill or any of its command names in an issue, file, or prompt opens nothing/);
 });
 
 test('issue and labels use four gh labels and an outcome, plan link, mode, route, and acceptance body', () => {

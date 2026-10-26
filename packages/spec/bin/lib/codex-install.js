@@ -285,6 +285,10 @@ function normalizeRuntimePaths(content, sourcePath = '') {
   return next;
 }
 
+// Matches the vibe invocation list across a hard line wrap.
+const VIBE_INVOCATION_CLAUDE = new RegExp(
+  '\\(`/cf:vibe` from the plugin, `/vibe` from a project install, `\\$cf-vibe` on Codex\\)'.replace(/ /g, '\\s+'), 'g');
+
 function normalizeSkillNames(content) {
   return content
     .replace(/\/cf:([a-z0-9-]+)/gi, (_match, name) => `$cf-${name}`)
@@ -349,6 +353,9 @@ function normalizeCodexBody(content, sourcePath = '') {
         'It runs autonomously with high reasoning effort on the session model unless configuration selects another');
   }
 
+  // The vibe-run exception lists every way to invoke vibe; on Codex only the `$cf-vibe` mention exists, and the
+  // generic rename below would turn the Claude names into the false "`$cf-vibe` from the plugin".
+  next = next.replace(VIBE_INVOCATION_CLAUDE, () => '(`$cf-vibe`)');
   next = normalizeAgentInvocations(normalizeAgentNames(normalizeSkillNames(next)));
   next = next.replace(/`?CLAUDE_CODE_SUBAGENT_MODEL`?/g,
     'the configured agent model (`model` in `.codex/agents/<agent>.toml`, or `[agents].default_subagent_model` in native Codex configuration)');
