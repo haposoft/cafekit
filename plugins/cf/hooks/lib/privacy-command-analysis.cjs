@@ -35,6 +35,8 @@ const SED_OPTION_VALUE = new Set(['-e', '--expression', '-f', '--file']);
 const AWK_OPTION_VALUE = new Set(['-f', '--file', '-v', '--assign', '-F', '--field-separator']);
 const XARGS_OPTION_VALUE = new Set(['-a', '--arg-file', '-d', '--delimiter', '-E', '--eof', '-I', '--replace', '-L', '--max-lines', '-n', '--max-args', '-P', '--max-procs', '-s', '--max-chars']);
 
+const IDENTIFIER = /[A-Za-z_][A-Za-z0-9_]*/y;
+
 function expansionAt(source, index) {
   const next = source[index + 1];
   return Boolean(next && (next === '{' || next === '('
@@ -107,18 +109,28 @@ function scanShell(command) {
   const source = String(command).replace(/\\\r?\n/g, '');
   const segments = [];
   const nested = [];
-  const recordNested = command => nested.push({ command, segment: segments.length });
+  // Each nested command is also kept on the word it sits in, so an operand built from $(...) carries its literals.
+  const recordNested = command => { nested.push({ command, segment: segments.length }); (word.nested ||= []).push(command); };
   let words = [];
   let word = { text: '', activeExpansion: false, started: false };
   let quote = null;
   let escaped = false;
   let malformed = false;
   const append = (value) => { word.text += value; word.started = true; };
+  // `$NAME` is written as `${NAME}` so a quote that ends the name (`.en"$Y"v`) still ends it after the quotes go.
+  const appendName = (index) => {
+    IDENTIFIER.lastIndex = index + 1;
+    const match = IDENTIFIER.exec(source);
+    if (!match) return index;
+    append(`{${match[0]}}`);
+    return index + match[0].length;
+  };
   const flushWord = () => {
     if (word.started || word.text) words.push(word);
     word = { text: '', activeExpansion: false, started: false };
   };
-  const flushSegment = () => { flushWord(); if (words.length) segments.push(words); words = []; };
+  // `link` is how the segment ends: 'pipe' for a single |, anything else for ;, &&, ||, &, newline and parentheses.
+  const flushSegment = (link = 'end') => { flushWord(); if (words.length) { words.link = link; segments.push(words); } words = []; };
 
   for (let index = 0; index < source.length; index += 1) {
     const ch = source[index];
@@ -136,7 +148,7 @@ function scanShell(command) {
           recordNested(source.slice(index + 2, end));
           append('()');
           index = end;
-        }
+        } else index = appendName(index);
         continue;
       }
       if (ch === '\x60') {
@@ -168,7 +180,7 @@ function scanShell(command) {
         recordNested(source.slice(index + 2, end));
         append('()');
         index = end;
-      }
+      } else index = appendName(index);
       continue;
     }
     if (ch === '\x60') {
@@ -190,7 +202,11 @@ function scanShell(command) {
       continue;
     }
     if ((ch === '~' && !word.text) || '*?{['.includes(ch)) { word.activeExpansion = true; append(ch); continue; }
-    if (';|&\n()'.includes(ch)) { flushSegment(); continue; }
+    if (';|&\n()'.includes(ch)) {
+      const pipe = ch === '|' && source[index + 1] !== '|' && source[index - 1] !== '|' && source[index + 1] !== '&';
+      flushSegment(pipe ? 'pipe' : 'other');
+      continue;
+    }
     if (ch === '<') {
       const descriptor = /^[0-9]+$/.test(word.text);
       flushWord();
@@ -233,9 +249,17 @@ function skipOption(words, index, valueOptions = WRAPPER_OPTION_VALUE) {
   return valueOptions.has(value) ? index + 2 : index + 1;
 }
 
+// Words that open or continue a compound command; the command they lead into is still the one that runs.
+const KEYWORDS = new Set(['if', 'then', 'elif', 'else', 'while', 'until', 'do', '{', '!', 'time', 'coproc', 'function']);
+
 function unwrap(words) {
   let index = 0;
-  while (index < words.length && assignment(words[index])) index += 1;
+  while (index < words.length && (assignment(words[index]) || KEYWORDS.has(words[index].text))) {
+    index += 1;
+    if (words[index - 1].text === 'time') while (words[index]?.text.startsWith('-')) index += 1;
+    // `function f { cat .env; }`: the word after `function` is the name being defined, not a command.
+    if (words[index - 1].text === 'function') index += 1;
+  }
   for (let depth = 0; depth < 12 && index < words.length; depth += 1) {
     const name = commandName(words[index]);
     if (!WRAPPERS.has(name)) return { index, name };
@@ -260,8 +284,19 @@ function unwrap(words) {
 
 function addOperand(result, word) {
   if (!word) return;
-  if (word.activeExpansion) result.dynamic = true;
-  else if (word.text && word.text !== '-') result.paths.add(word.text);
+  if (word.activeExpansion) {
+    result.dynamic = true;
+    // Kept for the path resolver: the raw text, the directory a tracked `cd` left, and the literal words of every
+    // command substitution inside it. The assignments it can see are attached when its segment finishes.
+    result.expansions.push({ text: word.text, directory: result.directory === undefined ? '.' : result.directory,
+      literals: (word.nested || []).flatMap(literalWords) });
+  } else if (word.text && word.text !== '-') result.paths.add(word.text);
+}
+
+// The literal words of a command line: no expansion, no option.
+function literalWords(command) {
+  return scanShell(command).segments.flat().filter((word) => !word.activeExpansion && word.text && !word.text.startsWith('-'))
+    .map((word) => word.text);
 }
 
 function genericOperands(words, start, result, {
@@ -292,6 +327,9 @@ function merge(target, source) {
   target.searches.push(...source.searches);
   source.writes.forEach(value => target.writes.add(value));
   source.unknownWrites.forEach(value => target.unknownWrites.add(value));
+  target.expansions.push(...source.expansions);
+  target.pipeNames.push(...source.pipeNames);
+  target.decodedRead ||= source.decodedRead;
   target.dynamic ||= source.dynamic;
   target.malformed ||= source.malformed;
 }
@@ -432,6 +470,7 @@ function commandWrites(words, start, name, result, directory) {
 }
 
 function analyzeWords(words, result, depth, directory = '.') {
+  result.directory = directory;
   for (const index of words.redirects || []) writeTarget(words[index], result, directory);
   for (let index = 0; index + 1 < words.length; index += 1) {
     if (words[index].text === '<') addOperand(result, words[index + 1]);
@@ -489,10 +528,16 @@ function analyzeWords(words, result, depth, directory = '.') {
     return;
   }
   if (name === 'find') {
+    // A name test that selects a secret, handed to a reader through -exec, reads it.
+    const names = [];
+    for (let index = start; index + 1 < words.length; index += 1) {
+      if (['-name', '-iname', '-path', '-ipath', '-wholename', '-iwholename'].includes(words[index].text)) names.push(words[index + 1].text);
+    }
     for (let index = start; index < words.length; index += 1) {
       if (words[index].text !== '-exec' && words[index].text !== '-execdir') continue;
       const nested = [];
       for (index += 1; index < words.length && ![';', '+'].includes(words[index].text); index += 1) nested.push(words[index]);
+      if (READS.has(unwrap(nested).name)) result.pipeNames.push(...names);
       analyzeWords(nested, result, depth + 1, directory);
     }
     return;
@@ -528,15 +573,29 @@ function analyzeWords(words, result, depth, directory = '.') {
 }
 
 function analyzeCommand(command, depth = 0, directory = '.') {
-  const result = { paths: new Set(), dynamic: false, malformed: false, searches: [], writes: new Set(), unknownWrites: new Set() };
+  const result = { paths: new Set(), dynamic: false, malformed: false, searches: [], writes: new Set(), unknownWrites: new Set(),
+    expansions: [], pipeNames: [], decodedRead: false };
   if (depth > MAX_DEPTH) { result.dynamic = true; return result; }
   const parsed = scanShell(command);
   result.malformed = parsed.malformed;
   let currentDirectory = directory;
   const directories = [];
-  for (const words of parsed.segments) {
+  const assignments = [];
+  const visibleAt = [];
+  // Every operand found while analysing a segment -- its own, or one from a nested eval, `bash -c` or $(...) -- sees the
+  // assignments of the earlier segments. `f=.env cat $f` does not: the shell expands $f before that prefix applies.
+  const scope = (from, segmentIndex) => {
+    for (const expansion of result.expansions.slice(from)) {
+      expansion.scopes = [{ list: assignments, count: visibleAt[segmentIndex] }, ...(expansion.scopes || [])];
+    }
+  };
+  for (const [segmentIndex, words] of parsed.segments.entries()) {
     directories.push(currentDirectory);
+    visibleAt.push(assignments.length);
+    recordAssignments(words, assignments);
+    const from = result.expansions.length;
     analyzeWords(words, result, depth, currentDirectory);
+    scope(from, segmentIndex);
     const info = unwrap(words);
     if (['cd', 'pushd'].includes(info.name)) {
       const target = words.slice(info.index + 1).find(word => word.text && !word.text.startsWith('-'));
@@ -545,9 +604,12 @@ function analyzeCommand(command, depth = 0, directory = '.') {
       else if (currentDirectory !== null) currentDirectory = `${currentDirectory}/${target.text}`;
     }
   }
+  analyzePipelines(parsed.segments, result);
   for (const nested of parsed.nested) {
     const nestedDirectory = directories[nested.segment] === undefined ? directory : directories[nested.segment];
+    const from = result.expansions.length;
     merge(result, analyzeCommand(nested.command, depth + 1, nestedDirectory));
+    if (visibleAt[nested.segment] !== undefined) scope(from, nested.segment);
   }
   if (result.malformed && parsed.segments.some((words) => {
     const commandInfo = unwrap(words);
@@ -558,10 +620,67 @@ function analyzeCommand(command, depth = 0, directory = '.') {
   return result;
 }
 
+const ASSIGNING = new Set(['export', 'declare', 'typeset', 'local', 'readonly']);
+
+// A segment that only assigns (`f=.env`), or an export/declare/local/typeset/readonly. The value keeps its expansions
+// (`f="$PWD/.env"`, `G=$F`); the resolver substitutes them in order.
+function recordAssignments(words, out) {
+  const bare = words.every(assignment);
+  const builtin = ASSIGNING.has(commandName(words[0]));
+  if (!bare && !builtin) return;
+  for (const word of words.slice(bare ? 0 : 1)) {
+    if (!assignment(word)) continue;
+    const at = word.text.indexOf('=');
+    out.push({ name: word.text.slice(0, at), value: word.text.slice(at + 1) });
+  }
+}
+
+const DECODERS = (words) => {
+  const name = commandName(words[unwrap(words).index]);
+  const flags = words.map((word) => word.text);
+  if (name === 'base64' || name === 'basenc') return flags.some((flag) => ['-d', '-D', '--decode'].includes(flag));
+  if (name === 'openssl') return flags.some((flag) => ['base64', 'enc'].includes(flag)) && flags.includes('-d');
+  if (name === 'xxd') return flags.includes('-r') || flags.includes('-revert');
+  if (name === 'gpg') return flags.some((flag) => ['-d', '--decrypt'].includes(flag));
+  return ['uudecode', 'b64decode'].includes(name);
+};
+const READS = new Set([...SIMPLE_READERS, ...GREP_READERS, ...AWK_READERS, 'sed', 'source', '.']);
+
+// A pipeline whose decoder feeds a shell, eval or xargs runs what it decoded; xargs handing a reader the literal words of
+// an earlier stage (`printf .env | xargs cat`, `find . -name .env | xargs cat`) reads those words. One pass: each stage
+// is looked at once, and each earlier word is handed over at most once.
+function analyzePipelines(segments, result) {
+  let decoded = false;
+  let first = true;
+  let words = [];
+  let handed = 0;
+  for (const stage of segments) {
+    const info = unwrap(stage);
+    if (info.index >= 0 && !first) {
+      if (decoded && (SHELLS.has(info.name) || ['eval', 'xargs', 'source', '.'].includes(info.name))) result.decodedRead = true;
+      if (info.name === 'xargs') {
+        let index = info.index + 1;
+        while (index < stage.length && stage[index].text.startsWith('-')) index = skipOption(stage, index, XARGS_OPTION_VALUE);
+        const reader = unwrap(stage.slice(index)).name;
+        if (READS.has(reader) || SHELLS.has(reader)) {
+          result.pipeNames.push(...words.slice(handed));
+          handed = words.length;
+        }
+      }
+    }
+    if (DECODERS(stage)) decoded = true;
+    for (const word of stage.slice(info.index + 1)) if (word.text && !word.text.startsWith('-')) words.push(word.text);
+    first = stage.link !== 'pipe';
+    if (first) { decoded = false; words = []; handed = 0; }
+  }
+}
+
 function commandAccess(command) {
   const result = analyzeCommand(command);
   return { paths: [...result.paths], dynamic: result.dynamic, malformed: result.malformed, searches: result.searches,
-    writes: [...result.writes], unknownWrites: [...result.unknownWrites] };
+    writes: [...result.writes], unknownWrites: [...result.unknownWrites],
+    expansions: result.expansions.map(({ text, directory, literals, scopes }) => ({ text, directory, literals, scopes: scopes || [] })),
+    pipeNames: [...new Set(result.pipeNames)], decodedRead: result.decodedRead };
 }
 
 module.exports = { DYNAMIC_READ_PATH, commandAccess };
