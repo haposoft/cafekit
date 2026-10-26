@@ -1,0 +1,24 @@
+{
+  "name": "cf",
+  "version": "0.18.2",
+  "description": "CafeKit for Codex CLI: process-first specs, develop, test and review skills with runtime gates.",
+  "author": {
+    "name": "Haposoft",
+    "email": "nghialt@haposoft.com",
+    "url": "https://github.com/haposoft/cafekit"
+  },
+  "homepage": "https://github.com/haposoft/cafekit#readme",
+  "repository": "https://github.com/haposoft/cafekit",
+  "license": "MIT",
+  "keywords": [
+    "specs",
+    "workflow",
+    "hooks"
+  ],
+  "interface": {
+    "displayName": "CafeKit",
+    "shortDescription": "Process-first specs, develop, test and review workflows with runtime gates",
+    "developerName": "Haposoft",
+    "category": "Developer Tools"
+  }
+}

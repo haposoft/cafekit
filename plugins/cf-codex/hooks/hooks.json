@@ -1,0 +1,164 @@
+{
+  "description": "CafeKit lifecycle hooks for the Codex plugin. Review and trust them with /hooks before they run.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "PATH=\"$PATH\":'/usr/local/bin':'/opt/homebrew/bin' node \"${PLUGIN_ROOT}/hooks/session.cjs\"",
+            "commandWindows": "node -e \"process.argv[1]=require('path').join(process.env.PLUGIN_ROOT,'hooks','session.cjs');require('module').runMain()\""
+          },
+          {
+            "type": "command",
+            "command": "PATH=\"$PATH\":'/usr/local/bin':'/opt/homebrew/bin' node \"${PLUGIN_ROOT}/hooks/state.cjs\"",
+            "commandWindows": "node -e \"process.argv[1]=require('path').join(process.env.PLUGIN_ROOT,'hooks','state.cjs');require('module').runMain()\""
+          }
+        ]
+      },
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "PATH=\"$PATH\":'/usr/local/bin':'/opt/homebrew/bin' node \"${PLUGIN_ROOT}/plugin/hooks/plugin-context.cjs\"",
+            "commandWindows": "node -e \"process.argv[1]=require('path').join(process.env.PLUGIN_ROOT,'plugin','hooks','plugin-context.cjs');require('module').runMain()\""
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "auto|manual",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "PATH=\"$PATH\":'/usr/local/bin':'/opt/homebrew/bin' node \"${PLUGIN_ROOT}/hooks/precompact.cjs\"",
+            "commandWindows": "node -e \"process.argv[1]=require('path').join(process.env.PLUGIN_ROOT,'hooks','precompact.cjs');require('module').runMain()\""
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "PATH=\"$PATH\":'/usr/local/bin':'/opt/homebrew/bin' node \"${PLUGIN_ROOT}/hooks/agent.cjs\"",
+            "commandWindows": "node -e \"process.argv[1]=require('path').join(process.env.PLUGIN_ROOT,'hooks','agent.cjs');require('module').runMain()\""
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "PATH=\"$PATH\":'/usr/local/bin':'/opt/homebrew/bin' node \"${PLUGIN_ROOT}/hooks/secret-output-guardrail.cjs\"",
+            "commandWindows": "node -e \"process.argv[1]=require('path').join(process.env.PLUGIN_ROOT,'hooks','secret-output-guardrail.cjs');require('module').runMain()\""
+          },
+          {
+            "type": "command",
+            "command": "PATH=\"$PATH\":'/usr/local/bin':'/opt/homebrew/bin' node \"${PLUGIN_ROOT}/hooks/privacy-approval.cjs\"",
+            "commandWindows": "node -e \"process.argv[1]=require('path').join(process.env.PLUGIN_ROOT,'hooks','privacy-approval.cjs');require('module').runMain()\""
+          },
+          {
+            "type": "command",
+            "command": "PATH=\"$PATH\":'/usr/local/bin':'/opt/homebrew/bin' node \"${PLUGIN_ROOT}/hooks/rules.cjs\"",
+            "commandWindows": "node -e \"process.argv[1]=require('path').join(process.env.PLUGIN_ROOT,'hooks','rules.cjs');require('module').runMain()\""
+          },
+          {
+            "type": "command",
+            "command": "PATH=\"$PATH\":'/usr/local/bin':'/opt/homebrew/bin' node \"${PLUGIN_ROOT}/hooks/spec-state.cjs\"",
+            "commandWindows": "node -e \"process.argv[1]=require('path').join(process.env.PLUGIN_ROOT,'hooks','spec-state.cjs');require('module').runMain()\""
+          },
+          {
+            "type": "command",
+            "command": "PATH=\"$PATH\":'/usr/local/bin':'/opt/homebrew/bin' node \"${PLUGIN_ROOT}/hooks/ask-guard.cjs\"",
+            "commandWindows": "node -e \"process.argv[1]=require('path').join(process.env.PLUGIN_ROOT,'hooks','ask-guard.cjs');require('module').runMain()\""
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash|exec_command|shell|apply_patch|mcp__.*|collaborationspawn_agent|collaborationwait_agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "PATH=\"$PATH\":'/usr/local/bin':'/opt/homebrew/bin' node \"${PLUGIN_ROOT}/hooks/privacy-block.cjs\"",
+            "commandWindows": "node -e \"process.argv[1]=require('path').join(process.env.PLUGIN_ROOT,'hooks','privacy-block.cjs');require('module').runMain()\""
+          },
+          {
+            "type": "command",
+            "command": "PATH=\"$PATH\":'/usr/local/bin':'/opt/homebrew/bin' node \"${PLUGIN_ROOT}/hooks/inspect-block.cjs\"",
+            "commandWindows": "node -e \"process.argv[1]=require('path').join(process.env.PLUGIN_ROOT,'hooks','inspect-block.cjs');require('module').runMain()\""
+          }
+        ]
+      },
+      {
+        "matcher": "apply_patch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "PATH=\"$PATH\":'/usr/local/bin':'/opt/homebrew/bin' node \"${PLUGIN_ROOT}/hooks/ask-guard.cjs\"",
+            "commandWindows": "node -e \"process.argv[1]=require('path').join(process.env.PLUGIN_ROOT,'hooks','ask-guard.cjs');require('module').runMain()\""
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "collaborationspawn_agent|Agent|spawn_agent|update_plan",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "PATH=\"$PATH\":'/usr/local/bin':'/opt/homebrew/bin' node \"${PLUGIN_ROOT}/hooks/state.cjs\"",
+            "commandWindows": "node -e \"process.argv[1]=require('path').join(process.env.PLUGIN_ROOT,'hooks','state.cjs');require('module').runMain()\""
+          }
+        ]
+      },
+      {
+        "matcher": "apply_patch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "PATH=\"$PATH\":'/usr/local/bin':'/opt/homebrew/bin' node \"${PLUGIN_ROOT}/hooks/spec-state.cjs\"",
+            "commandWindows": "node -e \"process.argv[1]=require('path').join(process.env.PLUGIN_ROOT,'hooks','spec-state.cjs');require('module').runMain()\""
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "PATH=\"$PATH\":'/usr/local/bin':'/opt/homebrew/bin' node \"${PLUGIN_ROOT}/hooks/spec-gate.cjs\"",
+            "commandWindows": "node -e \"process.argv[1]=require('path').join(process.env.PLUGIN_ROOT,'hooks','spec-gate.cjs');require('module').runMain()\""
+          },
+          {
+            "type": "command",
+            "command": "PATH=\"$PATH\":'/usr/local/bin':'/opt/homebrew/bin' node \"${PLUGIN_ROOT}/hooks/state.cjs\"",
+            "commandWindows": "node -e \"process.argv[1]=require('path').join(process.env.PLUGIN_ROOT,'hooks','state.cjs');require('module').runMain()\""
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "PATH=\"$PATH\":'/usr/local/bin':'/opt/homebrew/bin' node \"${PLUGIN_ROOT}/hooks/state.cjs\"",
+            "commandWindows": "node -e \"process.argv[1]=require('path').join(process.env.PLUGIN_ROOT,'hooks','state.cjs');require('module').runMain()\""
+          }
+        ]
+      }
+    ]
+  }
+}

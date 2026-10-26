@@ -55,7 +55,8 @@ try {
   const projectRoot = resolveProjectRoot(data);
   const runtime = readRuntime(projectRoot);
 
-  if (runtime.privacyBlock === false) process.exit(0);
+  // A plugin is trusted once for every repository, so a repository cannot switch it off.
+  if (runtime.privacyBlock === false && !require('./lib/plugin-options.cjs').isPlugin()) process.exit(0);
 
   const paths = sensitivePaths(toolName, toolInput, cwd);
   if (paths.length) askForPermission(`Sensitive file access requires approval: ${displayNames(paths)}`);

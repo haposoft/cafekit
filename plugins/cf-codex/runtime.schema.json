@@ -1,0 +1,207 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://haposoft.github.io/cafekit/runtime.schema.json",
+  "title": "CafeKit runtime configuration",
+  "description": "Project-scoped CafeKit settings, installed as .claude/runtime.json and .codex/runtime.json. Every key is optional; an absent key keeps the built-in default. Editors that honour $schema use this file for completion and inline documentation. Secrets do not belong here: this file is meant to be committed.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Path or URL of this schema. Present so editors can validate the file; CafeKit itself ignores it."
+    },
+    "privacyBlock": {
+      "type": "boolean",
+      "default": true,
+      "description": "Block reads of files that usually hold secrets (.env, credentials, keys). Set false to disable the privacy hook for this project."
+    },
+    "inspect": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The guard that steers broad codebase searches toward the discovery workflow.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Set false to stop the inspect guard from blocking broad search commands."
+        }
+      }
+    },
+    "docs": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Documentation conventions surfaced to the agent.",
+      "properties": {
+        "maxLoc": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 800,
+          "description": "Lines allowed in one documentation file before the agent is reminded to split it."
+        }
+      }
+    },
+    "paths": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Where this project keeps its documentation, specifications, and plans, relative to the repository root.",
+      "properties": {
+        "docs": { "type": "string", "default": "docs", "description": "Documentation root the docs workflow reads and writes." },
+        "specs": { "type": "string", "default": "specs", "description": "Specification packet root: one direct child per feature." },
+        "plans": { "type": "string", "default": "plans", "description": "Directory holding plan files, one directory per plan." }
+      }
+    },
+    "spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Specification workflow guards. These are convenience switches for local work, not authorizations.",
+      "properties": {
+        "scaffold_guard": {
+          "type": "boolean",
+          "default": true,
+          "deprecated": true,
+          "description": "Not honoured. The task-scaffold guard that read this key was removed; the key is kept so existing runtime.json files stay valid."
+        },
+        "tollgate": {
+          "type": "boolean",
+          "default": true,
+          "description": "Report specification state on each prompt. Set false to silence it."
+        },
+        "completion_gate": {
+          "type": "boolean",
+          "default": true,
+          "description": "Not a switch. The completion gate treats this flag as a bypass attempt and blocks while it is present, whatever its value, because a worker-writable file cannot authorize completion. Remove the key and satisfy the gate instead."
+        }
+      }
+    },
+    "usage": {
+      "type": "object",
+      "additionalProperties": false,
+      "deprecated": true,
+      "description": "Not honoured. The usage hook that read this key was removed; the statusline takes quota from the rate_limits Claude Code sends. Kept so existing runtime.json files stay valid.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Not honoured. Nothing fetches quota data any more."
+        }
+      }
+    },
+    "locale": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Languages the agent should use. null means English, or match the user.",
+      "properties": {
+        "thinkingLanguage": { "type": ["string", "null"], "default": null, "description": "Language for reasoning." },
+        "responseLanguage": { "type": ["string", "null"], "default": null, "description": "Language for user-facing output." }
+      }
+    },
+    "codingLevel": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "maximum": 5,
+      "default": 1,
+      "description": "Codex only. How much explanation answers carry: 0 ELI5, 1 junior, 2 mid-level, 3 senior, 4 lead, 5 expert. Codex CLI has no output-style feature, so the rules hook injects the matching file from .codex/output-styles/ once per session. Claude Code loads the same styles natively and reads outputStyle from settings.json instead, so this key is ignored there. null or an out-of-range value injects nothing."
+    },
+    "statusline": {
+      "enum": ["full", "compact", "minimal", "none"],
+      "default": "full",
+      "description": "How much the statusline renders. 'none' prints an empty line."
+    },
+    "statuslineColors": {
+      "type": "boolean",
+      "default": true,
+      "description": "Set false for a statusline without ANSI colour."
+    },
+    "statuslineLayout": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["lines"],
+      "description": "Explicit statusline composition. A valid layout replaces the default renderers; an invalid or empty one falls back to them. The 'statusline' mode still limits how many lines are drawn.",
+      "properties": {
+        "lines": {
+          "type": "array",
+          "description": "One entry per rendered line, each listing section ids in display order.",
+          "items": {
+            "type": "array",
+            "items": { "enum": ["model", "context", "quota", "directory", "git", "plan", "cost", "changes"] }
+          }
+        }
+      }
+    },
+    "assertions": {
+      "type": "array",
+      "description": "Rules injected for files matching a glob.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["pattern", "rule"],
+        "properties": {
+          "pattern": { "type": "string", "description": "Glob the rule applies to, for example \"**/*.go\"." },
+          "rule": { "type": "string", "description": "The rule text shown to the agent." }
+        }
+      }
+    },
+    "trust": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Local trust prompt. Keep the passphrase in your own user configuration, never in this committed file.",
+      "properties": {
+        "enabled": { "type": "boolean", "default": false, "description": "Whether a trust passphrase is required." },
+        "passphrase": { "type": ["string", "null"], "default": null, "description": "Do not set this here. This file is committed." }
+      }
+    },
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Detection overrides for a repository the defaults read wrong.",
+      "properties": {
+        "type": { "type": "string", "default": "auto", "description": "Project type, or \"auto\" to detect." },
+        "packageManager": { "type": "string", "default": "auto", "description": "Package manager, or \"auto\" to detect." },
+        "framework": { "type": "string", "default": "auto", "description": "Framework, or \"auto\" to detect." }
+      }
+    },
+    "plan": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Plan directory naming and resolution.",
+      "properties": {
+        "namingFormat": { "type": "string", "default": "{date}-{issue}-{slug}", "description": "Directory name pattern. Variables: {date}, {issue}, {slug}." },
+        "dateFormat": { "type": "string", "default": "YYMMDD-HHmm", "description": "Date portion of the plan name." },
+        "issuePrefix": { "type": ["string", "null"], "default": null, "description": "Prefix for the issue portion, for example \"GH-\"." },
+        "reportsDir": { "type": "string", "default": "reports", "description": "Reports directory inside a plan." },
+        "resolution": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "How the active plan is chosen. Only explicit session state makes a plan active; a branch match is a suggestion.",
+          "properties": {
+            "order": { "type": "array", "items": { "enum": ["session", "branch"] }, "description": "Order the sources are consulted in when resolving the active plan." },
+            "branchPattern": { "type": "string", "description": "Regular expression extracting a plan slug from the branch name." }
+          }
+        },
+        "validation": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Plan validation questioning.",
+          "properties": {
+            "mode": { "enum": ["auto", "prompt", "off"], "default": "prompt", "description": "When to run validation questions." },
+            "minQuestions": { "type": "integer", "minimum": 0, "default": 3, "description": "Fewest questions to ask." },
+            "maxQuestions": { "type": "integer", "minimum": 0, "default": 8, "description": "Most questions to ask." },
+            "focusAreas": { "type": "array", "items": { "type": "string" }, "description": "Topics the questions should cover." }
+          }
+        }
+      }
+    },
+    "hooks": {
+      "type": "object",
+      "deprecated": true,
+      "description": "Not honoured. No hook consults this map, so an entry here disables nothing. Disable a hook by removing its entry from the host's hook configuration instead.",
+      "additionalProperties": { "type": "boolean" }
+    },
+    "develop": {
+      "type": "object",
+      "deprecated": true,
+      "description": "Not honoured. Parallel execution is chosen per invocation with the --parallel flag, not from this file.",
+      "additionalProperties": true
+    }
+  }
+}
