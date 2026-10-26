@@ -193,34 +193,57 @@ function manifest(root, specsRoot) {
     .filter(({ absolute }) => !excluded(root, absolute, specsRoot))
     .sort((left, right) => left.relative < right.relative ? -1 : left.relative > right.relative ? 1 : 0);
   const unique = new Map(paths.map((entry) => [entry.relative, entry]));
-  const records = [];
+  // The digest is sha256 over one `JSON.stringify(record)` line per path, with the file bytes in base64 as `content`.
+  // Each line is streamed into the hash -- file bytes read in chunks -- instead of being built: a repository with a
+  // few hundred MB of assets made the whole manifest longer than the longest string V8 can hold.
+  const hash = crypto.createHash('sha256');
+  hash.update('cafekit-provenance\0');
   for (const { relative, absolute } of unique.values()) {
+    const status = statuses.get(relative) || null;
     let before;
     try { before = fs.lstatSync(absolute); } catch (error) {
-      if (error.code === 'ENOENT') { records.push({ path: relative, type: 'deleted', mode: '0000', status: statuses.get(relative) || null, content: null }); continue; }
+      if (error.code === 'ENOENT') { hash.update(`${JSON.stringify({ path: relative, type: 'deleted', mode: '0000', status, content: null })}\n`); continue; }
       fail('path_error', `cannot inspect ${relative} (${error.code || error.message})`);
     }
     const mode = (before.mode & 0o7777).toString(8).padStart(4, '0');
-    let content;
-    let type = 'file';
-    if (before.isSymbolicLink()) { type = 'symlink'; content = Buffer.from(fs.readlinkSync(absolute), 'utf8'); }
-    else if (before.isFile()) { content = fs.readFileSync(absolute); }
-    else { type = before.isDirectory() ? 'directory' : 'special'; content = Buffer.alloc(0); }
+    const type = before.isSymbolicLink() ? 'symlink' : before.isFile() ? 'file' : before.isDirectory() ? 'directory' : 'special';
+    // Base64 never needs escaping in JSON, so the line is the record with an empty `content`, cut before its closing
+    // quote, then the base64 text, then the closing `"}`.
+    const open = JSON.stringify({ path: relative, type, mode, status, content: '' });
+    hash.update(open.slice(0, -2));
+    if (type === 'symlink') hash.update(Buffer.from(fs.readlinkSync(absolute), 'utf8').toString('base64'));
+    else if (type === 'file') hashFileBase64(hash, absolute, relative);
+    hash.update('"}\n');
     let after;
     try { after = fs.lstatSync(absolute); } catch { fail('worktree_race', `${relative} changed during provenance capture`); }
     if (before.ino !== after.ino || before.size !== after.size || before.mtimeMs !== after.mtimeMs || before.mode !== after.mode) {
       fail('worktree_race', `${relative} changed during provenance capture`);
     }
-    records.push({ path: relative, type, mode, status: statuses.get(relative) || null, content: content.toString('base64') });
   }
-  return { status: [...statuses.entries()], records };
+  return { status: [...statuses.entries()], digest: hash.digest('hex') };
 }
 
-function manifestDigest(snapshot) {
-  const hash = crypto.createHash('sha256');
-  hash.update('cafekit-provenance\0');
-  for (const record of snapshot.records) hash.update(`${JSON.stringify(record)}\n`);
-  return hash.digest('hex');
+// A chunk size divisible by 3 keeps every chunk's base64 free of padding, so the chunks concatenate to the base64 of
+// the whole file.
+const BASE64_CHUNK = 3 * 1024 * 1024;
+function hashFileBase64(hash, absolute, relative) {
+  let descriptor;
+  try { descriptor = fs.openSync(absolute, 'r'); } catch (error) { fail('path_error', `cannot read ${relative} (${error.code || error.message})`); }
+  try {
+    const buffer = Buffer.allocUnsafe(BASE64_CHUNK);
+    for (;;) {
+      let filled = 0;
+      while (filled < BASE64_CHUNK) {
+        const read = fs.readSync(descriptor, buffer, filled, BASE64_CHUNK - filled, null);
+        if (read === 0) break;
+        filled += read;
+      }
+      if (filled > 0) hash.update(buffer.subarray(0, filled).toString('base64'));
+      if (filled < BASE64_CHUNK) return;
+    }
+  } finally {
+    fs.closeSync(descriptor);
+  }
 }
 
 function identity(input) {
@@ -255,9 +278,10 @@ function captureSnapshot(root, specsRoot) {
   if (snapshotMemoEnabled && snapshotMemo.has(key)) return snapshotMemo.get(key);
   const base = gitBase(root, specsRoot);
   const first = manifest(root, specsRoot);
-  const head = manifestDigest(first);
+  const head = first.digest;
   const second = manifest(root, specsRoot);
-  if (JSON.stringify(first) !== JSON.stringify(second) || gitBase(root, specsRoot) !== base) fail('worktree_race', 'checkout changed during provenance capture');
+  if (first.digest !== second.digest || JSON.stringify(first.status) !== JSON.stringify(second.status)
+    || gitBase(root, specsRoot) !== base) fail('worktree_race', 'checkout changed during provenance capture');
   const snapshot = { base, head };
   if (snapshotMemoEnabled) snapshotMemo.set(key, snapshot);
   return snapshot;
