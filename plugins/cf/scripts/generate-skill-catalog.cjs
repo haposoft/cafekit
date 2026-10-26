@@ -153,6 +153,11 @@ function scanSkills(requestedRoot) {
       diagnostics.push(diagnostic('malformed_frontmatter', entry.name, 'missing frontmatter block'));
       continue;
     }
+    // An explicit-only skill runs only when the user names it, so it is never an automatic route.
+    if (frontmatter['disable-model-invocation'] === 'true') {
+      diagnostics.push(diagnostic('explicit_only', entry.name, 'invoked only by name; excluded from automatic routing'));
+      continue;
+    }
     const identity = publicIdentity(frontmatter.name);
     if (!identity || !frontmatter.description || frontmatter.description.trim() === '') {
       diagnostics.push(diagnostic('missing_routing_metadata', entry.name, 'requires valid name and description'));
