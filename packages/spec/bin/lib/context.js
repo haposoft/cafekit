@@ -245,6 +245,7 @@ function getCopyOptions(platformKey, baseOptions = {}) {
  *  --upgrade / -u / --force / -f / --force-overwrite → forceOverwrite:true
  *      (overwrite user-modified managed files, backing up the user copy first)
  *  --dry-run                                         → dryRun:true
+ *  an unknown positional argument                    → throws with exitCode 2
  *
  * `upgrade` is kept as an alias of `forceOverwrite` for backward compatibility
  * with existing docs and muscle memory.
@@ -283,6 +284,10 @@ function parseInstallerArgs(argv) {
       args.lang = argv[++i];
     } else if (arg.startsWith('--lang=')) {
       args.lang = arg.slice('--lang='.length);
+    } else if (!arg.startsWith('-')) {
+      // A typo of a subcommand must not run an install.
+      const hint = arg === 'migrate' ? ' (migrate must be the first argument)' : '';
+      throw Object.assign(new Error(`Unknown argument: ${JSON.stringify(arg)}${hint}`), { exitCode: 2 });
     }
   }
 

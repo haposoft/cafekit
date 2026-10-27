@@ -13,16 +13,14 @@ import { chmodSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, s
 import { dirname, join, relative, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
+import { EXCLUDED_SKILLS, EXCLUDED_AGENTS, pluginSkills, pluginAgents } from "../bin/lib/plugin-inventory.js";
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const repoRoot = resolve(packageRoot, "../..");
 const source = join(packageRoot, "src/claude");
 
 export const PLUGIN_NAME = "cf";
-// These need a Python venv, npm install or a browser binary, which a plugin has
-// no install step for; they stay on the npx path for now.
-export const EXCLUDED_SKILLS = ["chrome-devtools", "ui-ux", "ui-ux-pro-max"];
-export const EXCLUDED_AGENTS = ["ui-ux-designer"];
+export { EXCLUDED_SKILLS, EXCLUDED_AGENTS };
 const COPIED_DIRS = ["output-styles", "hooks", "scripts", "references", "rules"];
 const COPIED_FILES = ["status.cjs", "runtime.schema.json"];
 const SKIPPED_NAMES = new Set(["__tests__", ".logs", "node_modules", "__pycache__", ".venv", ".DS_Store"]);
@@ -32,18 +30,8 @@ function readJson(path) {
   return JSON.parse(readFileSync(path, "utf8"));
 }
 
-export function inScopeSkills() {
-  const manifest = readJson(join(source, "migration-manifest.json"));
-  return manifest.skills.required.filter((name) => !EXCLUDED_SKILLS.includes(name));
-}
-
-export function inScopeAgents() {
-  return readdirSync(join(source, "agents"))
-    .filter((name) => name.endsWith(".md"))
-    .map((name) => name.slice(0, -3))
-    .filter((name) => !EXCLUDED_AGENTS.includes(name))
-    .sort();
-}
+export const inScopeSkills = pluginSkills;
+export const inScopeAgents = pluginAgents;
 
 function writeFile(path, data, mode) {
   mkdirSync(dirname(path), { recursive: true });

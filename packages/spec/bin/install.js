@@ -17,7 +17,7 @@
 
 const { spawnSync } = require('child_process');
 const fs = require('fs');
-const { buildContext, PLATFORMS, packageJson } = require('./lib/context');
+const { buildContext, parseInstallerArgs, PLATFORMS, packageJson } = require('./lib/context');
 const lock = require('./lib/lock');
 const backup = require('./lib/backup');
 const manifestLib = require('./lib/manifest');
@@ -120,6 +120,7 @@ function printHelp() {
   console.log(`CafeKit installer (cafekit) v${packageJson.version}
 
 Usage: npx @haposoft/cafekit [options]
+       npx @haposoft/cafekit@latest migrate [--apply]
 
 Installs CafeKit skills, agents, rules and runtime into the current project
 for Claude Code and/or Codex CLI. Re-runs are selective: managed files are updated,
@@ -139,12 +140,22 @@ Options:
   -h, --help           Show this help
   -v, --version        Print version
 
+Commands:
+  migrate              Preview removing this repository's npx install so the
+                       CafeKit Claude Code and Codex plugins take over; edited
+                       files and runtime.json stay. Writes nothing.
+  migrate --apply      Remove it, with a backup in .cafekit-backup/ that is
+                       restored if anything fails.
+
 Docs: https://github.com/haposoft/cafekit`);
 }
 
 async function main() {
   // Info flags short-circuit before any side effects.
   const argv = process.argv.slice(2);
+  if (argv[0] === 'migrate') {
+    process.exit(await runMigrate(argv.slice(1)));
+  }
   if (argv.includes('--help') || argv.includes('-h')) {
     printHelp();
     process.exit(0);
@@ -152,6 +163,15 @@ async function main() {
   if (argv.includes('--version') || argv.includes('-v')) {
     console.log(packageJson.version);
     process.exit(0);
+  }
+
+  // Reject a mistyped argument before the lock and before anything is written.
+  try {
+    parseInstallerArgs(process.argv);
+  } catch (error) {
+    console.error(`✗ ${error.message}`);
+    console.error('  Run npx @haposoft/cafekit --help for the options.');
+    process.exit(error.exitCode || 1);
   }
 
   // ── Concurrency guard (before context; plain output) ────
@@ -249,6 +269,84 @@ async function main() {
   }
 
   process.exit(exitCode);
+}
+
+function printMigrateHelp(stream = console.log) {
+  stream(`Usage: npx @haposoft/cafekit@latest migrate [--apply]
+
+Removes this repository's CafeKit npx install so the Claude Code and Codex
+plugins take over. Without --apply it only prints the plan.
+
+Removed: installed files that still match their install hash and have a plugin
+equivalent, CafeKit hook entries, and the CafeKit instruction blocks.
+Kept: edited files, runtime.json, files you added, skills no plugin ships yet,
+and every user entry in settings.json, hooks.json, AGENTS.md and CLAUDE.md.
+A repository with an .omp/ install is refused.`);
+}
+
+/** `migrate [--apply]`: returns the exit code (0 done or nothing to do, 1 failed or refused, 2 bad usage). */
+async function runMigrate(args) {
+  let apply = false;
+  for (const arg of args) {
+    if (arg === '--apply') apply = true;
+    else if (arg === '--help' || arg === '-h') {
+      printMigrateHelp();
+      return 0;
+    } else {
+      console.error(`✗ Unknown argument for migrate: ${arg}`);
+      printMigrateHelp(console.error);
+      return 2;
+    }
+  }
+
+  const { planMigration, planSteps, applyMigration } = require('./lib/migrate-apply');
+  const { renderManifestPlan } = require('./lib/migrate-plan');
+  const { renderMergedPlan } = require('./lib/migrate-merged');
+  const root = process.cwd();
+  let plan;
+  try {
+    plan = planMigration(root);
+  } catch (error) {
+    console.error(`✗ migrate could not read this repository: ${error.message}`);
+    return 1;
+  }
+  const steps = planSteps(plan);
+  console.log(`CafeKit migrate — ${apply ? 'apply' : 'dry run (nothing is written)'}\n`);
+  // The merged-file planner may mark hook scripts kept, so the manifest plan renders after it.
+  const manifestText = renderManifestPlan(plan.manifest);
+  if (manifestText) console.log(manifestText);
+  const mergedText = renderMergedPlan(plan.merged);
+  if (mergedText) console.log(`\nMerged files:\n${mergedText}`);
+
+  // An install migrate cannot read (refused) or does not manage (unmanaged) would be left
+  // behind while the rest goes, so nothing is changed until it is fixed.
+  const blocked = Object.values(plan.manifest.platforms).filter((platform) => ['refused', 'unmanaged'].includes(platform.status));
+  if (plan.merged.refused || blocked.length > 0) {
+    if (plan.merged.refused) console.error(`\n✗ Refused: ${plan.merged.refused}`);
+    for (const platform of blocked) console.error(`\n✗ ${platform.name} cannot be migrated: ${platform.reason}`);
+    console.error('  Nothing was changed. Fix or remove that install by hand, then run migrate again.');
+    return 1;
+  }
+  if (steps.length === 0) {
+    console.log('\nNothing to migrate: no CafeKit npx file here is planned for removal.');
+    return 0;
+  }
+  if (!apply) {
+    console.log(`\n${steps.length} changes planned. Folders left empty are removed too.`);
+    console.log('Run `npx @haposoft/cafekit@latest migrate --apply` to apply them, with a backup.');
+    return 0;
+  }
+
+  const result = await applyMigration(root, { plan });
+  if (result.ok) {
+    console.log(`\n✓ Removed ${result.removed} files and rewrote ${result.written}. Backup: ${result.backupDir}`);
+    console.log('  Install the plugins if you have not: see the CafeKit README.');
+    return 0;
+  }
+  console.error(`\n✗ migrate stopped (${result.reason}): ${result.message}`);
+  if (result.backupDir) console.error(`  Backup: ${result.backupDir}`);
+  for (const step of result.manualSteps || []) console.error(`  ${step}`);
+  return 1;
 }
 
 main();

@@ -352,6 +352,7 @@ function mergeCodexHooks(ctx, platformKey, projectRoot = process.cwd()) {
 }
 
 module.exports = {
+  managedHandlerScript,
   mergeCodexHooks,
   pruneObsoleteCodexHooks,
   repairLegacyCodexLaunchers,

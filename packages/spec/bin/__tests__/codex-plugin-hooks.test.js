@@ -174,6 +174,7 @@ test('silent-beside-npx: with the npx Codex hooks active in the repository, plug
   assert.match(session.stdout, /CafeKit plugin is idle/);
   assert.match(session.stdout, /\$cf-/, 'the notice names the duplicate skills');
   assert.match(session.stdout, /trusted in \/hooks/, 'the notice says the gates depend on trusting the npx hooks');
+  assert.ok(session.stdout.includes('npx @haposoft/cafekit@latest migrate'), 'the notice names the migrate command with @latest');
   const privacy = run('PreToolUse', 'privacy-block.cjs', dir, { tool_name: 'Bash', tool_input: { command: 'cat .env' } });
   assert.equal(privacy.status, 0);
   assert.equal(privacy.stdout, '', 'the plugin hook acted beside the npx hooks');

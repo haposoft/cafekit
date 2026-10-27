@@ -27,6 +27,30 @@ npx @haposoft/cafekit --with-document-skills
 Use `--without-document-skills` to skip them or remove pristine CafeKit-owned
 copies from an existing install. User-modified skill files are preserved.
 
+### Moving from the npx install to the plugins
+
+Once the CafeKit Claude Code and Codex plugins are installed, remove the npx
+install from a repository so its hooks do not run twice and the Codex plugin
+stops standing down:
+
+Run it from the repository root:
+
+```bash
+npx @haposoft/cafekit@latest migrate          # dry-run: prints the plan, writes nothing
+npx @haposoft/cafekit@latest migrate --apply  # removes it, with a backup in .cafekit-backup/
+```
+
+Installed files that still match their install hash go, except skills and
+agents no plugin ships yet, together with CafeKit's hook entries and its blocks
+in `AGENTS.md` and `CLAUDE.md` (the response-language choice in that block goes
+too). Edited files, files you added and the shared files they name,
+`runtime.json`, the selected output style, and every user entry in
+`settings.json`, `hooks.json`, `AGENTS.md` and `CLAUDE.md` stay. If `--apply`
+fails or is interrupted with Ctrl-C, it restores the backup; if a restore step
+fails, it prints what to copy back by hand. A repository with an `.omp/`
+install, a symlinked `.claude`, `.codex` or `.agents`, or an install without a
+readable manifest is refused, and nothing is changed.
+
 ## What It Is
 
 CafeKit installs a native runtime bundle for each supported coding agent:

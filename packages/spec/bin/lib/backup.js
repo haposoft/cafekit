@@ -47,30 +47,30 @@ function validateRunId(runId) {
  * Recursively copy a directory tree (verbatim, no transforms). Used for
  * snapshot and restore. Skips if the source does not exist.
  */
-function copyTree(src, dest) {
+function copyTree(src, dest, io = fs) {
   let stat;
   try {
-    stat = fs.lstatSync(src);
+    stat = io.lstatSync(src);
   } catch (error) {
     if (error.code === 'ENOENT') return;
     throw error;
   }
   if (stat.isSymbolicLink()) {
-    fs.mkdirSync(path.dirname(dest), { recursive: true });
-    fs.symlinkSync(fs.readlinkSync(src), dest);
+    io.mkdirSync(path.dirname(dest), { recursive: true });
+    io.symlinkSync(io.readlinkSync(src), dest);
     return;
   }
   if (stat.isDirectory()) {
-    fs.mkdirSync(dest, { recursive: true });
-    for (const entry of fs.readdirSync(src)) {
-      copyTree(path.join(src, entry), path.join(dest, entry));
+    io.mkdirSync(dest, { recursive: true });
+    for (const entry of io.readdirSync(src)) {
+      copyTree(path.join(src, entry), path.join(dest, entry), io);
     }
   } else {
-    fs.mkdirSync(path.dirname(dest), { recursive: true });
-    fs.copyFileSync(src, dest);
+    io.mkdirSync(path.dirname(dest), { recursive: true });
+    io.copyFileSync(src, dest);
     // Preserve restrictive perms (e.g. .env at 0o600) on the backup copy.
     try {
-      fs.chmodSync(dest, stat.mode);
+      io.chmodSync(dest, stat.mode);
     } catch {
       /* best-effort: chmod may fail on some filesystems */
     }
@@ -111,35 +111,54 @@ function snapshot(folders, runId) {
  * Restore every explicit target to its pre-run state. Existing targets are
  * replaced from backup; targets absent before the run are removed.
  *
+ * A target that fails does not stop the others: every target is attempted, and
+ * the failures are thrown together at the end as `error.restoreErrors`
+ * ([{ target, message }]) so the caller can name what to put back by hand.
+ *
  * @param {string} backupDir  path returned by snapshot()
+ * @param {{fs?: object}} options  file-system implementation (tests inject failures)
  */
-function restore(backupDir) {
-  if (!backupDir || !fs.existsSync(backupDir)) return;
+function restore(backupDir, options = {}) {
+  const io = options.fs || fs;
+  if (!backupDir || !io.existsSync(backupDir)) return;
 
   const metadataPath = path.join(backupDir, SNAPSHOT_METADATA);
-  const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
+  const metadata = JSON.parse(io.readFileSync(metadataPath, 'utf8'));
   if (metadata?.schemaVersion !== 1 || !Array.isArray(metadata.targets)) {
     throw new Error(`Invalid backup metadata: ${metadataPath}`);
   }
-
   for (const record of metadata.targets) {
     if (!record || typeof record.existed !== 'boolean') {
       throw new Error(`Invalid backup target metadata: ${metadataPath}`);
     }
+    validateTarget(record.target);
+  }
+
+  const restoreErrors = [];
+  for (const record of metadata.targets) {
     const target = validateTarget(record.target);
-    const source = path.join(backupDir, SNAPSHOT_DATA, target);
-    let sourceExists = true;
     try {
-      fs.lstatSync(source);
+      const source = path.join(backupDir, SNAPSHOT_DATA, target);
+      let sourceExists = true;
+      try {
+        io.lstatSync(source);
+      } catch (error) {
+        if (error.code === 'ENOENT') sourceExists = false;
+        else throw error;
+      }
+      if (record.existed && !sourceExists) {
+        throw new Error(`Backup data missing for target: ${target}`);
+      }
+      io.rmSync(target, { recursive: true, force: true });
+      if (record.existed) copyTree(source, target, io);
     } catch (error) {
-      if (error.code === 'ENOENT') sourceExists = false;
-      else throw error;
+      restoreErrors.push({ target, message: error.message });
     }
-    if (record.existed && !sourceExists) {
-      throw new Error(`Backup data missing for target: ${target}`);
-    }
-    fs.rmSync(target, { recursive: true, force: true });
-    if (record.existed) copyTree(source, target);
+  }
+  if (restoreErrors.length > 0) {
+    const error = new Error(`Could not restore ${restoreErrors.map((item) => item.target).join(', ')} from ${backupDir}`);
+    error.restoreErrors = restoreErrors;
+    throw error;
   }
 }
 
