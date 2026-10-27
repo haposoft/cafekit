@@ -27,6 +27,24 @@ npx @haposoft/cafekit --with-document-skills
 Use `--without-document-skills` to skip them or remove pristine CafeKit-owned
 copies from an existing install. User-modified skill files are preserved.
 
+### Install as plugins
+
+CafeKit also ships as a plugin for Claude Code and for Codex CLI, from the
+release repository [haposoft/cafekit-plugins](https://github.com/haposoft/cafekit-plugins):
+
+```bash
+# Claude Code
+claude plugin marketplace add haposoft/cafekit-plugins
+claude plugin install cf@cafekit
+
+# Codex CLI (then run $cf-setup-agents once to install the agents)
+codex plugin marketplace add haposoft/cafekit-plugins
+codex plugin add cf@cafekit
+```
+
+Each release is tagged with its npm version; on Codex,
+`haposoft/cafekit-plugins@v0.18.3` pins one.
+
 ### Moving from the npx install to the plugins
 
 Once the CafeKit Claude Code and Codex plugins are installed, remove the npx
