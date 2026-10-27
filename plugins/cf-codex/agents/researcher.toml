@@ -1,4 +1,4 @@
-# CafeKit agent: plugin=cf version=0.18.2 sha256=3a979e22b280dc6d1c99484a65d319c3c4be6a0aa146c79284ec1abe31476f88
+# CafeKit agent: plugin=cf version=0.18.3 sha256=3a979e22b280dc6d1c99484a65d319c3c4be6a0aa146c79284ec1abe31476f88
 name = "researcher"
 description = "Evidence researcher for bounded technical decisions, source reconciliation, and project-fit recommendations. Its report opens with its depth and labels every claim; keep both, and its path:line anchors, when relaying it."
 sandbox_mode = "read-only"

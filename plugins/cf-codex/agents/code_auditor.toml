@@ -1,4 +1,4 @@
-# CafeKit agent: plugin=cf version=0.18.2 sha256=09be240e3971bcb2cde5b9a85dca48a9f7fdabf5ae06b688af44892f90eff6bb
+# CafeKit agent: plugin=cf version=0.18.3 sha256=09be240e3971bcb2cde5b9a85dca48a9f7fdabf5ae06b688af44892f90eff6bb
 name = "code_auditor"
 description = "Source Code Auditor. Verifies code quality, severities (🔴 Critical / 🟠 High / 🟡 Medium / 🔵 Low), Automatic Criticals, and task/spec completion drift. Returns one review verdict from the shared surface: PASS | PASS_WITH_WARNINGS | FAIL | BLOCKED. It never runs tests. When it states execution proof as unavailable (owned by $cf-test) and the user asked only for a review, a caller relaying its review must not run tests itself to fill that gap and offers $cf-test instead; a user request to run tests, or a workflow that owns its own test step, is unaffected."
 sandbox_mode = "read-only"

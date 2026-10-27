@@ -1,4 +1,4 @@
-# CafeKit agent: plugin=cf version=0.18.2 sha256=c0d4a5ff82c6f80ece4f0ff024e434c6b55d7dbecf5b9ce4234a4a6cbd26810c
+# CafeKit agent: plugin=cf version=0.18.3 sha256=c0d4a5ff82c6f80ece4f0ff024e434c6b55d7dbecf5b9ce4234a4a6cbd26810c
 name = "strategist"
 description = "Autonomous advisory counsel with high reasoning effort; inherits the session model unless native spawn or agent defaults select another. No session model switch or user interview. Mention @strategist or spawn it for hard design, debugging, or trade-off calls. Advisory-only; returns advice, not code."
 model_reasoning_effort = "high"

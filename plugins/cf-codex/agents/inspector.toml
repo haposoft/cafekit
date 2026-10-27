@@ -1,4 +1,4 @@
-# CafeKit agent: plugin=cf version=0.18.2 sha256=450b27c4664ae4c02d7f7a0176abb956256fd7a699fe2d9f1f4e77c5fb34f420
+# CafeKit agent: plugin=cf version=0.18.3 sha256=450b27c4664ae4c02d7f7a0176abb956256fd7a699fe2d9f1f4e77c5fb34f420
 name = "inspector"
 description = "Codebase structure scanner. Use this agent when you need to quickly scout/inspect the codebase architecture, files, and directories. Specializes in finding relevant files for a given work scope before implementation begins."
 sandbox_mode = "read-only"

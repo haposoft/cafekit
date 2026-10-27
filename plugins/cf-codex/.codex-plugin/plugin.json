@@ -1,6 +1,6 @@
 {
   "name": "cf",
-  "version": "0.18.2",
+  "version": "0.18.3",
   "description": "CafeKit for Codex CLI: process-first specs, develop, test and review skills with runtime gates.",
   "author": {
     "name": "Haposoft",
