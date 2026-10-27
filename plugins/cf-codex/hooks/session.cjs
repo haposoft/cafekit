@@ -106,7 +106,8 @@ try {
       'CafeKit plugin is idle in this repository: its npx install (.codex/hooks.json) runs the CafeKit hooks here, ' +
       'and the CafeKit skills appear twice ($cf-* from .agents/skills and from the plugin). ' +
       'The privacy, inspect and completion gates run only if those npx hooks are trusted in /hooks; ' +
-      'trust them there, or remove the npx install from this repository to use the plugin.\n'
+      'trust them there, or remove the npx install from this repository to use the plugin: ' +
+      'run `npx @haposoft/cafekit@latest migrate` to preview the removal, then add --apply.\n'
     )
   });
   clearState(projectRoot, sessionId);
