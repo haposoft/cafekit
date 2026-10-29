@@ -262,6 +262,7 @@ module.exports = {
   PROJECT_ROOT,
   pluginRoot,
   pluginProjectDir,
+  pluginStateRoot,
   resolveProjectRoot,
   atomicWrite,
   getHookContext,

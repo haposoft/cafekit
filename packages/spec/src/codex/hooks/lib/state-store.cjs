@@ -4,7 +4,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
-const { atomicWrite, pluginRoot, pluginProjectDir } = require('./hook-context.cjs');
+const { atomicWrite, pluginRoot, pluginProjectDir, pluginStateRoot } = require('./hook-context.cjs');
 
 const MAX_ARCHIVES = 5;
 const MAX_AGENTS = 3;
@@ -24,9 +24,33 @@ function stateDir(projectRoot, sessionId) {
     : path.join(projectRoot, '.codex', 'session-state', key);
 }
 
+/**
+ * Create dir one segment at a time below its trusted base and refuse any symlink on
+ * the way, so a link committed into the repository cannot move session state outside it.
+ */
+function ensureContainedDir(base, dir) {
+  const relative = path.relative(base, dir);
+  if (!relative || relative.startsWith('..') || path.isAbsolute(relative)) return false;
+  let current = base;
+  for (const segment of relative.split(path.sep)) {
+    current = path.join(current, segment);
+    try {
+      fs.mkdirSync(current);
+    } catch (error) {
+      if (error.code !== 'EEXIST') return false;
+    }
+    try {
+      const stat = fs.lstatSync(current);
+      if (stat.isSymbolicLink() || !stat.isDirectory()) return false;
+    } catch {
+      return false;
+    }
+  }
+  return true;
+}
+
 function acquireLock(dir) {
   const lock = path.join(dir, '.write-lock');
-  fs.mkdirSync(dir, { recursive: true });
   const deadline = Date.now() + 3000;
 
   while (Date.now() < deadline) {
@@ -53,7 +77,7 @@ function acquireLock(dir) {
 
 function withStateLock(projectRoot, sessionId, callback) {
   const dir = stateDir(projectRoot, sessionId);
-  if (!dir) return false;
+  if (!dir || !ensureContainedDir(pluginRoot() ? pluginStateRoot() : projectRoot, dir)) return false;
   const release = acquireLock(dir);
   if (!release) return false;
   try {

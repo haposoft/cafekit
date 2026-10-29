@@ -93,12 +93,18 @@ const { stateDir: codexStateDir } = require(
   path.join(CODEX_HOOKS, 'lib', 'state-store.cjs')
 );
 
+// A hook child that never exits must fail its test, not hang the whole suite.
+const HOOK_TIMEOUT_MS = 30000;
+
 function runHook(file, cwd, payload) {
-  return spawnSync(process.execPath, [file], {
+  const result = spawnSync(process.execPath, [file], {
     cwd,
     input: JSON.stringify(payload),
-    encoding: 'utf8'
+    encoding: 'utf8',
+    timeout: HOOK_TIMEOUT_MS
   });
+  assert.equal(result.error, undefined, `${path.basename(file)} did not exit: ${result.error?.message}`);
+  return result;
 }
 
 function runtimeContext(root, feature = 'auth', session = 'session-a') {
@@ -539,7 +545,7 @@ for (const method of ['spawnSync', 'execFileSync']) {
 }
 `);
       const result = spawnSync(process.execPath, [path.join(hooks, 'spec-state.cjs')], {
-        cwd: root, encoding: 'utf8',
+        cwd: root, encoding: 'utf8', timeout: HOOK_TIMEOUT_MS,
         env: { ...process.env, NODE_OPTIONS: `${process.env.NODE_OPTIONS || ''} --require ${JSON.stringify(preload)}` },
         input: JSON.stringify({ cwd: root, featureName: 'auth', hook_event_name: 'UserPromptSubmit',
           session_id: 'one-snapshot', prompt: 'Continue specs/auth' }),
@@ -754,7 +760,7 @@ test('Codex secret guardrail runs from source with its shared keyword shim', () 
   delete env.CLAUDE_PROJECT_DIR;
   delete env.PROJECT_ROOT;
   const result = spawnSync(process.execPath, [path.join(CODEX_HOOKS, 'secret-output-guardrail.cjs')], {
-    cwd: PACKAGE_ROOT, env, encoding: 'utf8', input: JSON.stringify({ prompt: 'Explain secret handling.' }),
+    cwd: PACKAGE_ROOT, env, encoding: 'utf8', timeout: HOOK_TIMEOUT_MS, input: JSON.stringify({ prompt: 'Explain secret handling.' }),
   });
   assert.equal(result.status, 0);
   assert.equal(result.stderr, '');
@@ -855,7 +861,7 @@ test('Codex compact releases only its own rules reservation', () => {
 test('Codex precompact ignores empty stdin without recording a crash', () => {
   inHookFixture((root, hooks) => {
     const result = spawnSync(process.execPath, [path.join(hooks, 'precompact.cjs')], {
-      cwd: root, input: '', encoding: 'utf8',
+      cwd: root, input: '', encoding: 'utf8', timeout: HOOK_TIMEOUT_MS,
     });
     assert.equal(result.status, 0);
     assert.equal(result.stderr, '');
@@ -900,7 +906,8 @@ function sessionWithoutUpdateNetwork(root, hooks, session_id) {
     throw new Error('network disabled in update test');
   };\n`);
   const result = spawnSync(process.execPath, ['--require', preload, path.join(hooks, 'session.cjs')], {
-    cwd: root, encoding: 'utf8', input: JSON.stringify({ cwd: root, hook_event_name: 'SessionStart', source: 'startup', session_id }),
+    cwd: root, encoding: 'utf8', timeout: HOOK_TIMEOUT_MS,
+    input: JSON.stringify({ cwd: root, hook_event_name: 'SessionStart', source: 'startup', session_id }),
   });
   assert.equal(fs.existsSync(marker), false, 'the cached update check must not attempt a network request');
   return result;
@@ -976,7 +983,7 @@ function shortPrivacyFixture(check) {
       hook_event_name: 'PreToolUse', tool_name: 'Bash', tool_input: { command: `cat ${file}` } });
     const block = (file, id) => runHook(path.join(hooks, 'privacy-block.cjs'), root, payload(file, id));
     const submit = (prompt, session_id = session, env = process.env) => spawnSync(process.execPath,
-      [path.join(hooks, 'privacy-approval.cjs')], { cwd: root, encoding: 'utf8', env,
+      [path.join(hooks, 'privacy-approval.cjs')], { cwd: root, encoding: 'utf8', env, timeout: HOOK_TIMEOUT_MS,
         input: JSON.stringify({ cwd: root, session_id, hook_event_name: 'UserPromptSubmit', prompt }) });
     const files = prefix => fs.existsSync(dir) ? fs.readdirSync(dir).filter(name => name.startsWith(prefix)) : [];
     const id = result => {
@@ -1682,6 +1689,7 @@ test('empty or forged Codex hook authority fails closed', () => {
         env: { ...process.env },
         input,
         encoding: 'utf8',
+        timeout: HOOK_TIMEOUT_MS,
       });
       assert.equal(result.status, 0, `${JSON.stringify(input)}: ${result.stderr}`);
       assert.equal(result.stderr, '');
@@ -2387,6 +2395,36 @@ test('Codex hook-context canonicalizes symlink project root (regression)', () =>
       // Clear require cache for the symlink context to avoid polluting other tests
       Object.keys(require.cache).forEach((k) => { if (k.includes('link-project')) delete require.cache[k]; });
     }
+  });
+});
+
+test('Codex session state refuses a symlinked state path and writes nothing outside the project', () => {
+  inHookFixture((root, hooks) => {
+    const stateStore = require(path.join(hooks, 'lib', 'state-store.cjs'));
+    const sessionId = 'sess-symlink';
+    const dir = stateStore.stateDir(root, sessionId);
+    const sessionState = path.dirname(dir);
+    // A repository can commit either the shared state folder or one session folder as a link.
+    for (const link of [sessionState, dir]) {
+      const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-state-outside-'));
+      try {
+        fs.rmSync(sessionState, { recursive: true, force: true });
+        fs.mkdirSync(path.dirname(link), { recursive: true });
+        fs.symlinkSync(outside, link);
+        let called = false;
+        const ok = stateStore.withStateLock(root, sessionId, (stateDir) => {
+          called = true;
+          stateStore.writeData(stateDir, { todos: [] });
+        });
+        assert.equal(ok, false, `${path.relative(root, link)} link must be refused`);
+        assert.equal(called, false);
+        assert.deepEqual(fs.readdirSync(outside), [], 'nothing may be written outside the project');
+      } finally {
+        fs.rmSync(sessionState, { recursive: true, force: true });
+        fs.rmSync(outside, { recursive: true, force: true });
+      }
+    }
+    assert.equal(stateStore.withStateLock(root, sessionId, () => {}), true, 'a plain state folder still locks');
   });
 });
 
