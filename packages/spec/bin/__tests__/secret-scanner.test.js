@@ -46,6 +46,44 @@ test('staged secret scanner maps added source lines and redacts values', () => {
   });
 });
 
+test('staged secret scanner reads files whose names git quotes', () => {
+  withRepo((root) => {
+    const value = ['sk-live-', '0123456789abcdef0123456789'].join('');
+    // git C-quotes a path holding non-ASCII bytes, a double quote, or a tab,
+    // and ends the header with a tab when the path holds a space.
+    const names = ['cấu-hình.env', 'quote"name.ts', 'tab\tname.ts', 'é x.env', 'a b.env'];
+    for (const name of names) {
+      fs.writeFileSync(path.join(root, name), `OPENAI_API_KEY="${value}"\n`);
+    }
+    git(root, ['add', '--', ...names]);
+
+    const result = spawnSync(process.execPath, [HELPER], { cwd: root, encoding: 'utf8' });
+    assert.equal(result.status, 1, `${result.stdout}\n${result.stderr}`);
+    for (const name of names) {
+      assert.ok(
+        result.stdout.includes(`Blocked: possible secret \`OPENAI_API_KEY\` at ${name}:1. Value not shown.`),
+        `${JSON.stringify(name)} missing from:\n${result.stdout}`,
+      );
+    }
+    assert.doesNotMatch(result.stdout, new RegExp(value));
+  });
+});
+
+test('staged secret scanner ignores diff prefix settings in git config', () => {
+  for (const setting of ['diff.noprefix', 'diff.mnemonicPrefix']) {
+    withRepo((root) => {
+      git(root, ['config', setting, 'true']);
+      const value = ['sk-live-', '0123456789abcdef0123456789'].join('');
+      fs.writeFileSync(path.join(root, 'config.ts'), `export const OPENAI_API_KEY = "${value}";\n`);
+      git(root, ['add', 'config.ts']);
+
+      const result = spawnSync(process.execPath, [HELPER], { cwd: root, encoding: 'utf8' });
+      assert.equal(result.status, 1, `${setting}: ${result.stdout}\n${result.stderr}`);
+      assert.match(result.stdout, /Blocked: possible secret `OPENAI_API_KEY` at config\.ts:1\. Value not shown\./);
+    });
+  }
+});
+
 test('staged secret scanner handles JSON/YAML names and safe-name exclusions', () => {
   withRepo((root) => {
     const longValue = ['0123456789abcdef', '0123456789abcdef'].join('');

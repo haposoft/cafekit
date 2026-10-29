@@ -78,6 +78,38 @@ function inspectAssignment(assignment, file, sourceLine, findings) {
   }
 }
 
+const C_ESCAPES = { a: 7, b: 8, t: 9, n: 10, v: 11, f: 12, r: 13, '"': 34, '\\': 92 };
+
+function unquoteGitPath(quoted) {
+  // Walk bytes: a backslash never occurs inside a UTF-8 sequence, and octal escapes are raw bytes.
+  const input = Buffer.from(quoted, 'utf8');
+  const bytes = [];
+  for (let index = 0; index < input.length; index += 1) {
+    if (input[index] !== 0x5c) {
+      bytes.push(input[index]);
+      continue;
+    }
+    const octal = input.toString('latin1', index + 1, index + 4);
+    if (/^[0-7]{3}$/.test(octal)) {
+      bytes.push(parseInt(octal, 8));
+      index += 3;
+      continue;
+    }
+    bytes.push(C_ESCAPES[String.fromCharCode(input[index + 1])] ?? input[index + 1]);
+    index += 1;
+  }
+  return Buffer.from(bytes).toString('utf8');
+}
+
+// git C-quotes a path holding a double quote, a backslash, a control character, or a non-ASCII byte,
+// and appends a tab to the header when the path holds a space.
+function diffHeaderPath(header) {
+  const line = header.endsWith('\t') ? header.slice(0, -1) : header;
+  if (line.startsWith('+++ b/')) return line.slice(6);
+  if (line.startsWith('+++ "b/') && line.endsWith('"')) return unquoteGitPath(line.slice(5, -1)).slice(2);
+  return null;
+}
+
 function parseDiff(diff) {
   const findings = [];
   let file = null;
@@ -93,9 +125,10 @@ function parseDiff(diff) {
   };
 
   for (const line of diff.split(/\r?\n/)) {
-    if (line.startsWith('+++ b/')) {
+    const headerPath = diffHeaderPath(line);
+    if (headerPath !== null) {
       flushPending();
-      file = line.slice(6);
+      file = headerPath;
       continue;
     }
     const hunk = line.match(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/);
@@ -144,7 +177,8 @@ function parseDiff(diff) {
 function main() {
   const result = spawnSync(
     'git',
-    ['diff', '--cached', '--unified=0', '--no-color', '--diff-filter=ACMR', '--'],
+    // Pin the prefixes: diff.noprefix and diff.mnemonicPrefix would otherwise hide every header.
+    ['diff', '--cached', '--unified=0', '--no-color', '--src-prefix=a/', '--dst-prefix=b/', '--diff-filter=ACMR', '--'],
     { encoding: 'utf8' }
   );
   if (result.error || result.status !== 0) {
