@@ -15,7 +15,7 @@ const SKILLS = path.resolve(__dirname, '../../src/claude/skills');
 
 // Skills that Codex projects with an extra note inserted after the frontmatter.
 const PROJECTED = [
-  { skill: 'specs', codexName: 'cf-specs', marker: CODEX_SPECS_SCOPE_MARKER, note: CODEX_SPECS_SCOPE_NOTE, idempotent: true },
+  { skill: 'specs', codexName: 'cf-specs', marker: CODEX_SPECS_SCOPE_MARKER, note: CODEX_SPECS_SCOPE_NOTE },
   { skill: 'research', codexName: 'cf-research', marker: CODEX_RESEARCH_DEPTH_MARKER, note: CODEX_RESEARCH_DEPTH_NOTE },
 ].map((entry) => {
   const file = path.join(SKILLS, entry.skill, 'SKILL.md');
@@ -34,7 +34,7 @@ function skillFiles(directory) {
 
 const occurrences = (text, marker) => text.split(marker).length - 1;
 
-for (const { skill, codexName, marker, note, file, source, idempotent } of PROJECTED) {
+for (const { skill, codexName, marker, note, file, source } of PROJECTED) {
   test(`codex ${skill} projection carries its note immediately after unchanged frontmatter`, () => {
     assert.ok(typeof marker === 'string' && marker.length > 0);
     assert.equal(typeof note, 'string');
@@ -47,7 +47,6 @@ for (const { skill, codexName, marker, note, file, source, idempotent } of PROJE
     assert.equal(projected.slice(0, projected.length - after.body.length), plain.slice(0, plain.length - before.body.length));
     assert.equal(after.body, `\n${note}\n\n${before.body}`);
     assert.equal(occurrences(projected, marker), 1);
-    if (idempotent) assert.equal(normalizeCodexBody(projected, file), projected, 'projection must be idempotent');
     assert.ok(note.includes(marker));
     assert.doesNotMatch(note, /\b(?:Write|Edit|Read|Bash|WebSearch|WebFetch|AskUserQuestion)\b/);
   });
@@ -72,6 +71,14 @@ test('each projection marker appears only in its own skill and other skill bodie
       assert.equal(occurrences(projected, marker), file === ownFile ? 1 : 0, `${marker} in ${file}`);
     }
     if (!OWN_PROJECTION.has(file)) assert.equal(projected, normalizeCodexBody(source), file);
+  }
+});
+
+// Projecting an already projected skill must not add its note or description boundary again.
+test('every Codex skill projection is idempotent', () => {
+  for (const file of skillFiles(SKILLS)) {
+    const projected = normalizeCodexBody(fs.readFileSync(file, 'utf8'), file);
+    assert.equal(normalizeCodexBody(projected, file), projected, file);
   }
 });
 

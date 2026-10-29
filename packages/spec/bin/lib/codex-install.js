@@ -360,8 +360,10 @@ function normalizeCodexBody(content, sourcePath = '') {
   next = next.replace(/`?CLAUDE_CODE_SUBAGENT_MODEL`?/g,
     'the configured agent model (`model` in `.codex/agents/<agent>.toml`, or `[agents].default_subagent_model` in native Codex configuration)');
   next = applyReplacements(normalizeAskUserQuestion(next), INSTRUCTION_REPLACEMENTS);
+  // Each projection below checks for its own output first, so projecting an installed file again is a no-op.
   const { frontmatter, body } = splitFrontmatter(next);
-  if (frontmatter.when_to_use && frontmatter.description) {
+  if (frontmatter.when_to_use && frontmatter.description
+    && !frontmatter.description.includes(` Use when: ${frontmatter.when_to_use}`)) {
     const description = `${frontmatter.description} Use when: ${frontmatter.when_to_use}`;
     if (description.length <= 1024) {
       const header = next.slice(0, next.length - body.length)
@@ -371,7 +373,7 @@ function normalizeCodexBody(content, sourcePath = '') {
     }
   }
   // Only the installed ask skill receives this Codex-specific boundary, never eval prompts.
-  if (/(?:^|\/)skills\/ask\/SKILL\.md$/.test(String(sourcePath).replace(/\\/g, '/'))) {
+  if (/(?:^|\/)skills\/ask\/SKILL\.md$/.test(String(sourcePath).replace(/\\/g, '/')) && !next.includes(CODEX_ASK_NOTE)) {
     const { frontmatter, body } = splitFrontmatter(next);
     const description = `${frontmatter.description} ${CODEX_ASK_DESCRIPTION_BOUNDARY}`;
     if (description.length > 1024) throw new Error('Codex ask description exceeds 1024 characters');
@@ -380,7 +382,7 @@ function normalizeCodexBody(content, sourcePath = '') {
     next = `${header}\n${CODEX_ASK_NOTE}\n\n${body}`;
   }
   // Only the installed research skill receives this note, never prompts or templates.
-  if (/(?:^|\/)skills\/research\/SKILL\.md$/.test(String(sourcePath).replace(/\\/g, '/'))) {
+  if (/(?:^|\/)skills\/research\/SKILL\.md$/.test(String(sourcePath).replace(/\\/g, '/')) && !next.includes(CODEX_RESEARCH_DEPTH_NOTE)) {
     const { body } = splitFrontmatter(next);
     const header = next.slice(0, next.length - body.length);
     next = `${header}\n${CODEX_RESEARCH_DEPTH_NOTE}\n\n${body}`;
