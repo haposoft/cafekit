@@ -113,6 +113,7 @@ function diffHeaderPath(header) {
 function parseDiff(diff) {
   const findings = [];
   let file = null;
+  let inHeader = false;
   let sourceLine = 0;
   let pending = null;
 
@@ -125,7 +126,15 @@ function parseDiff(diff) {
   };
 
   for (const line of diff.split(/\r?\n/)) {
-    const headerPath = diffHeaderPath(line);
+    // A `+++` header only counts between `diff --git` and the first hunk; after that an added
+    // line such as `++ b/x` shows up as `+++ b/x` and is content.
+    if (line.startsWith('diff --git ')) {
+      flushPending();
+      inHeader = true;
+      file = null;
+      continue;
+    }
+    const headerPath = inHeader ? diffHeaderPath(line) : null;
     if (headerPath !== null) {
       flushPending();
       file = headerPath;
@@ -134,6 +143,7 @@ function parseDiff(diff) {
     const hunk = line.match(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/);
     if (hunk) {
       flushPending();
+      inHeader = false;
       sourceLine = Number(hunk[1]);
       continue;
     }
@@ -177,8 +187,10 @@ function parseDiff(diff) {
 function main() {
   const result = spawnSync(
     'git',
-    // Pin the prefixes: diff.noprefix and diff.mnemonicPrefix would otherwise hide every header.
-    ['diff', '--cached', '--unified=0', '--no-color', '--src-prefix=a/', '--dst-prefix=b/', '--diff-filter=ACMR', '--'],
+    // Pin the output: diff.noprefix and diff.mnemonicPrefix would hide every header, and an
+    // external diff or textconv driver would replace the staged text with its own output.
+    ['diff', '--cached', '--unified=0', '--no-color', '--no-ext-diff', '--no-textconv',
+      '--src-prefix=a/', '--dst-prefix=b/', '--diff-filter=ACMR', '--'],
     { encoding: 'utf8' }
   );
   if (result.error || result.status !== 0) {

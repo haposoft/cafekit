@@ -84,6 +84,41 @@ test('staged secret scanner ignores diff prefix settings in git config', () => {
   }
 });
 
+test('staged secret scanner treats an added line that looks like a diff header as content', () => {
+  withRepo((root) => {
+    const value = ['sk-live-', '0123456789abcdef0123456789'].join('');
+    // The added line `++ b/other.ts` appears in the diff as `+++ b/other.ts`.
+    fs.writeFileSync(path.join(root, 'notes.md'), `++ b/other.ts\nOPENAI_API_KEY="${value}"\n`);
+    git(root, ['add', 'notes.md']);
+
+    const result = spawnSync(process.execPath, [HELPER], { cwd: root, encoding: 'utf8' });
+    assert.equal(result.status, 1, `${result.stdout}\n${result.stderr}`);
+    assert.match(result.stdout, /Blocked: possible secret `OPENAI_API_KEY` at notes\.md:2\. Value not shown\./);
+  });
+});
+
+test('staged secret scanner ignores external diff and textconv settings', () => {
+  const settings = [
+    (root) => git(root, ['config', 'diff.external', 'true']),
+    (root) => {
+      fs.writeFileSync(path.join(root, '.gitattributes'), '*.ts diff=hide\n');
+      git(root, ['config', 'diff.hide.textconv', 'true']);
+    },
+  ];
+  for (const configure of settings) {
+    withRepo((root) => {
+      configure(root);
+      const value = ['sk-live-', '0123456789abcdef0123456789'].join('');
+      fs.writeFileSync(path.join(root, 'config.ts'), `export const OPENAI_API_KEY = "${value}";\n`);
+      git(root, ['add', 'config.ts']);
+
+      const result = spawnSync(process.execPath, [HELPER], { cwd: root, encoding: 'utf8' });
+      assert.equal(result.status, 1, `${configure}: ${result.stdout}\n${result.stderr}`);
+      assert.match(result.stdout, /`OPENAI_API_KEY` at config\.ts:1\./);
+    });
+  }
+});
+
 test('staged secret scanner handles JSON/YAML names and safe-name exclusions', () => {
   withRepo((root) => {
     const longValue = ['0123456789abcdef', '0123456789abcdef'].join('');
