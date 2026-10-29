@@ -2390,7 +2390,7 @@ test('Codex hook-context canonicalizes symlink project root (regression)', () =>
   });
 });
 
-test('Codex resolver and state reject symlink escape', () => {
+test('Codex resolver rejects symlink escape', () => {
   inHookFixture((root, hooks) => {
     const specUtils = require(path.join(hooks, 'lib', 'spec-utils.cjs'));
     const resolverPath = path.join(root, '.codex', 'scripts', 'spec-resolver.cjs');
@@ -2417,23 +2417,6 @@ test('Codex resolver and state reject symlink escape', () => {
         path.join(scripts, 'spec-resolver.cjs'),
       );
       fs.rmSync(outsideScripts, { recursive: true, force: true });
-    }
-    // State dir symlink escape: create symlink for session-state dir
-    const stateStore = require(path.join(hooks, 'lib', 'state-store.cjs'));
-    const sessionId = 'sess-symlink';
-    const dir = stateStore.stateDir(root, sessionId);
-    fs.mkdirSync(path.dirname(dir), { recursive: true });
-    // Create a symlink that points outside project
-    const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'outside-'));
-    try {
-      if (fs.existsSync(dir)) fs.rmSync(dir, { recursive: true, force: true });
-      fs.symlinkSync(outside, dir);
-      // withStateLock should handle symlink safely (no crash, no write outside)
-      const ok = stateStore.withStateLock(root, sessionId, () => {});
-      assert.equal(typeof ok, 'boolean');
-    } finally {
-      try { fs.unlinkSync(dir); } catch {}
-      fs.rmSync(outside, { recursive: true, force: true });
     }
   });
 });

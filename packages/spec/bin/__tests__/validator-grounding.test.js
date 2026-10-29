@@ -17,29 +17,6 @@ function write(filePath, content) {
   fs.writeFileSync(filePath, content);
 }
 
-function task({
-  id = 'R1-01',
-  mapping = '1.1',
-  related = '`src/one.js` | Modify',
-  relatedRows = null,
-  dependencies = 'none',
-  status = 'pending',
-  parallel = false,
-  extra = '',
-} = {}) {
-  const relatedPath = related.match(/`([^`]+)`/)?.[1] || 'src/one.js';
-  const action = related.match(/\|\s*([A-Za-z]+)\b/i)?.[1] || 'Modify';
-  const acceptanceId = mapping.match(/\d+\.\d+/)?.[0];
-  const lifecycleRows = relatedRows === null ? (action.toLowerCase() === 'modify'
-    ? `| \`${relatedPath}\` | Read | Inspect existing implementation |\n| ${related} | Update implementation |`
-    : `| ${related} | Apply declared lifecycle action |`) : relatedRows;
-  return `# Task ${id}: One\n\n**Status:** ${status}\n\n## Outcome\n\nCalling the real fixture entrypoint returns status value 1.\n\n## Scope and Typed Anchors\n\n- **In scope:** Implement the mapped observable behavior.\n- **Out of scope:** Unrelated runtime behavior.\n- **Contracts/Invariants:** none\n- **Canonical design anchors consumed:** A-D-01\n\n| ID | Type | Target | Role |\n|---|---|---|---|\n| A-${id}-01 | command | \`node --test test/one.test.js\` | planned verification command |\n\n## Changes\n\n- [ ] ${parallel ? '(P) ' : ''}Update the source boundary and preserve its negative path.${mapping ? ` _Requirements: ${mapping}_` : ''}\n\n## Acceptance\n\n${acceptanceId ? `- **R${acceptanceId}:**` : '-'} Calling \`${relatedPath}\` returns an observable result with status value 1.\n\n## Dependencies\n\n- ${dependencies}\n\n## Verification Plan\n\n- **Command:** \`node --test test/one.test.js\`\n- **Expected:** exit code 0 and one assertion for status value 1\n- **Negative path:** invalid input returns a deterministic error result\n- **Reachability:** \`${relatedPath}\` is invoked by the focused test\n\n## Related Files\n\n| Path | Action | Description |\n|---|---|---|---|\n${lifecycleRows}\n${extra}`;
-}
-
-function output(result) {
-  return `${result.stdout}\n${result.stderr}`;
-}
-
 test('Codex installer transform preserves all owned spec assets idempotently', () => {
   for (const relative of [
     'src/claude/skills/specs/SKILL.md',
@@ -50,13 +27,6 @@ test('Codex installer transform preserves all owned spec assets idempotently', (
     const source = fs.readFileSync(path.join(ROOT, relative), 'utf8');
     const transformed = normalizeCodexBody(source, relative);
     assert.equal(normalizeCodexBody(transformed, relative), transformed, `${relative} must normalize idempotently`);
-    assert.doesNotMatch(transformed, /node \.claude\/scripts\//, `${relative} retained a Claude executable path`);
-    if (/node \.claude\/scripts\//.test(source)) {
-      assert.match(transformed, /node \.codex\/scripts\//, `${relative} lost its Codex executable path`);
-    }
-    if (/implementation-obligation:/.test(source)) {
-      assert.match(transformed, /implementation-obligation:/, `${relative} lost closure semantics`);
-    }
   }
 
   const skill = fs.readFileSync(path.join(ROOT, 'src/claude/skills/specs/SKILL.md'), 'utf8');

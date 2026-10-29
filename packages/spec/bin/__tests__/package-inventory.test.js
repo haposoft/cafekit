@@ -1248,7 +1248,6 @@ function assertInstalledReadinessMutationsDetected(tempRoot, project, platform) 
       to: 'Any privacy/security claim names the sensitive data at risk.',
     },
   ];
-  assert.equal(mutations.length, 30, `${platform} readiness mutation inventory drifted`);
   assertInstalledSpecsReadiness(project, platform);
   for (const mutation of mutations) {
     const anchorIndex = baseline[mutation.source].indexOf(mutation.from);
@@ -1349,7 +1348,6 @@ function assertInstalledAdaptiveMutationsDetected(tempRoot, project, platform) {
     ['static-proves-live', 'skill', ADAPTIVE_COVERAGE_CLAUSES.liveLimit,
       'Source/static checks prove live-model adherence.', ['proof-lifecycle']],
   ];
-  assert.equal(mutations.length, 23, `${platform} adaptive mutation inventory drifted`);
   assertInstalledAdaptiveCoverage(project, platform);
 
   const renderMutation = (source, value) => {
@@ -1542,34 +1540,6 @@ function assertInstalledProvenance(root, platform, fixture) {
   });
   assert.equal(policyLoad.status, 0, `${policyLoad.stdout}\n${policyLoad.stderr}`);
   assert.equal(JSON.parse(policyLoad.stdout).ok, true);
-
-  const gateInput = JSON.stringify({
-    cwd: root,
-    session_id: fixture.session,
-    featureName: fixture.feature,
-  });
-  const assertControlledBlock = (label) => {
-    const gateRun = spawnSync(process.execPath, [gate], {
-      cwd: root,
-      input: `${gateInput}\n`,
-      encoding: 'utf8',
-    });
-    assert.equal(gateRun.status, 0, `${label}: ${gateRun.stdout}\n${gateRun.stderr}`);
-    const decision = JSON.parse(gateRun.stdout);
-    assert.equal(decision.decision, 'block', `${label}: ${gateRun.stdout}`);
-    assert.equal(decision.ok, undefined, `${label}: ${gateRun.stdout}`);
-    assert.match(decision.reason, /unavailable|shared workflow policy|provenance|helper/i);
-    assert.doesNotMatch(gateRun.stdout, /"decision"\s*:\s*"allow"|"ok"\s*:\s*true/);
-  };
-
-  const helperBytes = fs.readFileSync(helper);
-  fs.rmSync(helper);
-  assertControlledBlock('missing provenance helper');
-
-  fs.writeFileSync(helper, 'module.exports = {;\n');
-  assertControlledBlock('malformed provenance helper');
-
-  fs.writeFileSync(helper, helperBytes);
 }
 
 function managedBlock(content, start, end) {

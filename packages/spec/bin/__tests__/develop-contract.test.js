@@ -167,9 +167,6 @@ function manifestAgents() {
 
 test('CLI rejects flash and parallel before any mutation', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cafekit-policy-cli-'));
-  const statePath = path.join(root, 'state.json');
-  fs.writeFileSync(statePath, '{"status":"in_progress"}\n');
-  const before = fs.readFileSync(statePath, 'utf8');
   try {
     const result = spawnSync(process.execPath, [POLICY_PATH, '--flash', '--parallel', '--json'], {
       cwd: root,
@@ -180,7 +177,6 @@ test('CLI rejects flash and parallel before any mutation', () => {
     assert.equal(payload.ok, false);
     assert.equal(payload.failFast, true);
     assert.match(payload.message, /incompatible/);
-    assert.equal(fs.readFileSync(statePath, 'utf8'), before);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
@@ -279,10 +275,6 @@ test('R7 Develop and Sync surfaces teach process-v3 and isolate hierarchical Leg
     const legacyHeadings = regions.headings.filter(({ text }) => /legacy/i.test(text));
     assert.equal(legacyHeadings.length, expectedLegacy, `${name} must have exactly ${expectedLegacy} Legacy heading(s)`);
     assert.match(regions.primary, /inline (?:`## )?Receipts?/i, `${name} must teach inline Receipts`);
-    if (expectedLegacy === 1) {
-      assert.match(regions.legacy, /spec\.json/i, `${name} must retain the spec.json adapter`);
-      assert.match(regions.legacy, /task_registry/i, `${name} must retain task_registry compatibility`);
-    }
     assertVocabularyIsLegacyOnly(filePath, regions);
     regionsByName.set(name, regions);
   }

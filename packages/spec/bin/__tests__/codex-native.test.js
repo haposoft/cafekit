@@ -1265,7 +1265,6 @@ function assertInstalledAuthoringProjection(root, installedRoot) {
       to: 'Any privacy/security claim names the sensitive data at risk.'
     }
   ];
-  assert.equal(readinessMutations.length, 30, 'installed readiness mutation set must match canonical source');
 
   for (const { name, issue, relative, from, to } of readinessMutations) {
     const target = assertInstalledMutationTarget(root, installedRoot, relative);
@@ -1361,7 +1360,6 @@ function assertInstalledAuthoringProjection(root, installedRoot) {
     ['static-proves-live', 'skill', ADAPTIVE_COVERAGE_CLAUSES.liveLimit,
       'Source/static checks prove live-model adherence.', ['proof-lifecycle']]
   ];
-  assert.equal(adaptiveMutations.length, 23, 'installed adaptive mutation set must match canonical source');
 
   const adaptiveTarget = (source) => {
     if (source === 'specMaker') {

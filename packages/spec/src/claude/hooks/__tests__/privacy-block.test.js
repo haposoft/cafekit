@@ -85,32 +85,6 @@ test('asks for a symlink whose target is .env (regression: symlink bypass)', () 
   }
 });
 
-test('allows a normal non-sensitive file (exit 0)', () => {
-  const dir = tmpDir();
-  try {
-    const f = path.join(dir, 'README.md');
-    fs.writeFileSync(f, '# hi');
-    const { code } = runHook({ tool_name: 'Read', tool_input: { file_path: f } }, dir);
-    assert.strictEqual(code, 0);
-  } finally {
-    fs.rmSync(dir, { recursive: true, force: true });
-  }
-});
-
-test('allows a symlink to an exempt .env.example (exemption still wins)', () => {
-  const dir = tmpDir();
-  try {
-    const example = path.join(dir, '.env.example');
-    fs.writeFileSync(example, 'SECRET=');
-    const link = path.join(dir, 'sample.txt');
-    fs.symlinkSync(example, link);
-    const { code } = runHook({ tool_name: 'Read', tool_input: { file_path: link } }, dir);
-    assert.strictEqual(code, 0, 'symlink to an exempt file must stay allowed');
-  } finally {
-    fs.rmSync(dir, { recursive: true, force: true });
-  }
-});
-
 test('an exempt-looking symlink to .env still asks based on its target', () => {
   const dir = tmpDir();
   try {

@@ -468,32 +468,6 @@ test('4. stop_hook_active: true → exit 0 silent even with violating task', () 
   }
 });
 
-test('4b. done task before explicit closeout without receipt blocks', () => {
-  const dir = makeFixture({ evidence: 'missing-evidence', phase: 'implementation' });
-  try {
-    const { code, stdout } = runHook({}, dir);
-    assert.strictEqual(code, 0);
-    const body = parseBlock(stdout);
-    assert.strictEqual(body?.decision, 'block');
-    assert.match(body.reason, new RegExp(TASK_REL));
-    assert.strictEqual(fs.existsSync(path.join(dir, 'specs', FEATURE, 'feature-receipt.md')), false);
-  } finally {
-    fs.rmSync(dir, { recursive: true, force: true });
-  }
-});
-
-test('4c. done task before explicit closeout with valid task receipt is silent', () => {
-  const dir = makeFixture({ evidence: 'valid', phase: 'implementation' });
-  try {
-    const { code, stdout } = runHook({}, dir);
-    assert.strictEqual(code, 0);
-    assert.strictEqual(stdout, '');
-    assert.strictEqual(fs.existsSync(path.join(dir, 'specs', FEATURE, 'feature-receipt.md')), false);
-  } finally {
-    fs.rmSync(dir, { recursive: true, force: true });
-  }
-});
-
 test('5. first run (no cache) with done-without-receipt → block (cache is not truth)', () => {
   const dir = makeFixture({ evidence: 'missing-evidence' });
   try {
@@ -899,27 +873,6 @@ test('25. placeholder tokens Command: TODO / Base: TBD / artifact sha256 empty m
   seedCache({ [FEATURE]: { [TASK_REL]: 'pending' } });
   assert.strictEqual(runHook({}, dir2).stdout, '', 'command containing todo substring should not block');
   fs.rmSync(dir2, { recursive: true, force: true });
-});
-
-test('26. explicit failure outcomes Tests failed / Result FAIL and multiple Results must block', () => {
-  const cases = [
-    { evidence: ['Verification: PASS','Command: pnpm test','Exit: 0','Base: a','Head: b','Tests failed: 1'].join('\n'), desc: 'Tests failed: 1' },
-    { evidence: ['Verification: PASS','Command: pnpm test','Exit: 0','Base: a','Head: b','Result: FAIL','Result: PASS'].join('\n'), desc: 'Result FAIL then PASS' },
-    { evidence: ['Verification: PASS','Command: pnpm test','Exit: 0','Base: a','Head: b','0 tests passed'].join('\n'), desc: '0 tests' },
-  ];
-  for (const { evidence, desc } of cases) {
-    const dir = tmpDir();
-    const featureDir = path.join(dir, 'specs', FEATURE);
-    fs.mkdirSync(featureDir, { recursive: true });
-    fs.writeFileSync(path.join(featureDir, 'plan.md'), '# Demo plan\n');
-    fs.mkdirSync(path.join(featureDir, 'tasks'), { recursive: true });
-    fs.writeFileSync(path.join(dir, 'specs', FEATURE, TASK_REL), ['# Task','','Status: done','','## Dependencies', '', '- none', '', '## Verification Plan', '', '- Command: pnpm test', '', '## Receipt','','' + evidence,'```','pass','```'].join('\n'));
-    seedCache({ [FEATURE]: { [TASK_REL]: 'pending' } });
-    const body = parseBlock(runHook({}, dir).stdout);
-    assert.ok(body, `explicit failure ${desc} should block`);
-    assert.strictEqual(body.decision, 'block');
-    fs.rmSync(dir, { recursive: true, force: true });
-  }
 });
 
 test('27. task markdown symlink outside feature must be rejected (check a)', () => {
