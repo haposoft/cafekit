@@ -4,6 +4,8 @@ All notable changes to CafeKit are documented here, following
 [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
+### Removed
+- The retired B1 benchmark harness: `scripts/benchmark-workflow.mjs`, the `benchmarks/` folder (corpus schema, example config, rubric, migration manifest), `docs/benchmark-workflow.md` and their tests. Measurement runs through `evals/run.sh`. Neither was part of the published package.
 ### Fixed
 - The staged secret scanner used by `cf:git` now reads files whose names git quotes: a name with non-ASCII characters, a double quote, a tab or a space was skipped, so its secrets were never reported. It also ignores `diff.noprefix` and `diff.mnemonicPrefix` in your git config, which made it skip every file.
 - Session state no longer follows a symlink out of the project. A `.claude/session-state` or `.codex/session-state` link committed into a repository used to receive the state files; the hooks now refuse such a path and write nothing. State kept under `~/.claude/session-states` is unchanged, so a linked `~/.claude` keeps working.

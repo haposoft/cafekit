@@ -15,6 +15,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { test } = require('node:test');
+const { installCodexHookRuntime } = require('./codex-hook-runtime-fixture.cjs');
 
 const PACKAGE_ROOT = path.join(__dirname, '..', '..');
 const CLAUDE_HOOK = path.join(PACKAGE_ROOT, 'src/claude/hooks/session.cjs');
@@ -142,22 +143,7 @@ test('no token ever reaches stdout, stderr, or the Claude env file', () => {
 // ---------------------------------------------------------------------------------------
 
 function composeCodexHookTree(root) {
-  const hooksDir = path.join(root, '.codex', 'hooks');
-  fs.mkdirSync(path.join(hooksDir, 'lib'), { recursive: true });
-  fs.copyFileSync(path.join(PACKAGE_ROOT, 'src/codex/hooks/session.cjs'), path.join(hooksDir, 'session.cjs'));
-  fs.copyFileSync(path.join(PACKAGE_ROOT, 'src/codex/hooks/lib/hook-context.cjs'),
-    path.join(hooksDir, 'lib', 'hook-context.cjs'));
-  fs.copyFileSync(path.join(PACKAGE_ROOT, 'src/codex/hooks/lib/privacy-state.cjs'),
-    path.join(hooksDir, 'lib', 'privacy-state.cjs'));
-  fs.copyFileSync(path.join(PACKAGE_ROOT, 'src/codex/hooks/lib/rules-reservation.cjs'),
-    path.join(hooksDir, 'lib', 'rules-reservation.cjs'));
-  fs.copyFileSync(path.join(PACKAGE_ROOT, 'src/claude/hooks/lib/update-check.cjs'),
-    path.join(hooksDir, 'lib', 'update-check.cjs'));
-  fs.copyFileSync(path.join(PACKAGE_ROOT, 'src/claude/hooks/lib/runtime-path-safety.cjs'),
-    path.join(hooksDir, 'lib', 'runtime-path-safety.cjs'));
-  for (const name of ['privacy-paths.cjs', 'privacy-command-analysis.cjs']) {
-    fs.copyFileSync(path.join(PACKAGE_ROOT, 'src/claude/hooks/lib', name), path.join(hooksDir, 'lib', name));
-  }
+  const hooksDir = installCodexHookRuntime(root);
   return path.join(hooksDir, 'session.cjs');
 }
 

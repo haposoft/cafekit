@@ -75,11 +75,10 @@ function assertLinksResolve(baseDir, file) {
   return links.length;
 }
 
-test('manifest requires adv in alphabetical position', () => {
+test('manifest requires adv', () => {
   // Without the entry the installer never copies the skill and nothing else fails.
   const required = loadClaudeMigrationManifest().skills.required;
   assert.equal(required.includes('adv'), true);
-  assert.deepEqual([...required], [...required].sort());
 });
 
 test('frontmatter carries the catalog identity, manual-only invocation, and a routable description', () => {

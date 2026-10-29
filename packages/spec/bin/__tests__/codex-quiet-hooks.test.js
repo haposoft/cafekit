@@ -7,19 +7,13 @@ const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { test } = require('node:test');
+const { installCodexHookRuntime } = require('./codex-hook-runtime-fixture.cjs');
 const SOURCE = path.resolve(__dirname, '../../src');
 
 function fixture({ specs = 'specs', packets = ['auth-flow'] } = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ck-codex-quiet-'));
   const hooks = path.join(root, '.codex/hooks');
-  fs.cpSync(path.join(SOURCE, 'codex/hooks'), hooks, { recursive: true });
-  for (const name of ['privacy-paths.cjs', 'privacy-command-analysis.cjs']) {
-    fs.copyFileSync(path.join(SOURCE, 'claude/hooks/lib', name), path.join(hooks, 'lib', name));
-  }
-  fs.copyFileSync(path.join(SOURCE, 'claude/hooks/lib/spec-touch.cjs'), path.join(hooks, 'lib/spec-touch.cjs'));
-  fs.copyFileSync(path.join(SOURCE, 'claude/hooks/lib/secret-keywords.cjs'), path.join(hooks, 'lib/secret-keywords.cjs'));
-  fs.copyFileSync(path.join(SOURCE, 'claude/hooks/lib/update-check.cjs'), path.join(hooks, 'lib/update-check.cjs'));
-  fs.copyFileSync(path.join(SOURCE, 'claude/hooks/lib/runtime-path-safety.cjs'), path.join(hooks, 'lib/runtime-path-safety.cjs'));
+  installCodexHookRuntime(root);
   fs.cpSync(path.join(SOURCE, 'claude/scripts'), path.join(root, '.codex/scripts'), { recursive: true });
   fs.writeFileSync(path.join(root, '.codex/runtime.json'), JSON.stringify({ paths: { specs } }));
   fs.writeFileSync(path.join(root, '.gitignore'), '.codex/\n');

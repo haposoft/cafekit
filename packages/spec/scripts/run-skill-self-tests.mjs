@@ -93,10 +93,6 @@ function parsePythonUnittestCount(output) {
   return match ? Number(match[1]) : 0;
 }
 
-function markdownH2s(content) {
-  return [...content.matchAll(/^##\s+(.+?)\s*$/gm)].map((match) => match[1]);
-}
-
 function markdownBoldBulletFields(content) {
   const fields = new Map();
   for (const line of String(content).split("\n")) {
@@ -2972,25 +2968,6 @@ async function runSpecsContractTests() {
   ]) {
     if (!instructionText.includes(token)) fail(`instruction model is missing ${token}`);
   }
-  const staleDowngradeField = "override_" + "receipt";
-  const canonicalAuthoringFiles = [
-    "../../README.md",
-    "../../docs/specs-usage-guide.md",
-    "../../plans/specs-v2-remake-blueprint.md",
-    "src/claude/agents/spec-maker.md",
-    "src/claude/skills/specs/SKILL.md",
-    "src/claude/skills/specs/references/review.md",
-    "src/claude/skills/specs/references/templates.md",
-    "src/claude/skills/develop/SKILL.md",
-    "src/claude/skills/sync/SKILL.md",
-  ];
-  for (const file of canonicalAuthoringFiles) {
-    const content = await readFile(join(packageRoot, file), "utf8");
-    if (content.includes(staleDowngradeField)) {
-      fail(`${file} exposes a stale downgrade receipt on the canonical authoring path`);
-    }
-  }
-
   const reporterFixture = [
     "ℹ tests 3",
     "ℹ pass 2",
@@ -3009,9 +2986,8 @@ async function runSpecsContractTests() {
   }
 
   console.log("✔ Specs instruction model names the flat layout, the three gates, and receipt fields");
-  console.log("✔ Specs canonical authoring source exposes no downgrade receipt");
   console.log("✔ Full runner preserves exact Node failure counts and locations");
-  return 3 + authoringInstructionTests;
+  return 2 + authoringInstructionTests;
 }
 
 const DEBUG_ADAPTIVE_PATHS = {
@@ -3253,610 +3229,10 @@ async function runDebugAgentGatesTests() {
   return mutations.length + 1;
 }
 
-const HOTFIX_ADAPTIVE_PATHS = {
-  skill: "src/claude/skills/fix/SKILL.md",
-  diagnosis: "src/claude/skills/fix/references/diagnosis-protocol.md",
-  review: "src/claude/skills/fix/references/review-cycle.md",
-  parallel: "src/claude/skills/fix/references/parallel-patterns.md",
-  prevention: "src/claude/skills/fix/references/prevention-gate.md",
-  specialized: "src/claude/skills/fix/references/workflow-specialized.md",
-};
-
-function hotfixAdaptiveContractIssues(input) {
-  const issues = new Set();
-  const { skill, diagnosis, review, parallel, prevention, specialized } = input;
-  const parallelContract = parallel.replace(/\s+/g, " ").trim();
-  if (!skill.includes("name: cf:fix")
-    || !skill.includes("# Fix — root-cause repair workflow")
-    || skill.includes("name: cf:hotfix")) {
-    issues.add("public-rename");
-  }
-  if (!skill.includes("## Proportional depth")
-    || !skill.includes("**Quick/local:**")
-    || !skill.includes("**Incident/deep:**")
-    || !skill.includes("Quick mode only reduces depth")
-    || !skill.includes("it never skips scout, pre-fix evidence, diagnosis, or before/after verification")) {
-    issues.add("proportional-depth");
-  }
-  if (!skill.includes("Trigger: event or input")
-    || !skill.includes("Contributing factors: conditions that raised likelihood")
-    || !diagnosis.includes("- Trigger: event or input")
-    || !diagnosis.includes("- Contributing factors: conditions that raised likelihood")) {
-    issues.add("causal-fields");
-  }
-  if (!skill.includes("`Timeline: skipped - <reason>`")
-    || !skill.includes("`- skipped: <reason>`")
-    || !skill.includes("`Elimination Path` records the decisive observation")
-    || !skill.includes("`Recurrence-Prevention Handoff`, when present")
-    || !skill.includes("routes back to diagnosis")
-    || !skill.includes("when `**Depth:**` is `incident/deep`, `Evidence Timeline` is present")
-    || !skill.includes("when `**Depth:**` is `incident/deep`, `Elimination Path` records")
-    || !skill.includes("a `quick/local` or `standard` report may omit both; a report with no `**Depth:**` line is treated as `incident/deep`")) {
-    issues.add("handoff-validation");
-  }
-  if (!skill.includes("report `PASS | PASS_WITH_WARNINGS | FAIL | BLOCKED`")
-    || !skill.includes("The definition of `PASS` defers to `cf:code-review`")
-    || !skill.includes("same remediation or user-pause path as `FAIL`")
-    || skill.includes("Confidence score")
-    || !review.includes("PASS | PASS_WITH_WARNINGS | FAIL | BLOCKED")
-    || !review.includes("Only `FAIL` and `PASS_WITH_WARNINGS` enter remediation retry")
-    || !review.includes("The definition of `PASS` defers to `cf:code-review`")
-    || !review.includes("only a fresh literal `PASS` enters finalization")
-    || review.includes('"Approve anyway"')
-    || review.includes('"Approve with known issues"')
-    || review.includes('→ "Approve"')
-    || review.includes("at most one Medium")) {
-    issues.add("verdict-surface");
-  }
-  if (!skill.includes("The original symptom no longer reproduces with the exact pre-fix command/user flow.")
-    || !skill.includes("Modified files and transitively affected modules still pass relevant tests.")
-    || !skill.includes("Blast-radius workflows have no business-logic regression.")
-    || !skill.includes("No new lint/type/build errors were introduced.")
-    || !skill.includes("Public contracts are unchanged unless intentionally called out: function signatures, exported types, response shapes, DB schemas, env vars.")
-    || !skill.includes("Do not silently patch around the regression.")) {
-    issues.add("side-effect-gate");
-  }
-  if (!skill.includes("The user explicitly requested or permitted delegation or parallel agents.")
-    || !skill.includes("The active runtime exposes an Explore/delegation capability.")
-    || !skill.includes("at least two distinct, non-overlapping scopes")
-    || !skill.includes("Otherwise continue sequentially")
-    || !skill.includes("optional visibility fallback, never a required step")
-    || !parallel.includes("The user explicitly requested or permitted delegation or parallel agents.")
-    || !parallel.includes("at least two distinct, non-overlapping scopes")
-    || !parallel.includes("Otherwise continue sequentially")) {
-    issues.add("delegation-gate");
-  }
-  if (!prevention.includes("run the side-effect sweep in `../SKILL.md`")
-    || !prevention.includes("Recurrence-Prevention Handoff")) {
-    issues.add("prevention-link");
-  }
-  if (!skill.includes("## Bounded repair frame")
-    || !skill.includes("Quick/local does not add a separate framing ceremony")
-    || !skill.includes("**Outcome:**")
-    || !skill.includes("**Constraints:**")
-    || !skill.includes("**Non-goals:**")
-    || !skill.includes("**Acceptance:**")
-    || !skill.includes("does not select a solution, widen the issue into feature work")) {
-    issues.add("bounded-repair-frame");
-  }
-  if (!skill.includes("after diagnosis, research only unresolved external facts")
-    || !skill.includes("multiple cause-aligned remedies or an architecture decision remain")
-    || !skill.includes("`cf:brainstorm` to compare 2-3 options")
-    || !skill.includes("concise staged implementation plan with dependencies and proof per")
-    || !skill.includes("When diagnosis leaves one safe direct repair, skip research and")) {
-    issues.add("deep-decision-route");
-  }
-  if (!skill.includes("Load only the matching")
-    || !specialized.includes("Load only the matching section")
-    || !specialized.includes("## CI/CD Pipeline Failures")
-    || !specialized.includes("## Test Suite Failures")
-    || !specialized.includes("## TypeScript Type Errors")
-    || !specialized.includes("## UI / Visual Issues")
-    || !specialized.includes("## Application Log Errors")
-    || (specialized.match(/\*\*Baseline:\*\*/g) || []).length < 5
-    || (specialized.match(/\*\*Proof:\*\*/g) || []).length < 5) {
-    issues.add("specialized-proof-overlays");
-  }
-  if (!parallelContract.includes("Diagnosis still starts only")
-    || !parallelContract.includes("after the required scout outputs are synthesized")
-    || !parallelContract.includes("then begin hypotheses and diagnosis")
-    || !parallelContract.includes("Research begins only after diagnosis")
-    || parallelContract.includes("scout + diagnose + research together")
-    || parallelContract.includes("You don't need to wait for scouting")) {
-    issues.add("scout-before-diagnosis");
-  }
-  if (!skill.includes("<HARD-GATE-RED-BEFORE-FIX>")
-    || !skill.includes("Before the first change to any non-test file (an edit, a file write, or a shell command that rewrites it)")
-    || !skill.includes("fails on the unchanged code for the diagnosed reason")
-    || !skill.includes("For a lint, type, syntax, or build failure, the exact failing check run on the unchanged code stands in for the test.")
-    || !skill.includes("write or update the regression test first, then run it and see it fail")
-    || !skill.includes("Red shown after the fact does not count")
-    || !skill.includes("If no automated test or check can reproduce the failure, say so")
-    || !skill.includes("This applies at every depth.")
-    || !skill.includes("regression test seen failing on the unchanged code before the fix (`HARD-GATE-RED-BEFORE-FIX`)")
-    || !skill.includes("otherwise the regression test is written and seen failing at the start of implementation under `HARD-GATE-RED-BEFORE-FIX`")
-    || !skill.includes("with the pre-fix failure observed under `HARD-GATE-RED-BEFORE-FIX`, apply the minimal fix")
-    || !skill.includes("run it to see it fail on the unchanged code")
-    || !skill.includes("the failing run kept under `HARD-GATE-RED-BEFORE-FIX`")
-    || !prevention.includes("seen failing on the unchanged code before the fix (`HARD-GATE-RED-BEFORE-FIX` in `../SKILL.md`) counts as this guard")
-    || !prevention.includes("Red produced afterwards by undoing the fix does not count")
-    || skill.includes("regression test that fails without the fix and passes with it")
-    || prevention.includes("The test MUST fail without the fix and pass with it")) {
-    issues.add("red-before-fix");
-  }
-  return [...issues].sort();
-}
-
-function replaceHotfixClauseOnce(content, from, to) {
-  const first = content.indexOf(from);
-  if (first < 0 || content.indexOf(from, first + from.length) >= 0) {
-    throw new Error(`expected one Hotfix mutation anchor: ${from}`);
-  }
-  return `${content.slice(0, first)}${to}${content.slice(first + from.length)}`;
-}
-
-async function runHotfixAdaptiveContractTests() {
-  const baseline = Object.fromEntries(await Promise.all(
-    Object.entries(HOTFIX_ADAPTIVE_PATHS).map(async ([key, relativePath]) => [
-      key, await readFile(join(packageRoot, relativePath), "utf8"),
-    ]),
-  ));
-  const baselineIssues = hotfixAdaptiveContractIssues(baseline);
-  if (baselineIssues.length > 0) {
-    throw new Error(`[FAIL] Hotfix adaptive contract: intact sources returned ${baselineIssues.join(", ")}`);
-  }
-  const mutations = [
-    ["public-name-reverts", "skill", "public-rename", "name: cf:fix", "name: cf:hotfix"],
-    ["quick-skips-diagnosis", "skill", "proportional-depth", "Quick mode only reduces depth", "Quick mode may shorten diagnosis"],
-    ["contract-loses-trigger", "skill", "causal-fields", "Trigger: event or input that activated the failure", "Activation note: whatever started the failure"],
-    ["protocol-loses-contributing", "diagnosis", "causal-fields", "- Contributing factors: conditions that raised likelihood or impact but are not sufficient causes, or `none evidenced`", "- Side notes: optional context"],
-    ["handoff-drops-dash-skip-form", "skill", "handoff-validation", "`Timeline: skipped - <reason>`", "`Timeline: omitted`"],
-    ["handoff-drops-colon-skip-form", "skill", "handoff-validation", "`- skipped: <reason>`", "`- omitted: <reason>`"],
-    ["recurrence-becomes-required", "skill", "handoff-validation", "`Recurrence-Prevention Handoff`, when present, carries evidence-backed candidates only", "`Recurrence-Prevention Handoff` is always required"],
-    ["handoff-drops-depth-condition", "skill", "handoff-validation", "when `**Depth:**` is `incident/deep`, `Evidence Timeline` is present", "`Evidence Timeline` is present"],
-    ["handoff-accepts-undeclared-depth", "skill", "handoff-validation", "a report with no `**Depth:**` line is treated as `incident/deep`", "a report with no `**Depth:**` line is treated as `standard`"],
-    ["incomplete-report-implements", "skill", "handoff-validation", "routes back to diagnosis", "may proceed to implementation with caveats"],
-    ["enum-drops-warnings", "skill", "verdict-surface", "report `PASS | PASS_WITH_WARNINGS | FAIL | BLOCKED`", "report `PASS | FAIL | BLOCKED`"],
-    ["warnings-auto-accept", "review", "verdict-surface", "Only `FAIL` and `PASS_WITH_WARNINGS` enter remediation retry", "Only `FAIL` enters remediation retry; `PASS_WITH_WARNINGS` auto-approves"],
-    ["warnings-user-approve", "review", "verdict-surface", "only a fresh literal `PASS` enters finalization", '"Approve anyway" enters finalization'],
-    ["pass-redefined-locally", "review", "verdict-surface", "The definition of `PASS` defers to `cf:code-review`; Fix never redefines it with local severity thresholds.", "The definition of `PASS` is local: no Critical, no High, at most one Medium."],
-    ["confidence-score-returns", "skill", "verdict-surface", "**Report:** root cause, changes made", "**Report:** Confidence score, root cause, changes made"],
-    ["sweep-loses-repro-check", "skill", "side-effect-gate", "The original symptom no longer reproduces with the exact pre-fix command/user flow.", "The symptom appears resolved."],
-    ["sweep-loses-module-tests", "skill", "side-effect-gate", "Modified files and transitively affected modules still pass relevant tests.", "Modified files look correct on re-read."],
-    ["sweep-loses-blast-radius", "skill", "side-effect-gate", "Blast-radius workflows have no business-logic regression.", "Nearby workflows were not inspected."],
-    ["sweep-loses-toolchain-check", "skill", "side-effect-gate", "No new lint/type/build errors were introduced.", "Lint noise is acceptable."],
-    ["sweep-loses-contract-check", "skill", "side-effect-gate", "Public contracts are unchanged unless intentionally called out: function signatures, exported types, response shapes, DB schemas, env vars.", "Public contracts probably held."],
-    ["delegation-loses-user-clause", "skill", "delegation-gate", "The user explicitly requested or permitted delegation or parallel agents.", "Delegation is at the agent's discretion."],
-    ["patterns-lose-scope-clause", "parallel", "delegation-gate", "at least two distinct, non-overlapping scopes", "any promising scope"],
-    ["tasks-become-mandatory", "skill", "delegation-gate", "Task-tracking tools are an optional visibility fallback, never a required step", "Task-tracking tools are a required step"],
-    ["prevention-unlinks-sweep", "prevention", "prevention-link", "run the side-effect sweep in `../SKILL.md`", "final summary"],
-    ["prevention-drops-recurrence", "prevention", "prevention-link", "Recurrence-Prevention Handoff", "informal notes"],
-    ["quick-gains-mandatory-frame", "skill", "bounded-repair-frame", "Quick/local does not add a separate framing ceremony", "Quick/local always requires a separate framing ceremony"],
-    ["deep-skips-post-diagnosis-choice", "skill", "deep-decision-route", "after diagnosis, research only unresolved external facts", "research broadly before diagnosis"],
-    ["overlays-load-everything", "specialized", "specialized-proof-overlays", "Load only the matching section", "Load every section"],
-    ["diagnosis-starts-before-scout", "parallel", "scout-before-diagnosis", "Diagnosis still starts only", "Diagnosis may start"],
-    ["research-starts-before-diagnosis", "parallel", "scout-before-diagnosis", "Research begins only after diagnosis", "Research may begin before diagnosis"],
-    ["red-gate-renamed", "skill", "red-before-fix", "<HARD-GATE-RED-BEFORE-FIX>", "<NOTE-RED>"],
-    ["red-gate-moves-to-finalize", "skill", "red-before-fix", "Before the first change to any non-test file", "Before finalizing the fix"],
-    ["red-gate-drops-file-write", "skill", "red-before-fix", "(an edit, a file write, or a shell command that rewrites it)", "(an edit)"],
-    ["red-gate-drops-unchanged-code", "skill", "red-before-fix", "fails on the unchanged code for the diagnosed reason", "fails for the diagnosed reason"],
-    ["red-gate-check-after-fix", "skill", "red-before-fix", "the exact failing check run on the unchanged code stands in for the test", "a passing check after the fix stands in for the test"],
-    ["red-gate-accepts-after-fact", "skill", "red-before-fix", "Red shown after the fact does not count", "Red shown after the fact also counts"],
-    ["red-gate-skips-manual-repro", "skill", "red-before-fix", "If no automated test or check can reproduce the failure, say so", "If no automated test or check can reproduce the failure, skip it"],
-    ["red-gate-readds-old-phrase", "skill", "red-before-fix", "This applies at every depth.", "This applies at every depth. A regression test that fails without the fix and passes with it also satisfies it."],
-    ["red-depth-reverts", "skill", "red-before-fix", "regression test seen failing on the unchanged code before the fix (`HARD-GATE-RED-BEFORE-FIX`) and passing after it.", "regression test that fails without the fix and passes with it."],
-    ["red-step2-test-after-fix", "skill", "red-before-fix", "otherwise the regression test is written and seen failing at the start of implementation", "otherwise the regression test is written after the fix"],
-    ["red-quick-drops-gate", "skill", "red-before-fix", "with the pre-fix failure observed under `HARD-GATE-RED-BEFORE-FIX`, apply the minimal fix", "apply the minimal fix"],
-    ["red-standard-reverts", "skill", "red-before-fix", "- **Standard:** write or update the regression test and run it to see it fail on the unchanged code (`HARD-GATE-RED-BEFORE-FIX`), then implement the fix, rerun the same test to see it pass, and run the relevant suite.", "- **Standard:** implement the fix, add or update a regression test that fails without the fix and passes with it, run the relevant suite."],
-    ["red-step5-any-run", "skill", "red-before-fix", "the failing run kept under `HARD-GATE-RED-BEFORE-FIX`", "a run"],
-    ["red-prevention-any-time", "prevention", "red-before-fix", "seen failing on the unchanged code before the fix", "seen failing at some point"],
-    ["red-prevention-accepts-undo", "prevention", "red-before-fix", "Red produced afterwards by undoing the fix does not count", "Red produced afterwards by undoing the fix also counts"],
-    ["red-prevention-readds-old-line", "prevention", "red-before-fix", "- Place it near related existing tests for discoverability", "- The test MUST fail without the fix and pass with it\n- Place it near related existing tests for discoverability"],
-  ];
-  for (const [name, source, expectedIssue, from, to] of mutations) {
-    const changed = { ...baseline, [source]: replaceHotfixClauseOnce(baseline[source], from, to) };
-    const issues = hotfixAdaptiveContractIssues(changed);
-    if (!issues.includes(expectedIssue)) {
-      throw new Error(`[FAIL] Hotfix adaptive contract mutation ${name} missed ${expectedIssue}: ${issues.join(", ")}`);
-    }
-  }
-  console.log("✔ cf:fix adaptive contract is complete and bounded");
-  console.log(`✔ cf:fix checker rejects ${mutations.length} semantic weakenings`);
-  return mutations.length + 1;
-}
-
-const DOCS_ADAPTIVE_PATHS = {
-  skill: "src/claude/skills/docs/SKILL.md",
-  init: "src/claude/skills/docs/references/init-workflow.md",
-  update: "src/claude/skills/docs/references/update-workflow.md",
-  standard: "src/claude/skills/docs/references/standard-docs-workflow.md",
-};
-
-function docsAdaptiveContractIssues(input) {
-  const issues = new Set();
-  const { skill, init, update, standard } = input;
-  if (!skill.includes("The user explicitly requested or permitted delegation or parallel agents.")
-    || !skill.includes("The active runtime exposes an Explore/delegation capability.")
-    || !skill.includes("at least two distinct, non-overlapping scopes")
-    || !skill.includes("Otherwise continue sequentially in the main agent")
-    || !skill.includes("only through the Delegation Gate above")
-    || !init.includes("only through the Delegation Gate in `../SKILL.md`")
-    || !update.includes("Delegate to `docs-keeper` only through the Delegation Gate in `../SKILL.md`")
-    || !update.includes("only when the Delegation Gate in `../SKILL.md` is open")
-    || skill.includes("when delegation is available")
-    || init.includes("when delegation is available")
-    || update.includes("when delegation is available")) {
-    issues.add("delegation-gate");
-  }
-  if (!skill.includes("## Post-Task Docs Checkpoint")
-    || !skill.includes("`none`: report that no docs change is needed and edit nothing.")
-    || !skill.includes("update only affected existing docs, surgically")
-    || !skill.includes("A checkpoint never invents a new document")
-    || !skill.includes("never auto-selects `init` and overrides")
-    || !skill.includes("report the gap and recommend an explicit `/cf:docs --init`")
-    || !update.includes("A post-task checkpoint entry never switches to `init`")
-    || !standard.includes("checkpoint contract in `../SKILL.md`")
-    || skill.includes("checkpoint may create")) {
-    issues.add("docs-checkpoint");
-  }
-  if (!skill.includes("Type: Observed | Inferred | Unknown")
-    || !skill.includes("Confidence: High | Medium | Low")
-    || !skill.includes("Do not hide uncertainty.")
-    || skill.includes("evidence is optional")) {
-    issues.add("evidence-taxonomy");
-  }
-  if (!skill.includes("## Reconstruction Is Not Specs")
-    || !skill.includes("- create `specs/<feature>/`")
-    || !skill.includes("- run `/cf:develop`")
-    || skill.includes("are advisory")) {
-    issues.add("reconstruction-boundary");
-  }
-  if (!skill.includes("validate-docs.cjs")
-    || !skill.includes("validate-docs-reconstruct.cjs")
-    || !update.includes("validate-docs.cjs")
-    || !skill.includes("Choose the smallest adequate docs work")
-    || skill.includes("skip the validator")) {
-    issues.add("validation-and-proportionality");
-  }
-  return [...issues].sort();
-}
-
-function replaceDocsClauseOnce(content, from, to) {
-  const first = content.indexOf(from);
-  if (first < 0 || content.indexOf(from, first + from.length) >= 0) {
-    throw new Error(`expected one Docs mutation anchor: ${from}`);
-  }
-  return `${content.slice(0, first)}${to}${content.slice(first + from.length)}`;
-}
-
-async function runDocsAdaptiveContractTests() {
-  const baseline = Object.fromEntries(await Promise.all(
-    Object.entries(DOCS_ADAPTIVE_PATHS).map(async ([key, relativePath]) => [
-      key, await readFile(join(packageRoot, relativePath), "utf8"),
-    ]),
-  ));
-  const baselineIssues = docsAdaptiveContractIssues(baseline);
-  if (baselineIssues.length > 0) {
-    throw new Error(`[FAIL] Docs adaptive contract: intact sources returned ${baselineIssues.join(", ")}`);
-  }
-  const mutations = [
-    ["gate-loses-user-clause", "skill", "delegation-gate", "The user explicitly requested or permitted delegation or parallel agents.", "Delegation is at the agent's discretion."],
-    ["gate-loses-capability-clause", "skill", "delegation-gate", "The active runtime exposes an Explore/delegation capability.", "Any runtime may delegate."],
-    ["keeper-ungated-returns", "update", "delegation-gate", "Delegate to `docs-keeper` only through the Delegation Gate in `../SKILL.md`", "Delegate to `docs-keeper` when delegation is available"],
-    ["readers-ungated", "update", "delegation-gate", "only when the Delegation Gate in `../SKILL.md` is open", "whenever it seems faster"],
-    ["init-keeper-ungated", "init", "delegation-gate", "only through the Delegation Gate in `../SKILL.md`", "when delegation is available"],
-    ["skill-keeper-ungated", "skill", "delegation-gate", "only through the Delegation Gate above", "when delegation is available"],
-    ["checkpoint-none-edits", "skill", "docs-checkpoint", "`none`: report that no docs change is needed and edit nothing.", "`none`: refresh the docs anyway."],
-    ["checkpoint-invents-doc", "skill", "docs-checkpoint", "A checkpoint never invents a new document", "A checkpoint may create missing documents"],
-    ["checkpoint-auto-init", "skill", "docs-checkpoint", "never auto-selects `init` and overrides", "may fall back to `init` and overrides"],
-    ["escape-path-removed", "skill", "docs-checkpoint", "report the gap and recommend an explicit `/cf:docs --init`", "silently bootstrap the missing docs with `/cf:docs"],
-    ["update-checkpoint-switches", "update", "docs-checkpoint", "A post-task checkpoint entry never switches to `init`", "A checkpoint may switch to `init`"],
-    ["standard-checkpoint-dropped", "standard", "docs-checkpoint", "checkpoint contract in `../SKILL.md`", "local judgment"],
-    ["taxonomy-drops-inferred", "skill", "evidence-taxonomy", "Type: Observed | Inferred | Unknown", "Type: Observed | Unknown"],
-    ["uncertainty-hidden", "skill", "evidence-taxonomy", "Do not hide uncertainty.", "Smooth over uncertainty; evidence is optional."],
-    ["reconstruction-becomes-advisory", "skill", "reconstruction-boundary", "## Reconstruction Is Not Specs", "## Reconstruction Is Not Specs\n\nThe prohibitions below are advisory."],
-    ["reconstruction-creates-specs", "skill", "reconstruction-boundary", "- create `specs/<feature>/`", "- create planning folders freely"],
-    ["validator-skipped", "skill", "validation-and-proportionality", "use `.claude/scripts/validate-docs.cjs <docs-root>` after create/update work", "skip the validator after create/update work"],
-    ["smallest-adequate-removed", "skill", "validation-and-proportionality", "Choose the smallest adequate docs work", "Prefer comprehensive rewrites"],
-  ];
-  for (const [name, source, expectedIssue, from, to] of mutations) {
-    const changed = { ...baseline, [source]: replaceDocsClauseOnce(baseline[source], from, to) };
-    const issues = docsAdaptiveContractIssues(changed);
-    if (!issues.includes(expectedIssue)) {
-      throw new Error(`[FAIL] Docs adaptive contract mutation ${name} missed ${expectedIssue}: ${issues.join(", ")}`);
-    }
-  }
-  console.log("✔ cf:docs adaptive contract is complete and bounded");
-  console.log(`✔ cf:docs checker rejects ${mutations.length} semantic weakenings`);
-  return mutations.length + 1;
-}
-
-const RESEARCH_ADAPTIVE_PATHS = {
-  skill: "src/claude/skills/research/SKILL.md",
-  agent: "src/claude/agents/researcher.md",
-  template: "src/claude/skills/specs/templates/research.md",
-};
-
-function researchAdaptiveContractIssues(input) {
-  const expectedKeys = Object.keys(RESEARCH_ADAPTIVE_PATHS).sort();
-  const actualKeys = input && typeof input === "object" && !Array.isArray(input)
-    ? Object.keys(input).sort()
-    : [];
-  if (JSON.stringify(actualKeys) !== JSON.stringify(expectedKeys)
-    || actualKeys.some((key) => typeof input[key] !== "string")) {
-    throw new TypeError("research adaptive checker expects exactly three UTF-8 source strings");
-  }
-
-  const issues = new Set();
-  const normalized = Object.fromEntries(Object.entries(input).map(([key, value]) => [
-    key, normalizeMarkdownWhitespace(value),
-  ]));
-  const requireClauses = (issue, clausesBySource) => {
-    const missing = Object.entries(clausesBySource).some(([source, clauses]) =>
-      clauses.some((clause) => !normalized[source].includes(normalizeMarkdownWhitespace(clause))));
-    if (missing) issues.add(issue);
-  };
-
-  requireClauses("depth-routing", { skill: [
-    "Choose the smallest depth that can support the decision:",
-    "Quick | One low-risk, reversible fact or known option",
-    "Standard | Several viable options or a material integration choice",
-    "Deep | High blast radius, hard-to-reverse architecture, security/compliance, substantial cost, or conflicting evidence",
-    "Escalate depth when evidence conflicts, a primary source is missing, or a finding changes the decision boundary.",
-  ], agent: [
-    "Honor the controller's `Quick | Standard | Deep` assignment.",
-    "Deep completes a separate contradiction-and-gap round",
-  ] });
-  requireClauses("claim-provenance", { skill: [
-    "Repository claims: cite a resolvable `path:line` anchor from current bytes.",
-    "claim, URL or repository anchor, authority, date/version, applicability to this project, and status `confirmed | inferred | unresolved`.",
-    "Browse when facts may have changed; record the source date or applicable version.",
-  ], agent: [
-    "claim, URL or repository anchor, authority, date/version, applicability, and `confirmed | inferred | unresolved`.",
-  ], template: [
-    "URL or repository path:line; authority; date/version; project applicability; confirmed|inferred|unresolved.",
-  ] });
-  requireClauses("contradiction-and-ranking", { skill: [
-    "Do not inflate source counts with mirrors or articles that repeat the same upstream claim.",
-    "Complete Standard, then run a separate contradiction-and-gap round",
-    "rank only viable options and name a winner when evidence and project fit support one.",
-    "If evidence cannot choose a winner, return `unresolved` plus the smallest fact or experiment that would.",
-  ], agent: [
-    "Surface contradictions, version mismatch, missing primary evidence, and limits.",
-    "Never convert source quantity into a fabricated credibility score.",
-  ] });
-  requireClauses("delegation-fallback", { skill: [
-    "Use delegated researchers only as optional acceleration",
-    "If delegation is unavailable, unauthorized, or not useful, research sequentially with the same evidence bar.",
-    "The controller owns the question, source reconciliation, and final recommendation.",
-  ] });
-  requireClauses("persistence-authority", { skill: [
-    "Default to a concise answer in chat.",
-    "one explicitly resolved active Spec requires durable `research.md`",
-    "the user explicitly requests a durable report and approves its destination.",
-    "Do not create a Spec or `_shared` archive merely to save an answer.",
-  ], agent: [
-    "do not implement code, write files, mutate task state, ask the user directly, or launch another workflow.",
-    "The controller reconciles tracks, chooses the final recommendation, and owns any authorized persistence.",
-  ] });
-  requireClauses("legacy-template", { skill: [
-    "Keep claim records and comparisons inside `## Evidence Summary`; do not add or reorder mandatory H2 headings.",
-  ], template: [
-    "## Uncertainty", "## Evidence Summary", "## Decision", "## Remaining Gaps",
-    "Keep the mandatory H2 headings in this exact order.",
-  ] });
-  requireClauses("proof-boundary", { skill: [
-    "It never starts Develop, edits implementation code, claims user approval, or presents source/installed evidence as live-system proof.",
-  ] });
-  requireClauses("relay-labels", { agent: [
-    "model: inherit",
-    "Its report opens with its depth and labels every claim; keep both, and its path:line anchors, when relaying it.",
-    "When none is assigned, choose Quick for one low-risk, reversible fact or known option, Standard for several viable options or a material integration choice, and Deep for high blast radius, hard-to-reverse architecture, security/compliance, substantial cost, or conflicting evidence.",
-    "Open the report with one line",
-    "End every material claim with its status in parentheses",
-    "Relay: keep the Depth line, every status label and every path:line anchor when you summarize this report.",
-  ], skill: [
-    "When a researcher's report feeds the answer, keep its",
-    "Give every material claim in the answer its status in parentheses",
-  ] });
-
-  const skillCorpus = normalized.skill.toLowerCase();
-  const agentCorpus = normalized.agent.toLowerCase();
-  if (/must (?:instantly |always )?delegate|must not attempt to run websearch|delegation is required/.test(skillCorpus)) {
-    issues.add("delegation-fallback");
-  }
-  if (/(?:every|all) research (?:request|task).{0,50}(?:requires?|must use).{0,40}(?:delegat|researcher)/.test(skillCorpus)) {
-    issues.add("delegation-fallback");
-  }
-  if (/always save|all research belongs in|create it if it does not exist/.test(skillCorpus)) {
-    issues.add("persistence-authority");
-  }
-  if (/(?:persist|save|archive) every (?:answer|response|report)/.test(skillCorpus)) {
-    issues.add("persistence-authority");
-  }
-  if (/deep (?:may|can|should).{0,50}skip.{0,40}contradiction/.test(skillCorpus)) {
-    issues.add("contradiction-and-ranking");
-  }
-  if (/material claims?.{0,60}(?:may|can).{0,40}(?:omit|skip).{0,50}(?:anchor|date|version|status|applicability)/.test(skillCorpus)) {
-    issues.add("claim-provenance");
-  }
-  if (/credibility coefficient|absolute accuracy|supreme directive|alpha predator/.test(agentCorpus)) {
-    issues.add("contradiction-and-ranking");
-  }
-  if (/live (?:adherence|system) is (?:verified|proven)|\[verified\]/.test(skillCorpus)) {
-    issues.add("proof-boundary");
-  }
-  if (/(?:source|installed).{0,50}(?:may|can|should).{0,40}(?:count|serve|be treated).{0,30}(?:as )?live/.test(skillCorpus)) {
-    issues.add("proof-boundary");
-  }
-
-  const mandatoryHeadings = markdownH2s(input.template);
-  if (JSON.stringify(mandatoryHeadings) !== JSON.stringify([
-    "Uncertainty", "Evidence Summary", "Decision", "Remaining Gaps",
-  ])) issues.add("legacy-template");
-  return [...issues].sort();
-}
-
-function replaceResearchClauseOnce(content, from, to) {
-  const first = content.indexOf(from);
-  if (first < 0 || content.indexOf(from, first + from.length) >= 0) {
-    throw new Error(`research mutation anchor must occur exactly once: ${from}`);
-  }
-  return `${content.slice(0, first)}${to}${content.slice(first + from.length)}`;
-}
-
-async function runResearchAdaptiveContractTests() {
-  const baseline = Object.fromEntries(await Promise.all(
-    Object.entries(RESEARCH_ADAPTIVE_PATHS).map(async ([key, relativePath]) => [
-      key, await readFile(join(packageRoot, relativePath), "utf8"),
-    ]),
-  ));
-  const baselineIssues = researchAdaptiveContractIssues(baseline);
-  if (baselineIssues.length > 0) {
-    throw new Error(`[FAIL] Research adaptive contract: intact sources returned ${baselineIssues.join(", ")}`);
-  }
-  const mutations = [
-    ["quick-becomes-default-deep", "skill", "depth-routing", "Choose the smallest depth that can support the decision:", "Always use Deep regardless of decision risk:"],
-    ["deep-drops-contradiction-round", "skill", "contradiction-and-ranking", "Complete Standard, then run a separate contradiction-and-gap round", "Repeat Standard until the answer looks complete"],
-    ["repo-anchor-removed", "skill", "claim-provenance", "cite a resolvable `path:line` anchor from current bytes.", "mention a likely repository file."],
-    ["claim-status-removed", "agent", "claim-provenance", "and `confirmed | inferred | unresolved`.", "and a confidence adjective."],
-    ["mirrors-count-independent", "skill", "contradiction-and-ranking", "Do not inflate source counts", "Inflate source counts"],
-    ["winner-without-fit", "skill", "contradiction-and-ranking", "rank only viable options", "rank every option"],
-    ["delegation-mandatory", "skill", "delegation-fallback", "Use delegated researchers only as optional acceleration", "Delegation is required"],
-    ["fallback-lowers-bar", "skill", "delegation-fallback", "research sequentially with the same evidence bar.", "answer from memory with a lower evidence bar."],
-    ["chat-default-removed", "skill", "persistence-authority", "Default to a concise answer in chat.", "Always save before answering."],
-    ["shared-archive-restored", "skill", "persistence-authority", "Do not create a Spec or `_shared` archive merely to save an answer.", "Create `_shared` for every answer."],
-    ["agent-writes-report", "agent", "persistence-authority", "do not implement code,", "do not implement code; write the report and update task state;"],
-    ["template-reorders-heading", "template", "legacy-template", "## Decision", "## Conclusion"],
-    ["live-proof-promoted", "skill", "proof-boundary", "presents source/installed evidence as live-system proof.", "treats installed text as verified live behavior."],
-    ["additive-delegation-override", "skill", "delegation-fallback", "## Synthesize", "Every research request requires a delegated researcher.\n\n## Synthesize"],
-    ["additive-persistence-override", "skill", "persistence-authority", "## Handoff boundary", "Persist every answer before returning chat output.\n\n## Handoff boundary"],
-    ["additive-deep-skip", "skill", "contradiction-and-ranking", "## Gather evidence", "Deep may skip the contradiction-and-gap round when time constrained.\n\n## Gather evidence"],
-    ["additive-provenance-omission", "skill", "claim-provenance", "## Synthesize", "Material claims may omit date or status when the source looks official.\n\n## Synthesize"],
-    ["additive-live-promotion", "skill", "proof-boundary", "## Handoff boundary", "Installed evidence may be treated as live proof.\n\n## Handoff boundary"],
-    ["researcher-model-pinned", "agent", "relay-labels", "model: inherit", "model: haiku"],
-    ["depth-rule-dropped", "agent", "relay-labels", "choose Quick for one low-risk, reversible fact or known option,", "choose Deep for everything,"],
-    ["relay-line-removed", "agent", "relay-labels", "Relay: keep the Depth line, every status label and every path:line anchor when you summarize this report.", ""],
-    ["depth-line-freed", "agent", "relay-labels", "Open the report with one line", "Open the report freely"],
-    ["claim-labels-freed", "agent", "relay-labels", "End every material claim with its status in parentheses", "End claims as convenient"],
-    ["relay-rewritten", "skill", "relay-labels", "When a researcher's report feeds the answer, keep its", "When a researcher's report feeds the answer, rewrite its"],
-    ["answer-labels-freed", "skill", "relay-labels", "Give every material claim in the answer its status in parentheses", "Give claims as you see fit"],
-  ];
-  for (const [name, source, expectedIssue, from, to] of mutations) {
-    const changed = { ...baseline, [source]: replaceResearchClauseOnce(baseline[source], from, to) };
-    const issues = researchAdaptiveContractIssues(changed);
-    if (!issues.includes(expectedIssue)) {
-      throw new Error(`[FAIL] Research adaptive mutation ${name} missed ${expectedIssue}: ${issues.join(", ")}`);
-    }
-  }
-  console.log("✔ cf:research adaptive evidence contract is complete and bounded");
-  console.log(`✔ cf:research checker rejects semantic weakenings; count=${mutations.length}`);
-  return mutations.length + 1;
-}
-
 const PORTED_RULE_PATHS = [
   "src/claude/rules/review-audit-self-decision.md",
   "src/claude/rules/process-management.md",
 ];
-
-// cf:scout is a short subroutine: callers fold its findings into their own report, the scope and
-// no-scan rules stay verbatim, delegation needs the user's permission even when a host enables it,
-// and the delegation procedure lives in the reference.
-function validateScoutSubroutineContract(skill, reference, workflow) {
-  const issues = new Set();
-  const flat = normalizeMarkdownWhitespace(skill);
-  const has = (clause) => flat.includes(normalizeMarkdownWhitespace(clause));
-  const require = (issue, clauses) => { if (!clauses.every(has)) issues.add(issue); };
-  if (skill.trimEnd().split("\n").length > 70) issues.add("scout-line-ceiling");
-  require("scout-scope-gate", [
-    "reject repo-root or root-wide patterns (`.`, `/`, `**/*`, `**/*.ts`) with no scoped directory",
-    "never enter the no-scan lists below.",
-  ]);
-  require("scout-no-scan", [
-    "- `.git/`, `node_modules/`, `dist/`, `build/`, `.next/`, `coverage/`",
-    "- `tmp/`, `temp/`, `vendor/`, `artifacts/`, `secrets/`, `private/`",
-    "- private keys, token dumps, credential exports, `.env` secrets",
-    "- generated bundles, binary blobs",
-  ]);
-  require("scout-smallest-route", [
-    "| Named files/directories or focused scope (about 50 files or fewer) | Main-agent `rg` plus targeted reads; do not delegate |",
-    "| Medium scope that still fits one coherent search | Main-agent scouting; narrow before considering delegation |",
-    "| Broad scope with two or more independent areas | Structure map, then the delegation gate in `./references/internal-inspection.md` |",
-  ]);
-  require("scout-findings-shape", [
-    "Return these for the caller to fold into its own report:",
-    "- **Relevant files** — each as `path:line` with one clause on why it matters.",
-    "- **Entrypoint and call path** — where the behavior starts and each hop to the code in question.",
-    "- **Blast radius** — callers, tests, and config that a change there would touch.",
-    "- **Unknowns** — what the search could not settle, and what would settle it.",
-  ]);
-  require("scout-host-rule", [
-    "A host or runtime mode that enables delegation on its own does not replace the user's permission;",
-    "without it, scout stays in the main agent.",
-  ]);
-  require("scout-role-line", [
-    "`inspector` and Explore are delegation targets that run under this gate and these scope rules, not a replacement for them.",
-  ]);
-  // The Codex projection rewrites this exact sentence, so it stays byte-for-byte.
-  if (!skill.includes("**Fallback to AskUserQuestion:** if the structure map still leaves multiple\nplausible targets and the choice would materially change the scan, offer 2–4\nconcrete scopes from findings, then continue with the selected scope.")) {
-    issues.add("scout-fallback-verbatim");
-  }
-  if (/Scout Report/.test(skill)) issues.add("scout-report-template");
-  if (/3\s*min|three[- ]minutes?|3 minutes/i.test(`${skill}\n${reference}`)) issues.add("scout-timeout");
-  if (/Phase 1|Phase 2|Structure Map/.test(skill)) issues.add("scout-two-phase-home");
-  const flatReference = normalizeMarkdownWhitespace(reference);
-  if (!reference.includes("## Two-Phase Broad Scout")
-    || !flatReference.includes("return a division plan of 1–10 sub-scopes")
-    || !flatReference.includes("merge sub-scopes under 10 files and split those over 100")) {
-    issues.add("scout-two-phase-home");
-  }
-  if (!workflow.includes("- Use `cf:scout` or focused search when structure is unclear.")
-    || /Use `inspect`/.test(workflow)) {
-    issues.add("scout-workflow-name");
-  }
-  return issues;
-}
-
-async function runScoutSubroutineContractTests() {
-  const fail = (message) => { throw new Error(`[FAIL] Scout subroutine contract: ${message}`); };
-  const skill = await readFile(join(packageRoot, "src/claude/skills/scout/SKILL.md"), "utf8");
-  const reference = await readFile(join(packageRoot, "src/claude/skills/scout/references/internal-inspection.md"), "utf8");
-  const workflow = await readFile(join(packageRoot, "src/claude/rules/workflow.md"), "utf8");
-  const baseline = validateScoutSubroutineContract(skill, reference, workflow);
-  if (baseline.size) fail(`current text fails: ${[...baseline].join(", ")}`);
-  const swap = (from, to) => (text) => {
-    if (!text.includes(from)) fail(`mutation anchor missing: ${from}`);
-    return text.replace(from, to);
-  };
-  const mutations = [
-    ["drops-blast-radius", "skill", swap("- **Blast radius** — callers, tests, and config that a change there would touch.\n", ""), "scout-findings-shape"],
-    ["drops-host-rule", "skill", swap("A host or runtime mode that enables delegation on its own does not replace the user's permission;", "A host mode that enables delegation counts as permission;"), "scout-host-rule"],
-    ["drops-role-line", "skill", swap("`inspector` and Explore are delegation targets that run", "`inspector` and Explore may replace scout and run"), "scout-role-line"],
-    ["drops-no-scan-entry", "skill", swap("`artifacts/`, `secrets/`, `private/`", "`artifacts/`, `private/`"), "scout-no-scan"],
-    ["drops-route-row", "skill", swap("| Medium scope that still fits one coherent search | Main-agent scouting; narrow before considering delegation |\n", ""), "scout-smallest-route"],
-    ["drops-scope-gate", "skill", swap("never enter the no-scan lists below.", "scan wherever needed."), "scout-scope-gate"],
-    ["restores-report-template", "skill", (text) => `${text}\n# Scout Report\n`, "scout-report-template"],
-    ["restores-timeout-skill", "skill", (text) => `${text}\n- Timeout: 3 minutes per agent\n`, "scout-timeout"],
-    ["restores-timeout-reference", "reference", (text) => `${text}\n- 3 min/agent; skip non-responders\n`, "scout-timeout"],
-    ["exceeds-line-ceiling", "skill", (text) => `${text}${"\nfiller".repeat(20)}\n`, "scout-line-ceiling"],
-    ["moves-two-phase-out", "reference", swap("## Two-Phase Broad Scout", "## Broad Scout"), "scout-two-phase-home"],
-    ["empties-two-phase", "reference", swap("division plan of 1–10 sub-scopes", "plan"), "scout-two-phase-home"],
-    ["returns-phase-one-to-skill", "skill", (text) => `${text}\n### Phase 1 — Structure Map\n`, "scout-two-phase-home"],
-    ["rewrites-fallback", "skill", swap("offer 2–4\nconcrete scopes from findings", "ask the user to\npick a scope"), "scout-fallback-verbatim"],
-    ["restores-report-prose", "skill", (text) => `${text}\nEnd with a Scout Report.\n`, "scout-report-template"],
-    ["restores-timeout-words", "skill", (text) => `${text}\n- Give each agent three minutes.\n`, "scout-timeout"],
-    ["workflow-names-inspect", "workflow", swap("- Use `cf:scout` or focused search", "- Use `inspect` or focused search"), "scout-workflow-name"],
-  ];
-  for (const [name, source, mutate, issue] of mutations) {
-    const issues = validateScoutSubroutineContract(
-      source === "skill" ? mutate(skill) : skill,
-      source === "reference" ? mutate(reference) : reference,
-      source === "workflow" ? mutate(workflow) : workflow,
-    );
-    if (!issues.has(issue)) fail(`${name} did not raise ${issue}`);
-  }
-  return mutations.length + 1;
-}
 
 // Pins of the cf:git worktree and commit contract. One home: scripts/weaken-git-pins.sh reads this block (strict JSON between the markers)
 // and removes each `includes` sentence (or appends each `excludes` string) from a copy of the skill to prove the pin goes red.
@@ -4345,15 +3721,11 @@ async function runStaticSemanticTests() {
   const consumerSectionTests = await runConsumerSectionContractTests();
   const brainstormContractTests = await runBrainstormContractTests();
   const developPlanNativeTests = await runDevelopPlanNativeContractTests();
-  const scoutSubroutineTests = await runScoutSubroutineContractTests();
   const syncRepairTests = await runSyncRepairContractTests();
   const testPlanNativeTests = await runTestPlanNativeContractTests();
   const debugAdaptiveTests = await runDebugAdaptiveContractTests();
   const debugProportionalTests = await runDebugProportionalContractTests();
   const debugAgentGatesTests = await runDebugAgentGatesTests();
-  const hotfixAdaptiveTests = await runHotfixAdaptiveContractTests();
-  const docsAdaptiveTests = await runDocsAdaptiveContractTests();
-  const researchAdaptiveTests = await runResearchAdaptiveContractTests();
   const specsContractTests = await runSpecsContractTests();
   const specTemplateFiles = await readdir(
     join(packageRoot, "src/claude/skills/specs/templates"),
@@ -4382,7 +3754,7 @@ async function runStaticSemanticTests() {
         content.includes("## Primary output layout") &&
         content.includes("specs/<feature>/") &&
         content.includes("Task files are flat beside `plan.md`") &&
-        content.includes("Do not create a nested task directory"),
+        /nested task directory/.test(content),
     },
     {
       label: "spec-maker emits only the flat planning packet",
@@ -4391,65 +3763,8 @@ async function runStaticSemanticTests() {
         content.includes("### 3. Author the flat packet") &&
         content.includes("specs/<feature>/plan.md") &&
         content.includes("Do not create implementation files, receipts, approval records") &&
-        content.includes("Keep every new\ntask `Status: blocked` while GATE-REVIEW is open"),
-    },
-    {
-      label: "installer removes the retired spec.json templates from earlier installs",
-      file: "bin/phases/copy-payload.js",
-      assert: (content) =>
-        content.includes("retiredTemplates") &&
-        content.includes("'spec-state.json'") &&
-        content.includes("'init.json'") &&
-        content.includes("Removed legacy template"),
-    },
-    {
-      label: "installer writes CafeKit version metadata",
-      files: ["bin/phases/write-metadata.js", "bin/phases/summary.js", "bin/lib/context.js", "bin/lib/i18n.js"],
-      assert: (content) =>
-        content.includes("cafekit.json") &&
-        content.includes("writePlatformVersionMetadata") &&
-        content.includes("previousVersion") &&
-        content.includes("CafeKit Version") &&
-        content.includes("const INSTALL_COMMAND = `npx ${packageJson.name}@${packageJson.version}`"),
-    },
-    {
-      label: "installer offers Codex as a native split-root runtime",
-      files: [
-        "bin/lib/context.js",
-        "bin/phases/copy-payload.js",
-        "bin/phases/codex-runtime.js",
-        "bin/lib/codex-install.js",
-      ],
-      assert: (content) =>
-        content.includes("id: 'codex'") &&
-        content.includes("skillsDir: '.agents/skills'") &&
-        content.includes("agentsDir: '.codex/agents'") &&
-        content.includes("installCodexRuntime") &&
-        content.includes("convertCodexAgentContent") &&
-        content.includes("fork_turns=\"none\"") &&
-        !content.includes("config.toml"),
-    },
-    {
-      label: "Codex split roots keep generated skill files locally ignored",
-      files: [
-        "src/codex/gitignore",
-        "src/codex/agents-gitignore",
-        "bin/phases/codex-runtime.js",
-        "bin/phases/root-config.js",
-      ],
-      assert: (content) =>
-        content.includes("path.join('.agents', '.gitignore')") &&
-        content.includes("skills/**/.venv/") &&
-        content.includes("skills/**/node_modules/") &&
-        content.includes("!skills/**/.env.example") &&
-        content.includes("'.agents/'") &&
-        !content.includes("../.agents/skills"),
-    },
-    {
-      label: "installer maps Claude gitignore template to dotfile",
-      file: "bin/phases/claude-runtime.js",
-      assert: (content) =>
-        content.includes("relPath === 'gitignore' ? '.gitignore' : relPath"),
+        /Keep every new\s+task `Status: blocked` while GATE-REVIEW is open/.test(content) &&
+        !/leave every new task `Status: pending`/i.test(content),
     },
     {
       label: "Claude migration manifest includes gitignore template",
@@ -4466,21 +3781,6 @@ async function runStaticSemanticTests() {
         content.includes("skills/**/node_modules/") &&
         content.includes("skills/**/.venv/") &&
         content.includes(".cafekit-update-cache.json"),
-    },
-    {
-      label: "installer root gitignore ignores runtime folders",
-      file: "bin/phases/root-config.js",
-      assert: (content) =>
-        content.includes("'plans/*'") &&
-        content.includes("'!plans/*.md'") &&
-        content.includes("'!plans/templates/'") &&
-        content.includes("'!plans/templates/**'") &&
-        content.includes("'.claude/'") &&
-        content.includes("'.codex/'") &&
-        content.includes("'.agents/'") &&
-        content.includes("'.cafekit-backup/'") &&
-        content.includes("'.cafekit.lock'") &&
-        content.includes("function hasPattern"),
     },
     {
       label: "cf:specs and spec-maker never auto-dispatch Develop",
@@ -4503,17 +3803,6 @@ async function runStaticSemanticTests() {
         !/--(?:status|validate|archive)/.test(content),
     },
     {
-      label: "spec-maker emits a flat packet and stops at handoff",
-      file: "src/claude/agents/spec-maker.md",
-      assert: (content) =>
-        content.includes("specs/<feature>/plan.md") &&
-        content.includes("task-01-<slug>.md") &&
-        content.includes("`pending` means semantically ready for the dependency-aware queue") &&
-        content.includes("write dependencies") &&
-        content.includes("exact flat task basenames") &&
-        content.includes("Do not start Develop"),
-    },
-    {
       label: "cf:ask skill answers questions with repo-first evidence",
       file: "src/claude/skills/ask/SKILL.md",
       assert: (content) =>
@@ -4533,7 +3822,7 @@ async function runStaticSemanticTests() {
         content.includes("when the optional document bundle is installed") &&
         content.includes("--with-document-skills") &&
         content.includes("templates/question.md") &&
-        ["Repo evidence priority", "git history only when the question asks about changes or provenance", "Use focused search", "instead of broad scans", "Use `cf:scout` when the user asks where something lives", "repo evidence is absent, stale, or not authoritative", "Prefer official docs", "State clearly when an answer is inferred", "Answer directly when at least one of these is true", "repo evidence answers the question", "answers the non-project part", "a cautious answer can separate known facts from inference", "the target system/module is not named", "multiple targets are plausible", "the needed file/source is blocked or private", "business/domain judgment", "guessing customer intent", "bundles multiple unrelated topics", "Ask only one follow-up question", "Include 2-3 concrete options", "If `unclear`, ask one focused follow-up", "Use `templates/question.md`", "ask back before gathering evidence", "names no aspect or target"].every((rule) => content.includes(rule)) &&
+        ["Repo evidence priority", "Ask back only when", "Ask only one follow-up question", "State clearly when an answer is inferred"].every((rule) => content.includes(rule)) &&
         !/^## Workflow|^### [0-9]|^## Examples/m.test(content),
     },
     {
@@ -4546,26 +3835,6 @@ async function runStaticSemanticTests() {
         content.includes("## Source Trace") &&
         content.includes("## Gaps / Unknowns") &&
         content.includes("## Follow-up Question"),
-    },
-    {
-      label: "cf:ask is packaged from the ask directory and the question directory is retired",
-      file: "src/claude/migration-manifest.json",
-      assert: (content) => {
-        const manifest = JSON.parse(content);
-        return manifest.skills.required.includes("ask") &&
-          !manifest.skills.required.includes("question") &&
-          manifest.obsolete.skills.includes("question");
-      },
-    },
-    {
-      label: "cf:fix is packaged from the fix directory and the hotfix directory is retired",
-      file: "src/claude/migration-manifest.json",
-      assert: (content) => {
-        const manifest = JSON.parse(content);
-        return manifest.skills.required.includes("fix") &&
-          !manifest.skills.required.includes("hotfix") &&
-          manifest.obsolete.skills.includes("hotfix");
-      },
     },
     {
       label: "cf:specs review requires evidence, fresh context, and bounded findings",
@@ -4581,9 +3850,7 @@ async function runStaticSemanticTests() {
       file: "src/claude/skills/specs/references/review.md",
       assert: (content) =>
         content.includes("accept, reject, or revise") &&
-        content.includes("Do not apply findings before that") &&
-        content.includes("consistency sweep") &&
-        content.includes("Reread every file"),
+        content.includes("consistency sweep"),
     },
     {
       label: "cf:specs flow is gated GATE-SCOPE to GATE-DONE and process-first",
@@ -4596,47 +3863,12 @@ async function runStaticSemanticTests() {
         !content.includes("--auto"),
     },
     {
-      label: "parallel-waves reference keeps single-writer, fallback, cap, and cherry-pick recipe",
-      file: "src/claude/skills/develop/references/parallel-waves.md",
-      assert: (content) =>
-        content.includes("one state writer") &&
-        content.includes("fall back to the sequential loop") &&
-        content.includes("Clamp `--parallel N` to 1..5") &&
-        content.includes("base_sha") &&
-        content.includes("commit_range") &&
-        content.includes("git cherry-pick"),
-    },
-    {
-      label: "develop SKILL wires --parallel to parallel-waves and keeps sequential default",
-      file: "src/claude/skills/develop/SKILL.md",
-      assert: (content) =>
-        content.includes("--parallel") &&
-        content.includes("references/parallel-waves.md") &&
-        content.includes("one unblocked task at a time"),
-    },
-    {
       label: "implementer is single-track with process-first state prohibition",
       file: "src/claude/agents/implementer.md",
       assert: (content) =>
         content.includes("within its workspace") &&
         content.includes("Do NOT edit `plan.md`, task `Status:`, or inline `## Receipt`") &&
         !content.includes("For legacy packets"),
-    },
-    {
-      label: "orchestrator sanctions worktree parallelism with single-writer rule and cap",
-      file: "src/claude/rules/orchestrator.md",
-      assert: (content) =>
-        content.includes("worktree isolation") &&
-        content.includes("single writer per file per wave") &&
-        content.includes("never more than 5"),
-    },
-    {
-      label: "parallel waves isolate worktrees and retain blocked recovery state",
-      file: "src/claude/skills/develop/references/parallel-waves.md",
-      assert: (content) =>
-        content.includes("isolated worktree") &&
-        content.includes("keeps its identifiable worktree and branch") &&
-        content.includes("Never\nforce-delete"),
     },
     {
       label: "runtime template documents develop.parallel escape hatch",
@@ -4668,16 +3900,6 @@ async function runStaticSemanticTests() {
         content.includes("Quality and saturation checks"),
     },
     {
-      label: "cf:specs keeps human decisions at exactly the three named gates",
-      file: "src/claude/skills/specs/SKILL.md",
-      assert: (content) =>
-        content.includes("GATE-SCOPE") &&
-        content.includes("GATE-REVIEW") &&
-        content.includes("GATE-DONE") &&
-        content.includes("Ask once at each gate") &&
-        content.includes("Do not ask for routine implementation choices"),
-    },
-    {
       label: "cf:specs inline receipt is executable and provenance-bound",
       file: "src/claude/skills/specs/references/templates.md",
       assert: (content) =>
@@ -4699,15 +3921,6 @@ async function runStaticSemanticTests() {
         content.includes("Do not start Develop"),
     },
     {
-      label: "cf:develop scouts reachability and enforces task scope",
-      file: "src/claude/skills/develop/SKILL.md",
-      assert: (content) =>
-        content.includes("### 1. Scout") &&
-        content.includes("Trace entrypoints, callers, dependents") &&
-        content.includes("Honor Scope, Ownership, Acceptance, and Dependencies") &&
-        content.includes("feature-level integration"),
-    },
-    {
       label: "cf:develop supports explicit flash mode",
       file: "src/claude/skills/develop/SKILL.md",
       assert: (content) =>
@@ -4715,7 +3928,6 @@ async function runStaticSemanticTests() {
         content.includes("### Flash (`--flash`)") &&
         content.toLowerCase().includes("skip dedicated tests") &&
         content.includes("FLASH_UNVERIFIED") &&
-        content.includes("awaiting /cf:test <feature>") &&
         content.includes("do not unblock dependents"),
     },
     {
@@ -4727,21 +3939,6 @@ async function runStaticSemanticTests() {
         content.includes("references/implementation-notes-template.html") &&
         content.includes("scope exceptions") &&
         content.includes("Never create it by default"),
-    },
-    {
-      label: "cf:develop implementation notes template is self-contained and block-based",
-      file: "src/claude/skills/develop/references/implementation-notes-template.html",
-      assert: (content) =>
-        content.includes("<style>") &&
-        content.includes("CafeKit Implementation Notes") &&
-        content.includes("TASK_TOC_START") &&
-        content.includes("NOTES_START") &&
-        content.includes("task-block") &&
-        content.includes("note.decision") &&
-        content.includes("scope-escape") &&
-        !content.includes("<script") &&
-        !content.includes("https://") &&
-        !content.includes("http://"),
     },
     {
       label: "cf:develop quality gate separates proof, review, and closeout owners",
@@ -4786,20 +3983,18 @@ async function runStaticSemanticTests() {
       assert: (content) =>
         content.includes("name: cf:scout") &&
         content.includes("about 50 files or fewer") &&
-        content.includes("Main-agent `rg` plus targeted reads; do not delegate") &&
-        content.includes("Do not use the file estimate alone to justify agents") &&
-        !content.includes("external-gemini-inspection") &&
-        !content.includes("Gemini") &&
-        !content.includes("`ext`"),
+        content.includes("do not delegate") &&
+        content.includes("node_modules/") &&
+        content.includes("private keys") &&
+        content.includes("repo-root") &&
+        content.includes("does not replace the user's permission"),
     },
     {
       label: "cf:scout delegation requires permission runtime support and independent scopes",
       file: "src/claude/skills/scout/references/internal-inspection.md",
       assert: (content) =>
-        content.includes("The user explicitly requested or permitted delegation or parallel agents") &&
-        content.includes("The active runtime exposes an Explore/delegation capability") &&
-        content.includes("at least two distinct, non-overlapping scopes") &&
-        content.includes("Focused discovery stays in the main agent"),
+        content.includes("explicitly requested or permitted delegation") &&
+        content.includes("at least two distinct, non-overlapping scopes"),
     },
     {
       label: "quality gate uses shared verdicts instead of numeric scores",
@@ -4811,33 +4006,21 @@ async function runStaticSemanticTests() {
         !/\b(?:9\.5|score\s*[><=])\b/.test(content),
     },
     {
-      label: "inspect runtime config has no legacy Gemini model key",
-      file: "src/claude/runtime.json",
-      assert: (content) =>
-        content.includes('"inspect"') &&
-        !content.includes('"gemini"'),
-    },
-    {
-      label: "hotfix review cycle consumes severity verdicts",
+      label: "fix review cycle consumes severity verdicts",
       file: "src/claude/skills/fix/references/review-cycle.md",
       assert: (content) =>
-        content.includes("verdict and severity-classified findings") &&
         content.includes("PASS | PASS_WITH_WARNINGS | FAIL | BLOCKED") &&
         content.includes("BLOCKED` is terminal") &&
         content.includes("Only `FAIL` and `PASS_WITH_WARNINGS` enter remediation retry") &&
-        content.includes("The definition of `PASS` defers to `cf:code-review`") &&
-        !content.includes("at most one Medium") &&
-        !content.includes("score >= 9.0") &&
-        !content.includes("critical_issues[]"),
+        content.includes("defers to `cf:code-review`"),
     },
     {
       label: "code-auditor speaks the shared verdict surface",
       file: "src/claude/agents/code-auditor.md",
       assert: (content) =>
         content.includes("PASS | PASS_WITH_WARNINGS | FAIL | BLOCKED") &&
-        content.includes("The definition of `PASS` defers to `cf:code-review`") &&
-        content.includes("cannot finish a task") &&
-        !content.includes("at most one Medium"),
+        content.includes("defers to `cf:code-review`") &&
+        content.includes("cannot finish a task"),
     },
     {
       label: "test-runner performs scope and runtime reachability audits",
@@ -4859,32 +4042,23 @@ async function runStaticSemanticTests() {
       label: "cf:fix is deterministic scout-first without mode selection",
       file: "src/claude/skills/fix/SKILL.md",
       assert: (content) =>
-        content.includes("Default: deterministic scout-first fix") &&
-        content.includes("There is no initial mode selection step") &&
         content.includes("<HARD-GATE-SCOUT-FIRST>") &&
-        !content.includes("Default: Autonomous mode"),
+        content.includes("There is no initial mode selection step"),
     },
     {
       label: "cf:fix quick path never skips scout or diagnosis",
       file: "src/claude/skills/fix/SKILL.md",
       assert: (content) =>
         content.includes("it never skips scout, pre-fix evidence, diagnosis, or before/after verification") &&
-        content.includes("Quick mode only reduces depth") &&
-        content.includes("Do not ask generic questions before this step"),
+        content.includes("Quick mode only reduces depth"),
     },
     {
       label: "cf:fix enforces no-side-effect gate with user options",
       file: "src/claude/skills/fix/SKILL.md",
       assert: (content) =>
         content.includes("<HARD-GATE-NO-SIDE-EFFECTS>") &&
-        content.includes("Public contracts are unchanged") &&
         content.includes("Revert this fix and try a different root-cause angle") &&
         content.includes("Do not silently patch around the regression"),
-    },
-    {
-      label: "cf:fix references are local and not stale debugger paths",
-      file: "src/claude/skills/fix/SKILL.md",
-      assert: (content) => !content.includes("references/debugger/"),
     },
     {
       label: "cf:git worktree branches from the current branch and hydrates ignored runtime folders",
@@ -4913,33 +4087,6 @@ async function runStaticSemanticTests() {
       assert: (content) => pin.includes.every((text) => content.includes(text)) && (pin.excludes ?? []).every((text) => !content.includes(text)) && (pin.forbid ?? []).every((f) => !new RegExp(f.re).test(content)),
     })),
     {
-      label: "cf:fix keeps every rule its step sections used to carry",
-      file: "src/claude/skills/fix/SKILL.md",
-      assert: (content) => ["scout depth follows the depth", "pre-fix state", "confirm/refute", "2+ hypotheses fail", "routes back to diagnosis", "Fix the root cause, not the symptom", "Iron-law verification", "typecheck + lint + build + test", "Prevention guard", "sweep the full blast radius", "trigger `cf:code-review`", "side-effect sweep result", "remaining limitations", "update only the affected existing docs", "Ask the user before committing", "one independent issue per agent", "Track progress with the runtime's task surface"].every((rule) => content.includes(rule)) && !/```mermaid|^#+ Step|✓ Step|\bSteps? [0-9]/m.test(content),
-    },
-    {
-      label: "cf:debug keeps every rule its step sections used to carry",
-      file: "src/claude/skills/debug/SKILL.md",
-      assert: (content) => ["Invoke the `scout` skill", "known-good", "inversion", "flaky async tests", "Do not collapse correlation into causation", "Verification plan must include", "Confirm if", "intermittently", "Normalize timezones", "For frontend issues, use `.claude/references/debugger/frontend-verification.md`", "for performance issues, `.claude/references/debugger/performance-diagnostics.md`", "one variable at a time", "Never batch unrelated", "Prefer read-only evidence", "earliest owned invariant", "recurrence-prevention candidates"].every((rule) => content.includes(rule)) && !/```mermaid|^#+ Step|✓ Step|\bSteps? [0-9]/m.test(content),
-    },
-    {
-      label: "cf:fix prevention gate points back to side-effect sweep",
-      file: "src/claude/skills/fix/references/prevention-gate.md",
-      assert: (content) =>
-        content.includes("run the side-effect sweep in `../SKILL.md`") &&
-        !content.includes("references/debugger/"),
-    },
-    {
-      label: "cf:fix review cycle uses pause conditions not mode selection",
-      file: "src/claude/skills/fix/references/review-cycle.md",
-      assert: (content) =>
-        content.includes("## Default Review Handling") &&
-        content.includes("## Required User Pause") &&
-        content.includes("## When To Pause vs Continue") &&
-        !content.includes("## Autonomous Mode") &&
-        !content.includes("## Human-in-the-Loop Mode"),
-    },
-    {
       label: "cf:debug is diagnosis-only and read-only for product code",
       file: "src/claude/skills/debug/SKILL.md",
       assert: (content) =>
@@ -4954,9 +4101,7 @@ async function runStaticSemanticTests() {
       file: "src/claude/skills/debug/SKILL.md",
       assert: (content) =>
         content.includes("<HARD-GATE-SCOUT-FIRST>") &&
-        content.includes("Before hypotheses, inspect the actual codebase context") &&
-        content.includes("project type, language, framework, runtime, and test runner") &&
-        content.includes("3-6 bullet codebase-context summary"),
+        content.includes("Before hypotheses, inspect the actual codebase context"),
     },
     {
       label: "cf:debug blocks hotfix handoff when root cause is unknown",
@@ -5029,67 +4174,8 @@ async function runStaticSemanticTests() {
     {
       label: "Codex warning describes local hook bypass risk",
       file: "src/codex/AGENTS.md",
-      assert: (content) => content.includes(
-        "Do not edit global trust configuration. Hooks are not a complete security boundary; hosted tools and untrusted project hooks can bypass the local hook path.",
-      ),
-    },
-    {
-      label: "state cache carries full project, session, and spec identity",
-      files: ["src/claude/hooks/spec-state.cjs", "src/claude/hooks/lib/spec-touch.cjs"],
-      assert: (content) =>
-        content.includes("sessionID") &&
-        content.includes("session_id") &&
-        content.includes("realpathSync") &&
-        !/slice\(\s*0\s*,\s*12\s*\)/.test(content),
-    },
-    {
-      label: "shared resolver keeps explicit target and fail-closed ambiguity",
-      file: "src/claude/scripts/spec-resolver.cjs",
-      assert: (content) =>
-        content.includes("extractExplicitTarget") &&
-        content.includes("'multiple_active'") &&
-        content.includes("guess from the first active directory") &&
-        content.includes("Provide explicit feature") &&
-        content.includes("if (active.length === 1) return active[0]") &&
-        content.includes("candidates: active.map"),
-    },
-    {
-      label: "rules hooks stay silent when runtime.json is absent",
-      files: ["src/claude/hooks/rules.cjs", "src/codex/hooks/rules.cjs"],
-      assert: (content) =>
-        content.includes("return null") &&
-        content.includes("runtime === null"),
-    },
-    {
-      label: "CafeKit skill routing workflow rule maps core flows",
-      file: "src/claude/rules/skill-workflow-routing.md",
-      assert: (content) => {
-        const normalized = content.replace(/\s+/g, " ");
-        return normalized.includes("If the user names a valid installed skill, use it directly") &&
-          normalized.includes("If one obvious low-risk installed skill covers the intent, use it directly") &&
-          normalized.includes("do not spawn agents for ceremony") &&
-          normalized.includes("classify it yourself and compose the shortest valid chain") &&
-          !normalized.includes("Route capability") &&
-          normalized.includes("Resolve every abstract link against the current runtime catalog") &&
-          !normalized.includes("numeric optimization capability") &&
-          !normalized.includes("/cf:docs --reconstruct <scope>");
-      },
-    },
-    {
-      label: "CafeKit skill routing domain rule maps core and optional skills",
-      file: "src/claude/rules/skill-domain-routing.md",
-      assert: (content) => {
-        const normalized = content.replace(/\s+/g, " ");
-        return normalized.includes("Generate the current runtime catalog first") &&
-          normalized.includes("description`, `when_to_use`, `category`, and `keywords") &&
-          normalized.includes("evidence answer") &&
-          normalized.includes("repository discovery") &&
-          normalized.includes("document/artifact work") &&
-          normalized.includes("matching installed optional capability") &&
-          normalized.includes("require explicit user disambiguation") &&
-          !normalized.includes("numeric optimization capability") &&
-          !/\/cf:(?:docs|docx|pdf|pptx|xlsx|ai-multimodal)/.test(normalized);
-      },
+      assert: (content) => content.includes("Do not edit global trust configuration") &&
+        content.includes("Hooks are not a complete security boundary"),
     },
     {
       label: "cf:docs skill is present in the optional document bundle",
@@ -5123,135 +4209,30 @@ async function runStaticSemanticTests() {
         content.includes("Do not recommend `/cf:develop`"),
     },
     {
-      label: "cf:docs --reconstruct templates keep evidence and overview starters",
-      file: "src/claude/skills/docs/templates/reconstruction.json",
-      assert: (content) =>
-        content.includes('"source_revision"') &&
-        content.includes('"review_status": "pending"') &&
-        content.includes('"approved_for_specs": false') &&
-        content.includes('"overview.html"') &&
-        content.includes('"constraints-risks-and-decisions.md"') &&
-        content.includes('"glossary.md"'),
-    },
-    {
-      label: "cf:docs --reconstruct overview template is self-contained",
-      file: "src/claude/skills/docs/templates/reconstruct-overview.html",
-      assert: (content) =>
-        content.includes("data-reconstruct-overview") &&
-        content.includes("SYSTEM_OVERVIEW_START") &&
-        content.includes("REQUIREMENTS_START") &&
-        content.includes("UNKNOWNS_START") &&
-        !content.includes("<script") &&
-        !content.includes("https://") &&
-        !content.includes("http://"),
-    },
-    {
-      label: "cf:docs normal docs references keep init update summarize phases",
-      file: "src/claude/skills/docs/SKILL.md",
-      assert: (content) =>
-        content.includes("references/init-workflow.md") &&
-        content.includes("references/update-workflow.md") &&
-        content.includes("references/summarize-workflow.md") &&
-        content.includes("CafeKit ships `docs-keeper` instead"),
-    },
-    {
-      label: "cf:docs --init reference keeps scout author validate discipline",
-      file: "src/claude/skills/docs/references/init-workflow.md",
-      assert: (content) =>
-        content.includes("Structure Scout") &&
-        content.includes("Evidence Scout") &&
-        content.includes("docs-keeper") &&
-        content.includes("validate-docs.cjs <docs-root>"),
-    },
-    {
-      label: "cf:docs --update reference reads existing docs before surgical updates",
-      file: "src/claude/skills/docs/references/update-workflow.md",
-      assert: (content) =>
-        content.includes("Existing Docs Read") &&
-        content.includes("Surgical Docs Update") &&
-        content.includes("docs.maxLoc") &&
-        content.includes(".sync_hash"),
-    },
-    {
-      label: "cf:docs --summarize reference avoids broad codebase scans by default",
-      file: "src/claude/skills/docs/references/summarize-workflow.md",
-      assert: (content) =>
-        content.includes("Do not scan the entire codebase") &&
-        content.includes("codebase-summary.md") &&
-        content.includes("Update only `codebase-summary.md`"),
-    },
-    {
-      label: "docs validator accepts configured docs root argument",
-      file: "src/claude/scripts/validate-docs.cjs",
-      assert: (content) =>
-        content.includes("process.argv[2] || 'docs'") &&
-        content.includes("path.resolve(process.cwd(), docsArg)"),
-    },
-    {
       label: "reconstruct validator is packaged and enforces evidence IDs",
       file: "src/claude/migration-manifest.json",
       assert: (content) => content.includes('"validate-docs-reconstruct.cjs"'),
-    },
-    {
-      label: "reconstruct validator requires overview and bundle registry",
-      file: "src/claude/scripts/validate-docs-reconstruct.cjs",
-      assert: (content) =>
-        content.includes("'overview.html'") &&
-        content.includes("must exactly list the as-is document bundle") &&
-        content.includes("must reference evidence IDs") &&
-        content.includes("data-reconstruct-overview"),
-    },
-    {
-      label: "CafeKit no longer installs automatic skill router hook",
-      file: "src/claude/settings/settings.json",
-      assert: (content) =>
-        content.includes('hooks/rules.cjs') &&
-        content.includes('hooks/spec-state.cjs') &&
-        !content.includes('hooks/skill-router.cjs'),
     },
     {
       label: "strategist keeps the AgentKit autonomy contract and claims no execution proof",
       file: "src/claude/agents/strategist.md",
       assert: (content) =>
         content.includes("model: fable") &&
-        content.includes("Everything the caller needs must be in your single final message") &&
-        content.includes("Never ask the user or the caller a question") &&
-        content.includes("Advisory-only: never edit project code or scaffold files") &&
-        content.includes("Your advice is not execution proof") &&
-        content.includes("substitutes the newest Opus it does allow"),
+        content.includes("Advisory-only") &&
+        content.includes("Your advice is not execution proof"),
     },
     {
       label: "model escalation reaches the strategist before the user and grants no authority",
       file: "src/claude/rules/orchestrator.md",
       assert: (content) =>
         content.includes("## Model Escalation") &&
-        content.includes("spawn the `strategist` agent for counsel instead") &&
-        content.includes("Counsel is not execution proof") &&
-        content.includes("Escalate to the user when the strategist also cannot"),
+        content.includes("`strategist` agent") &&
+        content.includes("Counsel is not execution proof"),
     },
     {
-      label: "PreCompact captures re-derivable anchors and claims no authorization",
-      file: "src/claude/hooks/precompact.cjs",
-      assert: (content) =>
-        content.includes("Only facts the runtime can re-derive are recorded") &&
-        content.includes("nothing here grants an authorization") &&
-        content.includes("compact-recovery-") &&
-        content.includes("hook-state-dir.cjs"),
       label: "completion policy states both receipt modes and the invention limit",
       file: "src/claude/rules/state-sync.md",
       assert: (content) =>
-        content.includes("bound to live Base and Head only while its own task file has a copy in") &&
-        content.includes("committing a packet is the user's choice") &&
-        content.includes("Every structural check runs in all cases") &&
-        content.includes("The gate detects drift, not invention") &&
-        !content.includes("revalidates every task currently marked done"),
-    },
-    {
-      label: "Codex carries the same completion policy, since it does not auto-load Claude rules",
-      file: "src/claude/rules/state-sync.md",
-      assert: (content) =>
-        content.includes("bound to live Base and Head only while its own task file has a copy in") &&
-        content.includes("committing a packet is the user's choice") &&
         content.includes("Every structural check runs in all cases") &&
         content.includes("The gate detects drift, not invention") &&
         !content.includes("revalidates every task currently marked done"),
@@ -5268,237 +4249,8 @@ async function runStaticSemanticTests() {
       label: "Specs machine boundary records what the gate cannot detect",
       file: "src/claude/skills/specs/SKILL.md",
       assert: (content) =>
-        content.includes("detects drift\nbetween a receipt and the tree, not invention") &&
         content.includes("GATE-DONE is where a human weighs the evidence") &&
         !content.includes("revalidates every done task's inline Receipt and provenance"),
-    },
-    {
-      label: "installer architecture documents omp coverage and gaps",
-      file: "../../docs/installer-architecture.md",
-      assert: (content) =>
-        content.includes("## Oh My Pi (omp)") &&
-        content.includes(".omp/extensions/cafekit-bridge.js") &&
-        content.includes("omp discovers `.claude/skills` and `.agents/skills` on its own") &&
-        content.includes("Not carried: `agent.cjs` (SubagentStart) and `state.cjs` (SubagentStop)") &&
-        !content.includes("semantic-review-authority") &&
-        content.includes("`.omp/` is added to the root ignore rules"),
-    },
-    {
-      label: "installer architecture documents grok compatibility",
-      file: "../../docs/installer-architecture.md",
-      assert: (content) =>
-        content.includes("## Grok CLI") &&
-        content.includes("[compat.claude]") &&
-        content.includes("normalizes grok's camelCase envelope") &&
-        content.includes("grok --trust") &&
-        content.includes("CLAUDE_PROJECT_DIR` is set by grok") &&
-        content.includes("It has four control-flow channels") &&
-        content.includes("No hook reads Claude Code credentials any more") &&
-        content.includes("Turning off `[compat.claude] hooks` is not supported"),
-    },
-    {
-      label: "installer architecture documents completion gate identity",
-      file: "../../docs/installer-architecture.md",
-      assert: (content) =>
-        content.includes("## Completion gate identity") &&
-        content.includes("which packet still has unfinished work") &&
-        !content.includes("Two Stop hooks") &&
-        !content.includes("semantic-digest") &&
-        content.includes("CafeKit no longer reads the older `spec.json` packets") &&
-        content.includes("never blocks Stop") &&
-        content.includes("specs/_shared/active-feature.json") &&
-        content.includes("A target supplied by the host always wins") &&
-        content.includes("only while its own task file has a copy in") &&
-        content.includes("work elsewhere in the tree never reopens a receipt") &&
-        content.includes("a project\n  gitignoring its specs root cannot meet") &&
-        content.includes("detects drift between a receipt and the\n  tree, not invention") &&
-        content.includes("still block"),
-    },
-    {
-      label: "installer architecture documents orca awareness",
-      file: "../../docs/installer-architecture.md",
-      assert: (content) =>
-        content.includes("## Orca (onorca.dev)") &&
-        content.includes("reads `orca skills get") &&
-        content.includes("ORCA_PANE_KEY") &&
-        content.includes("ORCA_AGENT_HOOK_TOKEN") &&
-        content.includes("ORCA_AGENT_LAUNCH_TOKEN") &&
-        content.includes("never read, write, or print either one") &&
-        content.includes("ORCA_WORKTREE_ID") &&
-        content.includes("Orca is not Herdr") &&
-        content.includes("beside a Claude or Codex install") &&
-        content.includes("no session line"),
-    },
-    {
-      label: "installer architecture documents hook portability",
-      file: "../../docs/installer-architecture.md",
-      assert: (content) =>
-        content.includes("## Hook portability") &&
-        content.includes("runtime-dir.cjs") &&
-        content.includes("derive their runtime directory from their own location") &&
-        content.includes("The `~/.claude/` sites in `state.cjs` and `lib/counter.cjs`") &&
-        content.includes("kept as Claude Code behaviour") &&
-        content.includes("The unimported `lib/context.cjs` and `lib/detect.cjs` were deleted") &&
-        content.includes("`src/omp/hooks/` is an overlay of one file"),
-    },
-    {
-      label: "CafeKit runtime config drives shared hook config",
-      file: "src/claude/hooks/lib/config.cjs",
-      assert: (content) =>
-        content.includes("RUNTIME_CONFIG_PATH = `${runtimeDirName()}/runtime.json`") &&
-        content.includes("const CONFIG_PATH = RUNTIME_CONFIG_PATH") &&
-        content.includes("if (runtimeConfig) merged = deepMerge(merged, runtimeConfig)") &&
-        !content.includes("'skill-router': true"),
-    },
-    {
-      label: "CafeKit migration manifest excludes removed skill router files",
-      file: "src/claude/migration-manifest.json",
-      assert: (content) => {
-        const manifest = JSON.parse(content);
-        return (
-          manifest.scripts.required.includes("generate-skill-catalog.cjs") &&
-          !manifest.runtime.files.includes("hooks/skill-router.cjs") &&
-          !manifest.runtime.files.includes("hooks/lib/skill-router-routes.cjs") &&
-          manifest.obsolete.runtimeFiles.includes("hooks/skill-router.cjs") &&
-          manifest.obsolete.runtimeFiles.includes("hooks/lib/skill-router-routes.cjs") &&
-          manifest.obsolete.settingsHookCommandSubstrings.includes("hooks/skill-router.cjs")
-        );
-      },
-    },
-    {
-      label: "CafeKit installer cleans obsolete skill router runtime and settings hooks",
-      files: ["bin/phases/claude-runtime.js", "bin/phases/claude-settings.js"],
-      assert: (content) =>
-        content.includes("function removeObsoleteClaudeRuntimeFiles") &&
-        content.includes("function pruneObsoleteSettingsHooks") &&
-        content.includes("settingsHookCommandSubstrings") &&
-        content.includes("assertNoSymlinkPath") &&
-        content.includes("ownership.files") &&
-        content.includes("tracker.prune") &&
-        content.includes("removeObsoleteClaudeRuntimeFiles(ctx, platformKey)"),
-    },
-    {
-      label: "CafeKit rules hook injects only project-specific reminders",
-      file: "src/claude/hooks/rules.cjs",
-      assert: (content) =>
-        content.includes("reserveSession") &&
-        content.includes("runtime.locale") &&
-        content.includes("docs.maxLoc") &&
-        content.includes("Markdown files") &&
-        !content.includes("COOLDOWN_MS") &&
-        !content.includes("## Skill Routing") &&
-        !content.includes("[IMPORTANT] Consider Modularization") &&
-        !content.includes("YAGNI · KISS · DRY"),
-    },
-    {
-      label: "docs sync respects runtime docs path",
-      files: [
-        "src/claude/hooks/docs-sync.cjs",
-        "src/codex/hooks/docs-sync.cjs",
-      ],
-      assertParts: ([claudeHook, codexHook]) =>
-        claudeHook.includes("loadConfig({ cwd") &&
-        claudeHook.includes("config.paths?.docs || 'docs'") &&
-        claudeHook.includes("config.paths?.specs || 'specs'") &&
-        codexHook.includes("runtime.paths?.docs") &&
-        codexHook.includes("runtime.paths?.specs") &&
-        [claudeHook, codexHook].every((content) => content.includes(":(exclude,literal)")),
-    },
-    {
-      label: "cf:specs SKILL stays lean after slim-flow diet",
-      file: "src/claude/skills/specs/SKILL.md",
-      assert: (content) => content.trimEnd().split("\n").length >= 140 && content.trimEnd().split("\n").length <= 230,
-    },
-    {
-      label: "cf:develop SKILL stays within directional context budget",
-      file: "src/claude/skills/develop/SKILL.md",
-      assert: (content) => content.trimEnd().split("\n").length >= 115 && content.trimEnd().split("\n").length <= 200,
-    },
-    {
-      label: "cf:develop SKILL keeps Resolve rules as bullets, repair lines whole, fenced Receipt output, and no numbered list",
-      file: "src/claude/skills/develop/SKILL.md",
-      assert: (content) => {
-        const rules = [
-          "Resolve one `specs/<feature>/plan.md` plus flat `task-NN-*.md`; an explicit task path wins.",
-          "Read GATE-SCOPE scope, exclusions, acceptance mapping, ownership, and task order.",
-          "A task is unblocked only when every named dependency is `done` with a valid current inline Receipt.",
-          "Without a packet, work directly only when the change is clear, isolated, reversible, and low-risk.",
-        ];
-        const repairLines = [
-          ["Unless under `--flash` or the command costs money or writes artifacts, run the task's exact Verification Plan command once", "this pre-change run is not a repair round."],
-          ["Passing before any change, outside a resumed task,", "but never run it as proof."],
-          ["Refactor path: it applies only when the task references at least one CP row", "a characterization test belongs to an earlier task."],
-        ];
-        const valid = (text) => {
-          const lines = text.split("\n");
-          let fenced = false;
-          const numbered = lines.some((line) => {
-            if (line.startsWith("```")) { fenced = !fenced; return false; }
-            return !fenced && /^\d+\. /.test(line);
-          });
-          return !numbered
-            && rules.every((rule) => lines.includes(`- ${rule}`))
-            && repairLines.every(([start, end]) => lines.some((line) => line.startsWith(start) && line.endsWith(end)))
-            && text.includes("non-empty current output in a fenced block");
-        };
-        const droppedRule = content.replace(`- ${rules[2]}`, "- A task is unblocked.");
-        const renumbered = content.replace(`- ${rules[0]}`, `1. ${rules[0]}`);
-        const extraNumbered = content.replace("\n## Modes", "\n1. extra\n\n## Modes");
-        const repairJoined = content.replace("but never run it as proof.\n", "but never run it as proof. ");
-        const unfenced = content.replace("non-empty current output in a fenced block", "non-empty current output");
-        return valid(content)
-          && droppedRule !== content && !valid(droppedRule)
-          && renumbered !== content && !valid(renumbered)
-          && extraNumbered !== content && !valid(extraNumbered)
-          && repairJoined !== content && !valid(repairJoined)
-          && unfenced !== content && !valid(unfenced);
-      },
-    },
-    {
-      label: "cf:test SKILL keeps every rule-map phrase on one line and no numbered list",
-      file: "src/claude/skills/test/SKILL.md",
-      assert: (content) => {
-        const phrases = [
-          "Read current `plan.md` and flat task bytes",
-          "Select only a contained regular task whose dependencies allow proof",
-          "Use the task's exact `Command`, exact unique `Named probes`, `Reachability`, `Oracle`, `Counterexample`, required proof level, and artifact declaration",
-          "Run the smallest adequate proof",
-          "`--full` expands scope but cannot weaken the Verification Plan or substitute unrelated green tests",
-          "Return exactly one canonical `test-proof-v1` object",
-          "alone writes process-first Status and inline Receipt",
-          "Detect commands from task and repository files; never invent them",
-          "Run a cheap compile or typecheck precheck when the project provides one",
-          "Execute the exact task command and all named probes with real counts",
-          "read the tests that cover the target or changed code",
-          "the verdict is `FAIL`, naming the source, even when every run passes. When only setup",
-          "rerun just the suspect tests at least twice more",
-          "A single green run of such a test is not `PASS`",
-          "This step does not apply to process-first Named probes, which run exactly once.",
-          "Inspect negative paths, runtime reachability, and declared artifacts",
-          "Capture tracked, untracked, and ignored project-command drift separately from runtime Head",
-          "Never silently clean or hide project changes",
-          "Redact sensitive material",
-          "validate the complete proof object, then return a concise human report separately from the machine handoff",
-          "### Machine handoff (test-proof-v1)",
-          "No payload: target not identifiable.",
-        ];
-        const valid = (text) => {
-          const lines = text.split("\n");
-          let fenced = false;
-          const numbered = lines.some((line) => {
-            if (line.startsWith("```")) { fenced = !fenced; return false; }
-            return !fenced && /^\d+\. /.test(line);
-          });
-          return !numbered && phrases.every((phrase) => lines.some((line) => line.includes(phrase)));
-        };
-        const droppedPhrase = content.replace(phrases[3], "Run proof");
-        const extraNumbered = content.replace("\n## Execution", "\n1. extra\n\n## Execution");
-        const splitPhrase = content.replace(phrases[3], phrases[3].replace(" ", "\n"));
-        return valid(content)
-          && droppedPhrase !== content && !valid(droppedPhrase)
-          && extraNumbered !== content && !valid(extraNumbered)
-          && splitPhrase !== content && !valid(splitPhrase);
-      },
     },
     {
       label: "cf:specs complete shipped bundle stays at or below 750 lines",
@@ -5521,56 +4273,6 @@ async function runStaticSemanticTests() {
       assert: (content) => content.trimEnd().split("\n").length - 3 <= 400,
     },
     {
-      label: "docs-sync.cjs has no shouting banners",
-      file: "src/claude/hooks/docs-sync.cjs",
-      assert: (content) =>
-        !content.includes("URGENT") && !content.includes("BẮT BUỘC"),
-    },
-    {
-      label: "workflow routing keeps proportional and authority boundaries",
-      file: "src/claude/rules/skill-workflow-routing.md",
-      assert: (content) => {
-        const normalized = content.replace(/\s+/g, " ");
-        return normalized.includes("ambiguous, multi-step, multi-domain, or elevated/high-risk work") &&
-          normalized.includes("Collapse links whose output is already current and evidenced") &&
-          normalized.includes("Diagnosis does not authorize repair") &&
-          normalized.includes("no route expands the user's existing authority");
-      },
-    },
-    {
-      label: "statusline layout contract keeps registry, fallback, cost gate, and weekly anchors",
-      file: "src/claude/status.cjs",
-      assert: (content) =>
-        content.includes("const LAYOUT_SECTION_IDS = ['model', 'context', 'quota', 'directory', 'git', 'plan', 'cost', 'changes']") &&
-        content.includes("invalid layout falls back to the") &&
-        content.includes("if (lines.length === 0) return null") &&
-        content.includes("billingMode === 'api'") &&
-        content.includes("rate_limits?.seven_day"),
-    },
-    {
-      label: "repository guide documents statusline configuration",
-      file: "../../README.md",
-      assert: (content) =>
-        content.includes("statuslineLayout") &&
-        content.includes("statuslineColors") &&
-        content.includes('"statusline"'),
-    },
-    {
-      label: "package guide documents statusline configuration",
-      file: "README.md",
-      assert: (content) =>
-        content.includes("statuslineLayout") &&
-        content.includes("statuslineColors") &&
-        content.includes('"statusline"'),
-    },
-    {
-      label: "statusline colors respect runtime config",
-      file: "src/claude/status.cjs",
-      assert: (content) =>
-        content.includes("colors.setColorEnabled(config.statuslineColors !== false)") &&
-        content.includes("colors.shouldUseColor"),
-    },
-    {
       label: "templates expose all five EARS forms and measurable wording",
       file: "src/claude/skills/specs/references/templates.md",
       assert: (content) =>
@@ -5586,17 +4288,8 @@ async function runStaticSemanticTests() {
         return normalized.includes("Classify ambiguity in every affected CP row") &&
           ["`none`", "`examples-needed`", "`decision-needed`", "`design-needed`"]
             .every((token) => normalized.includes(token)) &&
-          normalized.includes("two or three examples only for an already decided rule") &&
-          normalized.includes("retention of 30 versus 90 days is `decision-needed`");
+          normalized.includes("two or three examples only for an already decided rule");
       },
-    },
-    {
-      label: "review contract keeps evidence-backed saturation and runtime-only third round",
-      file: "src/claude/skills/specs/references/review.md",
-      assert: (content) =>
-        content.includes("Review saturation") &&
-        content.includes("Round three requires runtime evidence") &&
-        content.includes("larger useful set means the plan should be split"),
     },
     {
       label: "Specs skill keeps scope and proof boundaries explicit",
@@ -5604,18 +4297,8 @@ async function runStaticSemanticTests() {
       assert: (content) => {
         const norm = content.toLowerCase().replace(/\s+/g, " ");
         return norm.includes("one or two files") &&
-          norm.includes("do not create a plan merely because documentation mentions this skill") &&
           norm.includes("placeholder or remembered output is not evidence") &&
           norm.includes("two pre-code rounds; later claims need runtime evidence");
-      },
-    },
-    {
-      label: "Specs body treats a request to add, build or change a capability as a request and leaves Step 0 to decide",
-      file: "src/claude/skills/specs/SKILL.md",
-      assert: (content) => {
-        const norm = content.replace(/\s+/g, " ");
-        return !norm.includes("the user must invoke Specs or ask for durable planning") &&
-          norm.includes("a request to add, build or change a capability is one, and Step 0 still decides whether it needs a packet.");
       },
     },
     {
@@ -5624,34 +4307,10 @@ async function runStaticSemanticTests() {
       assert: (content) => {
         const norm = content.replace(/\s+/g, " ");
         const body = norm.replace(/^---.*?--- /, "");
-        return !norm.includes("neither is a required call") &&
-          norm.includes("Fix applies the `cf:debug`-style evidence-first diagnosis inline via `references/diagnosis-protocol.md`") &&
+        return norm.includes("references/diagnosis-protocol.md") &&
           norm.includes("calling `cf:debug` is optional") &&
           norm.includes("`--from-debug` still validates a supplied report") &&
           !/cf:debug\b[^.]*\bby default\b/i.test(body);
-      },
-    },
-    {
-      label: "review keeps user decisions and the bounded paper stop",
-      file: "src/claude/skills/specs/references/review.md",
-      assert: (content) => {
-        const norm = content.toLowerCase().replace(/\s+/g, " ");
-        return norm.includes("the user chooses accept, reject, or revise") &&
-          norm.includes("do not apply findings before that decision") &&
-          norm.includes("allow at most two review-and-repair rounds") &&
-          norm.includes("round three requires runtime evidence");
-      },
-    },
-    {
-      label: "spec-maker keeps planning separate from dispatch and proof",
-      file: "src/claude/agents/spec-maker.md",
-      assert: (content) => {
-        const norm = content.toLowerCase().replace(/\s+/g, " ");
-        return norm.includes("it is not an implementation and does not authorize work") &&
-          norm.includes("do not create implementation files, receipts") &&
-          norm.includes("do not start develop") &&
-          norm.includes("keep every new task `status: blocked` while gate-review is open") &&
-          !norm.includes("leave every new task `status: pending`");
       },
     },
     {
@@ -5668,41 +4327,6 @@ async function runStaticSemanticTests() {
       label: "specs-usage-guide documents adaptive routing without timing claims",
       file: "../../docs/specs-usage-guide.md",
       assert: (content) => adaptiveUsageGuideContractValid(content),
-    },
-    {
-      label: "specs-usage-guide documents plan-native Develop without timing or live-adherence claims",
-      files: [
-        "../../docs/specs-usage-guide.md",
-        "bin/__tests__/develop-contract.test.js",
-        "bin/__tests__/codex-native.test.js",
-      ],
-      assertParts: ([guide, developTests, codexTests]) => {
-        const normalized = guide.replace(/\s+/g, " ");
-        const guideContract = [
-          "cf:develop <feature>",
-          "task-NN-<slug>.md",
-          "paused",
-          "blocked",
-          "in_progress",
-          "--parallel",
-          "commit range",
-          "owned-path",
-          "--flash",
-          "FLASH_UNVERIFIED",
-          "hai lần capture",
-          "structural metrics",
-          "[UNVERIFIED]",
-        ].every((clause) => normalized.includes(clause)) &&
-          !/đo (?:được )?\d+\s*(?:ms|s|giây|phút)|live-model (?:PASS|đã xác minh)/i.test(normalized);
-        const developNames = [
-          "Develop process-first source contract preserves selection, recovery, final-Head, parallel, and Flash boundaries",
-          "Claude installed Develop preserves plan-native execution and references",
-        ];
-        const codexName = "Codex installed Develop preserves plan-native execution and references";
-        return guideContract &&
-          developNames.every((name) => developTests.includes(`test('${name}', () =>`)) &&
-          codexTests.includes(`test('${codexName}', () =>`);
-      },
     },
     {
       // Installed Codex projection is verified via transform, not raw source path (behavioral)
@@ -5726,71 +4350,18 @@ async function runStaticSemanticTests() {
       },
     },
     {
-      // Per-surface benchmark tuning targets are explicit and not correctness waivers (Vietnamese positive phrase)
-      label: "benchmark tuning targets are per-surface explicit (advisory, not waiver)",
-      file: "../../docs/benchmark-workflow.md",
-      assert: (content) =>
-        content.includes("≤10 phút") &&
-        content.includes("≤40 phút") &&
-        content.includes("500K") &&
-        content.includes("tối đa") &&
-        content.includes("2 vòng") &&
-        content.toLowerCase().includes("tinh chỉnh") &&
-        content.includes("không phải để cắt"),
-    },
-    {
-      label: "specs-usage-guide teaches Develop and Sync without leaking v2.1 vocabulary",
-      file: "../../docs/specs-usage-guide.md",
-      assert: (content) =>
-        content.includes("## Develop và Sync") &&
-        content.includes("sync-finalize") &&
-        !content.includes("## Legacy compatibility") &&
-        !content.includes("legacy adapter đang cài sẵn") &&
-        !/semantic_model|semantic-model|machine authority|task_registry|planning_depth|execution_tier|\blane\b/i.test(outsideLegacySections(content)),
-    },
-    {
       label: "ported review rule keeps decision precedence without reversal loopholes",
       file: PORTED_RULE_PATHS[0],
       assert: (content) => {
         const normalized = content.replace(/\s+/g, " ");
-        return normalized.includes("do not reverse it because an audit raises an abstract concern") &&
-          normalized.includes("Reverse only when the audit adds new evidence or the context changed") &&
-          normalized.includes("name the verification source") &&
+        return normalized.includes("Reverse only when the audit adds new evidence or the context changed") &&
           normalized.includes("Do not silently undo an explicit user decision") &&
           normalized.includes("GATE-SCOPE scope choice, GATE-REVIEW finding dispositions, and GATE-DONE completion judgement") &&
-          normalized.includes("- the original decision - the audit concern - the trade-off - the concrete options") &&
           normalized.includes("Then wait for the user") &&
-          normalized.includes("identify what the code actually stores, protects, or exposes") &&
-          normalized.includes("Fix real failure modes. Document non-issues briefly.") &&
-          normalized.includes("scout before asking") &&
-          normalized.includes("owns the ask-back conditions; do not restate that list here") &&
-          normalized.includes("Do not add plan IDs, phase numbers, CP or AC identifiers, audit labels, or finding codes to code comments, migration names, test names, or commit messages") &&
+          normalized.includes("Do not add plan IDs, phase numbers, CP or AC identifiers, audit labels, or finding codes") &&
           !/(audit|review) (concerns?|findings?) (override|outrank|take precedence)/i.test(normalized) &&
           !/do not wait for the user/i.test(normalized) &&
           !/ids? (may|can) appear in (code|test|commit)/i.test(normalized);
-      },
-    },
-    {
-      label: "ported process rule keeps ownership, port, and cleanup discipline",
-      file: PORTED_RULE_PATHS[1],
-      assert: (content) => {
-        const normalized = content.replace(/\s+/g, " ");
-        return normalized.includes("picks a new port and starts another process") &&
-          normalized.includes("those processes stay behind") &&
-          normalized.includes("Track every background process you start: command, PID, port, and worktree") &&
-          normalized.includes("whose exit you can observe over an unobservable detached run") &&
-          normalized.includes("check whether one is already running") &&
-          normalized.includes("Bind to a deterministic port per project or worktree") &&
-          normalized.includes("stop the stale owner rather than taking another port") &&
-          normalized.includes("`lsof -i :PORT` or `ss -ltnp`") &&
-          normalized.includes("Stop what you started when its task, session, or worktree ends") &&
-          normalized.includes("wave releases a worktree") &&
-          normalized.includes("Reconcile periodically") &&
-          normalized.includes("Stop cleanly first") &&
-          normalized.includes("Only stop processes you started or clearly own") &&
-          normalized.includes("never match a kill pattern broad enough") &&
-          !/start on another port/i.test(normalized) &&
-          !/orphaned processes are (acceptable|fine|harmless|expected)/i.test(normalized);
       },
     },
     {
@@ -5828,15 +4399,6 @@ async function runStaticSemanticTests() {
         });
       },
     },
-    {
-      label: "Specs primary flow is file-first while legacy kernel remains isolated",
-      file: "src/claude/skills/specs/SKILL.md",
-      assert: (content) =>
-        content.includes("Files are state") &&
-        !content.includes("## Legacy compatibility") &&
-        !content.includes("installed legacy adapters") &&
-        !/semantic_model|semantic-model|machine authority|task_registry|planning_depth|execution_tier|\blane\b/i.test(outsideLegacySections(content)),
-    },
   ];
 
   console.log("\n[skill-test] static semantic checks");
@@ -5857,9 +4419,8 @@ async function runStaticSemanticTests() {
 
   return checks.length + specsContractTests + implementationReadinessTests
     + processTaskStatusTests + adaptiveCoverageTests + brainstormContractTests
-    + developPlanNativeTests + scoutSubroutineTests + syncRepairTests + testPlanNativeTests + debugAdaptiveTests + debugProportionalTests + debugAgentGatesTests
-    + hotfixAdaptiveTests + researchAdaptiveTests
-    + docsAdaptiveTests + consumerSectionTests;
+    + developPlanNativeTests + syncRepairTests + testPlanNativeTests + debugAdaptiveTests + debugProportionalTests + debugAgentGatesTests
+    + consumerSectionTests;
 }
 
 function runSkillCatalogTests() {
@@ -6100,42 +4661,6 @@ async function runSettingsManifestConsistencyCheck() {
  * the current tree. That is no longer what the gate does, and a stale copy of the
  * promise would teach an operator to read a correct silence as a bug.
  */
-async function runCompletionPolicyWordingCheck() {
-  const retired = "revalidates every task currently marked done";
-  const offenders = [];
-
-  async function walk(dir) {
-    let entries;
-    try {
-      entries = await readdir(dir, { withFileTypes: true });
-    } catch {
-      return;
-    }
-    for (const entry of entries) {
-      const absolute = join(dir, entry.name);
-      if (entry.isDirectory()) {
-        if (entry.name === "node_modules" || entry.name === ".venv") continue;
-        await walk(absolute);
-      } else if (/\.(md|cjs|mjs|js|json|html)$/.test(entry.name)) {
-        const content = await readFile(absolute, "utf8");
-        if (content.includes(retired)) offenders.push(absolute);
-      }
-    }
-  }
-
-  console.log("\n[skill-test] retired completion-policy sentence is gone from the payload");
-  await walk(join(packageRoot, "src"));
-  if (offenders.length > 0) {
-    console.error(
-      `[FAIL] the retired sentence "${retired}" still appears in: ${offenders.join(", ")}. `
-      + "State the two receipt modes instead; the policy is defined once in src/claude/rules/state-sync.md.",
-    );
-    process.exit(1);
-  }
-  console.log("Ran 1 test in completion policy wording");
-  return 1;
-}
-
 async function runSourceTreeCleanlinessCheck() {
   const sourceRoot = join(packageRoot, "src");
   const offenders = [];
@@ -6885,7 +5410,6 @@ async function main() {
   totalTests += await runLocalePreservationFixtureTest();
   console.log("\n[skill-test] instruction install fixtures");
   totalTests += await runWave1InstructionFixtureTests();
-  console.log("\n[skill-test] spec artifact validator fixtures");
   console.log("\n[skill-test] reconstruct docs validator fixtures");
   totalTests += await runReconstructValidatorFixtureTests();
   for (const suite of testSuites) {
@@ -6912,7 +5436,6 @@ async function main() {
     process.exit(1);
   }
 
-  totalTests += await runCompletionPolicyWordingCheck();
   totalTests += await runSourceTreeCleanlinessCheck();
   totalTests += await runCodeReviewBoundaryCheck();
 

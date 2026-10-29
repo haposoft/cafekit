@@ -51,6 +51,12 @@ function installScanner(source, destination, transform = (content) => content) {
   fs.writeFileSync(destination, transform(fs.readFileSync(source, 'utf8')));
 }
 
+test('manifest skills.required stays sorted and free of duplicates', () => {
+  const required = MANIFEST.skills.required;
+  assert.deepEqual([...required], [...required].sort());
+  assert.equal(new Set(required).size, required.length);
+});
+
 test('skill routing consumes live catalog without fixed optional commands', () => {
   withTempRoot((root) => {
     const claudeScript = path.join(root, '.claude/scripts/generate-skill-catalog.cjs');

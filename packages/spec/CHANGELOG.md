@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- The retired B1 benchmark harness: `scripts/benchmark-workflow.mjs`, the `benchmarks/` folder (corpus schema, example config, rubric, migration manifest), `docs/benchmark-workflow.md` and their tests. Measurement runs through `evals/run.sh`. Neither was part of the published package.
+
 ### Fixed
 
 - The staged secret scanner used by `cf:git` now reads files whose names git quotes: a name with non-ASCII characters, a double quote, a tab or a space was skipped, so its secrets were never reported. It also ignores `diff.noprefix` and `diff.mnemonicPrefix` in your git config, which made it skip every file.

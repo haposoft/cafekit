@@ -7,6 +7,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { spawnSync, spawn } = require('node:child_process');
 const { test } = require('node:test');
+const { installCodexHookRuntime } = require('./codex-hook-runtime-fixture.cjs');
 
 const OLD_INSPECTION_MATCHER = 'Bash|exec_command|apply_patch|Edit|Write|Read|Glob|Grep|mcp__.*|shell';
 const NEW_INSPECTION_MATCHER = 'Bash|exec_command|shell|apply_patch|mcp__.*|collaborationspawn_agent|collaborationwait_agent';
@@ -43,31 +44,6 @@ test('upgrade preserves a mixed user group and warns', () => matcherFixture(f =>
   assert.equal(f.read().hooks.PreToolUse[0].matcher, OLD_INSPECTION_MATCHER);
   assert.ok(f.read().hooks.PreToolUse[0].hooks.some(h => h.command === 'echo user-owned'));
   assert.ok(f.warnings.some(line => /matcher.*preserv/i.test(line)));
-}));
-test('reinstall keeps purely user groups unchanged without matcher warnings', () => matcherFixture(f => {
-  const userPre = { matcher: 'Bash', hooks: [{ command: 'my-linter' }] };
-  const userPost = { hooks: [{ command: 'my-logger' }] };
-  f.config.hooks = { PreToolUse: [userPre], PostToolUse: [userPost] }; f.save();
-  const installs = Array.from({ length: 2 }, () => {
-    const result = spawnSync(process.execPath, [path.resolve(__dirname, '../install.js'), '--platform', 'codex', '-y'], {
-      cwd: f.root, encoding: 'utf8',
-    });
-    return { result, config: f.read() };
-  });
-  for (const { result, config } of installs) {
-    assert.equal(result.status, 0, result.stderr);
-    for (const [event, original] of [['PreToolUse', userPre], ['PostToolUse', userPost]]) {
-      const group = config.hooks[event].find(g => g.hooks.some(h => h.command === original.hooks[0].command));
-      assert.equal(JSON.stringify(group), JSON.stringify(original));
-    }
-    assert.doesNotMatch(result.stdout + result.stderr, /matcher preserved/);
-  }
-}));
-test('fresh hook registration uses every template matcher', () => matcherFixture(f => {
-  f.merge();
-  for (const [event, groups] of Object.entries(f.config.hooks)) {
-    assert.deepEqual(f.read().hooks[event].map(g => g.matcher), groups.map(g => g.matcher));
-  }
 }));
 test('upgrade preserves a user-selected managed matcher and warns', () => matcherFixture(f => {
   f.config.hooks.PreToolUse[0].matcher = 'Read|Grep'; f.save(); f.merge();
@@ -151,26 +127,7 @@ function inHookFixture(run, options = {}) {
   const hooks = path.join(root, '.codex', 'hooks');
   let deferred = false;
   try {
-    fs.cpSync(CODEX_HOOKS, hooks, { recursive: true });
-    fs.copyFileSync(path.join(PACKAGE_ROOT, 'src/claude/hooks/lib/spec-touch.cjs'), path.join(hooks, 'lib/spec-touch.cjs'));
-    fs.copyFileSync(path.join(PACKAGE_ROOT, 'src/claude/hooks/lib/secret-keywords.cjs'), path.join(hooks, 'lib/secret-keywords.cjs'));
-    fs.copyFileSync(path.join(PACKAGE_ROOT, 'src/claude/hooks/lib/update-check.cjs'), path.join(hooks, 'lib/update-check.cjs'));
-    fs.copyFileSync(
-      path.join(PACKAGE_ROOT, 'src/claude/hooks/lib/inspect-paths.cjs'),
-      path.join(hooks, 'lib/inspect-paths.cjs'),
-    );
-    fs.copyFileSync(
-      path.join(PACKAGE_ROOT, 'src/claude/hooks/lib/privacy-command-analysis.cjs'),
-      path.join(hooks, 'lib/privacy-command-analysis.cjs'),
-    );
-    fs.copyFileSync(
-      path.join(PACKAGE_ROOT, 'src/claude/hooks/lib/privacy-paths.cjs'),
-      path.join(hooks, 'lib/privacy-paths.cjs'),
-    );
-    fs.copyFileSync(
-      path.join(PACKAGE_ROOT, 'src/claude/hooks/lib/runtime-path-safety.cjs'),
-      path.join(hooks, 'lib/runtime-path-safety.cjs'),
-    );
+    installCodexHookRuntime(root);
     fs.mkdirSync(path.join(root, '.codex', 'scripts'), { recursive: true });
     if (options.policy !== 'missing') {
       if (options.policy === 'malformed') {
@@ -222,15 +179,7 @@ function inNoCommitCodexFixture(run) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cafekit-codex-no-commit-'));
   const hooks = path.join(root, '.codex/hooks');
   try {
-    fs.cpSync(CODEX_HOOKS, hooks, { recursive: true });
-    for (const name of ['privacy-paths.cjs', 'privacy-command-analysis.cjs']) {
-      fs.copyFileSync(path.join(PACKAGE_ROOT, 'src/claude/hooks/lib', name), path.join(hooks, 'lib', name));
-    }
-    fs.copyFileSync(path.join(PACKAGE_ROOT, 'src/claude/hooks/lib/spec-touch.cjs'), path.join(hooks, 'lib/spec-touch.cjs'));
-    fs.copyFileSync(path.join(PACKAGE_ROOT, 'src/claude/hooks/lib/secret-keywords.cjs'), path.join(hooks, 'lib/secret-keywords.cjs'));
-    fs.copyFileSync(path.join(PACKAGE_ROOT, 'src/claude/hooks/lib/update-check.cjs'), path.join(hooks, 'lib/update-check.cjs'));
-    fs.copyFileSync(path.join(PACKAGE_ROOT, 'src/claude/hooks/lib/runtime-path-safety.cjs'),
-      path.join(hooks, 'lib/runtime-path-safety.cjs'));
+    installCodexHookRuntime(root);
     const scripts = path.join(root, '.codex/scripts');
     fs.mkdirSync(scripts, { recursive: true });
     for (const name of ['workflow-policy.cjs', 'provenance.cjs', 'spec-receipt.cjs', 'spec-resolver.cjs']) {

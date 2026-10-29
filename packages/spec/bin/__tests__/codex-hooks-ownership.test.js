@@ -79,17 +79,6 @@ function addUserHooks(root) {
   fs.writeFileSync(hooksPath(root), `${JSON.stringify(config, null, 2)}\n`);
 }
 
-test('a fresh install registers the precompact capture hook', () => {
-  inTempProject((root) => {
-    assert.ok(managedScripts().PreCompact?.includes('precompact.cjs'));
-    const result = install(root);
-    assert.equal(result.status, 0, result.stderr);
-    const scripts = (readHooks(root).hooks.PreCompact || []).flatMap(group => group.hooks || []).map(handler => hookScript(handler.command));
-    assert.ok(scripts.includes('precompact.cjs'));
-    assert.ok(fs.existsSync(path.join(root, '.codex/hooks/precompact.cjs')));
-  });
-});
-
 test('a fresh install registers every CafeKit hook under its own event', () => {
   inTempProject((root) => {
     const result = install(root);
@@ -103,7 +92,10 @@ test('a fresh install registers every CafeKit hook under its own event', () => {
         .filter(Boolean);
       for (const script of scripts) {
         assert.ok(registered.includes(script), `${script} missing from ${eventName}`);
+        assert.ok(fs.existsSync(path.join(root, '.codex/hooks', script)), `${script} not installed`);
       }
+      const template = JSON.parse(fs.readFileSync(TEMPLATE, 'utf8')).hooks[eventName];
+      assert.deepEqual(installed.hooks[eventName].map((group) => group.matcher), template.map((group) => group.matcher));
     }
   });
 });
@@ -119,6 +111,11 @@ test('a reinstall preserves user-added hooks instead of overwriting them', () =>
     const commands = allCommands(readHooks(root));
     assert.ok(commands.includes(USER_STOP_COMMAND), 'user Stop hook was erased by the reinstall');
     assert.ok(commands.includes(USER_PRETOOL_COMMAND), 'user PreToolUse hook was erased by the reinstall');
+    const after = readHooks(root).hooks;
+    const userGroup = (event, command) => after[event].find((group) => group.hooks.some((handler) => handler.command === command));
+    assert.deepEqual(userGroup('Stop', USER_STOP_COMMAND), { matcher: '*', hooks: [{ type: 'command', command: USER_STOP_COMMAND }] });
+    assert.deepEqual(userGroup('PreToolUse', USER_PRETOOL_COMMAND), { matcher: 'Bash', hooks: [{ type: 'command', command: USER_PRETOOL_COMMAND }] });
+    assert.doesNotMatch(second.stdout + second.stderr, /matcher preserved/);
   });
 });
 

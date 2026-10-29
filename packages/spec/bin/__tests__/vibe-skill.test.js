@@ -191,11 +191,10 @@ function assertLinksResolve(baseDir, file) {
   return links.length;
 }
 
-test('manifest requires vibe in alphabetical position', () => {
+test('manifest requires vibe', () => {
   // Without the entry the installer never copies the skill and nothing else fails.
   const required = loadClaudeMigrationManifest().skills.required;
   assert.equal(required.includes('vibe'), true);
-  assert.deepEqual([...required], [...required].sort());
 });
 
 test('vibe frontmatter is manual-only, carries the catalog identity, and fits the routing limit', () => {
