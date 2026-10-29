@@ -5,6 +5,13 @@ All notable changes to @haposoft/cafekit will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- The staged secret scanner used by `cf:git` now reads files whose names git quotes: a name with non-ASCII characters, a double quote, a tab or a space was skipped, so its secrets were never reported. It also ignores `diff.noprefix` and `diff.mnemonicPrefix` in your git config, which made it skip every file.
+- Session state no longer follows a symlink out of the project. A `.claude/session-state` or `.codex/session-state` link committed into a repository used to receive the state files; the hooks now refuse such a path and write nothing. State kept under `~/.claude/session-states` is unchanged, so a linked `~/.claude` keeps working.
+
 ## [0.18.3] - 2026-10-27
 
 ### Added

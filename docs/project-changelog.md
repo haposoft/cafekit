@@ -3,6 +3,11 @@
 All notable changes to CafeKit are documented here, following
 [Keep a Changelog](https://keepachangelog.com/).
 
+## [Unreleased]
+### Fixed
+- The staged secret scanner used by `cf:git` now reads files whose names git quotes: a name with non-ASCII characters, a double quote, a tab or a space was skipped, so its secrets were never reported. It also ignores `diff.noprefix` and `diff.mnemonicPrefix` in your git config, which made it skip every file.
+- Session state no longer follows a symlink out of the project. A `.claude/session-state` or `.codex/session-state` link committed into a repository used to receive the state files; the hooks now refuse such a path and write nothing. State kept under `~/.claude/session-states` is unchanged, so a linked `~/.claude` keeps working.
+
 ## [0.18.3] - 2026-10-27
 ### Added
 - `npx @haposoft/cafekit@latest migrate` previews removing a repository's npx install so the Claude Code and Codex plugins take over, and `migrate --apply` removes it with a backup in `.cafekit-backup/`, restored when apply fails or is interrupted with Ctrl-C (a restore step that fails is printed as a manual step). Installed files that still match their install hash go, except skills and agents no plugin ships yet, with CafeKit's hook entries in `.claude/settings.json` and `.codex/hooks.json` and its blocks in `AGENTS.md` and `CLAUDE.md` (the response-language choice in that block goes with it); edited files, files you added and the shared files they name, `runtime.json`, the selected output style, user hook entries and user text stay, and a root `.gitignore` line goes only when its folder is gone. A repository with an `.omp/` install, a symlinked `.claude`, `.codex` or `.agents`, or an install without a readable manifest is refused and nothing is changed. The Codex plugin's stand-down notice now names the command; ship the plugin build that carries it only with or after the npm release that has `migrate`, because until then `npx @haposoft/cafekit@latest` resolves to 0.18.2, which ignores `migrate` and reinstalls.

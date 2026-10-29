@@ -83,20 +83,42 @@ try {
     return clean.length > 600 ? `${clean.slice(0, 600)}…` : clean;
   }
 
+  // Walk dir below its trusted base one segment at a time and refuse any symlink, so a
+  // link committed into the repository cannot move session state outside it.
+  function containedDir(base, dir, create) {
+    let current = base;
+    for (const segment of path.relative(base, dir).split(path.sep)) {
+      current = path.join(current, segment);
+      if (create) {
+        try { fs.mkdirSync(current); } catch (error) { if (error.code !== 'EEXIST') return false; }
+      }
+      let stat;
+      try { stat = fs.lstatSync(current); } catch { return !create; }
+      if (stat.isSymbolicLink() || !stat.isDirectory()) return false;
+    }
+    return true;
+  }
+
   function stateDir(cwd, sessionId, create = true) {
     try {
       let dir;
+      // The home fallback stays unchecked: no repository controls it, and users link ~/.claude.
+      let base = null;
       const pluginRoot = require('./lib/hook-state-dir.cjs').pluginStateRoot();
       if (pluginRoot) {
         const hash = crypto.createHash('md5').update(cwd).digest('hex').slice(0, 12);
         dir = path.join(pluginRoot, 'session-states', hash);
+        base = pluginRoot;
+        if (create) fs.mkdirSync(pluginRoot, { recursive: true });
       } else if (fs.existsSync(runtimeDir(cwd))) {
         dir = runtimePath(cwd, 'session-state');
+        base = cwd;
       } else {
         const hash = crypto.createHash('md5').update(cwd).digest('hex').slice(0, 12);
         dir = path.join(os.homedir(), '.claude', 'session-states', hash);
       }
       if (sessionId) dir = path.join(dir, crypto.createHash('sha256').update(sessionId).digest('hex').slice(0, 16));
+      if (base) return containedDir(base, dir, create) ? dir : null;
       if (create && !fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
       return dir;
     } catch {

@@ -485,6 +485,27 @@ test('SubagentStop saves the assistant summary and omits secret-related content'
   });
 });
 
+test('a symlinked session-state path is refused and nothing is written outside the project', () => {
+  inSessionStateFixture(({ invoke, stateRoot }) => {
+    // A repository can commit either the shared state folder or one session folder as a link.
+    for (const link of [stateRoot, savedSession(stateRoot)]) {
+      const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'ck-state-outside-'));
+      try {
+        fs.rmSync(stateRoot, { recursive: true, force: true });
+        fs.mkdirSync(path.dirname(link), { recursive: true });
+        fs.symlinkSync(outside, link);
+        invoke({ hook_event_name: 'Stop', session_id: 'robust-session', last_assistant_message: 'Linked snapshot' });
+        assert.deepStrictEqual(fs.readdirSync(outside), [], `${path.basename(link)} link must not receive state`);
+      } finally {
+        fs.rmSync(stateRoot, { recursive: true, force: true });
+        fs.rmSync(outside, { recursive: true, force: true });
+      }
+    }
+    invoke({ hook_event_name: 'Stop', session_id: 'robust-session', last_assistant_message: 'Plain snapshot' });
+    assert.ok(fs.existsSync(path.join(savedSession(stateRoot), 'latest.md')), 'a plain state folder still saves');
+  });
+});
+
 test('a fresh state write lock skips the snapshot without changing existing bytes', () => {
   inSessionStateFixture(({ invoke, stateRoot }) => {
     const dir = savedSession(stateRoot);
