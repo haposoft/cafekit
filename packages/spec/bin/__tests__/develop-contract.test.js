@@ -299,26 +299,6 @@ test('Develop process-first source contract preserves selection, recovery, final
   }
 });
 
-test('Claude installed Develop preserves plan-native execution and references', () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cafekit-claude-develop-'));
-  try {
-    const result = installClaude(root);
-    assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
-    const sourceRoot = path.dirname(DEVELOP);
-    const installedRoot = path.join(root, '.claude/skills/develop');
-    for (const relative of ['SKILL.md', ...DEVELOP_REFERENCES.map((name) => `references/${name}`)]) {
-      assert.equal(
-        fs.readFileSync(path.join(installedRoot, relative), 'utf8'),
-        fs.readFileSync(path.join(sourceRoot, relative), 'utf8'),
-        `Claude Develop projection drifted: ${relative}`,
-      );
-    }
-    assert.equal(fs.existsSync(path.join(root, '.agents/skills/develop')), false);
-  } finally {
-    fs.rmSync(root, { recursive: true, force: true });
-  }
-});
-
 test('Test process-first handoff preserves proof ownership and side-effect boundaries', () => {
   const skill = read(TEST_SKILL);
   const strategy = read(path.join(TEST_SOURCE_ROOT, 'references/execution-strategy.md'));
@@ -417,18 +397,24 @@ test('Test process-first handoff preserves proof ownership and side-effect bound
   assert.equal(fs.existsSync(externalTemp), false, 'Test-owned external temp must be cleaned');
 });
 
-test('Claude installed Test preserves plan-native proof and references', () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cafekit-claude-test-proof-'));
+test('Claude installed Develop and Test preserve plan-native execution, proof and references', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cafekit-claude-develop-test-'));
   try {
     const result = installClaude(root);
     assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
-    const installedRoot = path.join(root, '.claude/skills/test');
-    for (const relative of ['SKILL.md', ...TEST_REFERENCES.map((name) => `references/${name}`)]) {
-      assert.equal(
-        fs.readFileSync(path.join(installedRoot, relative), 'utf8'),
-        fs.readFileSync(path.join(TEST_SOURCE_ROOT, relative), 'utf8'),
-        `Claude Test projection drifted: ${relative}`,
-      );
+    const projections = [
+      ['develop', path.dirname(DEVELOP), DEVELOP_REFERENCES],
+      ['test', TEST_SOURCE_ROOT, TEST_REFERENCES],
+    ];
+    for (const [name, sourceRoot, references] of projections) {
+      for (const relative of ['SKILL.md', ...references.map((ref) => `references/${ref}`)]) {
+        assert.equal(
+          fs.readFileSync(path.join(root, '.claude/skills', name, relative), 'utf8'),
+          fs.readFileSync(path.join(sourceRoot, relative), 'utf8'),
+          `Claude ${name} projection drifted: ${relative}`,
+        );
+      }
+      assert.equal(fs.existsSync(path.join(root, '.agents/skills', name)), false);
     }
     const installedRunner = fs.readFileSync(path.join(root, '.claude/agents/test-runner.md'), 'utf8');
     assert.equal(installedRunner, fs.readFileSync(TEST_RUNNER, 'utf8'));
@@ -436,12 +422,10 @@ test('Claude installed Test preserves plan-native proof and references', () => {
     const installedReview = fs.readFileSync(path.join(root, '.claude/skills/code-review/SKILL.md'), 'utf8');
     assert.equal(installedReview, fs.readFileSync(CODE_REVIEW_SKILL, 'utf8'));
     assert.match(installedReview, /controller-validated `test-proof-v1`/);
-    assert.equal(fs.existsSync(path.join(root, '.agents/skills/test')), false);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
-
 
 test('first-run cache bypass is blocked - canonical receipt required even without cache', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cafekit-first-run-'));
@@ -565,13 +549,13 @@ test('runtime provenance derives exact Git evidence, CLI context, and stale/forg
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cafekit-provenance-adversarial-'));
   const specsRoot = path.join(root, 'specs');
   const featureRoot = path.join(specsRoot, 'demo');
-  const specFile = path.join(featureRoot, 'spec.json');
+  const specFile = path.join(featureRoot, 'plan.md');
   const sourceFile = path.join(root, 'src', 'app.js');
   const renameSource = path.join(root, 'src', 'rename-old.js');
   const renameTarget = path.join(root, 'src', 'rename-new.js');
   fs.mkdirSync(path.dirname(sourceFile), { recursive: true });
   fs.mkdirSync(featureRoot, { recursive: true });
-  fs.writeFileSync(specFile, JSON.stringify({ status: 'in_progress', feature_name: 'demo', task_registry: {} }));
+  fs.writeFileSync(specFile, '# Demo\n');
   fs.writeFileSync(sourceFile, 'original source\n');
   fs.writeFileSync(renameSource, 'rename source\n');
   fs.writeFileSync(path.join(root, '.gitignore'), 'ignored-secret.env\nnode_modules/\n.cache/\n');
@@ -603,13 +587,8 @@ test('runtime provenance derives exact Git evidence, CLI context, and stale/forg
       'valid-shaped arbitrary SHA values must not bind',
     );
 
-    fs.writeFileSync(specFile, JSON.stringify({
-      status: 'in_progress',
-      feature_name: 'demo',
-      task_registry: {},
-      receipt_refresh: true,
-    }));
-    const specCommit = spawnSync('git', ['-C', root, 'add', 'specs/demo/spec.json'], { encoding: 'utf8' });
+    fs.writeFileSync(specFile, '# Demo\n\nrefreshed\n');
+    const specCommit = spawnSync('git', ['-C', root, 'add', 'specs/demo/plan.md'], { encoding: 'utf8' });
     assert.equal(specCommit.status, 0, specCommit.stderr);
     const commitReceipt = spawnSync('git', ['-C', root, 'commit', '-qm', 'refresh spec receipt'], { encoding: 'utf8' });
     assert.equal(commitReceipt.status, 0, commitReceipt.stderr);
@@ -695,9 +674,9 @@ test('runtime provenance derives exact Git evidence, CLI context, and stale/forg
   }
 
   const nonGit = fs.mkdtempSync(path.join(os.tmpdir(), 'cafekit-provenance-non-git-'));
-  const nonGitSpec = path.join(nonGit, 'specs', 'demo', 'spec.json');
+  const nonGitSpec = path.join(nonGit, 'specs', 'demo', 'plan.md');
   fs.mkdirSync(path.dirname(nonGitSpec), { recursive: true });
-  fs.writeFileSync(nonGitSpec, JSON.stringify({ status: 'in_progress', feature_name: 'demo' }));
+  fs.writeFileSync(nonGitSpec, '# Demo\n');
   try {
     const blocked = spawnSync(process.execPath, [
       path.join(PACKAGE_ROOT, 'src/claude/scripts/provenance.cjs'), '--json',
@@ -715,15 +694,15 @@ test('runtime provenance chooses a deterministic root when all history is Specs-
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cafekit-provenance-multi-root-'));
   const specsRoot = path.join(root, 'specs');
   const featureRoot = path.join(specsRoot, 'demo');
-  const specFile = path.join(featureRoot, 'spec.json');
+  const specFile = path.join(featureRoot, 'plan.md');
   try {
     fs.mkdirSync(featureRoot, { recursive: true });
-    fs.writeFileSync(specFile, JSON.stringify({ status: 'in_progress', feature_name: 'demo', task_registry: {} }));
+    fs.writeFileSync(specFile, '# Demo\n');
     for (const args of [
       ['init', '-q', '-b', 'first-root'],
       ['config', 'user.email', 'cafekit@example.invalid'],
       ['config', 'user.name', 'CafeKit Test'],
-      ['add', 'specs/demo/spec.json'],
+      ['add', 'specs/demo/plan.md'],
       ['commit', '-qm', 'first specs root'],
       ['checkout', '--orphan', 'unrelated-specs'],
       ['rm', '-qrf', '.'],
@@ -731,10 +710,10 @@ test('runtime provenance chooses a deterministic root when all history is Specs-
       const result = spawnSync('git', ['-C', root, ...args], { encoding: 'utf8' });
       assert.equal(result.status, 0, result.stderr);
     }
-    const unrelatedSpec = path.join(specsRoot, 'unrelated', 'spec.json');
+    const unrelatedSpec = path.join(specsRoot, 'unrelated', 'plan.md');
     fs.mkdirSync(path.dirname(unrelatedSpec), { recursive: true });
-    fs.writeFileSync(unrelatedSpec, JSON.stringify({ status: 'in_progress', feature_name: 'unrelated', task_registry: {} }));
-    let result = spawnSync('git', ['-C', root, 'add', 'specs/unrelated/spec.json'], { encoding: 'utf8' });
+    fs.writeFileSync(unrelatedSpec, '# Unrelated\n');
+    let result = spawnSync('git', ['-C', root, 'add', 'specs/unrelated/plan.md'], { encoding: 'utf8' });
     assert.equal(result.status, 0, result.stderr);
     result = spawnSync('git', ['-C', root, 'commit', '-qm', 'second specs root'], { encoding: 'utf8' });
     assert.equal(result.status, 0, result.stderr);

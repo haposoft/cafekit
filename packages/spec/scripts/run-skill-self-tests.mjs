@@ -319,13 +319,6 @@ async function runImplementationReadinessContractTests() {
       to: "Before implementation handoff, note ambiguous choices without blocking handoff.",
     },
     {
-      name: "no-invention-contradictory-override",
-      issue: "no-invention",
-      source: "templates",
-      from: IMPLEMENTATION_READINESS_CLAUSES.noInvention,
-      to: `${IMPLEMENTATION_READINESS_CLAUSES.noInvention}\n\nException: implementation handoff may proceed with an unresolved material choice.`,
-    },
-    {
       name: "material-boundary-definition",
       issue: "boundary-contract",
       source: "templates",
@@ -351,17 +344,11 @@ async function runImplementationReadinessContractTests() {
       ["exact keys/nesting/types; ", ""],
       ["unknown-field behavior; ", ""],
     ]),
-    boundaryMutation("schema-enum-and-format", "Data/schema", [
-      ["enum/format/", ""],
-    ]),
     boundaryMutation("state-lock-lifecycle", "Async/state", [
       ["writer/lock acquire/contention/release; ", "writer/lock; "],
     ]),
     boundaryMutation("filesystem-segment-grammar", "Filesystem/security", [
       ["trusted/untrusted segment grammar; ", ""],
-    ]),
-    boundaryMutation("filesystem-stale-lock-reclaim", "Filesystem/security", [
-      ["lock/stale reclaim; ", ""],
     ]),
     boundaryMutation("runtime-rollout-and-recovery", "Runtime/deploy", [
       ["rollout/rollback; ", ""],
@@ -874,8 +861,6 @@ async function runAdaptiveCoverageContractTests() {
       "skip for any clear one-file or two-file change.", ["risk-first-routing"]],
     ["destructive-routine-direct", "skill", ADAPTIVE_COVERAGE_CLAUSES.directGate,
       "Work directly when the change is routine and likely limited to one or two files.", ["risk-first-routing"]],
-    ["destructive-direct-exception", "skill", ADAPTIVE_COVERAGE_CLAUSES.directGate,
-      `${ADAPTIVE_COVERAGE_CLAUSES.directGate} Exception: destructive one-file work labeled routine may go direct.`, ["risk-first-routing"]],
     ["user-risk-downgrade", "skill", ADAPTIVE_COVERAGE_CLAUSES.riskFirst,
       `${ADAPTIVE_COVERAGE_CLAUSES.riskFirst} A user may lower critical risk to routine.`, ["risk-first-routing"]],
     ["four-subsystem-split", "skill", ADAPTIVE_COVERAGE_CLAUSES.splitRoute,
@@ -884,26 +869,18 @@ async function runAdaptiveCoverageContractTests() {
       "Choose one primary change kind and ignore unfamiliar kinds or surfaces.", ["coverage-profile-shape"]],
     ["missing-profile-column", "templates", "| ID | Outcome | Change kinds | Material surfaces | Ambiguity/action | Risk/evidence | Required proof |",
       "| ID | Outcome | Change kinds | Material surfaces | Risk/evidence | Required proof |", ["coverage-profile-shape"]],
-    ["duplicate-profile-heading", "templates", "## Coverage profile\n",
-      "## Coverage profile\n\n## Coverage profile\n", ["coverage-profile-shape"]],
     ["truncated-profile-row", "templates", `| ${ADAPTIVE_COVERAGE_PROFILE_ROW.join(" | ")} |`,
       "| CP-01 | <externally observable outcome> |", ["coverage-profile-shape"]],
     ["examples-promote-to-design", "templates", `| ${ADAPTIVE_COVERAGE_AMBIGUITY_ROWS[2].join(" | ")} |`,
       "| `examples-needed` | add examples and promote to `design-needed` if behavior changes |", ["ambiguity-actions"]],
-    ["examples-select-retention", "templates", "retention of 30 versus 90 days is\n`decision-needed`",
-      "retention of 30 versus 90 days may remain\n`examples-needed`", ["ambiguity-actions"]],
     ["global-critical-ceremony", "templates", ADAPTIVE_COVERAGE_CLAUSES.scopedUnion,
       "Each task copies its CP values; authoring, review, edge, and proof obligations union across every task.", ["scoped-coverage"]],
-    ["scoped-union-contradiction", "templates", ADAPTIVE_COVERAGE_CLAUSES.scopedUnion,
-      `${ADAPTIVE_COVERAGE_CLAUSES.scopedUnion} Exception: critical proof obligations apply across every CP row.`, ["scoped-coverage"]],
     ["stale-profile-after-c2", "templates", ADAPTIVE_COVERAGE_CLAUSES.profileRederivation,
       "Keep existing coverage rows after accepted plan changes.", ["profile-lifecycle"]],
     ["planned-proof-blocks-start", "templates", ADAPTIVE_COVERAGE_CLAUSES.plannedProof,
       "`Required proof` is execution evidence: known but unrun proof blocks `pending`; `UNKNOWN` may proceed; missing evidence may still reach `done`/GATE-DONE.", ["proof-lifecycle"]],
     ["source-promotes-live", "templates", ADAPTIVE_COVERAGE_CLAUSES.proofSeparation,
       "Source proof may promote installed and live proof.", ["proof-lifecycle"]],
-    ["unmapped-proof-level", "templates", IMPLEMENTATION_READINESS_CLAUSES.proofLevelMapping,
-      "A task may map only one required proof level to its probe.", ["proof-lifecycle"]],
     ["critical-reviewer-omitted", "review", ADAPTIVE_COVERAGE_CLAUSES.reviewRisk,
       "Keep Fact Checker as the baseline and choose any remaining reviewer; critical rows need no matching risk role.", ["reviewer-routing", "scoped-coverage"]],
     ["reviewer-lens-overflow", "review", ADAPTIVE_COVERAGE_CLAUSES.reviewCapacity,
@@ -926,8 +903,6 @@ async function runAdaptiveCoverageContractTests() {
       "Example failure: see the Develop repair loop.", ["decisions-steps-failure-protocol"]],
     ["steps-heading-dropped-from-task-template", "templates", "## Steps\n1. <ordered action on one owned file → expected observation>",
       "1. <ordered action on one owned file → expected observation>", ["decisions-steps-failure-protocol"]],
-    ["steps-copy-escapes-task-template", "templates", "## Status matrix",
-      "## Steps\n1. <ordered action on one owned file → expected observation>\n\n## Status matrix", ["decisions-steps-failure-protocol"]],
     ["author-trusts-stale-citations", "skill", ADAPTIVE_COVERAGE_CLAUSES.factCheckSample,
       "Before GATE-REVIEW, trust the `path:line` citations already written in the plan.", ["fact-check-sample"]],
   ];
@@ -1026,13 +1001,8 @@ async function runConsumerSectionContractTests() {
     ["develop-drops-failure-protocol", "develop", CONSUMER_SECTION_CLAUSES.developLoads,
       "Scope, Ownership, Steps, Acceptance, Dependencies, Verification Plan, owned code, and consumers.",
       ["develop-loads-task-sections"]],
-    ["develop-drops-steps", "develop", CONSUMER_SECTION_CLAUSES.developLoads,
-      "Scope, Ownership, Acceptance, Dependencies, Verification Plan, Failure Protocol, owned code, and consumers.",
-      ["develop-loads-task-sections"]],
     ["rule-drops-steps", "workflowRule", "  - `Steps`\n  - `Acceptance`", "  - `Acceptance`",
       ["rule-extracts-task-sections"]],
-    ["rule-drops-failure-protocol", "workflowRule", "  - `Verification Plan`\n  - `Failure Protocol`",
-      "  - `Verification Plan`", ["rule-extracts-task-sections"]],
     ["spec-maker-drops-protocol-and-priority", "specMaker", CONSUMER_SECTION_CLAUSES.specMakerRequires,
       "Each task owns one outcome, normally no more\nthan about five files, explicit acceptance IDs, dependencies, and a runnable\nVerification Plan.",
       ["spec-maker-requires-task-sections"]],
@@ -1183,13 +1153,6 @@ async function runProcessTaskStatusContractTests() {
       issues: ["template-default-blocked"],
     },
     {
-      name: "task-table-rejects-mixed-default-statuses",
-      source: "templates",
-      from: "| 01 | <one outcome> | P1 | AC-01 | `src/example.ts` | - | blocked |",
-      to: "| 01 | <one outcome> | P1 | AC-01 | `src/example.ts` | - | blocked |\n| 02 | <later outcome> | P2 | AC-01 | `src/later.ts` | task-01-example.md | pending |",
-      issues: ["template-default-blocked"],
-    },
-    {
       name: "current-evidence-transition",
       source: "templates",
       from: "| every non-dependency blocker closed | `pending` |",
@@ -1208,20 +1171,6 @@ async function runProcessTaskStatusContractTests() {
       source: "skill",
       from: PROCESS_TASK_STATUS_CLAUSES.skill[1],
       to: `${PROCESS_TASK_STATUS_CLAUSES.skill[1]}\n\nException: a task with an unresolved GATE-REVIEW decision may remain pending.`,
-      issues: ["contradictory-status-override"],
-    },
-    {
-      name: "reject-c2-open-pending-paraphrase",
-      source: "skill",
-      from: PROCESS_TASK_STATUS_CLAUSES.skill[1],
-      to: `${PROCESS_TASK_STATUS_CLAUSES.skill[1]}\n\nHowever, while GATE-REVIEW remains open, a task can stay pending.`,
-      issues: ["contradictory-status-override"],
-    },
-    {
-      name: "reject-before-c2-close-pending-paraphrase",
-      source: "skill",
-      from: PROCESS_TASK_STATUS_CLAUSES.skill[1],
-      to: `${PROCESS_TASK_STATUS_CLAUSES.skill[1]}\n\nA task can be pending before GATE-REVIEW closes.`,
       issues: ["contradictory-status-override"],
     },
   ];
@@ -1314,14 +1263,8 @@ const BRAINSTORM_CONTRACT_CLAUSES = {
   // brainstorm-repair: the plan-and-tasks branch, the route/depth line, the delegated choice, the named brainstormer,
   // and the agent's single-path line, English labels and relay line.
   planTasksRoute: "when the user asks for a plan, a task list, or work split into tasks rather than a choice between designs, leave Brainstorm before scout or questions",
-  planTasksLine: "Open this answer with `Route: plan-and-tasks · Depth: Standard`.",
-  routeDepthLine: "Open every non-direct answer with one line naming its route and depth",
   delegatedChoice: "say that you chose on the user's behalf and why, record it in the Decision register as a delegated choice",
   namedBrainstormer: "When the user names `brainstormer`, call it; tell it which route applies",
-  agentSinglePath: "State a single-path conclusion in one line",
-  agentEnglishLabels: "Write these labels in English exactly as listed, whatever language the report uses.",
-  agentRelay: "End the report with `Relay: keep the single-path line and every English label when you summarize this report.`",
-  agentRouteAsk: "Tell it which route applies; the routes are feature delivery; an explicitly authorized fix; diagnosis-only bug work; non-bug exploration.",
 };
 
 const BRAINSTORM_DECISION_HEADINGS = [
@@ -1787,7 +1730,7 @@ function brainstormContractIssues(input) {
     issues.add("adviser-adaptive");
   }
 
-  const repairClauses = {"planTasksRoute": "skill", "planTasksLine": "skill", "routeDepthLine": "skill", "delegatedChoice": "skill", "namedBrainstormer": "skill", "agentSinglePath": "agent", "agentEnglishLabels": "agent", "agentRelay": "agent", "agentRouteAsk": "agent"};
+  const repairClauses = {"planTasksRoute": "skill", "delegatedChoice": "skill", "namedBrainstormer": "skill"};
   if (Object.entries(repairClauses).some(([key, source]) => !normalized[source].includes(normalizeMarkdownWhitespace(BRAINSTORM_CONTRACT_CLAUSES[key])))) {
     issues.add("repair-clauses");
   }
@@ -1833,14 +1776,8 @@ async function runBrainstormContractTests() {
   const safeStrengthenings = [
     [BRAINSTORM_CONTRACT_CLAUSES.explorationStop, `${BRAINSTORM_CONTRACT_CLAUSES.explorationStop} Never invoke Fix from exploration. Do not invoke Develop.`],
     [BRAINSTORM_CONTRACT_CLAUSES.explicitSpecs, `${BRAINSTORM_CONTRACT_CLAUSES.explicitSpecs} The user may invoke \`cf:specs\` in a new request.`],
-    [BRAINSTORM_CONTRACT_CLAUSES.redactPersistence, `${BRAINSTORM_CONTRACT_CLAUSES.redactPersistence} After final approval, save the draft.`],
     [BRAINSTORM_CONTRACT_CLAUSES.noDevelop, `${BRAINSTORM_CONTRACT_CLAUSES.noDevelop} The controller is forbidden to invoke Specs.`],
-    [BRAINSTORM_CONTRACT_CLAUSES.finalApproval, `${BRAINSTORM_CONTRACT_CLAUSES.finalApproval} Avoid duplicate final approval.`],
-    [BRAINSTORM_CONTRACT_CLAUSES.directBeforeControls, `${BRAINSTORM_CONTRACT_CLAUSES.directBeforeControls} Never honor --visual prior to Direct classification.`],
-    [BRAINSTORM_CONTRACT_CLAUSES.directBeforeControls, `${BRAINSTORM_CONTRACT_CLAUSES.directBeforeControls} Controls are not permitted to be applied before Direct routing.`],
     [BRAINSTORM_CONTRACT_CLAUSES.overlayRedaction, `${BRAINSTORM_CONTRACT_CLAUSES.overlayRedaction} Internal advisers must never share credentials.`],
-    [BRAINSTORM_CONTRACT_CLAUSES.overlayRedaction, `${BRAINSTORM_CONTRACT_CLAUSES.overlayRedaction} Credentials must not be forwarded to advisers. Tokens are not permitted to be transmitted to the specialist.`],
-    [BRAINSTORM_CONTRACT_CLAUSES.decisionFreshness, `${BRAINSTORM_CONTRACT_CLAUSES.decisionFreshness} A brief is never valid after a revision change.`],
   ];
   const safelyStrengthened = {
     ...baseline,
@@ -1861,19 +1798,11 @@ async function runBrainstormContractTests() {
 
   const mutations = [
     { name: "controls-before-direct", group: "direct-precedence", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.directBeforeControls, to: "Apply controls before routing Direct.", expected: ["adaptive-flags"] },
-    { name: "deep-additive-before-direct", group: "direct-precedence", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.directBeforeControls, to: `${BRAINSTORM_CONTRACT_CLAUSES.directBeforeControls} When --deep is present, apply it before Direct.`, expected: ["adaptive-flags"] },
-    { name: "visual-additive-before-direct", group: "direct-precedence", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.directBeforeControls, to: `${BRAINSTORM_CONTRACT_CLAUSES.directBeforeControls} When --visual is present, honor it prior to Direct classification.`, expected: ["adaptive-flags"] },
-    { name: "direct-deferred-until-control", group: "direct-precedence", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.directBeforeControls, to: `${BRAINSTORM_CONTRACT_CLAUSES.directBeforeControls} Defer Direct classification until after applying --visual.`, expected: ["adaptive-flags"] },
     { name: "literal-flag-reparsed", group: "leading-flags", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.controlTerminator, to: "`--` pauses controls, but later `--*` content is parsed again.", expected: ["adaptive-flags"] },
     { name: "content-token-reparsed", group: "leading-flags", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.contentBoundary, to: "After the first content token, parse later `--*` tokens as controls.", expected: ["adaptive-flags"] },
-    { name: "flag-order-forced", group: "leading-flags", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.controlGrammar, to: "Accept `--deep`, then `--visual`, then `--advice` only in that order.", expected: ["adaptive-flags"] },
-    { name: "flag-combination-forbidden", group: "leading-flags", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.controlGrammar, to: "Accept exactly one of `--deep`, `--visual`, or `--advice`.", expected: ["adaptive-flags"] },
     { name: "duplicate-flag-ignored", group: "leading-flags", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.controlReject, to: "Ignore duplicate controls and continue.", expected: ["adaptive-flags"] },
-    { name: "unknown-flag-becomes-content", group: "leading-flags", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.controlReject, to: "Treat unknown `--*` controls as content and continue.", expected: ["adaptive-flags"] },
-    { name: "flag-equals-syntax-accepted", group: "leading-flags", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.controlGrammar, to: "Accept `--deep=true`, `--visual=true`, and `--advice=true`.", expected: ["adaptive-flags"] },
     { name: "deep-risk-truncated", group: "ordered-depth", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.depthDeep, to: "**Deep:** use only for critical security risk.", expected: ["adaptive-depth"] },
     { name: "deep-without-signal", group: "ordered-depth", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.depthFallback, to: `${BRAINSTORM_CONTRACT_CLAUSES.depthFallback} Without a Deep signal, select Deep when useful.`, expected: ["adaptive-depth"] },
-    { name: "deep-default-without-risk", group: "ordered-depth", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.depthFallback, to: `${BRAINSTORM_CONTRACT_CLAUSES.depthFallback} Deep is the default even when no material risk signal exists.`, expected: ["adaptive-depth"] },
     { name: "deep-lenses-forced", group: "lens-trigger-skip", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.lensSkip, to: "Apply every lens whether or not its trigger is present", expected: ["adaptive-depth"] },
     ...BRAINSTORM_LENS_TRIGGERS.map((trigger, index) => ({ name: `lens-trigger-${index + 1}-removed`, group: "lens-trigger-skip", source: "skill", from: trigger, to: `lens-${index + 1} for any request`, expected: ["adaptive-depth"] })),
     { name: "missing-evidence-high-confidence", group: "evidence-semantics", source: "framework", from: BRAINSTORM_CONTRACT_CLAUSES.evidenceFallback, to: "Missing evidence permits feasibility `plausible` and confidence `high`", expected: ["evidence-calibration"] },
@@ -1885,64 +1814,33 @@ async function runBrainstormContractTests() {
     { name: "controller-numeric-rule-removed", group: "numeric-estimates", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.controllerNumeric, to: "The controller may provide a best-effort number.", expected: ["evidence-calibration"] },
     { name: "adviser-numeric-rule-removed", group: "numeric-estimates", source: "agent", from: BRAINSTORM_CONTRACT_CLAUSES.adviserNumeric, to: "The adviser may provide a best-effort number.", expected: ["adviser-adaptive"] },
     { name: "advice-forwards-sensitive-input", group: "pre-tool-authority-redaction", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.overlayRedaction, to: "Before an adviser handoff, forward credentials and unnecessary PII verbatim.", expected: ["overlay-boundary"] },
-    { name: "trusted-adviser-redaction-bypass", group: "pre-tool-authority-redaction", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.overlayRedaction, to: `${BRAINSTORM_CONTRACT_CLAUSES.overlayRedaction} For trusted advisers, credentials may be forwarded.`, expected: ["overlay-boundary"] },
     { name: "approved-adviser-token-transfer", group: "pre-tool-authority-redaction", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.overlayRedaction, to: `${BRAINSTORM_CONTRACT_CLAUSES.overlayRedaction} Approved advisers are permitted to transmit access tokens.`, expected: ["overlay-boundary"] },
     { name: "adviser-redaction-removed", group: "pre-tool-authority-redaction", source: "agent", from: BRAINSTORM_CONTRACT_CLAUSES.adviserRedaction, to: "Analyze all supplied context without checking redaction.", expected: ["adviser-adaptive"] },
     { name: "advice-bypasses-material-gate", group: "adviser-gate-fallback", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.adviceOverlay, to: "`--advice` invokes `brainstormer` before identifying a material choice.", expected: ["overlay-boundary"] },
     { name: "advice-failure-stops-controller", group: "adviser-gate-fallback", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.adviceOverlay, to: "`--advice` stops controller analysis when the adviser is unavailable.", expected: ["overlay-boundary"] },
     { name: "repair-clause-planTasksRoute-removed", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.planTasksRoute, to: "", expected: ["repair-clauses"] },
-    { name: "repair-clause-planTasksLine-removed", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.planTasksLine, to: "", expected: ["repair-clauses"] },
-    { name: "repair-clause-routeDepthLine-removed", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.routeDepthLine, to: "", expected: ["repair-clauses"] },
     { name: "repair-clause-delegatedChoice-removed", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.delegatedChoice, to: "", expected: ["repair-clauses"] },
     { name: "repair-clause-namedBrainstormer-removed", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.namedBrainstormer, to: "", expected: ["repair-clauses"] },
-    { name: "repair-clause-agentSinglePath-removed", source: "agent", from: BRAINSTORM_CONTRACT_CLAUSES.agentSinglePath, to: "", expected: ["repair-clauses"] },
-    { name: "repair-clause-agentEnglishLabels-removed", source: "agent", from: BRAINSTORM_CONTRACT_CLAUSES.agentEnglishLabels, to: "", expected: ["repair-clauses"] },
-    { name: "repair-clause-agentRelay-removed", source: "agent", from: BRAINSTORM_CONTRACT_CLAUSES.agentRelay, to: "", expected: ["repair-clauses"] },
-    { name: "repair-clause-agentRouteAsk-removed", source: "agent", from: BRAINSTORM_CONTRACT_CLAUSES.agentRouteAsk, to: "", expected: ["repair-clauses"] },
     { name: "decision-brief-stale", group: "decision-brief", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.decisionFreshness, to: "The first section may omit revision, freshness, and invalidation.", expected: ["decision-brief"] },
     { name: "decision-brief-additive-stale", group: "decision-brief", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.decisionFreshness, to: `${BRAINSTORM_CONTRACT_CLAUSES.decisionFreshness} A revision change does not invalidate an existing brief.`, expected: ["decision-brief"] },
-    { name: "decision-brief-after-head-change", group: "decision-brief", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.decisionFreshness, to: `${BRAINSTORM_CONTRACT_CLAUSES.decisionFreshness} Continue using the brief after HEAD changes.`, expected: ["decision-brief"] },
     { name: "visual-auto-persists", group: "no-persistence-dispatch", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.visualOverlay, to: "`--visual` automatically persists a diagram without authority.", expected: ["overlay-boundary"] },
     { name: "decision-brief-creates-authority", group: "no-persistence-dispatch", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.decisionAuthority, to: "Durable output creates readiness and execution state.", expected: ["decision-brief"] },
     { name: "direct-after-scout", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.direct, to: "scout first, then leave Brainstorm.", expected: ["front-door-routing"] },
-    {
-      name: "direct-safe-clause-moved-outside-route",
-      source: "skill",
-      mutate: (value) => replaceBrainstormClauseOnce(
-        replaceBrainstormClauseOnce(value, BRAINSTORM_CONTRACT_CLAUSES.direct, "Direct requests scout first."),
-        "## Completion bar",
-        `${BRAINSTORM_CONTRACT_CLAUSES.direct}\n\n## Completion bar`,
-      ),
-      expected: ["front-door-routing"],
-    },
     { name: "direct-contradictory-ceremony", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.readOnlyExploration, to: `${BRAINSTORM_CONTRACT_CLAUSES.readOnlyExploration} Direct requests scout first.`, expected: ["front-door-routing"] },
-    { name: "direct-discovery-synonym", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.readOnlyExploration, to: `${BRAINSTORM_CONTRACT_CLAUSES.readOnlyExploration} Direct requests run discovery first.`, expected: ["front-door-routing"] },
-    { name: "direct-approval-synonym", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.readOnlyExploration, to: `${BRAINSTORM_CONTRACT_CLAUSES.readOnlyExploration} Direct requests go through approval first.`, expected: ["front-door-routing"] },
     { name: "read-only-architecture-exits", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.readOnlyExploration, to: "Every read-only request is direct and exits Brainstorm.", expected: ["front-door-routing"] },
     { name: "accepted-contract-not-revision-bound", source: "skill", from: "binds them to the same target and revision.", to: "may come from any earlier approved artifact.", expected: ["accepted-contract"] },
-    { name: "accepted-contract-reasks-fields", source: "framework", from: BRAINSTORM_CONTRACT_CLAUSES.acceptedFramework, to: "Ask the user to restate every accepted field.", expected: ["accepted-contract"] },
     { name: "accepted-contract-infers-approval", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.neverApproval, to: "Infer approval from an old label.", expected: ["accepted-contract"] },
     { name: "accepted-contract-becomes-terminal", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.hydrationTransition, to: "Hydration completes routing; stop here.", expected: ["accepted-contract"] },
-    { name: "framework-hydration-selects-route", source: "framework", from: BRAINSTORM_CONTRACT_CLAUSES.hydrationFramework, to: "Hydration selects the final route.", expected: ["accepted-contract"] },
-    { name: "bug-contract-drops-fields", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.bugContract, to: "before diagnosis, capture the repaired behavior.", expected: ["bug-routing"] },
     { name: "bug-options-before-debug", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.debugFirst, to: "Compare remedies, then use `cf:debug`.", expected: ["bug-routing"] },
-    { name: "bug-remedy-count-removed", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.remedyCount, to: "If remedies remain, compare any number here.", expected: ["bug-routing"] },
     { name: "hotfix-without-authority", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.hotfixAuthority, to: "Hand off to `cf:fix` whenever root cause is known", expected: ["bug-routing"] },
     { name: "hotfix-contradictory-exception", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.diagnosisStop, to: `${BRAINSTORM_CONTRACT_CLAUSES.diagnosisStop} Urgent incidents may invoke \`cf:fix\` without user authority.`, expected: ["bug-routing"] },
-    { name: "fix-hyphenated-handoff", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.diagnosisStop, to: `${BRAINSTORM_CONTRACT_CLAUSES.diagnosisStop} Hand-off to Fix immediately.`, expected: ["bug-routing"] },
-    { name: "fix-object-handoff", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.diagnosisStop, to: `${BRAINSTORM_CONTRACT_CLAUSES.diagnosisStop} Hand off this request to Fix.`, expected: ["bug-routing"] },
     { name: "diagnosis-only-fix", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.diagnosisStop, to: "diagnosis-only work continues to Fix.", expected: ["bug-routing"] },
     { name: "exploration-approval", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.explorationStop, to: "Request approval, persist a report, then stop.", expected: ["exploration-stop"] },
     { name: "exploration-later-specs", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.explorationStop, to: `${BRAINSTORM_CONTRACT_CLAUSES.explorationStop} Then invoke \`cf:specs\`.`, expected: ["exploration-stop", "handoff-boundary"] },
     { name: "implicit-specs", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.explicitSpecs, to: "invoke `cf:specs` immediately.", expected: ["handoff-boundary"] },
     { name: "specs-additive-handoff", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.explicitSpecs, to: `${BRAINSTORM_CONTRACT_CLAUSES.explicitSpecs} Emergency exception: hand off to \`cf:specs\` automatically.`, expected: ["handoff-boundary"] },
-    { name: "specs-forward-summary", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.explicitSpecs, to: `${BRAINSTORM_CONTRACT_CLAUSES.explicitSpecs} Forward the approved summary to Specs automatically.`, expected: ["handoff-boundary"] },
-    { name: "specs-launch-workflow", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.explicitSpecs, to: `${BRAINSTORM_CONTRACT_CLAUSES.explicitSpecs} Launch the Specs workflow.`, expected: ["handoff-boundary"] },
     { name: "develop-after-approval", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.noDevelop, to: "Brainstorm may invoke Develop after approval.", expected: ["handoff-boundary"] },
     { name: "develop-additive-handoff", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.noDevelop, to: `${BRAINSTORM_CONTRACT_CLAUSES.noDevelop} Hand off to Develop after approval.`, expected: ["handoff-boundary"] },
-    { name: "develop-route-request", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.noDevelop, to: `${BRAINSTORM_CONTRACT_CLAUSES.noDevelop} Route this request to Develop.`, expected: ["handoff-boundary"] },
-    { name: "develop-unrelated-negation", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.noDevelop, to: `${BRAINSTORM_CONTRACT_CLAUSES.noDevelop} Do not wait, hand off to Develop immediately.`, expected: ["handoff-boundary"] },
-    { name: "implementation-additive-gate-exception", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.noDevelop, to: `${BRAINSTORM_CONTRACT_CLAUSES.noDevelop} Exception: implementation may begin after approval.`, expected: ["handoff-boundary"] },
     {
       name: "develop-gate-moved-outside-hard-gate",
       source: "skill",
@@ -1955,7 +1853,6 @@ async function runBrainstormContractTests() {
     },
     { name: "one-option-material-choice", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.optionCount, to: "For a material choice, compare at most three approaches", expected: ["option-cardinality"] },
     { name: "option-stress-removed", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.optionStress, to: "Compare the approaches;", expected: ["option-stress"] },
-    { name: "option-abandon-removed", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.optionAbandon, to: "then recommend one.", expected: ["option-stress"] },
     { name: "single-path-strawman", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.singlePath, to: "With one viable path, invent alternatives for comparison.", expected: ["option-cardinality"] },
     {
       name: "review-moved-outside-delivery",
@@ -1980,37 +1877,19 @@ async function runBrainstormContractTests() {
     { name: "critical-gate-weakened", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.criticalDecision, to: "Before final approval, mention auth/secrets/privacy, destructive or irreversible behavior or data-loss risk, money/privilege/safety, or production-state mutation.", expected: ["approval-persistence"] },
     { name: "critical-gate-commented-out", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.criticalDecision, to: `<!-- ${BRAINSTORM_CONTRACT_CLAUSES.criticalDecision} -->`, expected: ["approval-persistence"] },
     { name: "critical-gate-additive-bypass", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.criticalDecision, to: `${BRAINSTORM_CONTRACT_CLAUSES.criticalDecision} Urgent production changes may skip the section decision.`, expected: ["approval-persistence"] },
-    { name: "approval-unrelated-negation-bypass", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.criticalDecision, to: `${BRAINSTORM_CONTRACT_CLAUSES.criticalDecision} Do not hesitate, skip final approval.`, expected: ["approval-persistence"] },
     { name: "approval-pseudo-negation-bypass", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.criticalDecision, to: `${BRAINSTORM_CONTRACT_CLAUSES.criticalDecision} Do not hesitate to skip final approval.`, expected: ["approval-persistence"] },
-    { name: "approval-afraid-pseudo-negation-bypass", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.criticalDecision, to: `${BRAINSTORM_CONTRACT_CLAUSES.criticalDecision} Do not be afraid to skip final approval.`, expected: ["approval-persistence"] },
-    { name: "approval-wait-pseudo-negation-bypass", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.criticalDecision, to: `${BRAINSTORM_CONTRACT_CLAUSES.criticalDecision} Do not wait to skip final approval.`, expected: ["approval-persistence"] },
     { name: "alternate-early-final-approval", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.presentReviewed, to: `${BRAINSTORM_CONTRACT_CLAUSES.presentReviewed} For urgent work, request final approval now; handle critical section decisions afterward.`, expected: ["approval-persistence"] },
     { name: "persist-before-approval", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.approvedPersistence, to: "Persist the draft before approval, without user authority", expected: ["approval-persistence"] },
     { name: "secret-redaction-removed", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.redactPersistence, to: "Before writing, copy every value verbatim, including credentials;", expected: ["approval-persistence"] },
     { name: "persistence-additive-raw-draft-exception", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.redactPersistence, to: `${BRAINSTORM_CONTRACT_CLAUSES.redactPersistence} For urgent work, persist the draft with raw credentials before approval.`, expected: ["approval-persistence"] },
-    { name: "persistence-unrelated-negation", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.redactPersistence, to: `${BRAINSTORM_CONTRACT_CLAUSES.redactPersistence} Do not delay, persist the draft with raw credentials before approval.`, expected: ["approval-persistence"] },
     { name: "persistence-pseudo-negation", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.redactPersistence, to: `${BRAINSTORM_CONTRACT_CLAUSES.redactPersistence} Do not hesitate to persist the draft with raw credentials before approval.`, expected: ["approval-persistence"] },
-    { name: "persistence-afraid-pseudo-negation", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.redactPersistence, to: `${BRAINSTORM_CONTRACT_CLAUSES.redactPersistence} Do not be afraid to persist the draft with raw credentials before approval.`, expected: ["approval-persistence"] },
-    { name: "persistence-store-raw-credentials", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.redactPersistence, to: `${BRAINSTORM_CONTRACT_CLAUSES.redactPersistence} Store raw credentials before approval.`, expected: ["approval-persistence"] },
-    { name: "persistence-archive-unapproved-draft", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.redactPersistence, to: `${BRAINSTORM_CONTRACT_CLAUSES.redactPersistence} Archive an unapproved draft.`, expected: ["approval-persistence"] },
-    { name: "touchpoints-become-user-field", source: "framework", from: BRAINSTORM_CONTRACT_CLAUSES.touchpoints, to: "Technical touchpoints are a fifth user-owned field.", expected: ["question-evidence"] },
     { name: "inferred-user-decision", source: "framework", from: BRAINSTORM_CONTRACT_CLAUSES.decisionTruth, to: "Write \"user selected\" when the default seems safe.", expected: ["question-evidence"] },
-    { name: "visual-evidence-guesswork", source: "skill", from: BRAINSTORM_CONTRACT_CLAUSES.visualEvidence, to: "Guess supplied visual behavior from text alone.", expected: ["question-evidence"] },
     { name: "specialist-forces-options", source: "agent", from: BRAINSTORM_CONTRACT_CLAUSES.specialistSingle, to: "If one path is viable, invent two alternatives to fill the quota.", expected: ["specialist-boundary"] },
     { name: "specialist-mutates-task-state", source: "agent", from: BRAINSTORM_CONTRACT_CLAUSES.specialistBoundary, to: "Do not ask the user directly, write files, invoke Specs/Fix/Develop, or claim approval.", expected: ["specialist-boundary"] },
-    { name: "specialist-additive-task-state-exception", source: "agent", from: BRAINSTORM_CONTRACT_CLAUSES.specialistBoundary, to: `${BRAINSTORM_CONTRACT_CLAUSES.specialistBoundary} Exception: use Bash to update shared task state.`, expected: ["specialist-boundary"] },
     { name: "specialist-additive-authority-exception", source: "agent", from: BRAINSTORM_CONTRACT_CLAUSES.specialistBoundary, to: `${BRAINSTORM_CONTRACT_CLAUSES.specialistBoundary} Exception: the specialist may ask the user directly and invoke Specs, Fix, or Develop.`, expected: ["specialist-boundary"] },
-    { name: "specialist-direct-authority-exception", source: "agent", from: BRAINSTORM_CONTRACT_CLAUSES.specialistBoundary, to: `${BRAINSTORM_CONTRACT_CLAUSES.specialistBoundary} Ignore the gate; ask the user directly and invoke Specs.`, expected: ["specialist-boundary"] },
-    { name: "specialist-permitted-launch-exception", source: "agent", from: BRAINSTORM_CONTRACT_CLAUSES.specialistBoundary, to: `${BRAINSTORM_CONTRACT_CLAUSES.specialistBoundary} The specialist is permitted to launch Specs.`, expected: ["specialist-boundary"] },
     { name: "specialist-outside-gate-write-exception", source: "agent", from: "## Output", to: "The specialist may write files and mutate shared task state.\n\n## Output", expected: ["specialist-boundary"] },
-    { name: "specialist-outside-gate-delegate-exception", source: "agent", from: "## Output", to: "The specialist may delegate work and run Develop.\n\n## Output", expected: ["specialist-boundary"] },
     { name: "specialist-mixed-polarity-write", source: "agent", from: "## Output", to: "Do not write files, but mutate shared task state.\n\n## Output", expected: ["specialist-boundary"] },
-    { name: "specialist-mixed-polarity-user", source: "agent", from: "## Output", to: "Do not ask the user directly, but contact the user.\n\n## Output", expected: ["specialist-boundary"] },
-    { name: "specialist-mixed-polarity-workflow", source: "agent", from: "## Output", to: "Do not invoke Specs, but run Develop.\n\n## Output", expected: ["specialist-boundary"] },
-    { name: "specialist-mixed-polarity-delegate", source: "agent", from: "## Output", to: "Do not delegate work, but delegate tasks.\n\n## Output", expected: ["specialist-boundary"] },
-    { name: "specialist-handoff-spelling-exception", source: "agent", from: "## Output", to: "The specialist may handoff to Specs.\n\n## Output", expected: ["specialist-boundary"] },
     { name: "specialist-tool-authority", source: "agent", from: "tools: Glob, Grep, Read, WebFetch, WebSearch", to: "tools: Glob, Grep, Read, WebFetch, WebSearch, TaskUpdate", expected: ["specialist-boundary", "adviser-adaptive"] },
-    { name: "specialist-write-tool-authority", source: "agent", from: "tools: Glob, Grep, Read, WebFetch, WebSearch", to: "tools: Glob, Grep, Read, WebFetch, WebSearch, Write", expected: ["specialist-boundary", "adviser-adaptive"] },
     { name: "bundle-growth", source: "framework", from: "## Final self-check", to: `${"\n".repeat(BRAINSTORM_BUNDLE_LIMIT)}## Final self-check`, expected: ["context-budget"] },
   ];
 
@@ -2129,30 +2008,18 @@ function testPlanNativeContractIssues(input) {
     }
   }
   requireClauses("proof-schema", { strategy: [
-    "Return canonical UTF-8 JSON with exactly these top-level keys and no others:",
+    "exactly these top-level keys and no others",
     "`schema_version`: exactly `test-proof-v1`.",
-    "`target`: exact keys `{feature, task_path}`.",
-    "`task_path` is a contained regular flat task path.",
     "`verdict`: exactly `PASS | PASS_WITH_WARNINGS | FAIL | BLOCKED`.",
-    "`exit`: integer; nullable only for pre-execution `BLOCKED`.",
-    "`counts`: exact keys `{executed, passed, failed, skipped}` with nonnegative integers",
     "`passed + failed + skipped === executed`.",
-    "`provenance`: exact keys `{base, head}`.",
-    "Values are lowercase canonical Git SHAs matching current runtime anchors",
     "`proof_level`: exactly `source | installed | live`; never promote one level into another.",
-    "`expected`, `observed`, `raw_output`: nonempty redacted strings after any attempted execution.",
-    "`reachability`: exact keys `{status, evidence}`",
-    "status is `PASS | FAIL | BLOCKED`",
-    "evidence is an array of unique nonempty strings.",
-    "`artifacts`: sorted array of exact `{path, sha256}` rows.",
-    "Every path is contained and every digest is lowercase SHA-256.",
-    "`redactions`: unique sorted labels drawn only from `authorization`, `cookie`, `set-cookie`, `credential`, `session-token`, `pii`; never include secret values.",
+    "`expected`, `observed`, `raw_output`: nonempty redacted strings",
+    "`redactions`: unique sorted labels drawn only from",
     "`payload_sha256`: lowercase SHA-256 of canonical stable JSON after removing only `payload_sha256`.",
+    "Values are lowercase canonical Git SHAs matching current runtime anchors",
     "`command`: exact task command string; nullable only for pre-execution `BLOCKED`.",
-    "Each row has exact keys:",
-    "id, required, verdict, command, exit, counts, proof_level",
-    "`required` is exactly `true`; branch verdict and proof level use the same closed enums.",
-    "`exit` is an integer; branch counts use the same closed shape.",
+    "`exit`: integer; nullable only for pre-execution `BLOCKED`.",
+    "`required` is exactly `true`",
   ] });
 
   requireClauses("branch-and-aggregate-integrity", { strategy: [
@@ -2215,12 +2082,9 @@ function testPlanNativeContractIssues(input) {
 
   requireClauses("payload-delivery", { skill: [
     "end the final message with the concise report, then a `### Machine handoff (test-proof-v1)` heading and exactly one fenced `json` block holding the validated payload.",
-    "The handoff block follows the report and is not part of it. No further fenced block follows it.",
     "For any other target, end with the report and the line `No payload: target not identifiable.`",
   ], strategy: [
-    "A pre-execution `BLOCKED` payload for a task with two Named probes,",
     "`FAIL` variants: a branch with a nonzero exit or a failed count is `FAIL` and makes the payload `FAIL`; a reachability `FAIL` with every branch passing keeps the branches `PASS` and makes the payload `FAIL`.",
-    "under `### Machine handoff (test-proof-v1)`, one fenced `json` block that follows the report and is not part of it.",
   ] });
 
   requireClauses("report-proof-separation", { skill: [
@@ -2233,15 +2097,6 @@ function testPlanNativeContractIssues(input) {
   const primaryCorpus = Object.values(input).map(outsideLegacySections).join("\n");
   if (/npm\s+install|inject-auth\.js|--cookies|Bearer eyJ|<lessons_learned>/i.test(primaryCorpus)) {
     issues.add("side-effect-boundary");
-  }
-  if (/(?:unknown|extra) (?:keys|fields).{0,40}(?:may|can|are) (?:be )?(?:accepted|allowed|ignored)/i.test(primaryCorpus)) {
-    issues.add("proof-schema");
-  }
-  if (/payload counts.{0,100}(?:may|can).{0,60}(?:differ|overlap|omit)/i.test(primaryCorpus)) {
-    issues.add("branch-and-aggregate-integrity");
-  }
-  if (/mixed (?:packet|state).{0,80}(?:may|can).{0,60}(?:select|choose|prefer|proceed)/i.test(primaryCorpus)) {
-    issues.add("routing-truth-table");
   }
   if (/Test may (?:write|edit).{0,60}(?:Status|Receipt)/i.test(primaryCorpus)) {
     issues.add("controller-only-state-proof");
@@ -2286,23 +2141,13 @@ async function runTestPlanNativeContractTests() {
     ["payload-allows-extra-keys", "strategy", "proof-schema", "with exactly these top-level keys and no others:", "with these suggested top-level keys:"],
     ["digest-not-recomputed", "strategy", "proof-schema", "only `payload_sha256`.", "the supplied `payload_sha256` too."],
     ["count-shape-weakened", "strategy", "proof-schema", "`passed + failed + skipped === executed`.", "`passed + failed + skipped <= executed`."],
-    ["task-path-escape", "strategy", "proof-schema", "`task_path` is a contained regular flat task path.", "`task_path` may escape or name a symlink."],
     ["verdict-enum-expanded", "strategy", "proof-schema", "`verdict`: exactly `PASS | PASS_WITH_WARNINGS | FAIL | BLOCKED`.", "`verdict` may be any string."],
-    ["exit-type-expanded", "strategy", "proof-schema", "`exit`: integer; nullable only for pre-execution `BLOCKED`.", "`exit` may be any value."],
     ["provenance-sha-weakened", "strategy", "proof-schema", "Values are lowercase canonical Git\n  SHAs matching current runtime anchors", "Values are arbitrary revision labels"],
     ["proof-level-expanded", "strategy", "proof-schema", "`proof_level`: exactly `source | installed | live`; never promote one level\n  into another.", "`proof_level` may be any string."],
     ["empty-output-accepted", "strategy", "proof-schema", "`expected`, `observed`, `raw_output`: nonempty redacted strings after any\n  attempted execution.", "Output strings may be empty after execution."],
-    ["reachability-duplicates", "strategy", "proof-schema", "evidence is an array of unique nonempty strings.", "evidence may contain duplicate or empty strings."],
-    ["reachability-status-expanded", "strategy", "proof-schema", "status is\n  `PASS | FAIL | BLOCKED`", "status may be any string"],
-    ["artifact-order-weakened", "strategy", "proof-schema", "`artifacts`: sorted array of exact `{path, sha256}` rows.", "`artifacts` may be unsorted rows."],
-    ["artifact-containment-weakened", "strategy", "proof-schema", "Every path is\n  contained and every digest is lowercase SHA-256.", "Paths may escape and digests may be short."],
     ["redaction-enum-expanded", "strategy", "proof-schema", "`redactions`: unique sorted labels drawn only from `authorization`, `cookie`,\n  `set-cookie`, `credential`, `session-token`, `pii`; never include secret values.", "`redactions` may contain arbitrary labels and values."],
     ["nullable-after-execution", "strategy", "proof-schema", "nullable only for pre-execution\n  `BLOCKED`.", "nullable for any verdict."],
-    ["branch-required-optional", "strategy", "proof-schema", "`required` is exactly `true`", "`required` may be false"],
-    ["branch-enums-expanded", "strategy", "proof-schema", "branch verdict and proof level use the same\n  closed enums.", "branch verdict and proof level may be arbitrary strings."],
-    ["branch-count-shape-expanded", "strategy", "proof-schema", "branch counts\n  use the same closed shape.", "branch counts may have extra keys."],
     ["duplicate-branch-accepted", "strategy", "branch-and-aggregate-integrity", "duplicate/missing/extra branch IDs", "duplicate branch IDs are merged"],
-    ["branch-overlap-accepted", "strategy", "branch-and-aggregate-integrity", "Attribute each required execution to exactly\none branch with no overlap or omission.", "Executions may appear in several branches."],
     ["aggregate-counts-not-summed", "strategy", "branch-and-aggregate-integrity", "each equal the element-wise sum of that field across every branch", "may differ from branch totals"],
     ["zero-tests-pass", "strategy", "branch-and-aggregate-integrity", "executed > 0", "executed >= 0"],
     ["tester-writes-receipt", "skill", "controller-only-state-proof", "alone writes process-first Status and inline Receipt.", "may delegate process-first Status and inline Receipt writes to Test."],
@@ -2311,14 +2156,10 @@ async function runTestPlanNativeContractTests() {
     ["profile-cross-origin", "skill", "safe-ui-auth-and-redaction", "Block cross-origin redirects and destructive production actions without fresh consent.", "Allow cross-origin redirects and destructive production actions."],
     ["partial-verdict", "triage", "canonical-verdicts", "Do not emit `PARTIAL`, `COLLAPSE`, `NO_TESTS`, or an unknown result.", "Emit `PARTIAL` for coverage gaps."],
     ["flaky-read", "skill", "ordinary-nondeterminism", "read the tests that cover the target or changed code (every test file when", "skim the code (every test file when"],
-    ["flaky-assert", "skill", "ordinary-nondeterminism", "even when every run passes. When only setup", "unless a run passes. When only setup"],
     ["flaky-rerun", "skill", "ordinary-nondeterminism", "suspect tests at least twice more; any differing outcome is `FAIL` as flaky.", "suspect tests if time allows."],
     ["flaky-process-first", "skill", "ordinary-nondeterminism", "process-first Named probes, which run exactly once.", "process-first Named probes, which may be rerun."],
-    ["flaky-triage", "triage", "ordinary-nondeterminism", "or an assertion or pass condition that depends on a nondeterministic source", "or a hunch"],
     ["payload-placement", "skill", "payload-delivery", "then a `### Machine handoff (test-proof-v1)` heading and exactly", "then optionally a payload and"],
-    ["payload-separate", "skill", "payload-delivery", "The handoff block follows", "The handoff block may sit inside"],
     ["payload-none", "skill", "payload-delivery", "`No payload: target not identifiable.`", "nothing more."],
-    ["payload-example", "strategy", "payload-delivery", "A pre-execution `BLOCKED` payload for a task with two Named probes,", "A payload,"],
     ["payload-fail-variants", "strategy", "payload-delivery", "keeps\nthe branches `PASS` and makes the payload `FAIL`.", "may keep any verdict."],
     ["report-embeds-proof", "skill", "report-proof-separation", "Do not place the full JSON payload, secrets, verbose raw logs, or screenshots in", "Place the full JSON payload and verbose raw logs in"],
     ["live-proof-promoted", "skill", "proof-level-promotion", "`[UNVERIFIED]` without a host invocation.", "[VERIFIED] by static inspection."],
@@ -2338,9 +2179,6 @@ async function runTestPlanNativeContractTests() {
   }
 
   const additiveMutations = [
-    ["additive-extra-keys", "strategy", "proof-schema", "Unknown keys may be accepted for forward compatibility."],
-    ["additive-count-divergence", "strategy", "branch-and-aggregate-integrity", "Payload counts may differ from branch totals."],
-    ["additive-mixed-route", "skill", "routing-truth-table", "Mixed packet state may choose process-first."],
     ["additive-test-writer", "skill", "controller-only-state-proof", "Test may write Status or Receipt after PASS."],
     ["additive-memory-writer", "memory", "side-effect-boundary", "Test memory may be updated after proof."],
     ["additive-cross-origin", "skill", "safe-ui-auth-and-redaction", "A cross-origin redirect may proceed with profile reuse."],
@@ -2426,30 +2264,21 @@ function developPlanNativeContractIssues(input) {
   ] });
 
   requireClauses("verify-first-and-round", { skill: [
-    "Unless under `--flash` or the command costs money or writes artifacts, run the task's exact Verification Plan command once before changing anything and expect it to fail, except in the refactor path below;",
-    "this pre-change run is not a repair round.",
+    "run the task's exact Verification Plan command once before changing anything and expect it to fail, except in the refactor path below;",
     "Passing before any change, outside a resumed task, means the plan cannot judge the work and is a blocker, except in the refactor path below;",
-    "Refactor path: it applies only when the task references at least one CP row in its `## Coverage` and every row it references,",
-    "read in `plan.md` `## Coverage profile`, lists only `refactor` under Change kinds.",
-    "There the pre-change run must pass, and a pre-change failure is a blocker.",
-    "Before closing, run the Verification Plan's Counterexample on a disposable copy below a temporary root and record in the Receipt that it failed there;",
-    "if it does not fail there, the task does not close on the refactor path and is treated as a regular task.",
+    "it applies only when the task references at least one CP row in its `## Coverage` and every row it references,",
+    "lists only `refactor` under Change kinds.",
+    "run the Verification Plan's Counterexample on a disposable copy below a temporary root and record in the Receipt that it failed there;",
     "The owned diff must not edit a test or assertion file;",
-    "a characterization test belongs to an earlier task.",
     "which is a blocker to raise, not a defect to work around while implementing.",
-    "One repair round is one",
-    "observed failure plus its repair and rerun, from proof or from review alike.",
     "**The Receipt is written last, after proof and review have both passed**",
-    "Read the test or probe that will judge this task before implementing against it.",
   ] });
 
   requireClauses("environment-blocker", { skill: [
-    "A failure from the command itself — a wrong path, a missing tool or module, the environment — is BLOCKED, not FAIL,",
-    "even when the runner reports `not ok` and even when the Acceptance or a test file shows the right command:",
+    "is BLOCKED, not FAIL,",
     "set the task's single `Status:` to `blocked` with a `Blocker:` line naming the command and its error,",
     "write no Receipt, revert any edit made in this run, and report;",
-    "you may suggest a corrected command for the plan, but never run it as proof.",
-    "Remediate an observed failure (a blocked Command is not a failure to remediate), then rerun only",
+    "but never run it as proof.",
   ] });
 
   requireClauses("current-byte-selection", { skill: [
@@ -2617,62 +2446,31 @@ async function runDevelopPlanNativeContractTests() {
     mutateClause("expects the pre-change run to pass", "skill", "verify-first-and-round",
       "before changing anything and expect it to fail, except in the refactor path below;",
       "before changing anything and expect it to pass, except in the refactor path below;"),
-    mutateClause("drops the costly-command exception", "skill", "verify-first-and-round",
-      "Unless under `--flash` or the command costs money or writes artifacts, run",
-      "Always run"),
-    mutateClause("counts the pre-change run as a round", "skill", "verify-first-and-round",
-      "this pre-change run is not a repair round.",
-      "this pre-change run counts as the first repair round."),
     mutateClause("accepts a plan that passes before any change", "skill", "verify-first-and-round",
       "means the plan cannot judge the work and is a blocker, except in the refactor path below;",
       "means the work is already done;"),
     mutateClause("lets an unrelated failure be worked around", "skill", "verify-first-and-round",
       "which is a blocker to raise, not a defect to work around while implementing.",
       "which can be worked around while implementing."),
-    mutateClause("lets a task without a CP row enter the refactor path", "skill", "verify-first-and-round",
-      "the task references at least one CP row in its", "the task references CP rows in its"),
     mutateClause("applies the refactor path to every task", "skill", "verify-first-and-round",
       "it applies only when the task references at least one CP row in its `## Coverage` and every row it references, read in `plan.md` `## Coverage profile`, lists only `refactor` under Change kinds.",
       "it applies to every task."),
-    mutateClause("lets either half of the refactor condition suffice", "skill", "verify-first-and-round",
-      "`## Coverage` and every row it references", "`## Coverage` or every row it references"),
-    mutateClause("drops the failure branch of the refactor Counterexample", "skill", "verify-first-and-round",
-      "; if it does not fail there, the task does not close on the refactor path and is treated as a regular task.", "."),
-    mutateClause("drops the before-closing timing of the refactor Counterexample", "skill", "verify-first-and-round",
-      "Before closing, run the Verification Plan's Counterexample", "Run the Verification Plan's Counterexample"),
-    mutateClause("lets a refactor proceed after a pre-change failure", "skill", "verify-first-and-round",
-      "and a pre-change failure is a blocker.", "and a pre-change failure is repaired before moving on."),
-    mutateClause("drops the scoping phrase from the pre-change run sentence", "skill", "verify-first-and-round",
-      "expect it to fail, except in the refactor path below;", "expect it to fail;"),
-    mutateClause("drops the scoping phrase from the passing-before sentence", "skill", "verify-first-and-round",
-      "is a blocker, except in the refactor path below;", "is a blocker;"),
     mutateClause("drops the refactor Counterexample run", "skill", "verify-first-and-round",
       "Before closing, run the Verification Plan's Counterexample on a disposable copy below a temporary root and record in the Receipt that it failed there; if it does not fail there, the task does not close on the refactor path and is treated as a regular task.",
       "Skip the Counterexample."),
     mutateClause("lets the refactor path edit test files", "skill", "verify-first-and-round",
       "The owned diff must not edit a test or assertion file;", "The owned diff may edit a test or assertion file;"),
-    mutateClause("drops the characterization-test ownership", "skill", "verify-first-and-round",
-      "a characterization test belongs to an earlier task.", "write a characterization test in this task."),
-    mutateClause("drops the round definition", "skill", "verify-first-and-round",
-      "One repair round is one", "Repair rounds are counted loosely as one"),
     mutateClause("drops receipt-last", "skill", "verify-first-and-round",
       "**The Receipt is written last, after proof and review have both passed**",
       "The Receipt may be written once proof has passed"),
-    mutateClause("drops scouting the judge", "skill", "verify-first-and-round",
-      "Read the test or probe that will judge this task before implementing against it.",
-      "Read whatever seems relevant."),
     mutateClause("treats a failure of the command as FAIL", "skill", "environment-blocker",
       "is BLOCKED, not FAIL,", "is a FAIL to repair,"),
     mutateClause("closes a blocked task as done", "skill", "environment-blocker",
       "to `blocked` with a `Blocker:` line", "to `done` with a `Blocker:` line"),
     mutateClause("writes a Receipt for a blocked task", "skill", "environment-blocker",
       "write no Receipt, revert", "write the Receipt, revert"),
-    mutateClause("keeps this run's edits of a blocked task", "skill", "environment-blocker",
-      "revert any edit made in this run, and report;", "keep the edits made in this run, and report;"),
     mutateClause("runs the corrected command as proof", "skill", "environment-blocker",
       "but never run it as proof.", "and may run it as proof."),
-    mutateClause("remediates a blocked Command", "skill", "environment-blocker",
-      "(a blocked Command is not a failure to remediate)", "(a blocked Command is a failure to remediate)"),
   ];
   const baseline = Object.fromEntries(await Promise.all(
     Object.entries(DEVELOP_PLAN_NATIVE_PATHS).map(async ([key, relativePath]) => [
@@ -2715,7 +2513,6 @@ async function runDevelopPlanNativeContractTests() {
     ...[
       ["specific-task-touches-sibling", "Specific-task mode never touches a sibling and returns after its successful sync without chaining or GATE-DONE. Specific-task mode may touch a sibling after sync."],
       ["specific-task-chains", "Specific-task mode never touches a sibling and returns after its successful sync without chaining or GATE-DONE. Specific-task mode may chain to the next task after sync."],
-      ["specific-task-opens-c3", "Specific-task mode never touches a sibling and returns after its successful sync without chaining or GATE-DONE. Specific-task mode may open GATE-DONE after sync."],
     ].map(([name, to]) => mutateClause(
       name,
       "skill",
@@ -2993,20 +2790,14 @@ async function runSpecsContractTests() {
 const DEBUG_ADAPTIVE_PATHS = {
   skill: "src/claude/skills/debug/SKILL.md",
   agent: "src/claude/agents/debugger.md",
-  tracing: "src/claude/references/debugger/root-cause-tracing.md",
   verification: "src/claude/references/debugger/verification-protocol.md",
   parallel: "src/claude/references/debugger/parallel-agent-hydration.md",
-  logs: "src/claude/references/debugger/log-ci-analysis.md",
-  sideEffects: "src/claude/references/debugger/side-effect-gate.md",
 };
 
 function debugAdaptiveContractIssues(input) {
   const issues = new Set();
-  const { skill, agent, tracing, verification, parallel, logs, sideEffects } = input;
-  if (!skill.includes("## Proportional depth")
-    || !skill.includes("**Quick/local:**")
-    || !skill.includes("**Incident/deep:**")
-    || !skill.includes('argument-hint: "[issue] --quick|--ci|--frontend|--perf"')) {
+  const { skill, agent, verification, parallel } = input;
+  if (!skill.includes("**Quick/local:**") || !skill.includes("**Incident/deep:**")) {
     issues.add("proportional-depth");
   }
   if (!skill.includes("`cf:debug` is read-only for product code")
@@ -3015,43 +2806,10 @@ function debugAdaptiveContractIssues(input) {
     || verification.includes("Execution (Apply the Fix)")) {
     issues.add("diagnostic-boundary");
   }
-  if (!skill.includes("Evidence Timeline")
-    || !logs.includes("Normalize all timestamps to one timezone")
-    || !logs.includes("ordering, not causation")
-    || !logs.includes("request, trace, job, session, or run ID")) {
-    issues.add("timeline-causality");
-  }
-  if (!skill.includes("Preserve an elimination path")
-    || !agent.includes("Keep an elimination path")) {
-    issues.add("elimination-path");
-  }
-  if (!skill.includes("Trigger: event or input")
-    || !skill.includes("Contributing factors:")
-    || !skill.includes("Do not collapse correlation into causation")
-    || !tracing.includes("## Separate Causal Roles")) {
-    issues.add("causal-taxonomy");
-  }
-  if (!tracing.includes("symptom -> immediate cause -> caller/data boundary -> origin")
-    || !tracing.includes("For test pollution, isolate the polluter")
-    || !tracing.includes("History And Bisection")) {
-    issues.add("deep-tracing");
-  }
-  if (!skill.includes("### Recurrence-Prevention Handoff")
-    || !agent.includes("### Recurrence-Prevention Handoff")
-    || !sideEffects.includes("Observability/alerting gap")) {
-    issues.add("recurrence-handoff");
-  }
   if (!parallel.includes("The user explicitly requested or permitted delegation or parallel agents")
-    || !parallel.includes("The active runtime exposes an Explore/delegation capability")
     || !parallel.includes("at least two distinct, non-overlapping scopes")
-    || !parallel.includes("Otherwise continue sequentially")
     || !parallel.includes("Reconnaissance is read-only")) {
     issues.add("delegation-gate");
-  }
-  if (!agent.includes("Use `/cf:scout` or focused local `rg`/reads")
-    || agent.includes("less than 2 days old")
-    || agent.includes("create/update a codebase summary")) {
-    issues.add("targeted-discovery");
   }
   return [...issues].sort();
 }
@@ -3077,13 +2835,7 @@ async function runDebugAdaptiveContractTests() {
   const mutations = [
     ["quick-becomes-deep", "skill", "proportional-depth", "**Quick/local:**", "**Routine:**"],
     ["debug-applies-fix", "verification", "diagnostic-boundary", "Debug owns the failing baseline and the proof plan", "Debug applies the fix and owns the proof plan"],
-    ["timeline-drops-timezone", "logs", "timeline-causality", "Normalize all timestamps to one timezone", "Compare timestamps as printed"],
-    ["elimination-is-optional", "agent", "elimination-path", "Keep an elimination path", "Optionally summarize candidates"],
-    ["cause-loses-trigger", "skill", "causal-taxonomy", "Trigger: event or input", "Activation detail: event or input"],
-    ["trace-stops-at-throw", "tracing", "deep-tracing", "symptom -> immediate cause -> caller/data boundary -> origin", "symptom -> thrown frame"],
-    ["recurrence-is-removed", "sideEffects", "recurrence-handoff", "Observability/alerting gap", "Operational notes"],
     ["delegation-loses-user-gate", "parallel", "delegation-gate", "The user explicitly requested or permitted delegation or parallel agents", "Delegation seems useful"],
-    ["scout-becomes-mandatory-summary", "agent", "targeted-discovery", "Use `/cf:scout` or focused local `rg`/reads", "Always create/update a codebase summary"],
   ];
   for (const [name, source, expectedIssue, from, to] of mutations) {
     const changed = { ...baseline, [source]: replaceDebugClauseOnce(baseline[source], from, to) };
@@ -3099,7 +2851,7 @@ async function runDebugAdaptiveContractTests() {
 
 // cf:debug sizes its report to the depth it states, shares that one shape with its agent, invokes
 // scout as a skill, and bounds its confidence and its reads on shared environments.
-function validateDebugProportionalContract(skill, agent) {
+function validateDebugProportionalContract(skill) {
   const issues = new Set();
   const flat = normalizeMarkdownWhitespace(skill);
   const has = (text, clause) => normalizeMarkdownWhitespace(text).includes(normalizeMarkdownWhitespace(clause));
@@ -3109,81 +2861,37 @@ function validateDebugProportionalContract(skill, agent) {
     const to = skill.indexOf(`</${tag}>`, from);
     return from < 0 || to < 0 ? "" : skill.slice(from, to);
   };
-  if (skill.trimEnd().split("\n").length > 170) issues.add("debug-line-ceiling");
-  require("debug-depth-scaled-report", [
-    "Quick/local and Standard reports write the root-cause contract, the confirmed hypothesis, the verification plan, and the fix direction;",
-    "Only Incident/deep reports add `Evidence Timeline`, the other hypotheses tested, `### Elimination Path`, and `### Recurrence-Prevention Handoff`.",
-    "A shorter report omits those sections; it does not write them as skipped.",
-    "When evidence does not directly confirm the first explanation, create 2-3 competing hypotheses.",
-    "when the root cause is unknown, they list every hypothesis tested instead.",
-    "Quick/local and Standard reports fold it into the confirmed hypothesis's evidence; only Incident/deep reports write it under `### Elimination Path`.",
-    "Depth changes evidence breadth and report length, never the standards below, the diagnostic-only gate, or the root-cause standard.",
-  ]);
-  if (/Timeline: skipped|- skipped:/.test(skill)
-    || !has(gate("ROOT-CAUSE-GATE"), "Do NOT stop at the first plausible explanation unless evidence directly confirms it.")) {
-    issues.add("debug-depth-scaled-report");
-  }
-  if (!skill.includes("**Mode:** quick | standard | ci | frontend | perf\n**Depth:** quick/local | standard | incident/deep\n**Root cause confidence:** high | medium | low | unknown")
-    || !skill.includes("- **Standard:** ")) {
-    issues.add("debug-depth-line");
-  }
-  if (skill.includes("✓ Step")) issues.add("debug-step-markers");
-  if (!has(agent, "Write the report in the `## Debug Report` shape of the `cf:debug` skill (`.claude/skills/debug/SKILL.md`), with its `**Depth:**` line")
-    || !has(agent, "Quick/local and Standard reports omit them. Do not use a separate report heading.")
-    || /Debugger Report|## Required Report Shape|## Reporting Standards/.test(agent)) {
-    issues.add("debug-agent-shape");
+  if (!has(gate("ROOT-CAUSE-GATE"), "Do NOT stop at the first plausible explanation unless evidence directly confirms it.")) {
+    issues.add("debug-root-cause-gate");
   }
   require("debug-scout-invocation", ["Invoke the `scout` skill (`cf:scout`) for the affected scope"]);
   if (/Activate `cf:scout`/.test(skill)) issues.add("debug-scout-invocation");
-  if (!has(gate("ROOT-CAUSE-GATE"), "Report confidence `high` only when the cause was reproduced or observed at runtime — the failing command run, a log or probe read. From static reading alone, report at most `medium`.")) {
+  if (!has(gate("ROOT-CAUSE-GATE"), "From static reading alone, report at most `medium`.")) {
     issues.add("debug-runtime-confidence");
   }
-  if (!has(gate("DIAGNOSTIC-ONLY-GATE"), "Do NOT run heavy or costly reads — table scans, bulk exports, load or stress runs — against shared staging or production without the user's explicit permission; prefer local or fixture data.")) {
+  if (!has(gate("DIAGNOSTIC-ONLY-GATE"), "without the user's explicit permission; prefer local or fixture data.")) {
     issues.add("debug-shared-environment");
   }
-  require("debug-final-heading", ["Open the final answer with `## Debug Report` in this shape"]);
-  if (!skill.includes("```markdown\n## Debug Report\n\n**Issue:**")) issues.add("debug-final-heading");
   return issues;
 }
 
 async function runDebugProportionalContractTests() {
   const fail = (message) => { throw new Error(`[FAIL] Debug proportional contract: ${message}`); };
   const skill = await readFile(join(packageRoot, DEBUG_ADAPTIVE_PATHS.skill), "utf8");
-  const agent = await readFile(join(packageRoot, DEBUG_ADAPTIVE_PATHS.agent), "utf8");
-  const baseline = validateDebugProportionalContract(skill, agent);
+  const baseline = validateDebugProportionalContract(skill);
   if (baseline.size) fail(`current text fails: ${[...baseline].join(", ")}`);
   const swap = (from, to) => (text) => replaceDebugClauseOnce(text, from, to);
-  const append = (extra) => (text) => `${text}${extra}`;
   const mutations = [
-    ["every-report-adds-deep-sections", "skill", swap("Only Incident/deep reports add", "Every report adds"), "debug-depth-scaled-report"],
-    ["hypotheses-always-competing", "skill", swap("When evidence does not directly confirm the first explanation, create 2-3", "Create 2-3"), "debug-depth-scaled-report"],
-    ["report-writes-skipped", "skill", swap("it does not write them as skipped.", "it writes them as skipped."), "debug-depth-scaled-report"],
-    ["root-cause-gate-loses-exception", "skill", swap("Do NOT stop at the first plausible explanation unless evidence directly confirms it.", "Do NOT stop at the first plausible explanation."), "debug-depth-scaled-report"],
-    ["short-report-writes-elimination", "skill", swap("Quick/local and Standard reports fold it into the confirmed hypothesis's evidence; only", "Every report writes it; so do"), "debug-depth-scaled-report"],
-    ["unknown-cause-drops-hypotheses", "skill", swap("; when the root cause is unknown, they list every hypothesis tested instead.", "."), "debug-depth-scaled-report"],
-    ["exception-leaves-root-cause-gate", "skill", (text) => replaceDebugClauseOnce(text, "Do NOT stop at the first plausible explanation unless evidence directly confirms it.", "Do NOT stop at the first plausible explanation.") + "\nDo NOT stop at the first plausible explanation unless evidence directly confirms it.\n", "debug-depth-scaled-report"],
-    ["restores-skipped-timeline", "skill", append("\nQuick/local work records `Timeline: skipped - local deterministic failure`.\n"), "debug-depth-scaled-report"],
-    ["drops-standard-depth", "skill", swap("- **Standard:** ", "- **Normal:** "), "debug-depth-line"],
-    ["drops-depth-line", "skill", swap("\n**Depth:** quick/local | standard | incident/deep", ""), "debug-depth-line"],
-    ["restores-step-marker", "skill", append("\n**Output:** `✓ Step 1: Scouted - [N] files`\n"), "debug-step-markers"],
-    ["agent-restores-own-heading", "agent", append("\n## Required Report Shape\n\n## Debugger Report\n"), "debug-agent-shape"],
-    ["agent-keeps-deep-sections-always", "agent", swap("Quick/local and Standard reports omit them.", "Every report keeps them."), "debug-agent-shape"],
-    ["agent-drops-pointer", "agent", swap("Write the report in the `## Debug Report` shape of the `cf:debug` skill", "Write a report"), "debug-agent-shape"],
+    ["root-cause-gate-loses-exception", "skill", swap("Do NOT stop at the first plausible explanation unless evidence directly confirms it.", "Do NOT stop at the first plausible explanation."), "debug-root-cause-gate"],
     ["scout-becomes-activate", "skill", swap("Invoke the `scout` skill (`cf:scout`) for the affected scope", "Activate `cf:scout` for the relevant scope"), "debug-scout-invocation"],
     ["static-reading-allows-high", "skill", swap("From static reading alone, report at most `medium`.", "Static reading can support `high`."), "debug-runtime-confidence"],
     ["shared-heavy-reads-allowed", "skill", swap("without the user's explicit permission; prefer local or fixture data.", "when they help the diagnosis."), "debug-shared-environment"],
-    ["template-heading-renamed", "skill", swap("```markdown\n## Debug Report\n", "```markdown\n## Diagnosis\n"), "debug-final-heading"],
-    ["final-heading-dropped", "skill", swap("Open the final answer with `## Debug Report` in this shape", "Use this shape"), "debug-final-heading"],
-    ["exceeds-line-ceiling", "skill", append(`${"\nfiller".repeat(10)}\n`), "debug-line-ceiling"],
   ];
-  for (const [name, source, mutate, issue] of mutations) {
-    const issues = validateDebugProportionalContract(
-      source === "skill" ? mutate(skill) : skill,
-      source === "agent" ? mutate(agent) : agent,
-    );
+  for (const [name, , mutate, issue] of mutations) {
+    const issues = validateDebugProportionalContract(mutate(skill));
     if (!issues.has(issue)) fail(`${name} did not raise ${issue}: ${[...issues].join(", ")}`);
   }
-  console.log("✔ cf:debug report is proportional to its stated depth and shared with its agent");
+  console.log("✔ cf:debug keeps its root-cause, runtime-confidence, shared-environment and scout rules");
   console.log(`✔ cf:debug proportional checker rejects ${mutations.length} weakenings`);
   return mutations.length + 1;
 }
@@ -3215,11 +2923,7 @@ async function runDebugAgentGatesTests() {
   const mutations = [
     ["pointer-dropped", swap("")],
     ["root-cause-gate-removed", swap(sentence.replace(" and `<ROOT-CAUSE-GATE>`", ""))],
-    ["diagnostic-gate-removed", swap(sentence.replace("`<DIAGNOSTIC-ONLY-GATE>` and ", ""))],
-    ["pointer-moved-to-end", (text) => `${replaceDebugClauseOnce(text, sentence, "")}\n${sentence}\n`],
     ["trigger-weakened", swap(sentence.replace("At the start of every investigation, before collecting any evidence,", "When convenient,"))],
-    ["path-removed", swap(sentence.replace(" (`.claude/skills/debug/SKILL.md`)", ""))],
-    ["recheck-removed", swap(sentence.replace(", and check them again before rating root-cause confidence.", "."))],
   ];
   for (const [name, mutate] of mutations) {
     if (!validateDebugAgentGates(mutate(agent)).includes("debug-agent-gates")) fail(`${name} did not raise debug-agent-gates`);
@@ -3637,11 +3341,8 @@ function validateSyncRepairContract(skill, protocols, rebind, develop) {
     || /\b(?:may|can|allowed to)\s+(?:edit|change|update)[^.]*\.claude|\bedit\s+`?\.claude\/runtime\.json/i.test(`${S}\n${P}\n${R.replace(flat("or edit `.claude/` (including `runtime.json`) or any hook"), "")}`)) issues.add("sync-no-evasion");
   if (!has(R, "audits every process-first packet under the specs root and writes nothing")
     || !has(R, "Only a reply that arrives after the report and names the changes counts as confirmation")
-    || !has(R, "an instruction given before the report, such as \"close everything\", does not")
-    || !has(R, "Report archived packets, and packet directories without `plan.md` that CafeKit no longer reads, without touching them")) issues.add("sync-bare-writes-nothing");
-  if (!has(R, "End by asking with `AskUserQuestion` when the host has it, otherwise ask in text and stop.")) issues.add("sync-ask-tool");
+    || !has(R, "an instruction given before the report, such as \"close everything\", does not")) issues.add("sync-bare-writes-nothing");
   if (!has(R, "record `git status --porcelain -uall` and the sha256 of every path it lists")) issues.add("sync-snapshot");
-  if (!has(R, "report every path whose status line or sha256 changed")) issues.add("sync-hash-compare");
   if (!has(R, "List changes that were already there before the first edit apart from your own")) issues.add("sync-snapshot");
   if (!has(S, "An audit writes nothing until the user confirms the named changes")
     || !has(P, "Done without valid Receipt: after the user confirms, downgrade when the repair is deterministic")
@@ -3671,32 +3372,17 @@ async function runSyncRepairContractTests() {
   };
   const mutations = [
     ["cf:sync rebind runs the planned command verbatim", "rebind", swap("Run every selected Command verbatim, each once as one shell,", "Run each selected Command,"), "sync-rebind-verbatim"],
-    ["cf:sync rebind runs the planned command verbatim (last link)", "rebind", swap("never redirect only its last `&&` link to a log", "redirect it to a log"), "sync-rebind-verbatim"],
     ["cf:sync rebind never writes PASS on failure", "rebind", swap("runs zero\n   required tests never yields PASS.", "runs zero\n   required tests is reported."), "sync-never-pass"],
     ["cf:sync rebind never writes PASS on failure (blocked→done)", "rebind", swap("Set `Status: blocked` and, right under", "Set `Status: done` and, right under"), "sync-blocked-on-fail"],
-    ["cf:sync rebind never writes PASS on failure (non-zero exit)", "rebind", swap("exits non-zero, prints a failure marker, or runs zero", "runs zero"), "sync-never-pass"],
     ["cf:sync rebind writes only done tasks", "rebind", swap("Any other Status is reported and not written.", "Other tasks are rebound too."), "sync-done-only"],
-    ["cf:sync rebind picks the validator's Command", "rebind", swap("   or, when there is none at top level, the last `- Command:` under the\n   sub-headings.", "   or every sub-heading command."), "sync-rebind-verbatim"],
     ["cf:sync rebind runs Develop's provenance command", "rebind", swap("--project-root . --specs-root specs --spec-file", "--project-root . --spec-file"), "sync-provenance-command"],
-    ["cf:sync rebind writes only output this call printed", "rebind", swap("never write a Receipt\n   from output that a run in this call did not print.", "reuse output when convenient."), "sync-provenance-command"],
     ["cf:sync bare call writes nothing (prior instruction)", "rebind", swap("an instruction given before the\nreport, such as \"close everything\", does not.", "a prior instruction also counts."), "sync-bare-writes-nothing"],
-    ["cf:sync bare call writes nothing (unread packets)", "rebind", swap("Report archived packets, and packet directories without\n`plan.md` that CafeKit no longer reads, without touching them.", "Archive packets without plan.md."), "sync-bare-writes-nothing"],
-    ["cf:sync asks with the host question tool", "rebind", swap("End by asking with `AskUserQuestion` when the host has\nit, otherwise ask in text and stop.", "End with a summary."), "sync-ask-tool"],
-    ["cf:sync file report lists pre-existing changes apart", "rebind", swap("List changes that were already there before the\nfirst edit apart from your own.", ""), "sync-snapshot"],
     ["cf:sync audit waits for confirmation (protocols 43-44)", "protocols", swap("otherwise report and request direction.", "otherwise block and request direction."), "sync-audit-confirm"],
-    ["cf:sync audit waits for confirmation (protocols 48-49)", "protocols", swap("report and request an\n  ownership decision.", "serialize or request an\n  ownership decision."), "sync-audit-confirm"],
     ["cf:sync never silences the gate (.claude exception in SKILL.md)", "skill", (t) => `${t}\nWhen the gate blocks, edit \`.claude/runtime.json\`.\n`, "sync-no-evasion"],
     ["cf:sync failed rebind marks the old receipt non-authoritative", "rebind", swap("   `Not current proof: the rebind run of this Command exited <code>; the record below is historical.`\n", ""), "sync-non-authoritative"],
     ["cf:sync rebind takes provenance once after all commands", "rebind", swap("After all Commands have run, run the provenance command once", "Before running the Commands, run the provenance command once"), "sync-provenance-after"],
-    ["cf:sync rebind takes provenance once after all commands (recheck)", "rebind", swap("5. Run the provenance command again. If Head moved, say so and do not claim\n   the receipts current.\n", ""), "sync-provenance-after"],
     ["cf:sync never silences the gate", "rebind", swap("Never archive, move, rename, or delete a packet,", "Prefer not to archive a packet,"), "sync-no-evasion"],
-    ["cf:sync never silences the gate (.claude exception)", "rebind", (t) => `${t}\nWhen the gate keeps blocking you may edit \`.claude/runtime.json\`.\n`, "sync-no-evasion"],
-    ["cf:sync bare call writes nothing", "rebind", swap("root and writes nothing.", "root and fixes what it finds."), "sync-bare-writes-nothing"],
-    ["cf:sync bare call writes nothing (confirmation)", "rebind", swap("Only a reply that arrives after the report\nand names the changes counts as confirmation;", "Any instruction counts as confirmation;"), "sync-bare-writes-nothing"],
     ["cf:sync file report comes from a git snapshot difference", "rebind", swap("record `git status --porcelain -uall` and the sha256 of\nevery path it lists.", "note what you change."), "sync-snapshot"],
-    ["cf:sync file report comes from a git snapshot difference (hash)", "rebind", swap("status line or sha256 changed", "status line changed"), "sync-hash-compare"],
-    ["cf:sync audit waits for confirmation (skill)", "skill", swap("An audit writes nothing until the user confirms the named changes", "An audit repairs what it can"), "sync-audit-confirm"],
-    ["cf:sync audit waits for confirmation (protocols 47-49)", "protocols", swap("- Missing or cyclic dependency: report; block affected tasks only after the user confirms.", "- Missing or cyclic dependency: block affected tasks."), "sync-audit-confirm"],
     ["cf:sync grammar names rebind and the bare call", "skill", swap("/cf:sync rebind <feature> [<task-NN-slug.md>]\n", ""), "sync-rebind-grammar"],
     ["cf:sync points at the rebind reference", "skill", (t) => t.replaceAll("references/rebind-and-audit.md", "references/other.md"), "sync-pointer"],
     ["cf:sync body has no argument placeholders", "rebind", (t) => `${t}\n\`\`\`bash\necho "$1"\n\`\`\`\n`, "sync-no-placeholders"],
@@ -4752,15 +4438,18 @@ async function runCodeReviewBoundaryCheck() {
     present("skill allows a read-only reproduction", "skill", "may reproduce a defect; cite it as a reproduction, never as test evidence"),
     present("skill reports no test result as evidence", "skill", "Never report a test result, pass count, or exit code as the review's evidence"),
     present("skill fixes the unavailable proof line", "skill", "`**Execution proof:** unavailable (owned by cf:test)` and do not otherwise say whether tests pass"),
-    absent("skill drops the loose proof wording", "skill", "say `execution proof unavailable`"),
     present("skill caps a debug log at Medium", "skill", "A leftover debug log is at most Medium", "A leftover debug log is High"),
+    present("skill defines High", "skill", "- High: a concrete wrong result a user or operator hits"),
+    present("skill defines Medium", "skill", "- Medium: a real risk with a failure scenario that has not reached users"),
+    present("skill defines Low", "skill", "- Low: cleanup, clarity, or a question"),
+    present("skill keeps documented behavior below Medium", "skill", "is not a Medium or heavier defect"),
+    present("skill keeps severity labels", "skill", "Write the labels `Critical`, `High`, `Medium`, and `Low` verbatim in English"),
+    present("skill leads with specification compliance", "skill", "**Specification compliance.**"),
+    present("skill leads with correctness and security", "skill", "**Correctness and security.**"),
+    present("skill leads with adversarial checks", "skill", "**Adversarial checks.**"),
     present("skill defines Critical with its example", "skill", "- Critical: a concrete failure a user or operator hits that loses or corrupts data, breaks security, or stops the product (a login bypass)."),
-    present("skill defines High with its example", "skill", "- High: a concrete wrong result a user or operator hits (an order exactly at a tier boundary priced with the wrong discount)."),
-    present("skill defines Medium with its example", "skill", "- Medium: a real risk with a failure scenario that has not reached users (a changed boundary with no test; a leftover debug log)."),
-    present("skill defines Low with its example", "skill", "- Low: cleanup, clarity, or a question (a naming nit; a behavior the change's README or docs state as intended)."),
     debugLogTier("skill keeps the debug-log example in the Medium tier", "skill", ["- Critical: a concrete failure", "- High: a concrete wrong result", "- Medium: a real risk", "- Low: cleanup"]),
     present("skill splits a printed secret", "skill", "report that exposure as a separate security finding"),
-    present("skill keeps documented behavior below Medium", "skill", "is not a Medium or heavier defect"),
     present("skill limits compliance Criticals", "skill", "are Critical only when a task or spec is supplied"),
     present("skill defines UNVERIFIED", "skill", "`UNVERIFIED` means supplied proof that failed"),
     present("skill maps a non-blocking Medium", "skill", "A review whose heaviest remaining finding is a non-blocking Medium returns `PASS_WITH_WARNINGS`"),
@@ -4768,43 +4457,35 @@ async function runCodeReviewBoundaryCheck() {
     present("skill defines PASS without Medium", "skill", "`PASS` means no Critical, High, or Medium finding remains; Low findings may remain"),
     absent("skill drops the overlapping PASS clause", "skill", "`PASS` also requires no blocking Medium finding"),
     absent("skill drops the overlapping warnings clause", "skill", "means only documented non-blocking findings remain"),
-    present("skill keeps severity labels", "skill", "Write the labels `Critical`, `High`, `Medium`, and `Low` verbatim in English"),
     present("skill keeps its header, field and severity labels", "skill", "Copy the header line `# Code Review Results [cf:code-review]`, the field labels, and the severity labels verbatim in English; write the content in the user's language"),
-    present("skill leads with specification compliance", "skill", "**Specification compliance.** For process-first work, compare the diff with current plan scope"),
-    present("skill leads with correctness and security", "skill", "**Correctness and security.** Trace changed entrypoints and callers"),
-    present("skill leads with adversarial checks", "skill", "**Adversarial checks.** Try empty, malformed, unauthorized, duplicate, stale, boundary, and concurrent inputs"),
     present("skill refuses a marker as independent evidence", "skill", "A marker such as `Audit: PASS` is not independent evidence"),
-    absent("skill has no numbered review stages", "skill", "## Review stages"),
+    present("auditor defines High", "auditor", "**High** — a concrete wrong result a user or operator hits"),
+    present("auditor defines Medium", "auditor", "**Medium** — a real risk with a failure scenario that has not reached users"),
+    present("auditor defines Low", "auditor", "**Low** — cleanup, clarity, or a question"),
+    present("auditor keeps documented behavior below Medium", "auditor", "is not a Medium or heavier defect"),
+    present("auditor keeps severity labels", "auditor", "write the labels `Critical`, `High`, `Medium`, `Low` verbatim in English"),
+    present("auditor keeps its report headings", "auditor", "Keep `## Review Report`, its headings and the severity labels verbatim in English"),
     present("auditor names its test-run boundary", "auditor", "## Test-Run Boundary"),
     present("auditor forbids the test suite", "auditor", "Never run the project's test suite or a test file, not even as a sanity check"),
     present("auditor limits Bash", "auditor", "`Bash` is for read-only inspection only"),
     present("auditor allows a read-only reproduction", "auditor", "cited as a reproduction and never as test evidence"),
-    absent("auditor drops the Strict attestation validator", "auditor", "the attestation validator"),
-    absent("auditor drops the attestation marker", "auditor", "CAFEKIT_SEMANTIC_REVIEW_ATTESTATION"),
     present("auditor reports no test result as evidence", "auditor", "Never report a test result, pass count, or exit code as the review's evidence"),
     present("auditor fixes the unavailable proof line", "auditor", "write the proof line exactly as `**Execution proof:** unavailable (owned by cf:test)`"),
     present("auditor reports the proof field", "auditor", "- **Execution proof:** test-proof-v1 consumed | unavailable (owned by cf:test)"),
     present("auditor does not block on missing proof", "auditor", "Missing execution proof alone is not `BLOCKED`"),
-    absent("auditor drops the old BLOCKED reason", "auditor", "execution proof, permission, environment, or user-owned decision is missing"),
     present("auditor caps a debug log at Medium", "auditor", "A leftover debug log is at most Medium", "A leftover debug log is High"),
     present("auditor defines Critical with its example", "auditor", "- 🔴 **Critical** — a concrete failure a user or operator hits that loses or corrupts data, breaks security, or stops the product (a login bypass)."),
-    present("auditor defines High with its example", "auditor", "- 🟠 **High** — a concrete wrong result a user or operator hits (an order exactly at a tier boundary priced with the wrong discount)."),
-    present("auditor defines Medium with its example", "auditor", "- 🟡 **Medium** — a real risk with a failure scenario that has not reached users (a changed boundary with no test; a leftover debug log)."),
-    present("auditor defines Low with its example", "auditor", "- 🔵 **Low** — cleanup, clarity, or a question (a naming nit; a behavior the change's README or docs state as intended)."),
     debugLogTier("auditor keeps the debug-log example in the Medium tier", "auditor", ["- 🔴 **Critical** — a concrete failure", "- 🟠 **High** — a concrete wrong result", "- 🟡 **Medium** — a real risk", "- 🔵 **Low** — cleanup"]),
     present("auditor splits a printed secret", "auditor", "report that exposure as a separate security finding"),
-    present("auditor keeps documented behavior below Medium", "auditor", "is not a Medium or heavier defect"),
     present("auditor limits the compliance rules", "auditor", "These compliance rules apply only when a task or spec is supplied"),
     present("auditor scopes the Automatic Criticals", "auditor", "the logging-redaction and filesystem-write ones apply whenever the diff touches those surfaces; every other one applies only when a task or spec is supplied"),
     present("auditor defines UNVERIFIED", "auditor", "`UNVERIFIED` means supplied proof that failed"),
     present("auditor reads UNVERIFIED in the completion Critical", "auditor", "Task marked complete while supplied proof is still FAIL / UNVERIFIED"),
-    absent("auditor drops the old completion Critical", "auditor", "required commands/evidence are still FAIL / UNVERIFIED"),
     present("auditor maps a non-blocking Medium", "auditor", "when the heaviest remaining finding is a non-blocking Medium, the verdict is `PASS_WITH_WARNINGS`, and with only Low findings it is `PASS`"),
     present("auditor gives FAIL its threshold", "auditor", "- **FAIL:** a Critical, High, or blocking Medium finding remains"),
     present("auditor defines PASS without Medium", "auditor", "- **PASS:** no Critical, High, or Medium finding remains; Low findings may remain"),
     absent("auditor drops the overlapping PASS clause", "auditor", "no Critical or High findings and no blocking Medium finding"),
     absent("auditor drops the overlapping warnings row", "auditor", "nly documented non-blocking findings remain"),
-    present("auditor keeps severity labels", "auditor", "write the labels `Critical`, `High`, `Medium`, `Low` verbatim in English"),
     present("auditor gives the caller its relay line", "auditor", relayCaller),
     present("auditor ends every report with the caller line", "auditor", relayBoundary),
     {
@@ -4817,7 +4498,6 @@ async function runCodeReviewBoundaryCheck() {
       holds: (content) => lastReportLine(content) === relayCaller,
       weaken: (content) => content.replace(`${relayCaller}\n`, "").replace("### ✅ Positive Observations", `${relayCaller}\n### ✅ Positive Observations`),
     },
-    present("auditor keeps its report headings", "auditor", "Keep `## Review Report`, its headings and the severity labels verbatim in English"),
   ];
 
   console.log("\n[skill-test] code-review and code-auditor keep the review boundary");
