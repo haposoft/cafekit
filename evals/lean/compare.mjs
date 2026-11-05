@@ -410,7 +410,7 @@ function selfTest() {
       r = run({ skill: "test", root: results, caseList: [c], cellsFilter: [`${c}-sonnet`] });
       expect(`test chay-dung-lenh 10 → 0 in ${c} is watch`, / grader=chay-dung-lenh base=10\/10 after=0\/10 .* watch$/.test(line(r, /grader=chay-dung-lenh/)), line(r, /grader=chay-dung-lenh/));
     }
-    expect("test cases leave out tron-legacy", !cases("test").includes("tron-legacy") && cases("test").length === 9, cases("test").join(","));
+    expect("test cases leave out tron-legacy", !cases("test").includes("tron-legacy") && cases("test").length === 10, cases("test").join(","));
     // code-review: safety, inverted verdict-blocked with a per-case override, per-case primary verdict-fail, watch log-la-low
     const cmk = (name, perRun) => { const dir = path.join(results, "code-review", name); fs.mkdirSync(dir, { recursive: true }); const runs = perRun.map((g) => ({ graders: Object.entries(g).map(([n, p]) => ({ name: n, passed: p })) })); fs.writeFileSync(path.join(dir, "result.json"), JSON.stringify({ partial: false, costUsd: 1, cases: [{ arms: { with: runs } }] })); fs.writeFileSync(path.join(dir, "host.txt"), "2.1.291\n"); };
     const crRun = (c) => run({ skill: "code-review", root: results, caseList: [c], cellsFilter: [`${c}-sonnet`] });
@@ -432,9 +432,9 @@ function selfTest() {
     r = crRun("chi-loi-nho");
     expect("code-review verdict-fail 10 → 0 in chi-loi-nho is watch", / grader=verdict-fail base=10\/10 after=0\/10 .* watch$/.test(line(r, /grader=verdict-fail/)), line(r, /grader=verdict-fail/));
     expect("code-review log-la-low 10 → 0 is watch", / grader=log-la-low base=10\/10 after=0\/10 .* watch$/.test(line(r, /grader=log-la-low/)), line(r, /grader=log-la-low/));
-    expect("code-review cases leave out -agent twins", cases("code-review").length === 5 && !cases("code-review").some((c) => c.endsWith("-agent")), cases("code-review").join(","));
+    expect("code-review cases leave out -agent twins", cases("code-review").length === 6 && !cases("code-review").some((c) => c.endsWith("-agent")), cases("code-review").join(","));
     // code-review --agent: only the -agent cases, with the relay graders read only and co-goi-agent primary
-    expect("code-review --agent lists exactly the five -agent cases", cases("code-review", true).join(",") === "chi-loi-nho-agent,giam-gia-agent,khong-co-loi-agent,sua-ho-agent,thieu-tieu-chi-agent" && cases("code-review").length === 5 && !cases("code-review").some((c) => c.endsWith("-agent")), cases("code-review", true).join(","));
+    expect("code-review --agent lists exactly the five -agent cases", cases("code-review", true).join(",") === "chi-loi-nho-agent,giam-gia-agent,khong-co-loi-agent,sua-ho-agent,thieu-tieu-chi-agent" && cases("code-review").length === 6 && !cases("code-review").some((c) => c.endsWith("-agent")), cases("code-review", true).join(","));
     const agRun = (c) => run({ skill: "code-review", root: results, caseList: [c], cellsFilter: [`${c}-sonnet`] });
     crSide("goc", "sua-ho-agent", () => ({ "co-header": true })); crSide("sau", "sua-ho-agent", () => ({ "co-header": false }));
     r = agRun("sua-ho-agent");

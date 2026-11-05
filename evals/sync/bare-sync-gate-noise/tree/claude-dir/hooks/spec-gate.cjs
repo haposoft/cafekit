@@ -16,32 +16,7 @@
 const fs = require('fs');
 const path = require('path');
 const { runtimeDirName, runtimeDir, runtimePath } = require('./lib/runtime-dir.cjs');
-
-function projectRoot(payload = {}) {
-  const configured = typeof process.env.CLAUDE_PROJECT_DIR === 'string'
-    ? process.env.CLAUDE_PROJECT_DIR.trim()
-    : '';
-  if (configured) {
-    try { return fs.realpathSync(path.resolve(configured)); } catch { /* continue */ }
-  }
-
-  const installedRoot = path.resolve(__dirname, '..', '..');
-  const installedHook = runtimePath(installedRoot, 'hooks', path.basename(__filename));
-  if (fs.existsSync(installedHook)) return installedRoot;
-
-  const sourceFixture = typeof process.env.PROJECT_ROOT === 'string'
-    ? process.env.PROJECT_ROOT.trim()
-    : '';
-  if (sourceFixture) {
-    try { return fs.realpathSync(path.resolve(sourceFixture)); } catch { /* continue */ }
-  }
-
-  const legacy = typeof payload.cwd === 'string' ? payload.cwd.trim() : '';
-  if (legacy) {
-    try { return fs.realpathSync(path.resolve(legacy)); } catch { /* continue */ }
-  }
-  try { return fs.realpathSync(process.cwd()); } catch { return path.resolve(process.cwd()); }
-}
+const { projectRoot } = require('./lib/project-root.cjs');
 
 function logCrash(error) {
   try {
@@ -68,6 +43,7 @@ function sessionIdentity(payload) {
   return candidates.find((value) => typeof value === 'string' && value.trim() !== '') || null;
 }
 
+let hasDoneTasks = false;
 try {
   const policyPath = path.join(__dirname, '..', 'scripts', 'workflow-policy.cjs');
 
@@ -132,6 +108,8 @@ try {
   }
   if (!resolved) process.exit(0);
   if (resolved.layoutKind === 'process-v3-completed-set') {
+    hasDoneTasks = resolved.candidates.some(candidate =>
+      Object.values(candidate.taskRegistry || {}).some(task => task?.status === 'done'));
     const configuredGate = runtime.spec?.completion_gate;
     if (configuredGate !== undefined && configuredGate !== true) {
       emitBlock('Completion gate: runtime.spec.completion_gate is a worker-writable flag, not an authorization; no completion-gate bypass is supported. Remove the flag and satisfy the gate.');
@@ -178,6 +156,7 @@ try {
 
   const featureName = resolved.featureName;
   const specsPath = resolved.specsDir;
+  hasDoneTasks = Object.values(resolved.taskRegistry || {}).some(task => task?.status === 'done');
   const runtimeContext = POLICY.deriveRuntimeContext({
     projectRoot: baseDir,
     specsRoot: specsPath,
@@ -250,6 +229,10 @@ try {
   process.exit(0);
 
 } catch (e) {
+  if (e.code === 'no_git_history') {
+    if (hasDoneTasks) emitBlock('Completion gate: repo has no commits yet; create the first commit, then record Base/Head after it.');
+    process.exit(0);
+  }
   logCrash(e);
   emitBlock(`Completion gate controlled failure: ${e.message}. Completion is blocked until the hook is repaired.`);
   process.exit(0);
