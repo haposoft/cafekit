@@ -115,6 +115,12 @@ Evaluate docs impact from behavior actually changed: `none` means report only; `
 
 Done requires satisfied acceptance, reachable behavior, current executable proof, stable Base/Head binding, resolved blocking review findings, and no scope substitution. `PASS_WITH_WARNINGS`, `NO_TESTS`, `FLASH_UNVERIFIED`, or review-only pass cannot close.
 
+## Gotchas
+
+- **`command_identity` although the command looks right.** The gate takes the last top-level `- Command:` of the Verification Plan before its first `###` sub-heading (or, when none sits at top level, the last one under the sub-headings) and compares it with the Receipt's `Command:` line after trimming whitespace and one wrapping pair of backticks. Earlier commands in the plan are prerequisites, and a second `Command:` or `Commands:` line in the Receipt fails too. Copy that one line instead of rewording it.
+- **`provenance` fails after a docs or changelog edit.** `Head` is a digest of the tracked and untracked, non-ignored files outside the specs root, uncommitted bytes included, so an edit there after a Receipt was written (docs impact, a formatter, a lockfile) moves `Head`; `Base` moves only with a new commit. The gate compares a Receipt with the live pair while its task file differs from its committed copy, and the final-Head fixed point compares every done Receipt before GATE-DONE. Re-derive at that fixed point, or with `$cf-sync rebind`, after the last such edit.
+- **The Stop at the end of a turn blocks with `explicit_not_found` after a packet is moved.** When the host names no feature, the Stop hooks check the packet named in `specs/_shared/active-feature.json`, and a name whose directory or `plan.md` no longer exists blocks the turn. When you archive, rename, or delete that packet, point the file at a live packet or delete it in the same change.
+
 ## Attached references
 
 - `references/quality-gate.md` — proof, review, final-Head, and shared-run ownership.

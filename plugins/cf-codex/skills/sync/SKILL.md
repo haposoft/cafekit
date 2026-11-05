@@ -48,3 +48,7 @@ An audit writes nothing until the user confirms the named changes; then repair d
 ## Docs impact
 
 When a task becomes done, report `Docs impact: none|minor|major`. Create no docs work for `none`; update only affected existing docs for minor or major.
+
+## Gotchas
+
+- **`provenance` fails on a done task after a small edit.** A done task file that matches its committed copy, or was never committed, has its Receipt checked on structure alone; changing a committed file afterwards, even a typo or a checkbox, binds the Receipt to the live Base and Head again, which a Receipt written before that commit usually no longer matches. Leave committed done tasks as they are, or run `$cf-sync rebind <feature> <task-NN-slug.md>` after the edit.

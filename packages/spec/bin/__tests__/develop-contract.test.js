@@ -217,6 +217,36 @@ test('Develop and Sync surfaces teach the flat process-first packet and no legac
   assert.match(read(SYNC_PROTOCOLS), /`plan\.md` and flat `task-\*\.md` files/i);
 });
 
+test('develop and sync carry symptom-first gotchas', () => {
+  // The section runs from its heading to the next level-two heading or the end of the file.
+  const gotchas = (filePath) => {
+    const content = read(filePath);
+    const name = path.basename(path.dirname(filePath));
+    assert.equal((content.match(/^## Gotchas$/gm) || []).length, 1, `${name} must have exactly one Gotchas section`);
+    const body = content.slice(content.indexOf('\n## Gotchas\n') + 1);
+    const next = body.indexOf('\n## ', 1);
+    return next === -1 ? body : body.slice(0, next);
+  };
+
+  const develop = gotchas(DEVELOP);
+  assert.match(develop, /command_identity/);
+  assert.match(develop, /last top-level `- Command:`/);
+  assert.match(develop, /\bprovenance\b/);
+  assert.match(develop, /outside the specs root/);
+  assert.match(develop, /specs\/_shared\/active-feature\.json/);
+  assert.match(develop, /explicit_not_found/);
+
+  const sync = gotchas(SYNC_SKILL);
+  assert.match(sync, /committed copy/);
+  assert.match(sync, /\/cf:sync rebind/);
+
+  // A bulleted Receipt is accepted by the parser, so that trap must not come back.
+  for (const [name, section] of [['develop', develop], ['sync', sync]]) {
+    assert.doesNotMatch(section, /list marker|bullet/i, `${name} gotchas must not list the fixed bulleted-Receipt trap`);
+    assert.doesNotMatch(section, /\b(MUST|NEVER)\b/, `${name} gotchas must not shout`);
+  }
+});
+
 test('Develop process-first source contract preserves selection, recovery, final-Head, parallel, and Flash boundaries', () => {
   const develop = read(DEVELOP);
   const quality = read(GATE);
