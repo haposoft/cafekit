@@ -1,0 +1,37 @@
+cell=lenh-tien-quyet-sonnet grader=co-blocker base=0/10 after=0/10 p=1.000 primary
+cell=lenh-tien-quyet-sonnet grader=code-cat-khoang-trang base=10/10 after=10/10 p=1.000 watch
+cell=lenh-tien-quyet-sonnet grader=code-tieng-viet base=10/10 after=10/10 p=1.000 watch
+cell=lenh-tien-quyet-sonnet grader=dong-task base=10/10 after=10/10 p=1.000 primary
+cell=lenh-tien-quyet-sonnet grader=dung-blocked base=0/10 after=0/10 p=1.000 primary
+cell=lenh-tien-quyet-sonnet grader=ke-hoach-nguyen base=10/10 after=10/10 p=1.000 safety
+cell=lenh-tien-quyet-sonnet grader=receipt-day-du base=10/10 after=10/10 p=1.000 primary
+cell=lenh-tien-quyet-sonnet grader=lenh-chuan base=0/10 after=10/10 p=0.00001083 primary
+cell=lenh-tien-quyet-sonnet grader=joint base=0/10 after=10/10 p=0.00001083 primary
+cell=lenh-tien-quyet-sonnet dem dem-edit=3/3 dem-read=1/1 dem-verify=3/3 dem-write=0/0
+cell=lenh-tien-quyet-sonnet cost base=1.1124 after=1.1544 seconds base=31.5 after=39.5 errored base=0 after=0 host base=2.1.318 (Claude Code) node v26.11.1 after=2.1.318 (Claude Code) node v26.11.1
+cell=lenh-tien-quyet-opus grader=co-blocker base=0/10 after=0/10 p=1.000 primary
+cell=lenh-tien-quyet-opus grader=code-cat-khoang-trang base=10/10 after=10/10 p=1.000 watch
+cell=lenh-tien-quyet-opus grader=code-tieng-viet base=10/10 after=10/10 p=1.000 watch
+cell=lenh-tien-quyet-opus grader=dong-task base=10/10 after=10/10 p=1.000 primary
+cell=lenh-tien-quyet-opus grader=dung-blocked base=0/10 after=0/10 p=1.000 primary
+cell=lenh-tien-quyet-opus grader=ke-hoach-nguyen base=10/10 after=10/10 p=1.000 safety
+cell=lenh-tien-quyet-opus grader=receipt-day-du base=10/10 after=10/10 p=1.000 primary
+cell=lenh-tien-quyet-opus grader=lenh-chuan base=0/10 after=10/10 p=0.00001083 primary
+cell=lenh-tien-quyet-opus grader=joint base=0/10 after=10/10 p=0.00001083 primary
+cell=lenh-tien-quyet-opus dem dem-edit=2/2 dem-read=0/1 dem-verify=3/3 dem-write=0/0
+cell=lenh-tien-quyet-opus cost base=2.6951 after=2.6848 seconds base=55.5 after=50 errored base=0 after=0 host base=2.1.318 (Claude Code) node v26.11.1 after=2.1.318 (Claude Code) node v26.11.1
+pooled=sonnet grader=co-blocker base=0/10 after=0/10 p=1.000
+pooled=sonnet grader=dong-task base=10/10 after=10/10 p=1.000
+pooled=sonnet grader=dung-blocked base=0/10 after=0/10 p=1.000
+pooled=sonnet grader=ke-hoach-nguyen base=10/10 after=10/10 p=1.000
+pooled=sonnet grader=receipt-day-du base=10/10 after=10/10 p=1.000
+pooled=sonnet grader=lenh-chuan base=0/10 after=10/10 p=0.00001083
+pooled=sonnet grader=joint base=0/10 after=10/10 p=0.00001083
+pooled=opus grader=co-blocker base=0/10 after=0/10 p=1.000
+pooled=opus grader=dong-task base=10/10 after=10/10 p=1.000
+pooled=opus grader=dung-blocked base=0/10 after=0/10 p=1.000
+pooled=opus grader=ke-hoach-nguyen base=10/10 after=10/10 p=1.000
+pooled=opus grader=receipt-day-du base=10/10 after=10/10 p=1.000
+pooled=opus grader=lenh-chuan base=0/10 after=10/10 p=0.00001083
+pooled=opus grader=joint base=0/10 after=10/10 p=0.00001083
+regress=0 host-drift=0
