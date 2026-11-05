@@ -3,15 +3,15 @@
 All notable changes to CafeKit are documented here, following
 [Keep a Changelog](https://keepachangelog.com/).
 
-## [Unreleased]
+## [0.18.4] - 2026-11-05
 ### Added
 - `cf:toaa` ("The one above all") takes one request from A to Z as its own flow beside Specs: it locks the outcome, Done means and an Authority field once through the `cf:adv` interview, lists every prerequisite the run cannot obtain alone in one batch (secrets stay in the environment, never in the conversation) with the defaults it will use and the only five reasons it will stop, then runs autonomously from a fresh worktree with parallel `implementer` subagents, an isolated `code-auditor` review and a cleanup sweep, until each Done-means item is verified. It is invoked only by name, never touches `specs/`, task `Status:` or Receipts, and keeps its brief and report under `plans/toaa/`. The plugin build now ships it.
 - `cf:develop` and `cf:sync` end with a Gotchas section naming the gate traps users hit: a Receipt `Command:` that is not the plan's canonical Verification Plan command, a `provenance` failure after an edit outside the specs root, a stale `specs/_shared/active-feature.json` that blocks the turn's Stop, and a committed done task edited after the fact.
-### Removed
-- The retired B1 benchmark harness: `scripts/benchmark-workflow.mjs`, the `benchmarks/` folder (corpus schema, example config, rubric, migration manifest), `docs/benchmark-workflow.md` and their tests. Measurement runs through `evals/run.sh`. Neither was part of the published package.
 ### Fixed
 - The staged secret scanner used by `cf:git` now reads files whose names git quotes: a name with non-ASCII characters, a double quote, a tab or a space was skipped, so its secrets were never reported. It also ignores `diff.noprefix`, `diff.mnemonicPrefix`, an external diff tool and textconv drivers in your git config, which made it skip every file or read converted text, and an added line that starts with `++ b/` no longer switches it to another file name.
 - Session state no longer follows a symlink out of the project. A `.claude/session-state` or `.codex/session-state` link committed into a repository used to receive the state files; the hooks now refuse such a path and write nothing. State kept under `~/.claude/session-states` is unchanged, so a linked `~/.claude` keeps working.
+### Removed
+- The retired B1 benchmark harness: `scripts/benchmark-workflow.mjs`, the `benchmarks/` folder (corpus schema, example config, rubric, migration manifest), `docs/benchmark-workflow.md` and their tests. Measurement runs through `evals/run.sh`. Neither was part of the published package.
 
 ## [0.18.3] - 2026-10-27
 ### Added
