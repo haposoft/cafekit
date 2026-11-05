@@ -55,8 +55,8 @@ function catalog(root, script, skillsRoot) {
   return JSON.parse(result.stdout);
 }
 
-test('the explicit-only skills are vibe and adv', () => {
-  assert.deepEqual(explicitOnly.sort(), ['adv', 'vibe']);
+test('the explicit-only skills are adv, toaa and vibe', () => {
+  assert.deepEqual(explicitOnly.sort(), ['adv', 'toaa', 'vibe']);
 });
 
 test('a Codex install writes the policy file for every explicit-only skill, owned, and for no other skill', () => {

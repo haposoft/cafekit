@@ -4,6 +4,8 @@ All notable changes to CafeKit are documented here, following
 [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
+### Added
+- `cf:toaa` ("The one above all") takes one request from A to Z as its own flow beside Specs: it locks the outcome, Done means and an Authority field once through the `cf:adv` interview, lists every prerequisite the run cannot obtain alone in one batch (secrets stay in the environment, never in the conversation) with the defaults it will use and the only five reasons it will stop, then runs autonomously from a fresh worktree with parallel `implementer` subagents, an isolated `code-auditor` review and a cleanup sweep, until each Done-means item is verified. It is invoked only by name, never touches `specs/`, task `Status:` or Receipts, and keeps its brief and report under `plans/toaa/`. The plugin build now ships it.
 ### Removed
 - The retired B1 benchmark harness: `scripts/benchmark-workflow.mjs`, the `benchmarks/` folder (corpus schema, example config, rubric, migration manifest), `docs/benchmark-workflow.md` and their tests. Measurement runs through `evals/run.sh`. Neither was part of the published package.
 ### Fixed
