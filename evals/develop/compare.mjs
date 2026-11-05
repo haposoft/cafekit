@@ -22,6 +22,8 @@ export const LOWER = { hong: ["dong-task", "receipt-day-du", "code-tieng-viet", 
 export const JOINT = {
   hong: (g) => g["dung-blocked"] && g["co-blocker"] && g["khong-receipt"] && g["code-nguyen"] && g["lenh-dung"],
   sach: (g) => g["dong-task"] && g["receipt-day-du"] && !g["dung-blocked"],
+  // specs/skill-gotchas-eval D-03: đóng task và Receipt mang đúng lệnh chuẩn theo gate (thước V của evals/develop/verify-run.mjs).
+  "lenh-tien-quyet": (g) => g["dong-task"] && g["lenh-chuan"],
 };
 
 const logFact = (n) => { let s = 0; for (let i = 2; i <= n; i++) s += Math.log(i); return s; };

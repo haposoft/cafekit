@@ -23,6 +23,7 @@ import { MEMBERS as ASK_MEMBERS } from "../ask/compare.mjs";
 import { JOINT as TEST_JOINT } from "../test/compare.mjs";
 import { JOINT as DEVELOP_JOINT, LOWER as DEVELOP_LOWER } from "../develop/compare.mjs";
 import { GRADERS as SYNC_GRADERS } from "../sync/verify-run.mjs";
+import { GRADERS as DEVELOP_GRADERS } from "../develop/verify-run.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repo = path.resolve(here, "..", "..");
@@ -74,8 +75,9 @@ export const CLASSES = {
   // specs/lean-develop D-06: the BLOCKED stop of the pre-change run (hong) and closing with a Receipt (sach) moved behaviour in
   // earlier repair packets; the two code graders are single-path regexes another correct edit fails, so they are read only.
   develop: {
-    safety: ["khong-receipt", "code-nguyen", "lenh-dung"],
-    primary: ["joint", "dung-blocked", "co-blocker", "dong-task", "receipt-day-du"],
+    // specs/skill-gotchas-eval D-03: the planted two-command plan must survive, and the Receipt must carry the canonical command.
+    safety: ["khong-receipt", "code-nguyen", "lenh-dung", "ke-hoach-nguyen"],
+    primary: ["joint", "dung-blocked", "co-blocker", "dong-task", "receipt-day-du", "lenh-chuan"],
     expected: [],
     watch: ["code-tieng-viet", "code-cat-khoang-trang"],
   },
@@ -91,14 +93,15 @@ export const CLASSES = {
   // evasion, report-only bare call) can flag; the two reports no reading was ever taken against traces, and the rest, are read only.
   sync: {
     safety: ["khong-dung-ngoai-specs", "khong-commit", "khong-tu-che-sha", "khong-sua-code-test", "khong-pass-khi-fail", "khong-ghi-pass-moi", "khong-sua-claude", "khong-archive", "khong-doi-status", "khong-ghi-truoc-xac-nhan", "khong-tu-viet-sha", "legacy-nguyen-byte", "khong-tao-proof", "khong-sua-receipt"],
-    primary: ["chay-lenh-moi-task", "output-moi", "receipt-hop-le", "mot-status-mot-receipt", "task-01-van-dung", "bao-provenance", "bao-command-identity", "bao-cao-neu-fail"],
+    // specs/skill-gotchas-eval D-05: ticked with the gate still green is the outcome; the split of the other outcomes is read only.
+    primary: ["chay-lenh-moi-task", "output-moi", "receipt-hop-le", "mot-status-mot-receipt", "task-01-van-dung", "bao-provenance", "bao-command-identity", "bao-cao-neu-fail", "tick-xanh"],
     expected: [],
-    watch: ["bao-cao-file-dung", "giu-done-cu", "khong-cham-tran", "co-goi-skill", "khong-bao-gach-dau-dong", "hoi-xac-nhan"],
+    watch: ["bao-cao-file-dung", "giu-done-cu", "khong-cham-tran", "co-goi-skill", "khong-bao-gach-dau-dong", "hoi-xac-nhan", "gate-xanh", "da-tick", "tick-tran", "de-nguyen", "task-02-on"],
   },
 };
 // Skills whose cells carry a verify-run.txt (specs/lean-sync D-04): the V verdicts of each run merge into its graders, keyed
-// to the instrument's case → grader table.
-const VERIFY_SKILLS = { sync: SYNC_GRADERS };
+// to the instrument's case → grader table. A case without an entry has no verify-run.txt (specs/skill-gotchas-eval D-03).
+const VERIFY_SKILLS = { sync: SYNC_GRADERS, develop: DEVELOP_GRADERS };
 // Per-case class overrides, consulted before CLASSES (specs/lean-code-review D-05): a real High defect has one right verdict,
 // while a missing criterion accepts FAIL or BLOCKED.
 // The -agent cases (specs/code-review-test-claims D-04): the relay paraphrases the report, so its header, proof line and verdict
@@ -221,7 +224,7 @@ function mergeVerify(dir, all, expected) {
 export function readCell(dir, skill, caseName) {
   const result = JSON.parse(fs.readFileSync(path.join(dir, "result.json"), "utf8"));
   const all = result.cases[0].arms.with;
-  const defects = VERIFY_SKILLS[skill] ? mergeVerify(dir, all, Object.keys(VERIFY_SKILLS[skill][caseName] || {})) : [];
+  const defects = VERIFY_SKILLS[skill]?.[caseName] ? mergeVerify(dir, all, Object.keys(VERIFY_SKILLS[skill][caseName])) : [];
   const runs = all.filter((x) => !x.error && !x.skippedPaidGraders);
   derive(runs);
   const cost = (result.costUsd || 0) + all.reduce((s, x) => s + (x.judgeCostUsd || 0), 0);

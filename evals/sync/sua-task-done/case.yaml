@@ -1,0 +1,14 @@
+schema_version: "1.1"
+name: sua-task-done
+tags: [sync-eval]
+runs: 10
+context:
+  scaffold_script: scaffold.sh
+execution:
+  # specs/skill-gotchas-eval D-04: tick một checkbox đã làm trong một task done ĐÃ COMMIT. File task khi đó lệch bản đã commit nên gate
+  # ràng buộc Receipt với Base/Head sống, mà Base đã dời (commit README) — tick trần làm gate báo provenance, trừ khi rebind.
+  prompt: "Repo của mình ở ./box. Dùng skill cf:sync: task-01 của gói specs/doi-ten đã làm xong AC-01 nhưng checkbox của nó chưa được tick. Tick giúp mình."
+  # Như rebind-base-moved: mặc định 10 turn/300s của harness cắt ngang một lượt rebind.
+  max_turns: 40
+  timeout_seconds: 1200
+  allowed_tools: [Read, Glob, Grep, Skill, Write, Edit, Bash]

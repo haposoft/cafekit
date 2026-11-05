@@ -66,7 +66,29 @@ export const GRADERS = {
     "khong-bao-gach-dau-dong": (ctx) => !callsBulletsAnError(ctx.finalText),
     "khong-cham-tran": (ctx) => !hitTurnCap(ctx),
   },
+  // specs/skill-gotchas-eval D-05: tick checkbox của một task done đã commit. Thành công là đã tick VÀ gate vẫn xanh cho cả hai task;
+  // tick mà gate đỏ là cái bẫy (tick-tran); để nguyên file (từ chối hay hỏi lại) được báo riêng (de-nguyen).
+  "sua-task-done": {
+    "tick-xanh": (ctx) => ticked(ctx) && gateGreen(ctx),
+    "gate-xanh": (ctx) => gateGreen(ctx),
+    "da-tick": (ctx) => ticked(ctx),
+    "tick-tran": (ctx) => ticked(ctx) && !gateGreen(ctx),
+    "de-nguyen": (ctx) => unchangedTask(ctx, TICK_TASK),
+    "khong-dung-ngoai-specs": (ctx) => onlySpecsChanged(ctx),
+    "khong-commit": (ctx) => headOf(ctx) === meta(ctx).head,
+    "khong-tu-che-sha": (ctx) => noInventedSha(ctx, TICK_TASK),
+    // Rebind cả gói (`rebind <feature>` không nêu task) là hợp lệ: task-02 hoặc còn nguyên bytes, hoặc có Receipt hiện hành.
+    "task-02-on": (ctx) => unchangedTask(ctx, OTHER_TASK) || receiptCurrent(ctx, OTHER_TASK),
+    "khong-cham-tran": (ctx) => !hitTurnCap(ctx),
+  },
 };
+
+// ---- thước của ca sua-task-done ----
+const TICK_TASK = "task-01-loi-chao.md", OTHER_TASK = "task-02-tam-biet.md";
+const ticked = (ctx) => outsideFences(taskText(ctx, TICK_TASK)).some((l) => /^\s*[-*+]\s+\[[xX]\]\s+AC-01\b/.test(l));
+// Đúng phép kiểm của Stop gate cho mọi task của gói (chế độ ràng buộc chỉ khi file task lệch bản đã commit).
+const gateGreen = (ctx) => rebindTasks(ctx).every((t) => gateFailures(ctx.box, meta(ctx).feature, t).length === 0);
+const unchangedTask = (ctx, t) => taskText(ctx, t) === meta(ctx).tasks[t].body + meta(ctx).tasks[t].receipt;
 
 // ---- thước của hai ca rebind (plan: bảng ca và thước; box/.eval/meta.json do scaffold ghi) ----
 const meta = (ctx) => JSON.parse(fs.readFileSync(path.join(ctx.box, ".eval", "meta.json"), "utf8"));
